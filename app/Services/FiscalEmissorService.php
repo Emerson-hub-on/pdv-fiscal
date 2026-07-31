@@ -48,8 +48,12 @@ class FiscalEmissorService
         $idLote = str_pad($numero, 15, '0', STR_PAD_LEFT);
         $resposta = $tools->sefazEnviaLote([$xmlAssinado], $idLote, 1);
 
-        // TEMPORÁRIO: ver resposta real antes de finalizar o parser
-        throw new Exception('RESPOSTA SEFAZ: ' . $resposta);
+        // NFC-e normalmente retorna sincrono (protocolo direto na resposta do lote)
+        $protocolo = $this->extrairProtocolo($resposta);
+
+        if (!$protocolo['autorizada']) {
+            throw new Exception('Rejeitada pela SEFAZ: ' . $protocolo['motivo']);
+        }
         // Atualiza numeracao da empresa e dados da venda
         $empresa->update(['numero_atual_nfce' => $numero]);
 
@@ -252,14 +256,31 @@ class FiscalEmissorService
 
     protected function extrairProtocolo(string $resposta): array
     {
-        $xml = new \SimpleXMLElement($resposta);
-        $ns = $xml->getNamespaces(true);
-        // A estrutura exata varia; vamos tratar e ajustar no teste real com a resposta impressa
+        $dom = new \DOMDocument();
+        $dom->loadXML($resposta);
+
+        $infProt = $dom->getElementsByTagName('infProt')->item(0);
+
+        if (!$infProt) {
+            $xMotivoLote = $dom->getElementsByTagName('xMotivo')->item(0)?->nodeValue;
+            return [
+                'autorizada' => false,
+                'chave' => null,
+                'numero_protocolo' => null,
+                'motivo' => $xMotivoLote ?: 'Lote não processado (sem protocolo retornado).',
+            ];
+        }
+
+        $cStat = $infProt->getElementsByTagName('cStat')->item(0)?->nodeValue;
+        $xMotivo = $infProt->getElementsByTagName('xMotivo')->item(0)?->nodeValue;
+        $chave = $infProt->getElementsByTagName('chNFe')->item(0)?->nodeValue;
+        $protocolo = $infProt->getElementsByTagName('nProt')->item(0)?->nodeValue;
+
         return [
-            'autorizada' => false,
-            'chave' => null,
-            'numero_protocolo' => null,
-            'motivo' => 'Ainda não testado com resposta real da SEFAZ',
+            'autorizada' => $cStat === '100', // 100 = Autorizado o uso da NF-e
+            'chave' => $chave,
+            'numero_protocolo' => $protocolo,
+            'motivo' => $xMotivo,
         ];
     }
 }
