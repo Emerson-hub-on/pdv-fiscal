@@ -22,5 +22,6 @@
 
         @yield('conteudo')
     </main>
+    @yield('scripts')
 </body>
 </html>

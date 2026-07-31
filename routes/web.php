@@ -4,6 +4,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EmpresaController;
+use App\Http\Controllers\CaixaController;
+use App\Http\Controllers\VendaController;
+use App\Http\Controllers\FiscalController;
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -16,4 +19,16 @@ Route::middleware('auth')->group(function () {
         ->name('produtos.toggle-ativo');
     Route::get('empresa', [EmpresaController::class, 'editar'])->name('empresa.editar');
     Route::post('empresa', [EmpresaController::class, 'salvar'])->name('empresa.salvar');
-});
+    Route::get('caixa/abrir', [CaixaController::class, 'abrirForm'])->name('caixa.abrir-form');
+    Route::post('caixa/abrir', [CaixaController::class, 'abrir'])->name('caixa.abrir');
+    Route::get('caixa/fechar', [CaixaController::class, 'fecharForm'])->name('caixa.fechar-form');
+    Route::post('caixa/fechar', [CaixaController::class, 'fechar'])->name('caixa.fechar');
+    Route::get('pdv', [VendaController::class, 'pdv'])->name('vendas.pdv');
+    Route::get('pdv/buscar-produto', [VendaController::class, 'buscarProduto'])->name('vendas.buscar-produto');
+    Route::post('pdv/finalizar', [VendaController::class, 'finalizar'])->name('vendas.finalizar');
+    Route::get('pdv/venda/{venda}/comprovante', [FiscalController::class, 'comprovante'])->name('vendas.comprovante');
+    Route::post('pdv/venda/{venda}/emitir', [FiscalController::class, 'emitir'])->name('vendas.emitir');
+    
+    
+    
+    });

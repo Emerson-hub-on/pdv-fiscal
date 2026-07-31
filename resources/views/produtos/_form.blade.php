@@ -66,7 +66,7 @@
 
     <div>
         <label class="block text-sm font-medium mb-1">CSOSN *</label>
-        <input type="text" name="csosn" maxlength="3" value="{{ old('csosn', $produto->csosn ?? '500') }}" required
+        <input type="text" name="csosn" maxlength="3" value="{{ old('csosn', $produto->csosn ?? '102') }}" required
                class="w-full border rounded px-3 py-2">
     </div>
 

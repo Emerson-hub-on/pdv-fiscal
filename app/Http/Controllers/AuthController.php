@@ -32,7 +32,7 @@ class AuthController extends Controller
 
             return $credenciais['modo'] === 'admin'
                 ? redirect()->route('produtos.index')
-                : redirect()->route('vendas.index'); // ainda vamos criar essa rota
+                : redirect()->route('caixa.abrir-form'); // ainda vamos criar essa rota
         }
 
         return back()->withErrors(['username' => 'Usuário ou senha inválidos.']);
