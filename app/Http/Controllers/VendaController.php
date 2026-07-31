@@ -3,13 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Caixa;
-use App\Models\Produto;
-use App\Models\ProdutoVariante;
-use App\Models\Venda;
-use App\Models\VendaItem;
+use App\Services\SyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class VendaController extends Controller
 {
@@ -25,31 +23,44 @@ class VendaController extends Controller
     }
 
     /**
-     * Busca produtos por nome, codigo interno ou codigo de barras (usado via AJAX no PDV)
+     * Busca produtos no banco LOCAL (sqlite), nao mais no MySQL central.
      */
     public function buscarProduto(Request $request)
     {
         $termo = $request->get('termo', '');
 
-        $produtos = Produto::ativos()
+        $produtos = DB::connection('sqlite_local')->table('produtos_cache')
+            ->where('ativo', true)
             ->where(function ($q) use ($termo) {
                 $q->where('nome', 'like', "%{$termo}%")
                   ->orWhere('codigo_interno', 'like', "%{$termo}%")
                   ->orWhere('codigo_barras', 'like', "%{$termo}%");
             })
-            ->with('variantes')
             ->limit(10)
             ->get();
+
+        // Anexa variantes de cada produto que tem variacao
+        $produtos = $produtos->map(function ($produto) {
+            $produto->variantes = $produto->tem_variacao
+                ? DB::connection('sqlite_local')->table('produto_variantes_cache')
+                    ->where('produto_id', $produto->id)
+                    ->get()
+                : [];
+            return $produto;
+        });
 
         return response()->json($produtos);
     }
 
+    /**
+     * Grava a venda no banco LOCAL (fila de pendentes), nao mais direto no MySQL.
+     */
     public function finalizar(Request $request)
     {
         $validado = $request->validate([
             'itens' => 'required|array|min:1',
-            'itens.*.produto_id' => 'required|exists:produtos,id',
-            'itens.*.produto_variante_id' => 'nullable|exists:produto_variantes,id',
+            'itens.*.produto_id' => 'required|integer',
+            'itens.*.produto_variante_id' => 'nullable|integer',
             'itens.*.quantidade' => 'required|integer|min:1',
             'forma_pagamento' => 'required|in:dinheiro,pix,credito,debito',
         ]);
@@ -61,64 +72,76 @@ class VendaController extends Controller
         }
 
         try {
-            $venda = DB::transaction(function () use ($validado, $caixa) {
-                $total = 0;
-                $itensParaSalvar = [];
+            $total = 0;
+            $itensParaSalvar = [];
 
+            DB::connection('sqlite_local')->transaction(function () use ($validado, &$total, &$itensParaSalvar) {
                 foreach ($validado['itens'] as $item) {
-                    $produto = Produto::findOrFail($item['produto_id']);
-
-                    // Verifica e baixa estoque com lock, evitando concorrencia entre PDVs
                     if (!empty($item['produto_variante_id'])) {
-                        $variante = ProdutoVariante::where('id', $item['produto_variante_id'])
-                            ->lockForUpdate()->firstOrFail();
+                        $variante = DB::connection('sqlite_local')->table('produto_variantes_cache')
+                            ->where('id', $item['produto_variante_id'])->lockForUpdate()->first();
 
-                        if ($variante->estoque < $item['quantidade']) {
-                            throw new \Exception("Estoque insuficiente para {$produto->nome} ({$variante->cor}/{$variante->tamanho}).");
+                        if (!$variante || $variante->estoque < $item['quantidade']) {
+                            throw new \Exception('Estoque insuficiente (local) para o item selecionado.');
                         }
 
-                        $variante->decrement('estoque', $item['quantidade']);
+                        DB::connection('sqlite_local')->table('produto_variantes_cache')
+                            ->where('id', $variante->id)
+                            ->decrement('estoque', $item['quantidade']);
+
+                        $produto = DB::connection('sqlite_local')->table('produtos_cache')
+                            ->where('id', $item['produto_id'])->first();
                     } else {
-                        $produtoLock = Produto::where('id', $produto->id)->lockForUpdate()->firstOrFail();
+                        $produto = DB::connection('sqlite_local')->table('produtos_cache')
+                            ->where('id', $item['produto_id'])->lockForUpdate()->first();
 
-                        if ($produtoLock->estoque < $item['quantidade']) {
-                            throw new \Exception("Estoque insuficiente para {$produto->nome}.");
+                        if (!$produto || $produto->estoque < $item['quantidade']) {
+                            throw new \Exception('Estoque insuficiente (local) para ' . ($produto->nome ?? 'produto'));
                         }
 
-                        $produtoLock->decrement('estoque', $item['quantidade']);
+                        DB::connection('sqlite_local')->table('produtos_cache')
+                            ->where('id', $produto->id)
+                            ->decrement('estoque', $item['quantidade']);
                     }
 
                     $subtotal = $produto->preco_venda * $item['quantidade'];
                     $total += $subtotal;
 
                     $itensParaSalvar[] = [
-                        'produto_id' => $produto->id,
+                        'produto_id' => $item['produto_id'],
                         'produto_variante_id' => $item['produto_variante_id'] ?? null,
                         'quantidade' => $item['quantidade'],
                         'preco_unitario' => $produto->preco_venda,
-                        'subtotal' => $subtotal,
                     ];
                 }
-
-                $venda = Venda::create([
-                    'caixa_id' => $caixa->id,
-                    'operador_id' => Auth::id(),
-                    'total' => $total,
-                    'forma_pagamento' => $validado['forma_pagamento'],
-                    'status' => 'pendente', // vai virar "emitida" apos a emissao fiscal
-                ]);
-
-                foreach ($itensParaSalvar as $itemSalvar) {
-                    $venda->itens()->create($itemSalvar);
-                }
-
-                return $venda;
             });
+
+            $uuid = (string) Str::uuid();
+
+            DB::connection('sqlite_local')->table('vendas_pendentes')->insert([
+                'uuid' => $uuid,
+                'caixa_id_central' => $caixa->id, // caixa ja e criado direto no central, sem fila por enquanto
+                'operador_id_central' => Auth::id(),
+                'total' => $total,
+                'forma_pagamento' => $validado['forma_pagamento'],
+                'itens' => json_encode($itensParaSalvar),
+                'status' => 'pendente_sync',
+                'vendida_em' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // Tenta sincronizar imediatamente (nao bloqueia se falhar)
+            try {
+                (new SyncService())->enviarVendasPendentes();
+            } catch (\Exception $e) {
+                // Silencioso - o scheduler tenta de novo depois
+            }
 
             return response()->json([
                 'sucesso' => true,
-                'venda_id' => $venda->id,
-                'total' => $venda->total,
+                'venda_uuid' => $uuid,
+                'total' => $total,
             ]);
         } catch (\Exception $e) {
             return response()->json(['erro' => $e->getMessage()], 422);

@@ -64,6 +64,13 @@ return [
             ]) : [],
         ],
 
+        'sqlite_local' => [
+        'driver' => 'sqlite',
+        'database' => database_path('local.sqlite'),
+        'prefix' => '',
+        'foreign_key_constraints' => true,
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),

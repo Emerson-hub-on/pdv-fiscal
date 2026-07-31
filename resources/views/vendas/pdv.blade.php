@@ -210,7 +210,7 @@ async function finalizarVenda() {
         }
 
         // Venda gravada com sucesso - redireciona pra emissao fiscal (proximo passo)
-        window.location.href = `/pdv/venda/${data.venda_id}/comprovante`;
+        window.location.href = `/pdv/venda/${data.venda_uuid}/comprovante`;
     } catch (e) {
         erroP.innerText = 'Erro de conexão. Tente novamente.';
         erroP.classList.remove('hidden');
