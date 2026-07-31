@@ -29,7 +29,9 @@ class ProdutoController extends Controller
     {
         $validado = $this->validarProduto($request);
 
-        Produto::create($validado);
+        $produto = Produto::create($validado);
+
+        $this->sincronizarVariantes($request, $produto);
 
         return redirect()->route('produtos.index')
             ->with('sucesso', 'Produto cadastrado com sucesso.');
@@ -37,6 +39,7 @@ class ProdutoController extends Controller
 
     public function edit(Produto $produto)
     {
+        $produto->load('variantes');
         return view('produtos.edit', compact('produto'));
     }
 
@@ -46,10 +49,43 @@ class ProdutoController extends Controller
 
         $produto->update($validado);
 
+        $this->sincronizarVariantes($request, $produto);
+
         return redirect()->route('produtos.index')
             ->with('sucesso', 'Produto atualizado com sucesso.');
     }
 
+    private function sincronizarVariantes(Request $request, Produto $produto): void
+{
+    if (!$produto->tem_variacao) {
+        $produto->variantes()->delete();
+        return;
+    }
+
+    $idsEnviados = [];
+
+    foreach ($request->input('variantes', []) as $linha) {
+        if (empty($linha['cor']) && empty($linha['tamanho'])) {
+            continue; // ignora linha vazia
+        }
+
+        $variante = $produto->variantes()->updateOrCreate(
+            ['id' => $linha['id'] ?: null],
+            [
+                'cor' => $linha['cor'] ?? null,
+                'tamanho' => $linha['tamanho'] ?? null,
+                'sku' => $linha['sku'] ?? null,
+                'estoque' => $linha['estoque'] ?? 0,
+                'estoque_minimo' => $linha['estoque_minimo'] ?? 0,
+            ]
+        );
+
+        $idsEnviados[] = $variante->id;
+    }
+
+    // Remove variantes que existiam antes mas foram excluídas na tela
+    $produto->variantes()->whereNotIn('id', $idsEnviados)->delete();
+}
     /**
      * Sem destroy() de propósito — produtos não podem ser excluídos.
      */
