@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Venda extends Model
 {
     protected $fillable = [
-        'caixa_id', 'cliente_id', 'operador_id', 'total',
+        'caixa_id', 'cliente_id', 'operador_id', 'total', 'troco',
         'forma_pagamento', 'status',
         'chave_nfe', 'protocolo_nfe', 'motivo_cancelamento',
         'motivo_rejeicao', 'numero_nfce', 'serie_nfce',
@@ -30,5 +30,9 @@ class Venda extends Model
     public function itens()
     {
         return $this->hasMany(VendaItem::class);
+    }
+    public function pagamentos()
+    {
+        return $this->hasMany(VendaPagamento::class);
     }
 }

@@ -90,12 +90,14 @@ class SyncService
                 if (!$jaExiste) {
                     DB::transaction(function () use ($vendaLocal) {
                         $itens = json_decode($vendaLocal->itens, true);
+                        $pagamentos = json_decode($vendaLocal->pagamentos, true) ?? [];
 
                         $vendaId = DB::table('vendas')->insertGetId([
                             'uuid' => $vendaLocal->uuid,
                             'caixa_id' => $vendaLocal->caixa_id_central,
                             'operador_id' => $vendaLocal->operador_id_central,
                             'total' => $vendaLocal->total,
+                            'troco' => $vendaLocal->troco,
                             'forma_pagamento' => $vendaLocal->forma_pagamento,
                             'status' => 'pendente',
                             'created_at' => $vendaLocal->vendida_em,
@@ -103,7 +105,6 @@ class SyncService
                         ]);
 
                         foreach ($itens as $item) {
-                            // Baixa o estoque no MySQL central - antes so acontecia no SQLite local
                             if (!empty($item['produto_variante_id'])) {
                                 DB::table('produto_variantes')
                                     ->where('id', $item['produto_variante_id'])
@@ -123,6 +124,16 @@ class SyncService
                                 'quantidade' => $item['quantidade'],
                                 'preco_unitario' => $item['preco_unitario'],
                                 'subtotal' => $item['preco_unitario'] * $item['quantidade'],
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        }
+
+                        foreach ($pagamentos as $pagamento) {
+                            DB::table('venda_pagamentos')->insert([
+                                'venda_id' => $vendaId,
+                                'forma_pagamento' => $pagamento['forma_pagamento'],
+                                'valor' => $pagamento['valor'],
                                 'created_at' => now(),
                                 'updated_at' => now(),
                             ]);

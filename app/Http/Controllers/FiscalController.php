@@ -72,21 +72,21 @@ class FiscalController extends Controller
      */
     protected function buscarVendaPorUuid(string $uuid): ?array
     {
-        // 1. Tenta no MySQL central primeiro (caso mais comum, ja sincronizada)
-        $venda = Venda::where('uuid', $uuid)->with('itens.produto')->first();
+        $venda = Venda::where('uuid', $uuid)->with('itens.produto', 'pagamentos')->first();
 
         if ($venda) {
             return [
                 'origem' => 'central',
                 'venda' => $venda,
                 'itens' => $venda->itens,
+                'pagamentos' => $venda->pagamentos,
+                'troco' => $venda->troco,
                 'total' => $venda->total,
                 'status' => $venda->status,
                 'chave_nfe' => $venda->chave_nfe,
             ];
         }
 
-        // 2. Se nao achou, busca no SQLite local (ainda nao sincronizada)
         $vendaLocal = DB::connection('sqlite_local')->table('vendas_pendentes')
             ->where('uuid', $uuid)->first();
 
@@ -105,10 +105,15 @@ class FiscalController extends Controller
             ];
         });
 
+        $pagamentosLocais = collect(json_decode($vendaLocal->pagamentos, true) ?? [])
+            ->map(fn($p) => (object) $p);
+
         return [
             'origem' => 'local',
             'venda' => null,
             'itens' => $itensLocais,
+            'pagamentos' => $pagamentosLocais,
+            'troco' => $vendaLocal->troco ?? 0,
             'total' => $vendaLocal->total,
             'status' => 'aguardando_sincronizacao',
             'chave_nfe' => null,

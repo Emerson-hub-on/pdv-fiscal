@@ -20,7 +20,7 @@ class FiscalEmissorService
 
     public function emitir(Venda $venda): array
     {
-        $venda->load('itens.produto', 'itens.variante', 'caixa.pdv');
+        $venda->load('itens.produto', 'itens.variante', 'caixa.pdv', 'pagamentos');
         $pdv = $venda->caixa->pdv;
 
         // Reserva o numero ANTES de qualquer coisa que possa falhar (certificado, XML, rede)
@@ -265,20 +265,21 @@ class FiscalEmissorService
         $pagMap = ['dinheiro' => '01', 'credito' => '03', 'debito' => '04', 'pix' => '17'];
 
         $std = new \stdClass();
-        $std->vTroco = 0;
+        $std->vTroco = number_format($venda->troco ?? 0, 2, '.', '');
         $nfe->tagpag($std);
 
-        $det = new \stdClass();
-        $det->indPag = 0;
-        $det->tPag = $pagMap[$venda->forma_pagamento] ?? '99';
-        $det->vPag = number_format($venda->total, 2, '.', '');
+        foreach ($venda->pagamentos as $pagamento) {
+            $det = new \stdClass();
+            $det->indPag = 0;
+            $det->tPag = $pagMap[$pagamento->forma_pagamento] ?? '99';
+            $det->vPag = number_format($pagamento->valor, 2, '.', '');
 
-        // Cartao de credito/debito e Pix exige informar o tipo de integracao (obrigatorio desde NT 2015.002)
-        if (in_array($venda->forma_pagamento, ['credito', 'debito', 'pix'])) {
-            $det->tpIntegra = 2; // 2 = pagamento nao integrado (sem TEF/maquininha conectada ao sistema)
+            if (in_array($pagamento->forma_pagamento, ['credito', 'debito', 'pix'])) {
+                $det->tpIntegra = 2;
+            }
+
+            $nfe->tagDetPag($det);
         }
-
-        $nfe->tagDetPag($det);
     }
 
     protected function montarResponsavelTecnico(Make $nfe): void

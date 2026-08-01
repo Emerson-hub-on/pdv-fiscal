@@ -33,6 +33,35 @@
             @endforeach
         </table>
 
+        @if ($pagamentos->count() > 0)
+            @php
+                $nomesPagamento = [
+                    'dinheiro' => 'Dinheiro',
+                    'pix' => 'PIX',
+                    'credito' => 'Cartão de Crédito',
+                    'debito' => 'Cartão de Débito',
+                ];
+            @endphp
+
+            <div class="bg-gray-50 border rounded p-3 mb-6 text-sm">
+                <p class="font-medium text-gray-700 mb-2">Formas de pagamento</p>
+                @foreach ($pagamentos as $pagamento)
+                    <div class="flex justify-between text-gray-600">
+                        <span>{{ $nomesPagamento[$pagamento->forma_pagamento] ?? $pagamento->forma_pagamento }}</span>
+                        <span>R$ {{ number_format($pagamento->valor, 2, ',', '.') }}</span>
+                    </div>
+                @endforeach
+
+                @if ($troco > 0.009)
+                    <div class="flex justify-between text-blue-600 font-semibold border-t mt-2 pt-2">
+                        <span>Troco</span>
+                        <span>R$ {{ number_format($troco, 2, ',', '.') }}</span>
+                    </div>
+                @endif
+            </div>
+        @endif
+
+
         <p class="text-right font-bold text-lg mb-6">Total: R$ {{ number_format($total, 2, ',', '.') }}</p>
 
         @if ($status === 'emitida')

@@ -62,7 +62,9 @@ class VendaController extends Controller
             'itens.*.produto_id' => 'required|integer',
             'itens.*.produto_variante_id' => 'nullable|integer',
             'itens.*.quantidade' => 'required|integer|min:1',
-            'forma_pagamento' => 'required|in:dinheiro,pix,credito,debito',
+            'pagamentos' => 'required|array|min:1',
+            'pagamentos.*.forma_pagamento' => 'required|in:dinheiro,pix,credito,debito',
+            'pagamentos.*.valor' => 'required|numeric|min:0.01',
         ]);
 
         $caixa = Caixa::aberto(Auth::id());
@@ -116,14 +118,24 @@ class VendaController extends Controller
                 }
             });
 
+            // Confere se a soma dos pagamentos bate com o total calculado dos itens
+            $totalPagamentos = collect($validado['pagamentos'])->sum('valor');
+            $troco = round($totalPagamentos - $total, 2);
+
+            if ($troco < -0.01) {
+                return response()->json(['erro' => 'A soma dos pagamentos é menor que o total da venda.'], 422);
+            }
+
             $uuid = (string) Str::uuid();
 
             DB::connection('sqlite_local')->table('vendas_pendentes')->insert([
                 'uuid' => $uuid,
-                'caixa_id_central' => $caixa->id, // caixa ja e criado direto no central, sem fila por enquanto
+                'caixa_id_central' => $caixa->id,
                 'operador_id_central' => Auth::id(),
                 'total' => $total,
-                'forma_pagamento' => $validado['forma_pagamento'],
+                'troco' => $troco,
+                'forma_pagamento' => null,
+                'pagamentos' => json_encode($validado['pagamentos']),
                 'itens' => json_encode($itensParaSalvar),
                 'status' => 'pendente_sync',
                 'vendida_em' => now(),
@@ -131,7 +143,6 @@ class VendaController extends Controller
                 'updated_at' => now(),
             ]);
 
-            // Tenta sincronizar imediatamente (nao bloqueia se falhar)
             try {
                 (new SyncService())->enviarVendasPendentes();
             } catch (\Exception $e) {

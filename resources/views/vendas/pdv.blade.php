@@ -125,13 +125,23 @@
             <p class="text-sm text-gray-500 mb-1">Total</p>
             <p id="total-venda" class="text-3xl font-bold mb-4">R$ 0,00</p>
 
-            <label class="block text-sm font-medium mb-1">Forma de pagamento</label>
-            <select id="forma-pagamento" class="w-full border rounded px-3 py-2 mb-4">
+        <label class="block text-sm font-medium mb-1">Pagamentos</label>
+        <div id="lista-pagamentos" class="space-y-2 mb-2"></div>
+
+        <div class="flex gap-2 mb-2">
+            <select id="nova-forma-pagamento" class="flex-1 border rounded px-2 py-1 text-sm">
                 <option value="dinheiro">Dinheiro</option>
                 <option value="pix">PIX</option>
                 <option value="credito">Cartão de Crédito</option>
                 <option value="debito">Cartão de Débito</option>
             </select>
+            <input type="number" step="0.01" id="novo-valor-pagamento" placeholder="Valor" class="w-24 border rounded px-2 py-1 text-sm">
+            <button type="button" onclick="adicionarPagamento()" class="bg-gray-200 hover:bg-gray-300 px-3 rounded text-sm">+</button>
+        </div>
+
+        <p class="text-sm mb-4">
+            Restante a pagar: <strong id="restante-pagamento">R$ 0,00</strong>
+        </p>
 
             <button id="btn-finalizar" onclick="finalizarVenda()"
                     class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded font-bold text-lg disabled:opacity-50">
@@ -260,10 +270,18 @@ function renderizarCarrinho() {
 
     const total = carrinho.reduce((soma, i) => soma + (i.preco * i.quantidade), 0);
     document.getElementById('total-venda').innerText = 'R$ ' + total.toFixed(2).replace('.', ',');
+    atualizarRestante();
 }
 
 async function finalizarVenda() {
     if (carrinho.length === 0) return;
+
+    const diferenca = atualizarRestante();
+    if (diferenca < -0.009) {
+        document.getElementById('erro-venda').innerText = 'A soma dos pagamentos é menor que o total da venda.';
+        document.getElementById('erro-venda').classList.remove('hidden');
+        return;
+    }
 
     const btn = document.getElementById('btn-finalizar');
     const erroP = document.getElementById('erro-venda');
@@ -276,7 +294,7 @@ async function finalizarVenda() {
             produto_variante_id: i.produto_variante_id,
             quantidade: i.quantidade,
         })),
-        forma_pagamento: document.getElementById('forma-pagamento').value,
+        pagamentos: pagamentos,
     };
 
     try {
@@ -298,7 +316,6 @@ async function finalizarVenda() {
             return;
         }
 
-        // Venda gravada com sucesso - redireciona pra emissao fiscal (proximo passo)
         window.location.href = `/pdv/venda/${data.venda_uuid}/comprovante`;
     } catch (e) {
         erroP.innerText = 'Erro de conexão. Tente novamente.';
@@ -306,6 +323,8 @@ async function finalizarVenda() {
         btn.disabled = false;
     }
 }
+
+
 document.addEventListener('keydown', (e) => {
     if (e.key === 'F1') {
         e.preventDefault();
@@ -587,6 +606,62 @@ async function confirmarCancelamento(id) {
         erroP.innerText = resultado.erro;
         erroP.classList.remove('hidden');
     }
+}
+
+
+let pagamentos = [];
+
+function atualizarRestante() {
+    const total = carrinho.reduce((soma, i) => soma + (i.preco * i.quantidade), 0);
+    const pago = pagamentos.reduce((soma, p) => soma + p.valor, 0);
+    const diferenca = pago - total; // positivo = troco, negativo = falta pagar
+
+    const label = document.getElementById('restante-pagamento');
+
+    if (diferenca < -0.009) {
+        label.innerText = 'Falta: R$ ' + Math.abs(diferenca).toFixed(2).replace('.', ',');
+        label.className = 'text-red-600';
+    } else if (diferenca > 0.009) {
+        label.innerText = 'Troco: R$ ' + diferenca.toFixed(2).replace('.', ',');
+        label.className = 'text-blue-600 font-semibold';
+    } else {
+        label.innerText = 'R$ 0,00';
+        label.className = 'text-green-600';
+    }
+
+    return diferenca; // usado pra validar antes de finalizar
+}
+
+function adicionarPagamento() {
+    const forma = document.getElementById('nova-forma-pagamento').value;
+    const valor = parseFloat(document.getElementById('novo-valor-pagamento').value);
+
+    if (!valor || valor <= 0) {
+        alert('Informe um valor válido.');
+        return;
+    }
+
+    pagamentos.push({ forma_pagamento: forma, valor });
+    document.getElementById('novo-valor-pagamento').value = '';
+    renderizarPagamentos();
+}
+
+function removerPagamento(index) {
+    pagamentos.splice(index, 1);
+    renderizarPagamentos();
+}
+
+function renderizarPagamentos() {
+    const nomes = { dinheiro: 'Dinheiro', pix: 'PIX', credito: 'Crédito', debito: 'Débito' };
+
+    document.getElementById('lista-pagamentos').innerHTML = pagamentos.map((p, i) => `
+        <div class="flex justify-between items-center bg-gray-50 border rounded px-2 py-1 text-sm">
+            <span>${nomes[p.forma_pagamento]} — R$ ${p.valor.toFixed(2)}</span>
+            <button onclick="removerPagamento(${i})" class="text-red-500 text-xs hover:underline">Remover</button>
+        </div>
+    `).join('');
+
+    atualizarRestante();
 }
 
 </script>
