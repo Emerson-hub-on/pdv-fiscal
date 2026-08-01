@@ -14,6 +14,9 @@
         <button onclick="abrirModalContingencias()" class="text-orange-600 hover:underline text-sm">
             Contingências (F1)
         </button>
+        <button onclick="abrirModalCancelamento()" class="text-red-700 hover:underline text-sm">
+            Cancelar NFC-e (F3)
+        </button>
         <button onclick="abrirModalInutilizacao()" class="text-red-600 hover:underline text-sm">
             Inutilizar NFC-e (F2)
         </button>
@@ -48,6 +51,8 @@
     </div>
 </div>
 
+<!-- Modal de inutilização -->
+
 <div id="modal-inutilizacao" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
     <div class="bg-white rounded shadow-lg w-full max-w-md p-6">
         <div class="flex justify-between items-center mb-4">
@@ -73,6 +78,21 @@
         <button onclick="confirmarInutilizacao()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded font-semibold">
             Inutilizar
         </button>
+    </div>
+</div>
+
+<!-- Modal de cancelamento -->
+
+<div id="modal-cancelamento" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded shadow-lg w-full max-w-2xl max-h-[80vh] overflow-y-auto p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold">Cancelar NFC-e</h2>
+            <button onclick="fecharModalCancelamento()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+        <p class="text-xs text-gray-400 mb-3">Últimas 20 vendas emitidas. Clique em uma para cancelar.</p>
+        <div id="lista-cancelamento" class="space-y-2">
+            <p class="text-gray-400 text-sm">Carregando...</p>
+        </div>
     </div>
 </div>
     
@@ -476,6 +496,93 @@ async function confirmarInutilizacao() {
     if (resultado.sucesso) {
         alert('Numeração inutilizada com sucesso. Protocolo: ' + resultado.protocolo);
         fecharModalInutilizacao();
+    } else {
+        erroP.innerText = resultado.erro;
+        erroP.classList.remove('hidden');
+    }
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'F1') { e.preventDefault(); abrirModalContingencias(); }
+    if (e.key === 'F2') { e.preventDefault(); abrirModalInutilizacao(); }
+    if (e.key === 'F3') { e.preventDefault(); abrirModalCancelamento(); }
+});
+
+function abrirModalCancelamento() {
+    document.getElementById('modal-cancelamento').classList.remove('hidden');
+    document.getElementById('modal-cancelamento').classList.add('flex');
+    carregarVendasCancelamento();
+}
+
+function fecharModalCancelamento() {
+    document.getElementById('modal-cancelamento').classList.add('hidden');
+    document.getElementById('modal-cancelamento').classList.remove('flex');
+}
+
+async function carregarVendasCancelamento() {
+    const resp = await fetch('{{ route("cancelamento.listar") }}');
+    const vendas = await resp.json();
+
+    const container = document.getElementById('lista-cancelamento');
+
+    if (vendas.length === 0) {
+        container.innerHTML = '<p class="text-gray-400 text-sm">Nenhuma venda emitida encontrada.</p>';
+        return;
+    }
+
+    container.innerHTML = vendas.map(v => `
+        <div class="border rounded">
+            <div class="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50" onclick="toggleExpandirCancelamento(${v.id})">
+                <div>
+                    <p class="text-sm font-medium">NFC-e nº ${v.numero_nfce} — R$ ${Number(v.total).toFixed(2)}</p>
+                    <p class="text-xs text-gray-400">${v.criada_em}</p>
+                    <p class="text-xs text-gray-400 break-all">Chave: ${v.chave_nfe}</p>
+                </div>
+                <span class="text-gray-400 text-xs">▼</span>
+            </div>
+            <div id="cancel-detalhe-${v.id}" class="hidden border-t bg-gray-50 p-3 text-sm">
+                <p class="text-gray-600 mb-2"><strong>Itens:</strong> ${v.itens.join(', ')}</p>
+                <label class="block text-xs font-medium mb-1">Justificativa (mín. 15 caracteres)</label>
+                <textarea id="just-${v.id}" rows="2" class="w-full border rounded px-2 py-1 mb-2 text-sm"></textarea>
+                <p id="cancel-erro-${v.id}" class="text-red-600 text-xs mb-2 hidden"></p>
+                <button onclick="confirmarCancelamento(${v.id})" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-xs font-semibold">
+                    Confirmar cancelamento
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function toggleExpandirCancelamento(id) {
+    document.getElementById(`cancel-detalhe-${id}`).classList.toggle('hidden');
+}
+
+async function confirmarCancelamento(id) {
+    const justificativa = document.getElementById(`just-${id}`).value;
+    const erroP = document.getElementById(`cancel-erro-${id}`);
+
+    if (justificativa.length < 15) {
+        erroP.innerText = 'A justificativa precisa ter no mínimo 15 caracteres.';
+        erroP.classList.remove('hidden');
+        return;
+    }
+
+    if (!confirm('Confirma o cancelamento desta NFC-e? Esta ação é irreversível.')) return;
+
+    const resp = await fetch(`/cancelamento/${id}/cancelar`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+        },
+        body: JSON.stringify({ justificativa }),
+    });
+
+    const resultado = await resp.json();
+
+    if (resultado.sucesso) {
+        alert('NFC-e cancelada com sucesso. Protocolo: ' + resultado.protocolo);
+        carregarVendasCancelamento();
     } else {
         erroP.innerText = resultado.erro;
         erroP.classList.remove('hidden');

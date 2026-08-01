@@ -11,6 +11,7 @@ use App\Http\Controllers\PdvController;
 use App\Http\Controllers\ContingenciaController;
 use App\Services\FiscalEmissorService;
 use App\Http\Controllers\InutilizacaoController;
+use App\Http\Controllers\CancelamentoController;
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -38,4 +39,6 @@ Route::middleware('auth')->group(function () {
     Route::post('contingencias/reenviar', [ContingenciaController::class, 'reenviar'])->name('contingencias.reenviar');
     Route::post('contingencias/{venda}/reenviar', [ContingenciaController::class, 'reenviar'])->name('contingencias.reenviar');
     Route::post('inutilizacao', [InutilizacaoController::class, 'executar'])->name('inutilizacao.executar');
+    Route::get('cancelamento/listar', [CancelamentoController::class, 'listar'])->name('cancelamento.listar');
+    Route::post('cancelamento/{venda}/cancelar', [CancelamentoController::class, 'cancelar'])->name('cancelamento.cancelar');
 });

@@ -18,82 +18,83 @@ class FiscalEmissorService
 {
     protected NfeService $nfeService;
 
-    public function emitir(Venda $venda): array
-    {
-        $venda->load('itens.produto', 'itens.variante', 'caixa.pdv');
-        $pdv = $venda->caixa->pdv;
+public function emitir(Venda $venda): array
+{
+    $venda->load('itens.produto', 'itens.variante', 'caixa.pdv');
+    $pdv = $venda->caixa->pdv;
 
-        $this->nfeService = new NfeService($pdv);
-        $empresa = $this->nfeService->empresa();
+    $this->nfeService = new NfeService($pdv);
+    $empresa = $this->nfeService->empresa();
 
-        if ($venda->numero_nfce) {
-            $numero = $venda->numero_nfce;
-            $serie = $venda->serie_nfce;
-        } else {
-            $numero = $pdv->numero_atual_nfce + 1;
-            $serie = $pdv->serie_nfce;
+    if ($venda->numero_nfce) {
+        $numero = $venda->numero_nfce;
+        $serie = $venda->serie_nfce;
+    } else {
+        $numero = $pdv->numero_atual_nfce + 1;
+        $serie = $pdv->serie_nfce;
 
-            $pdv->update(['numero_atual_nfce' => $numero]);
-            $venda->update(['numero_nfce' => $numero, 'serie_nfce' => $serie]);
-        }
+        $pdv->update(['numero_atual_nfce' => $numero]);
+        $venda->update(['numero_nfce' => $numero, 'serie_nfce' => $serie]);
+    }
 
-        $nfe = new Make();
+    $nfe = new Make();
 
-        $this->montarInfNFe($nfe);
-        $this->montarIde($nfe, $empresa, $pdv, $numero);
-        $this->montarEmit($nfe, $empresa);
-        $this->montarItens($nfe, $venda);
-        $this->montarTotais($nfe, $venda);
-        $this->montarTransporte($nfe);
-        $this->montarPagamento($nfe, $venda);
-        $this->montarResponsavelTecnico($nfe);
+    $this->montarInfNFe($nfe);
+    $this->montarIde($nfe, $empresa, $pdv, $numero);
+    $this->montarEmit($nfe, $empresa);
+    $this->montarItens($nfe, $venda);
+    $this->montarTotais($nfe, $venda);
+    $this->montarTransporte($nfe);
+    $this->montarPagamento($nfe, $venda);
+    $this->montarResponsavelTecnico($nfe);
 
-        $xml = $nfe->getXML();
+    $xml = $nfe->getXML();
 
-        if (!$xml) {
-            throw new Exception('Erro ao montar XML: ' . implode(' | ', $nfe->getErrors()));
-        }
+    if (!$xml) {
+        throw new Exception('Erro ao montar XML: ' . implode(' | ', $nfe->getErrors()));
+    }
 
-        $tools = $this->nfeService->tools();
-        $xmlAssinado = $tools->signNFe($xml);
+    $tools = $this->nfeService->tools();
+    $xmlAssinado = $tools->signNFe($xml);
 
-        $idLote = str_pad($numero, 15, '0', STR_PAD_LEFT);
 
-        try {
-            $resposta = $tools->sefazEnviaLote([$xmlAssinado], $idLote, 1);
-        } catch (\Throwable $e) {
-            $venda->update([
-                'status' => 'contingencia',
-                'motivo_rejeicao' => 'Sem conexão com a SEFAZ: ' . $e->getMessage(),
-            ]);
+    $idLote = str_pad($numero, 15, '0', STR_PAD_LEFT);
 
-            throw new Exception("Sem conexão com a SEFAZ. Venda registrada em contingência (NFC-e nº {$numero}).");
-        }
-
-        $protocolo = $this->extrairProtocolo($resposta);
-
-        if (!$protocolo['autorizada']) {
-            $venda->update([
-                'status' => 'contingencia',
-                'motivo_rejeicao' => $protocolo['motivo'],
-            ]);
-
-            throw new Exception('Rejeitada pela SEFAZ: ' . $protocolo['motivo']);
-        }
-
+    try {
+        $resposta = $tools->sefazEnviaLote([$xmlAssinado], $idLote, 1);
+    } catch (\Throwable $e) {
         $venda->update([
-            'status' => 'emitida',
-            'chave_nfe' => $protocolo['chave'],
-            'protocolo_nfe' => $protocolo['numero_protocolo'],
-            'motivo_rejeicao' => null,
+            'status' => 'contingencia',
+            'motivo_rejeicao' => 'Sem conexão com a SEFAZ: ' . $e->getMessage(),
         ]);
 
-        return [
-            'xml_assinado' => $xmlAssinado,
-            'chave' => $protocolo['chave'],
-            'protocolo' => $protocolo['numero_protocolo'],
-        ];
+        throw new Exception("Sem conexão com a SEFAZ. Venda registrada em contingência (NFC-e nº {$numero}).");
     }
+
+    $protocolo = $this->extrairProtocolo($resposta);
+
+    if (!$protocolo['autorizada']) {
+        $venda->update([
+            'status' => 'contingencia',
+            'motivo_rejeicao' => $protocolo['motivo'],
+        ]);
+
+        throw new Exception('Rejeitada pela SEFAZ: ' . $protocolo['motivo']);
+    }
+
+    $venda->update([
+        'status' => 'emitida',
+        'chave_nfe' => $protocolo['chave'],
+        'protocolo_nfe' => $protocolo['numero_protocolo'],
+        'motivo_rejeicao' => null,
+    ]);
+
+    return [
+        'xml_assinado' => $xmlAssinado,
+        'chave' => $protocolo['chave'],
+        'protocolo' => $protocolo['numero_protocolo'],
+    ];
+}
 
     protected function montarInfNFe(Make $nfe): void
     {
@@ -271,6 +272,12 @@ class FiscalEmissorService
         $det->indPag = 0;
         $det->tPag = $pagMap[$venda->forma_pagamento] ?? '99';
         $det->vPag = number_format($venda->total, 2, '.', '');
+
+        // Cartao de credito/debito e Pix exige informar o tipo de integracao (obrigatorio desde NT 2015.002)
+        if (in_array($venda->forma_pagamento, ['credito', 'debito', 'pix'])) {
+            $det->tpIntegra = 2; // 2 = pagamento nao integrado (sem TEF/maquininha conectada ao sistema)
+        }
+
         $nfe->tagDetPag($det);
     }
 
@@ -390,6 +397,56 @@ class FiscalEmissorService
                 ]);
             });
         }
+
+        return ['protocolo' => $nProt, 'motivo' => $xMotivo];
+    }
+
+        public function cancelar(Venda $venda, string $justificativa): array
+    {
+        if ($venda->status !== 'emitida') {
+            throw new Exception('Só é possível cancelar vendas com NFC-e já emitida.');
+        }
+
+        $pdv = $venda->caixa->pdv;
+        $this->nfeService = new NfeService($pdv);
+        $tools = $this->nfeService->tools();
+
+        $resposta = $tools->sefazCancela($venda->chave_nfe, $justificativa, $venda->protocolo_nfe);
+
+        $dom = new \DOMDocument();
+        $dom->loadXML($resposta);
+
+        $infEvento = $dom->getElementsByTagName('infEvento')->item(0);
+        $cStat = $infEvento?->getElementsByTagName('cStat')->item(0)?->nodeValue;
+        $xMotivo = $infEvento?->getElementsByTagName('xMotivo')->item(0)?->nodeValue;
+        $nProt = $infEvento?->getElementsByTagName('nProt')->item(0)?->nodeValue;
+
+        // 135 = Evento registrado e vinculado a NF-e (cancelamento homologado)
+        $sucesso = $cStat === '135';
+
+        if (!$sucesso) {
+            throw new Exception('Falha no cancelamento: ' . $xMotivo);
+        }
+
+        // Estorna o estoque de cada item, igual fizemos na inutilizacao
+        DB::transaction(function () use ($venda, $nProt, $justificativa) {
+            foreach ($venda->itens as $item) {
+                if ($item->produto_variante_id) {
+                    ProdutoVariante::where('id', $item->produto_variante_id)
+                        ->lockForUpdate()
+                        ->increment('estoque', $item->quantidade);
+                } else {
+                    Produto::where('id', $item->produto_id)
+                        ->lockForUpdate()
+                        ->increment('estoque', $item->quantidade);
+                }
+            }
+
+            $venda->update([
+                'status' => 'cancelada',
+                'motivo_cancelamento' => "Cancelado pelo operador: {$justificativa} (protocolo cancelamento: {$nProt})",
+            ]);
+        });
 
         return ['protocolo' => $nProt, 'motivo' => $xMotivo];
     }
