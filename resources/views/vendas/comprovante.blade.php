@@ -95,7 +95,7 @@ async function emitirCupom() {
     // Volta pra tela de nova venda automaticamente, dando tempo do operador ler a mensagem
     setTimeout(() => {
         window.location.href = '{{ route("vendas.pdv") }}';
-    }, 2500);
+    }, 1500);
 }
 </script>
 @endsection
