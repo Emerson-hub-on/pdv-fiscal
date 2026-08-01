@@ -8,8 +8,11 @@ use NFePHP\Common\Exception\SefazException;
 use NFePHP\Common\Certificate;
 use Exception;
 use NFePHP\Common\Keys;
+use App\Models\Produto;
+use App\Models\ProdutoVariante;
 use App\Models\Inutilizacao;
 use App\Models\Pdv;
+use Illuminate\Support\Facades\DB;
 
 class FiscalEmissorService
 {
@@ -325,7 +328,7 @@ class FiscalEmissorService
         ];
     }
 
-        public function inutilizar(Pdv $pdv, int $numeroInicial, int $numeroFinal, string $justificativa): array
+    public function inutilizar(Pdv $pdv, int $numeroInicial, int $numeroFinal, string $justificativa): array
     {
         $this->nfeService = new NfeService($pdv);
         $tools = $this->nfeService->tools();
@@ -340,7 +343,6 @@ class FiscalEmissorService
         $xMotivo = $infInut?->getElementsByTagName('xMotivo')->item(0)?->nodeValue;
         $nProt = $infInut?->getElementsByTagName('nProt')->item(0)?->nodeValue;
 
-        // 102 = Inutilizacao homologada com sucesso
         $sucesso = $cStat === '102';
 
         Inutilizacao::create([
@@ -357,6 +359,36 @@ class FiscalEmissorService
 
         if (!$sucesso) {
             throw new Exception('Falha na inutilização: ' . $xMotivo);
+        }
+
+        // Cancela qualquer venda em contingencia que estava presa nessa faixa de numero,
+        // e estorna o estoque de cada item vendido nela
+        $vendasAfetadas = Venda::where('status', 'contingencia')
+            ->where('serie_nfce', $pdv->serie_nfce)
+            ->whereHas('caixa', fn($q) => $q->where('pdv_id', $pdv->id))
+            ->whereBetween('numero_nfce', [$numeroInicial, $numeroFinal])
+            ->with('itens')
+            ->get();
+
+        foreach ($vendasAfetadas as $venda) {
+            DB::transaction(function () use ($venda, $nProt) {
+                foreach ($venda->itens as $item) {
+                    if ($item->produto_variante_id) {
+                        ProdutoVariante::where('id', $item->produto_variante_id)
+                            ->lockForUpdate()
+                            ->increment('estoque', $item->quantidade);
+                    } else {
+                        Produto::where('id', $item->produto_id)
+                            ->lockForUpdate()
+                            ->increment('estoque', $item->quantidade);
+                    }
+                }
+
+                $venda->update([
+                    'status' => 'cancelada',
+                    'motivo_cancelamento' => "Número inutilizado (protocolo {$nProt}). Venda não será emitida.",
+                ]);
+            });
         }
 
         return ['protocolo' => $nProt, 'motivo' => $xMotivo];

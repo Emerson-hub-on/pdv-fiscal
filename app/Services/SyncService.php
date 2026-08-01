@@ -85,7 +85,6 @@ class SyncService
 
         foreach ($pendentes as $vendaLocal) {
             try {
-                // Idempotencia: se o UUID ja existe no central, so marca como sincronizada e pula
                 $jaExiste = DB::table('vendas')->where('uuid', $vendaLocal->uuid)->exists();
 
                 if (!$jaExiste) {
@@ -98,12 +97,25 @@ class SyncService
                             'operador_id' => $vendaLocal->operador_id_central,
                             'total' => $vendaLocal->total,
                             'forma_pagamento' => $vendaLocal->forma_pagamento,
-                            'status' => 'pendente', // segue o fluxo normal de emissao fiscal depois
+                            'status' => 'pendente',
                             'created_at' => $vendaLocal->vendida_em,
                             'updated_at' => now(),
                         ]);
 
                         foreach ($itens as $item) {
+                            // Baixa o estoque no MySQL central - antes so acontecia no SQLite local
+                            if (!empty($item['produto_variante_id'])) {
+                                DB::table('produto_variantes')
+                                    ->where('id', $item['produto_variante_id'])
+                                    ->lockForUpdate()
+                                    ->decrement('estoque', $item['quantidade']);
+                            } else {
+                                DB::table('produtos')
+                                    ->where('id', $item['produto_id'])
+                                    ->lockForUpdate()
+                                    ->decrement('estoque', $item['quantidade']);
+                            }
+
                             DB::table('venda_itens')->insert([
                                 'venda_id' => $vendaId,
                                 'produto_id' => $item['produto_id'],
