@@ -8,6 +8,8 @@ use NFePHP\Common\Exception\SefazException;
 use NFePHP\Common\Certificate;
 use Exception;
 use NFePHP\Common\Keys;
+use App\Models\Inutilizacao;
+use App\Models\Pdv;
 
 class FiscalEmissorService
 {
@@ -321,5 +323,42 @@ class FiscalEmissorService
             'numero_protocolo' => $protocolo,
             'motivo' => $xMotivo,
         ];
+    }
+
+        public function inutilizar(Pdv $pdv, int $numeroInicial, int $numeroFinal, string $justificativa): array
+    {
+        $this->nfeService = new NfeService($pdv);
+        $tools = $this->nfeService->tools();
+
+        $resposta = $tools->sefazInutiliza($pdv->serie_nfce, $numeroInicial, $numeroFinal, $justificativa);
+
+        $dom = new \DOMDocument();
+        $dom->loadXML($resposta);
+
+        $infInut = $dom->getElementsByTagName('infInut')->item(0);
+        $cStat = $infInut?->getElementsByTagName('cStat')->item(0)?->nodeValue;
+        $xMotivo = $infInut?->getElementsByTagName('xMotivo')->item(0)?->nodeValue;
+        $nProt = $infInut?->getElementsByTagName('nProt')->item(0)?->nodeValue;
+
+        // 102 = Inutilizacao homologada com sucesso
+        $sucesso = $cStat === '102';
+
+        Inutilizacao::create([
+            'pdv_id' => $pdv->id,
+            'serie' => $pdv->serie_nfce,
+            'numero_inicial' => $numeroInicial,
+            'numero_final' => $numeroFinal,
+            'justificativa' => $justificativa,
+            'status' => $sucesso ? 'sucesso' : 'erro',
+            'protocolo' => $nProt,
+            'motivo' => $xMotivo,
+            'operador_id' => auth()->id(),
+        ]);
+
+        if (!$sucesso) {
+            throw new Exception('Falha na inutilização: ' . $xMotivo);
+        }
+
+        return ['protocolo' => $nProt, 'motivo' => $xMotivo];
     }
 }

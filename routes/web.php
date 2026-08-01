@@ -10,6 +10,7 @@ use App\Http\Controllers\FiscalController;
 use App\Http\Controllers\PdvController;
 use App\Http\Controllers\ContingenciaController;
 use App\Services\FiscalEmissorService;
+use App\Http\Controllers\InutilizacaoController;
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -19,7 +20,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
 Route::middleware('auth')->group(function () {
     Route::resource('produtos', ProdutoController::class)->except(['destroy', 'show']);
     Route::patch('produtos/{produto}/toggle-ativo', [ProdutoController::class, 'toggleAtivo'])
-        ->name('produtos.toggle-ativo');
+    ->name('produtos.toggle-ativo');
     Route::get('empresa', [EmpresaController::class, 'editar'])->name('empresa.editar');
     Route::post('empresa', [EmpresaController::class, 'salvar'])->name('empresa.salvar');
     Route::get('caixa/abrir', [CaixaController::class, 'abrirForm'])->name('caixa.abrir-form');
@@ -36,4 +37,5 @@ Route::middleware('auth')->group(function () {
     Route::get('contingencias', [ContingenciaController::class, 'listar'])->name('contingencias.listar');
     Route::post('contingencias/reenviar', [ContingenciaController::class, 'reenviar'])->name('contingencias.reenviar');
     Route::post('contingencias/{venda}/reenviar', [ContingenciaController::class, 'reenviar'])->name('contingencias.reenviar');
+    Route::post('inutilizacao', [InutilizacaoController::class, 'executar'])->name('inutilizacao.executar');
 });

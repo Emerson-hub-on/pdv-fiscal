@@ -4,10 +4,18 @@
 
 @section('conteudo')
 <div class="flex justify-between items-center mb-4">
-    <h1 class="text-2xl font-bold">Nova Venda</h1>
+    <div>
+        <h1 class="text-2xl font-bold">Nova Venda</h1>
+        <p class="text-sm text-gray-500">
+            {{ $caixa->pdv->nome }} — Série {{ $caixa->pdv->serie_nfce }} — Próxima NFC-e: nº {{ $caixa->pdv->numero_atual_nfce + 1 }}
+        </p>
+    </div>
     <div class="flex gap-4 items-center">
         <button onclick="abrirModalContingencias()" class="text-orange-600 hover:underline text-sm">
             Contingências (F1)
+        </button>
+        <button onclick="abrirModalInutilizacao()" class="text-red-600 hover:underline text-sm">
+            Inutilizar NFC-e (F2)
         </button>
         <a href="{{ route('caixa.fechar-form') }}" class="text-red-600 hover:underline text-sm">Fechar Caixa</a>
     </div>
@@ -37,6 +45,34 @@
         <div id="lista-contingencias" class="space-y-2">
             <p class="text-gray-400 text-sm">Carregando...</p>
         </div>
+    </div>
+</div>
+
+<div id="modal-inutilizacao" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded shadow-lg w-full max-w-md p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold">Inutilizar Numeração NFC-e</h2>
+            <button onclick="fecharModalInutilizacao()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        <div class="bg-yellow-100 text-yellow-800 border border-yellow-300 rounded px-3 py-2 mb-4 text-xs">
+            Atenção: esta ação é irreversível perante a SEFAZ. Use apenas para números pulados ou com falha técnica que nunca chegaram a ser autorizados.
+        </div>
+
+        <label class="block text-sm font-medium mb-1">Número inicial</label>
+        <input type="number" id="inut-numero-inicial" class="w-full border rounded px-3 py-2 mb-3">
+
+        <label class="block text-sm font-medium mb-1">Número final</label>
+        <input type="number" id="inut-numero-final" class="w-full border rounded px-3 py-2 mb-3">
+
+        <label class="block text-sm font-medium mb-1">Justificativa (mín. 15 caracteres)</label>
+        <textarea id="inut-justificativa" rows="3" class="w-full border rounded px-3 py-2 mb-4"></textarea>
+
+        <p id="inut-erro" class="text-red-600 text-sm mb-3 hidden"></p>
+
+        <button onclick="confirmarInutilizacao()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded font-semibold">
+            Inutilizar
+        </button>
     </div>
 </div>
     
@@ -285,8 +321,11 @@ async function carregarContingencias() {
                 <div class="flex items-center gap-3">
                     <input type="checkbox" class="check-contingencia" value="${v.id}" onclick="event.stopPropagation()">
                     <div>
-                        <p class="text-sm font-medium">Venda #${v.id} — R$ ${Number(v.total).toFixed(2)}</p>
+                        <p class="text-sm font-medium">
+                            NFC-e nº ${v.numero_nfce ?? '-'} (série ${v.serie_nfce ?? '-'}) — R$ ${Number(v.total).toFixed(2)}
+                        </p>
                         <p class="text-xs text-gray-400">${v.criada_em}</p>
+                        ${v.chave_nfe ? `<p class="text-xs text-gray-400 break-all">Chave: ${v.chave_nfe}</p>` : ''}
                     </div>
                 </div>
                 <span class="text-gray-400 text-xs">▼</span>
@@ -381,5 +420,67 @@ function atualizarMotivoLinha(id, motivo) {
         detalhe.classList.remove('hidden'); // expande automaticamente pra mostrar o novo motivo
     }
 }
+
+
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'F1') {
+        e.preventDefault();
+        abrirModalContingencias();
+    }
+    if (e.key === 'F2') {
+        e.preventDefault();
+        abrirModalInutilizacao();
+    }
+});
+
+function abrirModalInutilizacao() {
+    document.getElementById('modal-inutilizacao').classList.remove('hidden');
+    document.getElementById('modal-inutilizacao').classList.add('flex');
+}
+
+function fecharModalInutilizacao() {
+    document.getElementById('modal-inutilizacao').classList.add('hidden');
+    document.getElementById('modal-inutilizacao').classList.remove('flex');
+}
+
+async function confirmarInutilizacao() {
+    const numeroInicial = document.getElementById('inut-numero-inicial').value;
+    const numeroFinal = document.getElementById('inut-numero-final').value;
+    const justificativa = document.getElementById('inut-justificativa').value;
+    const erroP = document.getElementById('inut-erro');
+
+    erroP.classList.add('hidden');
+
+    if (!numeroInicial || !numeroFinal || justificativa.length < 15) {
+        erroP.innerText = 'Preencha os números e uma justificativa com pelo menos 15 caracteres.';
+        erroP.classList.remove('hidden');
+        return;
+    }
+
+    if (!confirm(`Confirma a inutilização da numeração ${numeroInicial} a ${numeroFinal}? Esta ação não pode ser desfeita.`)) {
+        return;
+    }
+
+    const resp = await fetch('{{ route("inutilizacao.executar") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+        },
+        body: JSON.stringify({ numero_inicial: numeroInicial, numero_final: numeroFinal, justificativa }),
+    });
+
+    const resultado = await resp.json();
+
+    if (resultado.sucesso) {
+        alert('Numeração inutilizada com sucesso. Protocolo: ' + resultado.protocolo);
+        fecharModalInutilizacao();
+    } else {
+        erroP.innerText = resultado.erro;
+        erroP.classList.remove('hidden');
+    }
+}
+
 </script>
 @endsection

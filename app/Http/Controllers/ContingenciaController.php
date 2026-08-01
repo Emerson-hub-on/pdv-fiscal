@@ -15,7 +15,10 @@ class ContingenciaController extends Controller
             ->get()
             ->map(function ($venda) {
                 return [
-                    'id' => $venda->id,
+                    'id' => $venda->id, // ainda precisamos do id interno pra fazer o reenvio
+                    'numero_nfce' => $venda->numero_nfce,
+                    'serie_nfce' => $venda->serie_nfce,
+                    'chave_nfe' => $venda->chave_nfe,
                     'total' => $venda->total,
                     'criada_em' => $venda->created_at->format('d/m/Y H:i'),
                     'motivo' => $venda->motivo_rejeicao,
