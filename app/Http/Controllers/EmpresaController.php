@@ -40,11 +40,8 @@ class EmpresaController extends Controller
             'certificado_senha' => 'nullable|string',
             'certificado_validade' => 'nullable|date',
 
-            'csc' => 'nullable|string|max:100',
-            'csc_id' => 'nullable|string|max:10',
-            'serie_nfce' => 'required|integer|min:1',
-            'serie_nfe' => 'required|integer|min:1',
             'ambiente' => 'required|integer|in:1,2',
+            // REMOVIDO: csc, csc_id, serie_nfce, serie_nfe — agora ficam em pdvs, não em empresa
         ]);
 
         $empresa = Empresa::first() ?? new Empresa();

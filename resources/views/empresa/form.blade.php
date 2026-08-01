@@ -136,29 +136,10 @@
                    class="w-full border rounded px-3 py-2">
         </div>
 
-        <div>
-            <label class="block text-sm font-medium mb-1">CSC (Código de Segurança do Contribuinte)</label>
-            <input type="text" name="csc" value="{{ old('csc', $empresa->csc) }}"
-                   class="w-full border rounded px-3 py-2">
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium mb-1">CSC ID</label>
-            <input type="text" name="csc_id" value="{{ old('csc_id', $empresa->csc_id) }}"
-                   class="w-full border rounded px-3 py-2">
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium mb-1">Série NFC-e</label>
-            <input type="number" name="serie_nfce" value="{{ old('serie_nfce', $empresa->serie_nfce ?? 1) }}"
-                   class="w-full border rounded px-3 py-2">
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium mb-1">Série NF-e</label>
-            <input type="number" name="serie_nfe" value="{{ old('serie_nfe', $empresa->serie_nfe ?? 1) }}"
-                   class="w-full border rounded px-3 py-2">
-        </div>
+        <p class="col-span-2 text-xs text-gray-400">
+            Série, CSC e numeração de NFC-e agora são configurados individualmente em
+            <a href="{{ route('pdvs.index') }}" class="text-blue-600 hover:underline">cada PDV</a>.
+        </p>
 
         <div>
             <label class="block text-sm font-medium mb-1">Ambiente *</label>
