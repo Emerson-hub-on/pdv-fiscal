@@ -39,16 +39,63 @@
             <p class="text-green-700 text-sm mb-2">✓ Cupom fiscal emitido</p>
             <p class="text-xs text-gray-500 break-all">Chave: {{ $chave_nfe }}</p>
         @elseif ($status !== 'aguardando_sincronizacao')
-            <form action="{{ route('vendas.emitir', request()->route('uuid')) }}" method="POST">
-                @csrf
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded font-bold">
-                    Emitir Cupom Fiscal
-                </button>
-            </form>
+            <button id="btn-emitir" onclick="emitirCupom()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded font-bold">
+                Emitir Cupom Fiscal
+            </button>
+            <p id="msg-emissao" class="text-sm mt-3 text-center hidden"></p>
         @endif
 
         <a href="{{ route('vendas.pdv') }}" class="block text-center text-sm text-gray-500 mt-4 hover:underline">
             ← Nova venda
         </a>
     </div>
+@endsection
+
+@section('scripts')
+<script>
+async function emitirCupom() {
+    const btn = document.getElementById('btn-emitir');
+    const msg = document.getElementById('msg-emissao');
+
+    btn.disabled = true;
+    btn.innerText = 'Processando...';
+    msg.classList.add('hidden');
+
+    try {
+        const resp = await fetch('{{ route("vendas.emitir", request()->route("uuid")) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            },
+        });
+
+        const resultado = await resp.json();
+
+        if (resultado.sucesso) {
+            msg.className = 'text-sm mt-3 text-center text-green-700';
+            msg.innerText = resultado.ja_emitida
+                ? 'Esta venda já havia sido emitida.'
+                : '✓ Cupom fiscal emitido com sucesso!';
+        } else if (resultado.contingencia) {
+            msg.className = 'text-sm mt-3 text-center text-orange-600';
+            msg.innerText = 'Sem conexão no momento. Venda será emitida em contingência assim que possível.';
+        } else {
+            msg.className = 'text-sm mt-3 text-center text-red-600';
+            msg.innerText = resultado.erro;
+        }
+
+        msg.classList.remove('hidden');
+    } catch (e) {
+        msg.className = 'text-sm mt-3 text-center text-red-600';
+        msg.innerText = 'Erro de conexão ao tentar emitir.';
+        msg.classList.remove('hidden');
+    }
+
+    // Volta pra tela de nova venda automaticamente, dando tempo do operador ler a mensagem
+    setTimeout(() => {
+        window.location.href = '{{ route("vendas.pdv") }}';
+    }, 2500);
+}
+</script>
 @endsection

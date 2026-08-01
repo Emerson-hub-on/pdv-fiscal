@@ -124,10 +124,15 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium mb-1">Senha do certificado</label>
+            <label class="block text-sm font-medium mb-1">
+                Senha do certificado
+                @if ($empresa->certificado_senha)
+                    <span class="text-xs text-gray-400 font-normal">(deixe em branco para manter a senha atual)</span>
+                @endif
+            </label>
             <input type="password" name="certificado_senha"
-                   placeholder="{{ $empresa->certificado_senha ? '••••••••' : '' }}"
-                   class="w-full border rounded px-3 py-2">
+                placeholder="{{ $empresa->certificado_senha ? '(mantém a atual se deixar em branco)' : '' }}"
+                class="w-full border rounded px-3 py-2">
         </div>
 
         <div>

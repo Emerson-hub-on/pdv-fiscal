@@ -26,33 +26,43 @@ class FiscalController extends Controller
         $dados = $this->buscarVendaPorUuid($uuid);
 
         if (!$dados) {
-            abort(404, 'Venda não encontrada.');
+            return response()->json(['sucesso' => false, 'erro' => 'Venda não encontrada.'], 404);
         }
 
-        // So emite se a venda ja estiver sincronizada no central
         if ($dados['origem'] === 'local') {
-            // Tenta sincronizar agora, na hora, antes de desistir
             (new SyncService())->enviarVendasPendentes();
             $dados = $this->buscarVendaPorUuid($uuid);
 
             if ($dados['origem'] === 'local') {
-                return back()->with('erro_fiscal', 'Venda ainda não sincronizada com o servidor. Verifique a conexão e tente novamente.');
+                return response()->json([
+                    'sucesso' => false,
+                    'contingencia' => true,
+                    'erro' => 'Venda ainda não sincronizada com o servidor.',
+                ]);
             }
         }
 
         $venda = $dados['venda'];
 
         if ($venda->status === 'emitida') {
-            return back()->with('sucesso', 'Esta venda já foi emitida.');
+            return response()->json(['sucesso' => true, 'ja_emitida' => true, 'chave' => $venda->chave_nfe]);
         }
 
         try {
             $service = new FiscalEmissorService();
             $resultado = $service->emitir($venda);
 
-            return back()->with('sucesso', 'Cupom fiscal emitido com sucesso! Chave: ' . $resultado['chave']);
+            return response()->json(['sucesso' => true, 'chave' => $resultado['chave']]);
         } catch (Exception $e) {
-            return back()->with('erro_fiscal', $e->getMessage());
+            // Se a venda caiu em contingencia (reserva de numero ja feita), avisa nesse formato especifico
+            $venda->refresh();
+            $contingencia = $venda->status === 'contingencia';
+
+            return response()->json([
+                'sucesso' => false,
+                'contingencia' => $contingencia,
+                'erro' => $e->getMessage(),
+            ]);
         }
     }
 

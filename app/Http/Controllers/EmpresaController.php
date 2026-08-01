@@ -41,18 +41,21 @@ class EmpresaController extends Controller
             'certificado_validade' => 'nullable|date',
 
             'ambiente' => 'required|integer|in:1,2',
-            // REMOVIDO: csc, csc_id, serie_nfce, serie_nfe — agora ficam em pdvs, não em empresa
         ]);
 
         $empresa = Empresa::first() ?? new Empresa();
 
-        // Se um novo certificado foi enviado, converte pra base64 e substitui
         if ($request->hasFile('certificado')) {
             $validado['certificado_base64'] = base64_encode(
                 file_get_contents($request->file('certificado')->getRealPath())
             );
         } else {
             unset($validado['certificado']);
+        }
+
+        // Só atualiza a senha se o campo foi preenchido de verdade - senão mantem a que ja estava salva
+        if (empty($validado['certificado_senha'])) {
+            unset($validado['certificado_senha']);
         }
 
         $empresa->fill($validado);

@@ -18,83 +18,83 @@ class FiscalEmissorService
 {
     protected NfeService $nfeService;
 
-public function emitir(Venda $venda): array
-{
-    $venda->load('itens.produto', 'itens.variante', 'caixa.pdv');
-    $pdv = $venda->caixa->pdv;
+    public function emitir(Venda $venda): array
+    {
+        $venda->load('itens.produto', 'itens.variante', 'caixa.pdv');
+        $pdv = $venda->caixa->pdv;
 
-    $this->nfeService = new NfeService($pdv);
-    $empresa = $this->nfeService->empresa();
+        // Reserva o numero ANTES de qualquer coisa que possa falhar (certificado, XML, rede)
+        if ($venda->numero_nfce) {
+            $numero = $venda->numero_nfce;
+            $serie = $venda->serie_nfce;
+        } else {
+            $numero = $pdv->numero_atual_nfce + 1;
+            $serie = $pdv->serie_nfce;
 
-    if ($venda->numero_nfce) {
-        $numero = $venda->numero_nfce;
-        $serie = $venda->serie_nfce;
-    } else {
-        $numero = $pdv->numero_atual_nfce + 1;
-        $serie = $pdv->serie_nfce;
+            $pdv->update(['numero_atual_nfce' => $numero]);
+            $venda->update(['numero_nfce' => $numero, 'serie_nfce' => $serie]);
+        }
 
-        $pdv->update(['numero_atual_nfce' => $numero]);
-        $venda->update(['numero_nfce' => $numero, 'serie_nfce' => $serie]);
-    }
+        try {
+            $this->nfeService = new NfeService($pdv);
+            $empresa = $this->nfeService->empresa();
 
-    $nfe = new Make();
+            $nfe = new Make();
 
-    $this->montarInfNFe($nfe);
-    $this->montarIde($nfe, $empresa, $pdv, $numero);
-    $this->montarEmit($nfe, $empresa);
-    $this->montarItens($nfe, $venda);
-    $this->montarTotais($nfe, $venda);
-    $this->montarTransporte($nfe);
-    $this->montarPagamento($nfe, $venda);
-    $this->montarResponsavelTecnico($nfe);
+            $this->montarInfNFe($nfe);
+            $this->montarIde($nfe, $empresa, $pdv, $numero);
+            $this->montarEmit($nfe, $empresa);
+            $this->montarItens($nfe, $venda);
+            $this->montarTotais($nfe, $venda);
+            $this->montarTransporte($nfe);
+            $this->montarPagamento($nfe, $venda);
+            $this->montarResponsavelTecnico($nfe);
 
-    $xml = $nfe->getXML();
+            $xml = $nfe->getXML();
 
-    if (!$xml) {
-        throw new Exception('Erro ao montar XML: ' . implode(' | ', $nfe->getErrors()));
-    }
+            if (!$xml) {
+                throw new Exception('Erro ao montar XML: ' . implode(' | ', $nfe->getErrors()));
+            }
 
-    $tools = $this->nfeService->tools();
-    $xmlAssinado = $tools->signNFe($xml);
+            $tools = $this->nfeService->tools();
+            $xmlAssinado = $tools->signNFe($xml);
 
+            $idLote = str_pad($numero, 15, '0', STR_PAD_LEFT);
+            $resposta = $tools->sefazEnviaLote([$xmlAssinado], $idLote, 1);
+        } catch (\Throwable $e) {
+            // Qualquer falha tecnica (certificado, XML, rede) cai aqui - numero ja esta reservado
+            $venda->update([
+                'status' => 'contingencia',
+                'motivo_rejeicao' => $e->getMessage(),
+            ]);
 
-    $idLote = str_pad($numero, 15, '0', STR_PAD_LEFT);
+            throw new Exception("Falha ao emitir (NFC-e nº {$numero} em contingência): " . $e->getMessage());
+        }
 
-    try {
-        $resposta = $tools->sefazEnviaLote([$xmlAssinado], $idLote, 1);
-    } catch (\Throwable $e) {
+        $protocolo = $this->extrairProtocolo($resposta);
+
+        if (!$protocolo['autorizada']) {
+            $venda->update([
+                'status' => 'contingencia',
+                'motivo_rejeicao' => $protocolo['motivo'],
+            ]);
+
+            throw new Exception('Rejeitada pela SEFAZ: ' . $protocolo['motivo']);
+        }
+
         $venda->update([
-            'status' => 'contingencia',
-            'motivo_rejeicao' => 'Sem conexão com a SEFAZ: ' . $e->getMessage(),
+            'status' => 'emitida',
+            'chave_nfe' => $protocolo['chave'],
+            'protocolo_nfe' => $protocolo['numero_protocolo'],
+            'motivo_rejeicao' => null,
         ]);
 
-        throw new Exception("Sem conexão com a SEFAZ. Venda registrada em contingência (NFC-e nº {$numero}).");
+        return [
+            'xml_assinado' => $xmlAssinado,
+            'chave' => $protocolo['chave'],
+            'protocolo' => $protocolo['numero_protocolo'],
+        ];
     }
-
-    $protocolo = $this->extrairProtocolo($resposta);
-
-    if (!$protocolo['autorizada']) {
-        $venda->update([
-            'status' => 'contingencia',
-            'motivo_rejeicao' => $protocolo['motivo'],
-        ]);
-
-        throw new Exception('Rejeitada pela SEFAZ: ' . $protocolo['motivo']);
-    }
-
-    $venda->update([
-        'status' => 'emitida',
-        'chave_nfe' => $protocolo['chave'],
-        'protocolo_nfe' => $protocolo['numero_protocolo'],
-        'motivo_rejeicao' => null,
-    ]);
-
-    return [
-        'xml_assinado' => $xmlAssinado,
-        'chave' => $protocolo['chave'],
-        'protocolo' => $protocolo['numero_protocolo'],
-    ];
-}
 
     protected function montarInfNFe(Make $nfe): void
     {
