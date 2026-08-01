@@ -7,6 +7,9 @@ use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\CaixaController;
 use App\Http\Controllers\VendaController;
 use App\Http\Controllers\FiscalController;
+use App\Http\Controllers\PdvController;
+use App\Http\Controllers\ContingenciaController;
+use App\Services\FiscalEmissorService;
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -27,7 +30,10 @@ Route::middleware('auth')->group(function () {
     Route::get('pdv/buscar-produto', [VendaController::class, 'buscarProduto'])->name('vendas.buscar-produto');
     Route::post('pdv/finalizar', [VendaController::class, 'finalizar'])->name('vendas.finalizar');
     Route::get('pdv/venda/{uuid}/comprovante', [FiscalController::class, 'comprovante'])->name('vendas.comprovante');
-    Route::post('pdv/venda/{uuid}/emitir', [FiscalController::class, 'emitir'])->name('vendas.emitir');    
-    
-    
-    });
+    Route::post('pdv/venda/{uuid}/emitir', [FiscalController::class, 'emitir'])->name('vendas.emitir');
+    Route::resource('pdvs', PdvController::class)->except(['destroy', 'show']);
+    Route::patch('pdvs/{pdv}/toggle-ativo', [PdvController::class, 'toggleAtivo'])->name('pdvs.toggle-ativo');
+    Route::get('contingencias', [ContingenciaController::class, 'listar'])->name('contingencias.listar');
+    Route::post('contingencias/reenviar', [ContingenciaController::class, 'reenviar'])->name('contingencias.reenviar');
+    Route::post('contingencias/{venda}/reenviar', [ContingenciaController::class, 'reenviar'])->name('contingencias.reenviar');
+});

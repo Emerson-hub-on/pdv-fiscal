@@ -3,14 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Caixa;
+use App\Models\Pdv;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class CaixaController extends Controller
 {
-    /**
-     * Tela de abertura de caixa (se o operador ainda não tem um aberto)
-     */
     public function abrirForm()
     {
         $caixaAberto = Caixa::aberto(Auth::id());
@@ -19,17 +17,21 @@ class CaixaController extends Controller
             return redirect()->route('vendas.pdv');
         }
 
-        return view('caixa.abrir');
+        $pdv = Pdv::findOrFail(config('app.pdv_id'));
+
+        return view('caixa.abrir', compact('pdv'));
     }
 
     public function abrir(Request $request)
     {
         $validado = $request->validate([
             'valor_abertura' => 'required|numeric|min:0',
+            'pdv_id' => 'required|exists:pdvs,id',
         ]);
 
         Caixa::create([
             'operador_id' => Auth::id(),
+            'pdv_id' => $validado['pdv_id'],
             'data_abertura' => now(),
             'valor_abertura' => $validado['valor_abertura'],
             'status' => 'aberto',

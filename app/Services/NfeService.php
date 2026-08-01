@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Empresa;
+use App\Models\Pdv;
 use NFePHP\NFe\Tools;
 use NFePHP\Common\Certificate;
 use Exception;
@@ -10,11 +11,13 @@ use Exception;
 class NfeService
 {
     protected Empresa $empresa;
+    protected Pdv $pdv;
     protected Tools $tools;
 
-    public function __construct()
+    public function __construct(Pdv $pdv)
     {
         $this->empresa = Empresa::first();
+        $this->pdv = $pdv;
 
         if (!$this->empresa) {
             throw new Exception('Dados da empresa não cadastrados. Preencha o cadastro da empresa antes de emitir.');
@@ -38,8 +41,8 @@ class NfeService
             "schemes" => "PL_009_V4",
             "versao" => '4.00',
             "tokenIBPT" => "",
-            "CSC" => $this->empresa->csc,
-            "CSCid" => $this->empresa->csc_id,
+            "CSC" => $this->pdv->csc,
+            "CSCid" => $this->pdv->csc_id,
         ];
 
         $certificadoConteudo = base64_decode($this->empresa->certificado_base64);

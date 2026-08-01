@@ -12,6 +12,9 @@ return [
     | other UI elements where an application name needs to be displayed.
     |
     */
+    'pdv_id' => env('PDV_ID', 1),
+
+    
 
     'name' => env('APP_NAME', 'Laravel'),
 

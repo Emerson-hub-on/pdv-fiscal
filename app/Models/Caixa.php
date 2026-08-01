@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Caixa extends Model
 {
     protected $fillable = [
-        'operador_id', 'data_abertura', 'valor_abertura',
+        'operador_id', 'pdv_id', 'data_abertura', 'valor_abertura',
         'data_fechamento', 'valor_fechamento_informado', 'valor_fechamento_esperado',
         'status', 'observacao',
     ];
@@ -25,14 +25,16 @@ class Caixa extends Model
         return $this->belongsTo(User::class, 'operador_id');
     }
 
+    public function pdv()
+    {
+        return $this->belongsTo(Pdv::class);
+    }
+
     public function vendas()
     {
         return $this->hasMany(Venda::class);
     }
 
-    /**
-     * Retorna o caixa aberto do operador informado, se houver.
-     */
     public static function aberto(int $operadorId): ?self
     {
         return static::where('operador_id', $operadorId)

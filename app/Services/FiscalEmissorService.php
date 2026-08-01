@@ -5,29 +5,37 @@ namespace App\Services;
 use App\Models\Venda;
 use NFePHP\NFe\Make;
 use NFePHP\Common\Exception\SefazException;
+use NFePHP\Common\Certificate;
 use Exception;
+use NFePHP\Common\Keys;
 
 class FiscalEmissorService
 {
     protected NfeService $nfeService;
 
-    public function __construct()
-    {
-        $this->nfeService = new NfeService();
-    }
-
     public function emitir(Venda $venda): array
     {
-        $venda->load('itens.produto', 'itens.variante');
+        $venda->load('itens.produto', 'itens.variante', 'caixa.pdv');
+        $pdv = $venda->caixa->pdv;
+
+        $this->nfeService = new NfeService($pdv);
         $empresa = $this->nfeService->empresa();
 
-        // Reserva o proximo numero da NFC-e
-        $numero = $empresa->numero_atual_nfce + 1;
+        if ($venda->numero_nfce) {
+            $numero = $venda->numero_nfce;
+            $serie = $venda->serie_nfce;
+        } else {
+            $numero = $pdv->numero_atual_nfce + 1;
+            $serie = $pdv->serie_nfce;
+
+            $pdv->update(['numero_atual_nfce' => $numero]);
+            $venda->update(['numero_nfce' => $numero, 'serie_nfce' => $serie]);
+        }
 
         $nfe = new Make();
 
         $this->montarInfNFe($nfe);
-        $this->montarIde($nfe, $empresa, $numero);
+        $this->montarIde($nfe, $empresa, $pdv, $numero);
         $this->montarEmit($nfe, $empresa);
         $this->montarItens($nfe, $venda);
         $this->montarTotais($nfe, $venda);
@@ -44,23 +52,35 @@ class FiscalEmissorService
         $tools = $this->nfeService->tools();
         $xmlAssinado = $tools->signNFe($xml);
 
-        // Envia para a SEFAZ
         $idLote = str_pad($numero, 15, '0', STR_PAD_LEFT);
-        $resposta = $tools->sefazEnviaLote([$xmlAssinado], $idLote, 1);
 
-        // NFC-e normalmente retorna sincrono (protocolo direto na resposta do lote)
+        try {
+            $resposta = $tools->sefazEnviaLote([$xmlAssinado], $idLote, 1);
+        } catch (\Throwable $e) {
+            $venda->update([
+                'status' => 'contingencia',
+                'motivo_rejeicao' => 'Sem conexão com a SEFAZ: ' . $e->getMessage(),
+            ]);
+
+            throw new Exception("Sem conexão com a SEFAZ. Venda registrada em contingência (NFC-e nº {$numero}).");
+        }
+
         $protocolo = $this->extrairProtocolo($resposta);
 
         if (!$protocolo['autorizada']) {
+            $venda->update([
+                'status' => 'contingencia',
+                'motivo_rejeicao' => $protocolo['motivo'],
+            ]);
+
             throw new Exception('Rejeitada pela SEFAZ: ' . $protocolo['motivo']);
         }
-        // Atualiza numeracao da empresa e dados da venda
-        $empresa->update(['numero_atual_nfce' => $numero]);
 
         $venda->update([
             'status' => 'emitida',
             'chave_nfe' => $protocolo['chave'],
             'protocolo_nfe' => $protocolo['numero_protocolo'],
+            'motivo_rejeicao' => null,
         ]);
 
         return [
@@ -79,26 +99,45 @@ class FiscalEmissorService
         $nfe->taginfNFe($std);
     }
 
-    protected function montarIde(Make $nfe, $empresa, int $numero): void
+    protected function montarIde(Make $nfe, $empresa, $pdv, int $numero): void
     {
+        $dhEmi = new \DateTime('now', new \DateTimeZone('America/Sao_Paulo'));
+        $cNF = str_pad((string) rand(0, 99999999), 8, '0', STR_PAD_LEFT);
+        $cUF = $this->codigoUf($empresa->uf);
+
+        // Calcula a chave de acesso completa (44 digitos) pra extrair o DV real
+        $chave = Keys::build(
+            (string) $cUF,
+            $dhEmi->format('y'),
+            $dhEmi->format('m'),
+            $empresa->cnpj,
+            '65', // modelo NFC-e
+            (string) $pdv->serie_nfce,
+            (string) $numero,
+            '1', // tpEmis normal
+            $cNF
+        );
+
+        $cDV = substr($chave, -1);
+
         $std = new \stdClass();
-        $std->cUF = $this->codigoUf($empresa->uf);
-        $std->cNF = str_pad(rand(0, 99999999), 8, '0', STR_PAD_LEFT);
+        $std->cUF = $cUF;
+        $std->cNF = $cNF;
         $std->natOp = 'Venda de mercadoria';
         $std->mod = 65;
-        $std->serie = $empresa->serie_nfce;
+        $std->serie = $pdv->serie_nfce;
         $std->nNF = $numero;
-        $std->dhEmi = date('Y-m-d\TH:i:sP');
-        $std->tpNF = 1; // saida
-        $std->idDest = 1; // operacao interna
+        $std->dhEmi = $dhEmi->format('Y-m-d\TH:i:sP');
+        $std->tpNF = 1;
+        $std->idDest = 1;
         $std->cMunFG = $empresa->cod_municipio;
-        $std->tpImp = 4; // DANFE NFCe
-        $std->tpEmis = 1; // normal
-        $std->cDV = 0; // calculado automaticamente pela lib
+        $std->tpImp = 4;
+        $std->tpEmis = 1;
+        $std->cDV = $cDV; // agora e o digito real, nao mais fixo em 0
         $std->tpAmb = (int) $empresa->ambiente;
-        $std->finNFe = 1; // normal
-        $std->indFinal = 1; // consumidor final
-        $std->indPres = 1; // presencial
+        $std->finNFe = 1;
+        $std->indFinal = 1;
+        $std->indPres = 1;
         $std->procEmi = 0;
         $std->verProc = '1.0.0';
 

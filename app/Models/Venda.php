@@ -10,6 +10,7 @@ class Venda extends Model
         'caixa_id', 'cliente_id', 'operador_id', 'total',
         'forma_pagamento', 'status',
         'chave_nfe', 'protocolo_nfe', 'motivo_cancelamento',
+        'motivo_rejeicao', 'numero_nfce', 'serie_nfce',
     ];
 
     protected $casts = [

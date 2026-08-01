@@ -8,6 +8,10 @@
 
         <form action="{{ route('caixa.abrir') }}" method="POST">
             @csrf
+
+            <p class="text-sm text-gray-500 mb-4">Você está abrindo: <strong>{{ $pdv->nome }}</strong></p>
+            <input type="hidden" name="pdv_id" value="{{ $pdv->id }}">
+
             <label class="block text-sm font-medium mb-1">Valor inicial em caixa (troco)</label>
             <input type="number" step="0.01" name="valor_abertura" required
                    class="w-full border rounded px-3 py-2 mb-4">

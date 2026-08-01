@@ -10,6 +10,7 @@
     <nav class="bg-gray-900 text-white px-6 py-4 flex gap-6">
         <a href="{{ route('produtos.index') }}" class="hover:text-blue-300">Produtos</a>
         <a href="{{ route('empresa.editar') }}" class="hover:text-blue-300">Empresa</a>
+        <a href="{{ route('pdvs.index') }}" class="hover:text-blue-300">PDVs</a>
         {{-- outros links de menu vão entrar aqui conforme criarmos os módulos --}}
     </nav>
 

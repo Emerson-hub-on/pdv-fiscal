@@ -3,10 +3,43 @@
 @section('titulo', 'PDV - Venda')
 
 @section('conteudo')
-    <div class="flex justify-between items-center mb-4">
-        <h1 class="text-2xl font-bold">Nova Venda</h1>
+<div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold">Nova Venda</h1>
+    <div class="flex gap-4 items-center">
+        <button onclick="abrirModalContingencias()" class="text-orange-600 hover:underline text-sm">
+            Contingências (F1)
+        </button>
         <a href="{{ route('caixa.fechar-form') }}" class="text-red-600 hover:underline text-sm">Fechar Caixa</a>
     </div>
+</div>
+
+<!-- Modal de contingencias -->
+<div id="modal-contingencias" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded shadow-lg w-full max-w-2xl max-h-[80vh] overflow-y-auto p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold">Vendas em Contingência</h2>
+            <button onclick="fecharModalContingencias()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+    <div class="flex justify-between items-center mb-3">
+        <label class="text-sm flex items-center gap-2">
+            <input type="checkbox" id="selecionar-todas" onchange="toggleTodas(this.checked)">
+            Selecionar todas
+        </label>
+        <div class="flex items-center gap-3">
+            <span id="progresso-emissao" class="text-sm text-gray-500 hidden"></span>
+            <button id="btn-emitir-selecionadas" onclick="emitirSelecionadas()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-semibold">
+                Emitir selecionadas
+            </button>
+        </div>
+    </div>
+
+        <div id="lista-contingencias" class="space-y-2">
+            <p class="text-gray-400 text-sm">Carregando...</p>
+        </div>
+    </div>
+</div>
+    
 
     <div class="grid grid-cols-3 gap-6">
         <div class="col-span-2 bg-white rounded shadow p-4">
@@ -215,6 +248,137 @@ async function finalizarVenda() {
         erroP.innerText = 'Erro de conexão. Tente novamente.';
         erroP.classList.remove('hidden');
         btn.disabled = false;
+    }
+}
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'F1') {
+        e.preventDefault();
+        abrirModalContingencias();
+    }
+});
+
+function abrirModalContingencias() {
+    document.getElementById('modal-contingencias').classList.remove('hidden');
+    document.getElementById('modal-contingencias').classList.add('flex');
+    carregarContingencias();
+}
+
+function fecharModalContingencias() {
+    document.getElementById('modal-contingencias').classList.add('hidden');
+    document.getElementById('modal-contingencias').classList.remove('flex');
+}
+
+async function carregarContingencias() {
+    const resp = await fetch('{{ route("contingencias.listar") }}');
+    const vendas = await resp.json();
+
+    const container = document.getElementById('lista-contingencias');
+
+    if (vendas.length === 0) {
+        container.innerHTML = '<p class="text-gray-400 text-sm">Nenhuma venda em contingência.</p>';
+        return;
+    }
+
+    container.innerHTML = vendas.map(v => `
+        <div class="border rounded">
+            <div class="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50" onclick="toggleExpandir(${v.id})">
+                <div class="flex items-center gap-3">
+                    <input type="checkbox" class="check-contingencia" value="${v.id}" onclick="event.stopPropagation()">
+                    <div>
+                        <p class="text-sm font-medium">Venda #${v.id} — R$ ${Number(v.total).toFixed(2)}</p>
+                        <p class="text-xs text-gray-400">${v.criada_em}</p>
+                    </div>
+                </div>
+                <span class="text-gray-400 text-xs">▼</span>
+            </div>
+            <div id="detalhe-${v.id}" class="hidden border-t bg-gray-50 p-3 text-sm">
+                <p class="text-red-600 mb-2"><strong>Motivo:</strong> ${v.motivo ?? 'Não informado'}</p>
+                <p class="text-gray-600"><strong>Itens:</strong> ${v.itens.join(', ')}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+function toggleExpandir(id) {
+    document.getElementById(`detalhe-${id}`).classList.toggle('hidden');
+}
+
+function toggleTodas(marcado) {
+    document.querySelectorAll('.check-contingencia').forEach(cb => cb.checked = marcado);
+}
+
+async function emitirSelecionadas() {
+    const ids = Array.from(document.querySelectorAll('.check-contingencia:checked')).map(cb => cb.value);
+
+    if (ids.length === 0) {
+        alert('Selecione ao menos uma venda.');
+        return;
+    }
+
+    const btn = document.getElementById('btn-emitir-selecionadas');
+    const progresso = document.getElementById('progresso-emissao');
+
+    btn.disabled = true;
+    progresso.classList.remove('hidden');
+
+    let sucesso = 0;
+    let falha = 0;
+
+    for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
+        progresso.innerText = `${i + 1} / ${ids.length} processando...`;
+
+        try {
+            const resp = await fetch(`/contingencias/${id}/reenviar`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                },
+            });
+
+            const resultado = await resp.json();
+
+            if (resultado.sucesso) {
+                sucesso++;
+                marcarLinhaEmitida(id);
+            } else {
+                falha++;
+                atualizarMotivoLinha(id, resultado.erro);
+            }
+        } catch (e) {
+            falha++;
+            atualizarMotivoLinha(id, 'Erro de conexão ao tentar emitir.');
+        }
+
+        progresso.innerText = `${i + 1} / ${ids.length} — ${sucesso} emitida(s), ${falha} pendente(s)`;
+    }
+
+    btn.disabled = false;
+
+    setTimeout(() => {
+        progresso.classList.add('hidden');
+        carregarContingencias(); // atualiza a lista, removendo as que foram emitidas
+    }, 1500);
+}
+
+function marcarLinhaEmitida(id) {
+    const linha = document.querySelector(`.check-contingencia[value="${id}"]`)?.closest('.border');
+    if (linha) {
+        linha.classList.add('opacity-40');
+        linha.querySelector('.check-contingencia').disabled = true;
+        const status = document.createElement('span');
+        status.className = 'text-green-600 text-xs ml-2';
+        status.innerText = '✓ Emitida';
+        linha.querySelector('.flex.items-center.gap-3')?.appendChild(status);
+    }
+}
+
+function atualizarMotivoLinha(id, motivo) {
+    const detalhe = document.getElementById(`detalhe-${id}`);
+    if (detalhe) {
+        detalhe.querySelector('p').innerHTML = `<strong>Motivo:</strong> ${motivo}`;
+        detalhe.classList.remove('hidden'); // expande automaticamente pra mostrar o novo motivo
     }
 }
 </script>
