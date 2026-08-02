@@ -10,7 +10,11 @@ class CancelamentoController extends Controller
 {
     public function listar()
     {
+        $prazoMinutos = config('app.prazo_cancelamento_minutos', 30);
+        $limite = now()->subMinutes($prazoMinutos);
+
         $vendas = Venda::where('status', 'emitida')
+            ->where('emitida_em', '>=', $limite)
             ->with('itens.produto')
             ->orderByDesc('created_at')
             ->limit(20)

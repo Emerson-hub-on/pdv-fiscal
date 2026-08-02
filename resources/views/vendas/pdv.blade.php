@@ -20,6 +20,15 @@
         <button onclick="abrirModalInutilizacao()" class="text-red-600 hover:underline text-sm">
             Inutilizar NFC-e (F2)
         </button>
+        <button onclick="abrirModalDescontoItem()" class="text-purple-600 hover:underline text-sm">
+            Desconto Item (F4)
+        </button>
+        <button onclick="abrirModalDescontoGlobal()" class="text-purple-700 hover:underline text-sm">
+            Desconto Geral (F5)
+        </button>
+        <button onclick="abrirModalCancelarItem()" class="text-red-600 hover:underline text-sm">
+            Cancelar Item (F6)
+        </button>
         <a href="{{ route('caixa.fechar-form') }}" class="text-red-600 hover:underline text-sm">Fechar Caixa</a>
     </div>
 </div>
@@ -50,6 +59,98 @@
         </div>
     </div>
 </div>
+
+
+
+<!-- Modal de autorização do supervisor (compartilhado entre F4 e F5) -->
+<div id="modal-autorizacao" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded shadow-lg w-full max-w-sm p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold">Autorização do Supervisor</h2>
+            <button onclick="fecharModalAutorizacao()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        <p class="text-sm text-gray-500 mb-4" id="autorizacao-descricao"></p>
+
+        <label class="block text-sm font-medium mb-1">Usuário</label>
+        <input type="text" id="autorizacao-usuario" class="w-full border rounded px-3 py-2 mb-3">
+
+        <label class="block text-sm font-medium mb-1">Senha</label>
+        <input type="password" id="autorizacao-senha" class="w-full border rounded px-3 py-2 mb-4">
+
+        <p id="autorizacao-erro" class="text-red-600 text-sm mb-3 hidden"></p>
+
+        <button onclick="confirmarAutorizacao()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold">
+            Autorizar
+        </button>
+    </div>
+</div>
+
+<!-- Modal desconto em item (F4) - so aparece depois de autorizado -->
+<div id="modal-desconto-item" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded shadow-lg w-full max-w-sm p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold">Desconto em Item</h2>
+            <button onclick="fecharModalDescontoItem()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        <label class="block text-sm font-medium mb-1">Número do item</label>
+        <input type="number" min="1" id="desconto-item-numero" class="w-full border rounded px-3 py-2 mb-1">
+        <p id="desconto-item-preview" class="text-xs text-gray-500 mb-3"></p>
+
+        <label class="block text-sm font-medium mb-1">Valor do desconto (R$)</label>
+        <input type="number" step="0.01" min="0" id="desconto-item-valor" class="w-full border rounded px-3 py-2 mb-4">
+
+        <p id="desconto-item-erro" class="text-red-600 text-sm mb-3 hidden"></p>
+
+        <button onclick="confirmarDescontoItem()" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded font-semibold">
+            Aplicar desconto
+        </button>
+    </div>
+</div>
+
+<!-- Modal desconto global (F5) - so aparece depois de autorizado -->
+<div id="modal-desconto-global" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded shadow-lg w-full max-w-sm p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold">Desconto Geral</h2>
+            <button onclick="fecharModalDescontoGlobal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        <label class="block text-sm font-medium mb-1">Valor do desconto (R$)</label>
+        <input type="number" step="0.01" min="0" id="desconto-global-valor" class="w-full border rounded px-3 py-2 mb-4">
+
+        <p id="desconto-global-erro" class="text-red-600 text-sm mb-3 hidden"></p>
+
+        <button onclick="confirmarDescontoGlobal()" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded font-semibold">
+            Aplicar desconto
+        </button>
+    </div>
+</div>
+
+
+<!-- Modal cancelar item (F6) - so aparece depois de autorizado -->
+<div id="modal-cancelar-item" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded shadow-lg w-full max-w-sm p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold">Cancelar Item</h2>
+            <button onclick="fecharModalCancelarItem()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        <label class="block text-sm font-medium mb-1">Número do item</label>
+        <input type="number" min="1" id="cancelar-item-numero" class="w-full border rounded px-3 py-2 mb-1">
+        <p id="cancelar-item-preview" class="text-xs text-gray-500 mb-4"></p>
+
+        <p id="cancelar-item-erro" class="text-red-600 text-sm mb-3 hidden"></p>
+
+        <button onclick="confirmarCancelarItem()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded font-semibold">
+            Cancelar item
+        </button>
+    </div>
+</div>
+
+
+
 
 <!-- Modal de inutilização -->
 
@@ -108,6 +209,7 @@
             <table class="w-full">
                 <thead>
                     <tr class="text-left text-sm text-gray-500 border-b">
+                        <th class="py-2">Item</th>
                         <th class="py-2">Produto</th>
                         <th class="py-2">Qtd</th>
                         <th class="py-2">Preço</th>
@@ -125,11 +227,6 @@
         <div class="bg-white rounded shadow p-4 h-fit">
             <p class="text-sm text-gray-500 mb-1">Total</p>
             <p id="total-venda" class="text-3xl font-bold mb-4">R$ 0,00</p>
-
-        <label class="block text-sm font-medium mb-1">Desconto geral (R$)</label>
-        <input type="number" step="0.01" min="0" id="desconto-global" value="0"
-            onchange="atualizarTotais()" class="w-full border rounded px-3 py-2 mb-4">
-
         <label class="block text-sm font-medium mb-1">Pagamentos</label>
         <div id="lista-pagamentos" class="space-y-2 mb-2"></div>
 
@@ -147,6 +244,11 @@
         <p class="text-sm mb-4">
             Restante a pagar: <strong id="restante-pagamento">R$ 0,00</strong>
         </p>
+        <div class="text-sm mb-4 space-y-1">
+            <p>Desconto por item: <strong id="desconto-item-exibido" class="text-green-600">R$ 0,00</strong></p>
+            <p>Desconto global: <strong id="desconto-global-exibido" class="text-green-600">R$ 0,00</strong></p>
+            <p>Desconto aplicado: <strong id="desconto-total-exibido" class="text-green-700">R$ 0,00</strong></p>
+        </div>
 
             <button id="btn-finalizar" onclick="finalizarVenda()"
                     class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded font-bold text-lg disabled:opacity-50">
@@ -167,11 +269,16 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'F1') { e.preventDefault(); abrirModalContingencias(); }
     if (e.key === 'F2') { e.preventDefault(); abrirModalInutilizacao(); }
     if (e.key === 'F3') { e.preventDefault(); abrirModalCancelamento(); }
+    if (e.key === 'F4') { e.preventDefault(); abrirModalDescontoItem(); }
+    if (e.key === 'F5') { e.preventDefault(); abrirModalDescontoGlobal(); }
+    if (e.key === 'F6') { e.preventDefault(); abrirModalCancelarItem(); }
 });
 
 
 
 let carrinho = [];
+let descontoGlobal = 0;
+let tipoDescontoPendente = null;
 
 const inputBusca = document.getElementById('busca-produto');
 const resultadosDiv = document.getElementById('resultados-busca');
@@ -250,10 +357,7 @@ function alterarQuantidade(chave, delta) {
     renderizarCarrinho();
 }
 
-function removerItem(chave) {
-    carrinho = carrinho.filter(i => i.chave !== chave);
-    renderizarCarrinho();
-}
+
 
 function renderizarCarrinho() {
     const tbody = document.getElementById('linhas-carrinho');
@@ -268,39 +372,29 @@ function renderizarCarrinho() {
 
     vazio.classList.add('hidden');
 
-    tbody.innerHTML = carrinho.map(item => `
-        <tr class="border-b">
-            <td class="py-2">${item.nome}</td>
-            <td class="py-2">
-                <button onclick="alterarQuantidade('${item.chave}', -1)" class="px-2 bg-gray-200 rounded">-</button>
-                <span class="mx-2">${item.quantidade}</span>
-                <button onclick="alterarQuantidade('${item.chave}', 1)" class="px-2 bg-gray-200 rounded">+</button>
+    const itensCalculados = calcularItensComDescontoRateado();
+
+    tbody.innerHTML = itensCalculados.map((item, index) => `
+        <tr class="border-b ${item.cancelado ? 'bg-red-50' : ''}">
+            <td class="py-2 text-gray-400 font-mono">${index + 1}</td>
+            <td class="py-2 ${item.cancelado ? 'text-red-600 line-through' : ''}">${item.nome}</td>
+            <td class="py-2 ${item.cancelado ? 'text-red-600 line-through' : ''}">
+                ${item.cancelado ? item.quantidade : `
+                    <button onclick="alterarQuantidade('${item.chave}', -1)" class="px-2 bg-gray-200 rounded">-</button>
+                    <span class="mx-2">${item.quantidade}</span>
+                    <button onclick="alterarQuantidade('${item.chave}', 1)" class="px-2 bg-gray-200 rounded">+</button>
+                `}
             </td>
-            <td class="py-2">R$ ${item.preco.toFixed(2)}</td>
-            <td class="py-2">
-                <input type="number" step="0.01" min="0" value="${item.desconto ?? 0}"
-                       onchange="alterarDescontoItem('${item.chave}', this.value)"
-                       class="w-20 border rounded px-1 py-0.5 text-sm">
-            </td>
-            <td class="py-2">R$ ${((item.preco * item.quantidade) - (item.desconto ?? 0)).toFixed(2)}</td>
-            <td class="py-2">
-                <button onclick="removerItem('${item.chave}')" class="text-red-500 text-sm hover:underline">Remover</button>
-            </td>
+            <td class="py-2 ${item.cancelado ? 'text-red-600 line-through' : ''}">R$ ${item.preco.toFixed(2)}</td>
+            <td class="py-2 ${item.cancelado ? 'text-red-600 line-through' : ''}">R$ ${item.descontoEfetivo.toFixed(2)}</td>
+            <td class="py-2 ${item.cancelado ? 'text-red-600 line-through' : ''}">R$ ${item.subtotalLiquido.toFixed(2)}</td>
+            <td class="py-2 text-red-600 text-xs font-semibold">${item.cancelado ? 'Cancelado' : ''}</td>
         </tr>
     `).join('');
 
     atualizarTotais();
 }
 
-function alterarDescontoItem(chave, valor) {
-    const item = carrinho.find(i => i.chave === chave);
-    const desconto = parseFloat(valor) || 0;
-    const subtotalBruto = item.preco * item.quantidade;
-
-    // Nao deixa o desconto do item ser maior que o proprio subtotal dele
-    item.desconto = Math.min(desconto, subtotalBruto);
-    renderizarCarrinho();
-}
 
 async function finalizarVenda() {
     if (carrinho.length === 0) return;
@@ -317,7 +411,7 @@ async function finalizarVenda() {
     btn.disabled = true;
     erroP.classList.add('hidden');
 
-    const itensCalculados = calcularItensComDescontoRateado();
+    const itensCalculados = calcularItensComDescontoRateado().filter(i => !i.cancelado);
 
     const payload = {
         itens: itensCalculados.map(i => ({
@@ -675,17 +769,17 @@ function renderizarPagamentos() {
 
 
 function calcularItensComDescontoRateado() {
-    const subtotalBrutoGeral = carrinho.reduce((soma, i) => soma + (i.preco * i.quantidade), 0);
-    const descontoGlobal = parseFloat(document.getElementById('desconto-global')?.value) || 0;
+    const itensAtivos = carrinho.filter(i => !i.cancelado);
+    const subtotalBrutoGeral = itensAtivos.reduce((soma, i) => soma + (i.preco * i.quantidade), 0);
 
+    const rateios = {};
     let somaRateios = 0;
-    const itensCalculados = carrinho.map((item, index) => {
-        const subtotalBruto = item.preco * item.quantidade;
-        const descontoItem = item.desconto ?? 0;
 
+    itensAtivos.forEach((item, index) => {
+        const subtotalBruto = item.preco * item.quantidade;
         let rateio;
-        if (index === carrinho.length - 1) {
-            // ultimo item absorve a diferenca de arredondamento, pra soma bater exato
+
+        if (index === itensAtivos.length - 1) {
             rateio = descontoGlobal - somaRateios;
         } else {
             rateio = subtotalBrutoGeral > 0
@@ -694,20 +788,297 @@ function calcularItensComDescontoRateado() {
             somaRateios += rateio;
         }
 
+        rateios[item.chave] = rateio;
+    });
+
+    return carrinho.map(item => {
+        const subtotalBruto = item.preco * item.quantidade;
+
+        if (item.cancelado) {
+            return { ...item, descontoEfetivo: 0, subtotalBruto, subtotalLiquido: 0 };
+        }
+
+        const descontoItem = item.desconto ?? 0;
+        const rateio = rateios[item.chave] ?? 0;
         const descontoEfetivo = Math.min(descontoItem + rateio, subtotalBruto);
 
         return { ...item, descontoEfetivo, subtotalBruto, subtotalLiquido: subtotalBruto - descontoEfetivo };
     });
-
-    return itensCalculados;
 }
+
+
 
 function atualizarTotais() {
     const itensCalculados = calcularItensComDescontoRateado();
     const totalLiquido = itensCalculados.reduce((soma, i) => soma + i.subtotalLiquido, 0);
 
+    // Desconto lançado item a item (F4), sem contar a fatia do rateio do desconto global
+    const descontoPorItem = carrinho.reduce((soma, i) => soma + (i.desconto ?? 0), 0);
+
+    // Desconto geral lançado via F5
+    const descontoGlobalAplicado = descontoGlobal;
+
     document.getElementById('total-venda').innerText = 'R$ ' + totalLiquido.toFixed(2).replace('.', ',');
+    document.getElementById('desconto-item-exibido').innerText = 'R$ ' + descontoPorItem.toFixed(2).replace('.', ',');
+    document.getElementById('desconto-global-exibido').innerText = 'R$ ' + descontoGlobalAplicado.toFixed(2).replace('.', ',');
+    document.getElementById('desconto-total-exibido').innerText = 'R$ ' + (descontoPorItem + descontoGlobalAplicado).toFixed(2).replace('.', ',');
+
     atualizarRestante();
+}
+
+
+function abrirModalDescontoItem() {
+    if (carrinho.length === 0) {
+        alert('Adicione um item ao carrinho primeiro.');
+        return;
+    }
+    tipoDescontoPendente = 'item';
+    abrirModalAutorizacao('Autorização necessária para aplicar desconto em item.');
+}
+
+
+function abrirModalCancelarItem() {
+    if (carrinho.length === 0) {
+        alert('Não há itens no carrinho.');
+        return;
+    }
+    tipoDescontoPendente = 'cancelar_item';
+    abrirModalAutorizacao('Autorização necessária para cancelar um item.');
+}
+
+
+document.getElementById('desconto-item-numero')?.addEventListener('input', function () {
+    const indice = parseInt(this.value) - 1;
+    const preview = document.getElementById('desconto-item-preview');
+    const item = carrinho[indice];
+
+    preview.innerText = item ? `→ ${item.nome}` : 'Número inválido.';
+    preview.className = item ? 'text-xs text-green-600 mb-3' : 'text-xs text-red-500 mb-3';
+});
+
+
+
+function fecharModalDescontoItem() {
+    document.getElementById('modal-desconto-item').classList.add('hidden');
+    document.getElementById('modal-desconto-item').classList.remove('flex');
+}
+
+function confirmarDescontoItem() {
+    const numero = parseInt(document.getElementById('desconto-item-numero').value);
+    const indice = numero - 1;
+    const valor = parseFloat(document.getElementById('desconto-item-valor').value) || 0;
+    const erroP = document.getElementById('desconto-item-erro');
+
+    const item = carrinho[indice];
+
+    if (!item) {
+        erroP.innerText = 'Número de item inválido.';
+        erroP.classList.remove('hidden');
+        return;
+    }
+
+    const subtotalBruto = item.preco * item.quantidade;
+    item.desconto = Math.min(valor, subtotalBruto);
+
+    renderizarCarrinho();
+    fecharModalDescontoItem();
+}
+
+function abrirModalDescontoGlobal() {
+    if (carrinho.length === 0) {
+        alert('Adicione um item ao carrinho primeiro.');
+        return;
+    }
+    tipoDescontoPendente = 'global';
+    abrirModalAutorizacao('Autorização necessária para aplicar desconto geral.');
+}
+
+function fecharModalDescontoGlobal() {
+    document.getElementById('modal-desconto-global').classList.add('hidden');
+    document.getElementById('modal-desconto-global').classList.remove('flex');
+}
+
+function abrirModalAutorizacao(descricao) {
+    document.getElementById('autorizacao-descricao').innerText = descricao;
+    document.getElementById('autorizacao-usuario').value = '';
+    document.getElementById('autorizacao-senha').value = '';
+    document.getElementById('autorizacao-erro').classList.add('hidden');
+
+    document.getElementById('modal-autorizacao').classList.remove('hidden');
+    document.getElementById('modal-autorizacao').classList.add('flex');
+}
+
+
+async function confirmarAutorizacao() {
+    const usuario = document.getElementById('autorizacao-usuario').value;
+    const senha = document.getElementById('autorizacao-senha').value;
+    const erroP = document.getElementById('autorizacao-erro');
+
+    if (!usuario || !senha) {
+        erroP.innerText = 'Informe usuário e senha do supervisor.';
+        erroP.classList.remove('hidden');
+        return;
+    }
+
+    try {
+        const resp = await fetch('{{ route("supervisor.autorizar") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            },
+            body: JSON.stringify({ username: usuario, password: senha }),
+        });
+
+        const resultado = await resp.json();
+
+        if (!resultado.autorizado) {
+            erroP.innerText = 'Usuário ou senha do supervisor inválidos.';
+            erroP.classList.remove('hidden');
+            return;
+        }
+    } catch (e) {
+        erroP.innerText = 'Erro de conexão ao validar supervisor.';
+        erroP.classList.remove('hidden');
+        return;
+    }
+
+    // Autorizado - fecha o modal de senha e abre o modal de lançamento correspondente
+    document.getElementById('modal-autorizacao').classList.add('hidden');
+    document.getElementById('modal-autorizacao').classList.remove('flex');
+
+    if (tipoDescontoPendente === 'item') {
+        abrirLancamentoDescontoItem();
+    } else if (tipoDescontoPendente === 'global') {
+        abrirLancamentoDescontoGlobal();
+    } else if (tipoDescontoPendente === 'cancelar_item') {
+        abrirLancamentoCancelarItem();
+    }
+}
+
+
+
+function abrirLancamentoDescontoItem() {
+    document.getElementById('desconto-item-numero').value = '';
+    document.getElementById('desconto-item-preview').innerText = '';
+    document.getElementById('desconto-item-valor').value = '';
+    document.getElementById('desconto-item-erro').classList.add('hidden');
+
+    document.getElementById('modal-desconto-item').classList.remove('hidden');
+    document.getElementById('modal-desconto-item').classList.add('flex');
+}
+
+
+function abrirLancamentoDescontoGlobal() {
+    document.getElementById('desconto-global-valor').value = descontoGlobal || '';
+    document.getElementById('desconto-global-erro').classList.add('hidden');
+
+    document.getElementById('modal-desconto-global').classList.remove('hidden');
+    document.getElementById('modal-desconto-global').classList.add('flex');
+}
+
+
+document.getElementById('desconto-item-numero')?.addEventListener('input', function () {
+    const indice = parseInt(this.value) - 1;
+    const preview = document.getElementById('desconto-item-preview');
+    const item = carrinho[indice];
+
+    preview.innerText = item ? `→ ${item.nome}` : 'Número inválido.';
+    preview.className = item ? 'text-xs text-green-600 mb-3' : 'text-xs text-red-500 mb-3';
+});
+
+
+
+function fecharModalAutorizacao() {
+    document.getElementById('modal-autorizacao').classList.add('hidden');
+    document.getElementById('modal-autorizacao').classList.remove('flex');
+    tipoDescontoPendente = null;
+}
+
+function confirmarDescontoGlobal() {
+    const valor = parseFloat(document.getElementById('desconto-global-valor').value) || 0;
+
+    descontoGlobal = valor;
+    atualizarTotais();
+    fecharModalDescontoGlobal();
+}
+
+
+function abrirLancamentoCancelarItem() {
+    document.getElementById('cancelar-item-numero').value = '';
+    document.getElementById('cancelar-item-preview').innerText = '';
+    document.getElementById('cancelar-item-erro').classList.add('hidden');
+
+    document.getElementById('modal-cancelar-item').classList.remove('hidden');
+    document.getElementById('modal-cancelar-item').classList.add('flex');
+}
+
+function fecharModalCancelarItem() {
+    document.getElementById('modal-cancelar-item').classList.add('hidden');
+    document.getElementById('modal-cancelar-item').classList.remove('flex');
+}
+
+document.getElementById('cancelar-item-numero')?.addEventListener('input', function () {
+    const indice = parseInt(this.value) - 1;
+    const preview = document.getElementById('cancelar-item-preview');
+    const item = carrinho[indice];
+
+    preview.innerText = item ? `→ ${item.nome} (Qtd: ${item.quantidade})` : 'Número inválido.';
+    preview.className = item ? 'text-xs text-green-600 mb-4' : 'text-xs text-red-500 mb-4';
+});
+
+function confirmarCancelarItem() {
+    const numero = parseInt(document.getElementById('cancelar-item-numero').value);
+    const indice = numero - 1;
+    const erroP = document.getElementById('cancelar-item-erro');
+
+    const item = carrinho[indice];
+
+    if (!item) {
+        erroP.innerText = 'Número de item inválido.';
+        erroP.classList.remove('hidden');
+        return;
+    }
+
+    if (item.cancelado) {
+        erroP.innerText = 'Este item já está cancelado.';
+        erroP.classList.remove('hidden');
+        return;
+    }
+
+    item.cancelado = true;
+
+    renderizarCarrinho();
+    fecharModalCancelarItem();
+}
+
+
+
+async function autorizarSupervisor(usuario, senha, erroP) {
+    try {
+        const resp = await fetch('{{ route("supervisor.autorizar") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            },
+            body: JSON.stringify({ username: usuario, password: senha }),
+        });
+
+        const resultado = await resp.json();
+
+        if (!resultado.autorizado) {
+            erroP.innerText = 'Usuário ou senha do supervisor inválidos.';
+            erroP.classList.remove('hidden');
+            return false;
+        }
+
+        return true;
+    } catch (e) {
+        erroP.innerText = 'Erro de conexão ao validar supervisor.';
+        erroP.classList.remove('hidden');
+        return false;
+    }
 }
 
 </script>

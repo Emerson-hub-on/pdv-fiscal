@@ -12,18 +12,20 @@ use App\Models\Produto;
 use App\Models\ProdutoVariante;
 use App\Models\Inutilizacao;
 use App\Models\Pdv;
+use App\Models\Empresa;
 use Illuminate\Support\Facades\DB;
+use NFePHP\NFe\Complements;
 
 class FiscalEmissorService
 {
     protected NfeService $nfeService;
+    protected ?string $chaveGerada = null;
 
     public function emitir(Venda $venda): array
     {
-        $venda->load('itens.produto', 'itens.variante', 'caixa.pdv', 'pagamentos');
+        $venda->load('itens.produto', 'itens.variante', 'caixa.pdv');
         $pdv = $venda->caixa->pdv;
 
-        // Reserva o numero ANTES de qualquer coisa que possa falhar (certificado, XML, rede)
         if ($venda->numero_nfce) {
             $numero = $venda->numero_nfce;
             $serie = $venda->serie_nfce;
@@ -35,14 +37,36 @@ class FiscalEmissorService
             $venda->update(['numero_nfce' => $numero, 'serie_nfce' => $serie]);
         }
 
-        try {
-            $this->nfeService = new NfeService($pdv);
-            $empresa = $this->nfeService->empresa();
+        $this->nfeService = new NfeService($pdv);
+        $empresa = $this->nfeService->empresa();
+        $tools = $this->nfeService->tools();
+        $idLote = str_pad($numero, 15, '0', STR_PAD_LEFT);
 
+        // Se essa venda ja foi comprometida em contingencia SEFAZ antes (tpEmis=9),
+        // NAO remontamos o XML - reenviamos exatamente o mesmo documento ja gerado/impresso
+        if ($venda->tp_emis == 9 && $venda->xml_contingencia) {
+            $xmlAssinado = $venda->xml_contingencia;
+            $this->chaveGerada = $venda->chave_nfe;
+
+            try {
+                $resposta = $tools->sefazEnviaLote([$xmlAssinado], $idLote, 1);
+            } catch (\Throwable $e) {
+                // Ainda sem conexao - continua em contingencia, nada muda
+                throw new Exception("Ainda sem conexão com a SEFAZ (NFC-e nº {$numero} continua em contingência).");
+            }
+
+            return $this->processarResposta($resposta, $venda, $xmlAssinado);
+        }
+
+        // Fluxo normal: tenta emissao online (tpEmis = 1)
+        $xmlBruto = null;
+        $xmlAssinado = null;
+
+        try {
             $nfe = new Make();
 
             $this->montarInfNFe($nfe);
-            $this->montarIde($nfe, $empresa, $pdv, $numero);
+            $this->montarIde($nfe, $empresa, $pdv, $numero, tpEmis: 1);
             $this->montarEmit($nfe, $empresa);
             $this->montarItens($nfe, $venda);
             $this->montarTotais($nfe, $venda);
@@ -50,27 +74,71 @@ class FiscalEmissorService
             $this->montarPagamento($nfe, $venda);
             $this->montarResponsavelTecnico($nfe);
 
-            $xml = $nfe->getXML();
+            $xmlBruto = $nfe->getXML();
 
-            if (!$xml) {
+            if (!$xmlBruto) {
                 throw new Exception('Erro ao montar XML: ' . implode(' | ', $nfe->getErrors()));
             }
 
-            $tools = $this->nfeService->tools();
-            $xmlAssinado = $tools->signNFe($xml);
-
-            $idLote = str_pad($numero, 15, '0', STR_PAD_LEFT);
+            $xmlAssinado = $tools->signNFe($xmlBruto);
             $resposta = $tools->sefazEnviaLote([$xmlAssinado], $idLote, 1);
         } catch (\Throwable $e) {
-            // Qualquer falha tecnica (certificado, XML, rede) cai aqui - numero ja esta reservado
-            $venda->update([
-                'status' => 'contingencia',
-                'motivo_rejeicao' => $e->getMessage(),
-            ]);
-
-            throw new Exception("Falha ao emitir (NFC-e nº {$numero} em contingência): " . $e->getMessage());
+            // Sem conexao com a SEFAZ - entra em contingencia REAL (tpEmis=9),
+            // gera um documento novo e valido pra impressao imediata
+            return $this->entrarEmContingenciaSefaz($venda, $pdv, $empresa, $numero, $e->getMessage());
         }
 
+        return $this->processarResposta($resposta, $venda, $xmlAssinado);
+    }
+
+    /**
+     * Monta um documento novo em modo contingencia SEFAZ (tpEmis=9),
+     * valido para impressao imediata, mesmo sem internet.
+     */
+    protected function entrarEmContingenciaSefaz(Venda $venda, Pdv $pdv, Empresa $empresa, int $numero, string $motivoFalha): array
+    {
+        $dhCont = (new \DateTime('now', new \DateTimeZone('America/Sao_Paulo')))->format('Y-m-d\TH:i:sP');
+        $xJust = 'Falha de conectividade com a internet no momento da emissão.';
+
+        $nfe = new Make();
+
+        $this->montarInfNFe($nfe);
+        $this->montarIde($nfe, $empresa, $pdv, $numero, tpEmis: 9, dhCont: $dhCont, xJust: $xJust);
+        $this->montarEmit($nfe, $empresa);
+        $this->montarItens($nfe, $venda);
+        $this->montarTotais($nfe, $venda);
+        $this->montarTransporte($nfe);
+        $this->montarPagamento($nfe, $venda);
+        $this->montarResponsavelTecnico($nfe);
+
+        $xmlBruto = $nfe->getXML();
+        $tools = $this->nfeService->tools();
+        $xmlAssinado = $tools->signNFe($xmlBruto);
+
+        // O documento ja e valido pra impressao a partir daqui - chave e definitiva
+        $venda->update([
+            'status' => 'contingencia',
+            'tp_emis' => 9,
+            'dh_cont' => $dhCont,
+            'x_just' => $xJust,
+            'xml_contingencia' => $xmlAssinado,
+            'chave_nfe' => $this->chaveGerada,
+            'motivo_rejeicao' => 'Emitido em contingência SEFAZ: ' . $motivoFalha,
+        ]);
+
+        $this->salvarXmlEmDisco($xmlAssinado, contingencia: true, venda: $venda);
+
+        throw new Exception(
+            "Sem conexão com a SEFAZ. NFC-e nº {$numero} emitida em CONTINGÊNCIA (tpEmis=9), " .
+            "chave: {$this->chaveGerada}. Documento já é válido para impressão."
+        );
+    }
+
+    /**
+     * Processa a resposta da SEFAZ (autorizacao ou rejeicao), seja do fluxo normal ou de um reenvio de contingencia.
+     */
+    protected function processarResposta(string $resposta, Venda $venda, string $xmlAssinado): array
+    {
         $protocolo = $this->extrairProtocolo($resposta);
 
         if (!$protocolo['autorizada']) {
@@ -78,6 +146,8 @@ class FiscalEmissorService
                 'status' => 'contingencia',
                 'motivo_rejeicao' => $protocolo['motivo'],
             ]);
+
+            $this->salvarXmlEmDisco($xmlAssinado, contingencia: true, venda: $venda);
 
             throw new Exception('Rejeitada pela SEFAZ: ' . $protocolo['motivo']);
         }
@@ -87,7 +157,16 @@ class FiscalEmissorService
             'chave_nfe' => $protocolo['chave'],
             'protocolo_nfe' => $protocolo['numero_protocolo'],
             'motivo_rejeicao' => null,
+            'emitida_em' => now(),
         ]);
+
+        try {
+            $xmlProcessado = Complements::toAuthorize($xmlAssinado, $resposta);
+        } catch (\Exception $e) {
+            $xmlProcessado = $xmlAssinado;
+        }
+
+        $this->salvarXmlEmDisco($xmlProcessado, contingencia: false, venda: $venda);
 
         return [
             'xml_assinado' => $xmlAssinado,
@@ -105,25 +184,25 @@ class FiscalEmissorService
         $nfe->taginfNFe($std);
     }
 
-    protected function montarIde(Make $nfe, $empresa, $pdv, int $numero): void
+    protected function montarIde(Make $nfe, $empresa, $pdv, int $numero, int $tpEmis = 1, ?string $dhCont = null, ?string $xJust = null): void
     {
         $dhEmi = new \DateTime('now', new \DateTimeZone('America/Sao_Paulo'));
         $cNF = str_pad((string) rand(0, 99999999), 8, '0', STR_PAD_LEFT);
         $cUF = $this->codigoUf($empresa->uf);
 
-        // Calcula a chave de acesso completa (44 digitos) pra extrair o DV real
         $chave = Keys::build(
             (string) $cUF,
             $dhEmi->format('y'),
             $dhEmi->format('m'),
             $empresa->cnpj,
-            '65', // modelo NFC-e
+            '65',
             (string) $pdv->serie_nfce,
             (string) $numero,
-            '1', // tpEmis normal
+            (string) $tpEmis,
             $cNF
         );
 
+        $this->chaveGerada = $chave;
         $cDV = substr($chave, -1);
 
         $std = new \stdClass();
@@ -138,8 +217,8 @@ class FiscalEmissorService
         $std->idDest = 1;
         $std->cMunFG = $empresa->cod_municipio;
         $std->tpImp = 4;
-        $std->tpEmis = 1;
-        $std->cDV = $cDV; // agora e o digito real, nao mais fixo em 0
+        $std->tpEmis = $tpEmis;
+        $std->cDV = $cDV;
         $std->tpAmb = (int) $empresa->ambiente;
         $std->finNFe = 1;
         $std->indFinal = 1;
@@ -147,7 +226,44 @@ class FiscalEmissorService
         $std->procEmi = 0;
         $std->verProc = '1.0.0';
 
+        // Campos extras exigidos apenas quando em contingencia (tpEmis != 1)
+        if ($tpEmis != 1) {
+            $std->dhCont = $dhCont;
+            $std->xJust = $xJust;
+        }
+
         $nfe->tagide($std);
+    }
+
+    protected function salvarXmlEmDisco(string $xmlAssinado, bool $contingencia, Venda $venda): void
+    {
+        if (!$this->chaveGerada) {
+            return;
+        }
+
+        // Apaga o arquivo de contingencia anterior dessa mesma venda, se existir,
+        // pra nao acumular um arquivo por tentativa
+        if ($venda->ultimo_arquivo_xml && file_exists($venda->ultimo_arquivo_xml)) {
+            @unlink($venda->ultimo_arquivo_xml);
+        }
+
+        $agora = new \DateTime('now', new \DateTimeZone('America/Sao_Paulo'));
+        $ano = $agora->format('y');
+        $mes = $agora->format('m');
+        $dia = $agora->format('d');
+
+        $pasta = storage_path("app/XML_nfce/{$ano}/{$mes}/{$dia}");
+
+        if (!is_dir($pasta)) {
+            mkdir($pasta, 0755, true);
+        }
+
+        $sufixo = $contingencia ? 'contingencia' : 'nfe';
+        $arquivo = "{$pasta}/{$this->chaveGerada}-{$sufixo}.xml";
+
+        file_put_contents($arquivo, $xmlAssinado);
+
+        $venda->update(['ultimo_arquivo_xml' => $arquivo]);
     }
 
     protected function montarEmit(Make $nfe, $empresa): void
@@ -191,7 +307,10 @@ class FiscalEmissorService
             $prod->qCom = $item->quantidade;
             $prod->vUnCom = number_format($item->preco_unitario, 10, '.', '');
             $prod->vProd = number_format($item->preco_unitario * $item->quantidade, 2, '.', '');
-            $prod->vDesc = number_format($item->desconto ?? 0, 2, '.', '');
+
+            if (($item->desconto ?? 0) > 0) {
+                $prod->vDesc = number_format($item->desconto, 2, '.', '');
+            }
             $prod->cEANTrib = $produto->codigo_barras ?: 'SEM GTIN';
             $prod->uTrib = $produto->unidade_tributavel;
             $prod->qTrib = $item->quantidade;
@@ -231,6 +350,9 @@ class FiscalEmissorService
 
     protected function montarTotais(Make $nfe, Venda $venda): void
     {
+        // vProd deve ser a soma dos valores BRUTOS dos itens (antes do desconto)
+        $vProdBruto = $venda->itens->sum(fn($item) => $item->preco_unitario * $item->quantidade);
+
         $std = new \stdClass();
         $std->vBC = 0;
         $std->vICMS = 0;
@@ -240,18 +362,19 @@ class FiscalEmissorService
         $std->vST = 0;
         $std->vFCPST = 0;
         $std->vFCPSTRet = 0;
-        $std->vProd = number_format($venda->total, 2, '.', '');
-        $std->vDesc = number_format($venda->desconto ?? 0, 2, '.', '');
+        $std->vProd = number_format($vProdBruto, 2, '.', '');
         $std->vFrete = 0;
         $std->vSeg = 0;
-        $std->vDesc = 0;
+        if (($venda->desconto ?? 0) > 0) {
+            $std->vDesc = number_format($venda->desconto, 2, '.', '');
+        }
         $std->vII = 0;
         $std->vIPI = 0;
         $std->vIPIDevol = 0;
         $std->vPIS = 0;
         $std->vCOFINS = 0;
         $std->vOutro = 0;
-        $std->vNF = number_format($venda->total, 2, '.', '');
+        $std->vNF = number_format($venda->total, 2, '.', ''); // total liquido (o que o cliente realmente pagou)
         $nfe->tagICMSTot($std);
     }
 

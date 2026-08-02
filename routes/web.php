@@ -12,6 +12,7 @@ use App\Http\Controllers\ContingenciaController;
 use App\Services\FiscalEmissorService;
 use App\Http\Controllers\InutilizacaoController;
 use App\Http\Controllers\CancelamentoController;
+use App\Http\Controllers\SupervisorController;
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -41,4 +42,5 @@ Route::middleware('auth')->group(function () {
     Route::post('inutilizacao', [InutilizacaoController::class, 'executar'])->name('inutilizacao.executar');
     Route::get('cancelamento/listar', [CancelamentoController::class, 'listar'])->name('cancelamento.listar');
     Route::post('cancelamento/{venda}/cancelar', [CancelamentoController::class, 'cancelar'])->name('cancelamento.cancelar');
-});
+    Route::post('supervisor/autorizar', [SupervisorController::class, 'autorizar'])->name('supervisor.autorizar');
+    });

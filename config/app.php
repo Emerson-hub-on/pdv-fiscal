@@ -13,8 +13,9 @@ return [
     |
     */
     'pdv_id' => env('PDV_ID', 1),
+    'prazo_cancelamento_minutos' => env('PRAZO_CANCELAMENTO_MINUTOS', 30),
 
-    
+
 
     'name' => env('APP_NAME', 'Laravel'),
 
@@ -68,7 +69,7 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'UTC'),
 
     /*
     |--------------------------------------------------------------------------
