@@ -25,12 +25,24 @@
         @endif
 
         <table class="w-full text-sm mb-4">
-            @foreach ($itens as $item)
-                <tr class="border-b">
-                    <td class="py-1">{{ $item->produto->nome }} x{{ $item->quantidade }}</td>
-                    <td class="py-1 text-right">R$ {{ number_format($item->subtotal, 2, ',', '.') }}</td>
+            <thead>
+                <tr class="text-left text-xs text-gray-500 border-b">
+                    <th class="py-2">Produto</th>
+                    <th class="py-2">Qtd</th>
+                    <th class="py-2">Preço</th>
+                    <th class="py-2 text-right">Subtotal</th>
                 </tr>
-            @endforeach
+            </thead>
+            <tbody>
+                @foreach ($itens as $item)
+                    <tr class="border-b">
+                        <td class="py-2">{{ $item->produto->nome }}</td>
+                        <td class="py-2">{{ $item->quantidade }}</td>
+                        <td class="py-2">R$ {{ number_format($item->subtotal / $item->quantidade, 2, ',', '.') }}</td>
+                        <td class="py-2 text-right">R$ {{ number_format($item->subtotal, 2, ',', '.') }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
         </table>
 
         @if ($pagamentos->count() > 0)

@@ -21,28 +21,29 @@ class SyncService
             $produtos = Produto::where('updated_at', '>', $ultimaSync)->get();
 
             foreach ($produtos as $produto) {
-                DB::connection('sqlite_local')->table('produtos_cache')->updateOrInsert(
-                    ['id' => $produto->id],
-                    [
-                        'nome' => $produto->nome,
-                        'codigo_interno' => $produto->codigo_interno,
-                        'codigo_barras' => $produto->codigo_barras,
-                        'ncm' => $produto->ncm,
-                        'cest' => $produto->cest,
-                        'cfop_padrao' => $produto->cfop_padrao,
-                        'unidade_comercial' => $produto->unidade_comercial,
-                        'unidade_tributavel' => $produto->unidade_tributavel,
-                        'origem_mercadoria' => $produto->origem_mercadoria,
-                        'csosn' => $produto->csosn,
-                        'class_trib_ibs_cbs' => $produto->class_trib_ibs_cbs,
-                        'preco_venda' => $produto->preco_venda,
-                        'tem_variacao' => $produto->tem_variacao,
-                        'estoque' => $produto->estoque,
-                        'ativo' => $produto->ativo,
-                        'atualizado_em_origem' => $produto->updated_at,
-                        'updated_at' => now(),
-                    ]
-                );
+            DB::connection('sqlite_local')->table('produtos_cache')->updateOrInsert(
+                ['id' => $produto->id],
+                [
+                    'nome' => $produto->nome,
+                    'codigo_interno' => $produto->codigo_interno,
+                    'codigo_barras' => $produto->codigo_barras,
+                    'ncm' => $produto->ncm,
+                    'cest' => $produto->cest,
+                    'cfop_padrao' => $produto->cfop_padrao,
+                    'unidade_comercial' => $produto->unidade_comercial,
+                    'unidade_tributavel' => $produto->unidade_tributavel,
+                    'origem_mercadoria' => $produto->origem_mercadoria,
+                    'csosn' => $produto->csosn,
+                    'class_trib_ibs_cbs' => $produto->class_trib_ibs_cbs,
+                    'preco_venda' => $produto->preco_venda,
+                    'preco_custo' => $produto->preco_custo,
+                    'tem_variacao' => $produto->tem_variacao,
+                    'estoque' => $produto->estoque,
+                    'ativo' => $produto->ativo,
+                    'atualizado_em_origem' => $produto->updated_at,
+                    'updated_at' => now(),
+                ]
+            );
 
                 // Sincroniza variantes desse produto, se tiver
                 if ($produto->tem_variacao) {
