@@ -93,17 +93,18 @@ class SyncService
                         $itens = json_decode($vendaLocal->itens, true);
                         $pagamentos = json_decode($vendaLocal->pagamentos, true) ?? [];
 
-                        $vendaId = DB::table('vendas')->insertGetId([
-                            'uuid' => $vendaLocal->uuid,
-                            'caixa_id' => $vendaLocal->caixa_id_central,
-                            'operador_id' => $vendaLocal->operador_id_central,
-                            'total' => $vendaLocal->total,
-                            'troco' => $vendaLocal->troco,
-                            'forma_pagamento' => $vendaLocal->forma_pagamento,
-                            'status' => 'pendente',
-                            'created_at' => $vendaLocal->vendida_em,
-                            'updated_at' => now(),
-                        ]);
+                $vendaId = DB::table('vendas')->insertGetId([
+                    'uuid' => $vendaLocal->uuid,
+                    'caixa_id' => $vendaLocal->caixa_id_central,
+                    'operador_id' => $vendaLocal->operador_id_central,
+                    'total' => $vendaLocal->total,
+                    'troco' => $vendaLocal->troco,
+                    'desconto' => $vendaLocal->desconto,   // <- confirme se essa linha existe
+                    'forma_pagamento' => $vendaLocal->forma_pagamento,
+                    'status' => 'pendente',
+                    'created_at' => $vendaLocal->vendida_em,
+                    'updated_at' => now(),
+                ]);
 
                         foreach ($itens as $item) {
                             if (!empty($item['produto_variante_id'])) {
@@ -124,7 +125,8 @@ class SyncService
                                 'produto_variante_id' => $item['produto_variante_id'] ?? null,
                                 'quantidade' => $item['quantidade'],
                                 'preco_unitario' => $item['preco_unitario'],
-                                'subtotal' => $item['preco_unitario'] * $item['quantidade'],
+                                'desconto' => $item['desconto'] ?? 0,
+                                'subtotal' => ($item['preco_unitario'] * $item['quantidade']) - ($item['desconto'] ?? 0),
                                 'created_at' => now(),
                                 'updated_at' => now(),
                             ]);

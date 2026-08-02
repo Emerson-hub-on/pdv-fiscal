@@ -6,23 +6,25 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::table('vendas_and_itens', function (Blueprint $table) {
-            //
+        Schema::table('vendas', function (Blueprint $table) {
+            $table->decimal('desconto', 12, 2)->default(0)->after('total');
+        });
+
+        Schema::table('venda_itens', function (Blueprint $table) {
+            $table->decimal('desconto', 12, 2)->default(0)->after('preco_unitario');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::table('vendas_and_itens', function (Blueprint $table) {
-            //
+        Schema::table('vendas', function (Blueprint $table) {
+            $table->dropColumn('desconto');
+        });
+
+        Schema::table('venda_itens', function (Blueprint $table) {
+            $table->dropColumn('desconto');
         });
     }
 };

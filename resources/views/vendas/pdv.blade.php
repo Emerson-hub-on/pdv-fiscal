@@ -111,6 +111,7 @@
                         <th class="py-2">Produto</th>
                         <th class="py-2">Qtd</th>
                         <th class="py-2">Preço</th>
+                        <th class="py-2">Desconto</th>
                         <th class="py-2">Subtotal</th>
                         <th class="py-2"></th>
                     </tr>
@@ -124,6 +125,10 @@
         <div class="bg-white rounded shadow p-4 h-fit">
             <p class="text-sm text-gray-500 mb-1">Total</p>
             <p id="total-venda" class="text-3xl font-bold mb-4">R$ 0,00</p>
+
+        <label class="block text-sm font-medium mb-1">Desconto geral (R$)</label>
+        <input type="number" step="0.01" min="0" id="desconto-global" value="0"
+            onchange="atualizarTotais()" class="w-full border rounded px-3 py-2 mb-4">
 
         <label class="block text-sm font-medium mb-1">Pagamentos</label>
         <div id="lista-pagamentos" class="space-y-2 mb-2"></div>
@@ -154,7 +159,18 @@
 @endsection
 
 @section('scripts')
+
 <script>
+
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'F1') { e.preventDefault(); abrirModalContingencias(); }
+    if (e.key === 'F2') { e.preventDefault(); abrirModalInutilizacao(); }
+    if (e.key === 'F3') { e.preventDefault(); abrirModalCancelamento(); }
+});
+
+
+
 let carrinho = [];
 
 const inputBusca = document.getElementById('busca-produto');
@@ -246,7 +262,7 @@ function renderizarCarrinho() {
     if (carrinho.length === 0) {
         tbody.innerHTML = '';
         vazio.classList.remove('hidden');
-        document.getElementById('total-venda').innerText = 'R$ 0,00';
+        atualizarTotais();
         return;
     }
 
@@ -261,16 +277,29 @@ function renderizarCarrinho() {
                 <button onclick="alterarQuantidade('${item.chave}', 1)" class="px-2 bg-gray-200 rounded">+</button>
             </td>
             <td class="py-2">R$ ${item.preco.toFixed(2)}</td>
-            <td class="py-2">R$ ${(item.preco * item.quantidade).toFixed(2)}</td>
+            <td class="py-2">
+                <input type="number" step="0.01" min="0" value="${item.desconto ?? 0}"
+                       onchange="alterarDescontoItem('${item.chave}', this.value)"
+                       class="w-20 border rounded px-1 py-0.5 text-sm">
+            </td>
+            <td class="py-2">R$ ${((item.preco * item.quantidade) - (item.desconto ?? 0)).toFixed(2)}</td>
             <td class="py-2">
                 <button onclick="removerItem('${item.chave}')" class="text-red-500 text-sm hover:underline">Remover</button>
             </td>
         </tr>
     `).join('');
 
-    const total = carrinho.reduce((soma, i) => soma + (i.preco * i.quantidade), 0);
-    document.getElementById('total-venda').innerText = 'R$ ' + total.toFixed(2).replace('.', ',');
-    atualizarRestante();
+    atualizarTotais();
+}
+
+function alterarDescontoItem(chave, valor) {
+    const item = carrinho.find(i => i.chave === chave);
+    const desconto = parseFloat(valor) || 0;
+    const subtotalBruto = item.preco * item.quantidade;
+
+    // Nao deixa o desconto do item ser maior que o proprio subtotal dele
+    item.desconto = Math.min(desconto, subtotalBruto);
+    renderizarCarrinho();
 }
 
 async function finalizarVenda() {
@@ -288,11 +317,14 @@ async function finalizarVenda() {
     btn.disabled = true;
     erroP.classList.add('hidden');
 
+    const itensCalculados = calcularItensComDescontoRateado();
+
     const payload = {
-        itens: carrinho.map(i => ({
+        itens: itensCalculados.map(i => ({
             produto_id: i.produto_id,
             produto_variante_id: i.produto_variante_id,
             quantidade: i.quantidade,
+            desconto: Math.round(i.descontoEfetivo * 100) / 100,
         })),
         pagamentos: pagamentos,
     };
@@ -324,13 +356,6 @@ async function finalizarVenda() {
     }
 }
 
-
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'F1') {
-        e.preventDefault();
-        abrirModalContingencias();
-    }
-});
 
 function abrirModalContingencias() {
     document.getElementById('modal-contingencias').classList.remove('hidden');
@@ -461,18 +486,6 @@ function atualizarMotivoLinha(id, motivo) {
 }
 
 
-
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'F1') {
-        e.preventDefault();
-        abrirModalContingencias();
-    }
-    if (e.key === 'F2') {
-        e.preventDefault();
-        abrirModalInutilizacao();
-    }
-});
-
 function abrirModalInutilizacao() {
     document.getElementById('modal-inutilizacao').classList.remove('hidden');
     document.getElementById('modal-inutilizacao').classList.add('flex');
@@ -521,11 +534,6 @@ async function confirmarInutilizacao() {
     }
 }
 
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'F1') { e.preventDefault(); abrirModalContingencias(); }
-    if (e.key === 'F2') { e.preventDefault(); abrirModalInutilizacao(); }
-    if (e.key === 'F3') { e.preventDefault(); abrirModalCancelamento(); }
-});
 
 function abrirModalCancelamento() {
     document.getElementById('modal-cancelamento').classList.remove('hidden');
@@ -612,7 +620,8 @@ async function confirmarCancelamento(id) {
 let pagamentos = [];
 
 function atualizarRestante() {
-    const total = carrinho.reduce((soma, i) => soma + (i.preco * i.quantidade), 0);
+    const itensCalculados = calcularItensComDescontoRateado();
+    const total = itensCalculados.reduce((soma, i) => soma + i.subtotalLiquido, 0);
     const pago = pagamentos.reduce((soma, p) => soma + p.valor, 0);
     const diferenca = pago - total; // positivo = troco, negativo = falta pagar
 
@@ -629,7 +638,7 @@ function atualizarRestante() {
         label.className = 'text-green-600';
     }
 
-    return diferenca; // usado pra validar antes de finalizar
+    return diferenca;
 }
 
 function adicionarPagamento() {
@@ -661,6 +670,43 @@ function renderizarPagamentos() {
         </div>
     `).join('');
 
+    atualizarRestante();
+}
+
+
+function calcularItensComDescontoRateado() {
+    const subtotalBrutoGeral = carrinho.reduce((soma, i) => soma + (i.preco * i.quantidade), 0);
+    const descontoGlobal = parseFloat(document.getElementById('desconto-global')?.value) || 0;
+
+    let somaRateios = 0;
+    const itensCalculados = carrinho.map((item, index) => {
+        const subtotalBruto = item.preco * item.quantidade;
+        const descontoItem = item.desconto ?? 0;
+
+        let rateio;
+        if (index === carrinho.length - 1) {
+            // ultimo item absorve a diferenca de arredondamento, pra soma bater exato
+            rateio = descontoGlobal - somaRateios;
+        } else {
+            rateio = subtotalBrutoGeral > 0
+                ? Math.round((descontoGlobal * (subtotalBruto / subtotalBrutoGeral)) * 100) / 100
+                : 0;
+            somaRateios += rateio;
+        }
+
+        const descontoEfetivo = Math.min(descontoItem + rateio, subtotalBruto);
+
+        return { ...item, descontoEfetivo, subtotalBruto, subtotalLiquido: subtotalBruto - descontoEfetivo };
+    });
+
+    return itensCalculados;
+}
+
+function atualizarTotais() {
+    const itensCalculados = calcularItensComDescontoRateado();
+    const totalLiquido = itensCalculados.reduce((soma, i) => soma + i.subtotalLiquido, 0);
+
+    document.getElementById('total-venda').innerText = 'R$ ' + totalLiquido.toFixed(2).replace('.', ',');
     atualizarRestante();
 }
 

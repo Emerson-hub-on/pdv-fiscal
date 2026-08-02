@@ -190,7 +190,8 @@ class FiscalEmissorService
             $prod->uCom = $produto->unidade_comercial;
             $prod->qCom = $item->quantidade;
             $prod->vUnCom = number_format($item->preco_unitario, 10, '.', '');
-            $prod->vProd = number_format($item->subtotal, 2, '.', '');
+            $prod->vProd = number_format($item->preco_unitario * $item->quantidade, 2, '.', '');
+            $prod->vDesc = number_format($item->desconto ?? 0, 2, '.', '');
             $prod->cEANTrib = $produto->codigo_barras ?: 'SEM GTIN';
             $prod->uTrib = $produto->unidade_tributavel;
             $prod->qTrib = $item->quantidade;
@@ -240,6 +241,7 @@ class FiscalEmissorService
         $std->vFCPST = 0;
         $std->vFCPSTRet = 0;
         $std->vProd = number_format($venda->total, 2, '.', '');
+        $std->vDesc = number_format($venda->desconto ?? 0, 2, '.', '');
         $std->vFrete = 0;
         $std->vSeg = 0;
         $std->vDesc = 0;

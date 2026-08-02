@@ -10,7 +10,7 @@ class VendaItem extends Model
 
     protected $fillable = [
         'venda_id', 'produto_id', 'produto_variante_id',
-        'quantidade', 'preco_unitario', 'subtotal',
+        'quantidade', 'preco_unitario', 'subtotal', 'desconto',
     ];
 
     protected $casts = [

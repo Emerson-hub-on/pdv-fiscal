@@ -57,15 +57,16 @@ class VendaController extends Controller
      */
     public function finalizar(Request $request)
     {
-        $validado = $request->validate([
-            'itens' => 'required|array|min:1',
-            'itens.*.produto_id' => 'required|integer',
-            'itens.*.produto_variante_id' => 'nullable|integer',
-            'itens.*.quantidade' => 'required|integer|min:1',
-            'pagamentos' => 'required|array|min:1',
-            'pagamentos.*.forma_pagamento' => 'required|in:dinheiro,pix,credito,debito',
-            'pagamentos.*.valor' => 'required|numeric|min:0.01',
-        ]);
+    $validado = $request->validate([
+        'itens' => 'required|array|min:1',
+        'itens.*.produto_id' => 'required|integer',
+        'itens.*.produto_variante_id' => 'nullable|integer',
+        'itens.*.quantidade' => 'required|integer|min:1',
+        'itens.*.desconto' => 'nullable|numeric|min:0',
+        'pagamentos' => 'required|array|min:1',
+        'pagamentos.*.forma_pagamento' => 'required|in:dinheiro,pix,credito,debito',
+        'pagamentos.*.valor' => 'required|numeric|min:0.01',
+    ]);
 
         $caixa = Caixa::aberto(Auth::id());
 
@@ -106,7 +107,8 @@ class VendaController extends Controller
                             ->decrement('estoque', $item['quantidade']);
                     }
 
-                    $subtotal = $produto->preco_venda * $item['quantidade'];
+                    $desconto = min($item['desconto'] ?? 0, $produto->preco_venda * $item['quantidade']);
+                    $subtotal = ($produto->preco_venda * $item['quantidade']) - $desconto;
                     $total += $subtotal;
 
                     $itensParaSalvar[] = [
@@ -114,9 +116,11 @@ class VendaController extends Controller
                         'produto_variante_id' => $item['produto_variante_id'] ?? null,
                         'quantidade' => $item['quantidade'],
                         'preco_unitario' => $produto->preco_venda,
+                        'desconto' => $desconto,
                     ];
                 }
             });
+            $descontoTotal = collect($itensParaSalvar)->sum('desconto');
 
             // Confere se a soma dos pagamentos bate com o total calculado dos itens
             $totalPagamentos = collect($validado['pagamentos'])->sum('valor');
@@ -133,6 +137,7 @@ class VendaController extends Controller
                 'caixa_id_central' => $caixa->id,
                 'operador_id_central' => Auth::id(),
                 'total' => $total,
+                'desconto' => $descontoTotal,
                 'troco' => $troco,
                 'forma_pagamento' => null,
                 'pagamentos' => json_encode($validado['pagamentos']),

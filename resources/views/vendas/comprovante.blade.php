@@ -45,6 +45,7 @@
             </tbody>
         </table>
 
+
         @if ($pagamentos->count() > 0)
             @php
                 $nomesPagamento = [
@@ -70,6 +71,13 @@
                         <span>R$ {{ number_format($troco, 2, ',', '.') }}</span>
                     </div>
                 @endif
+            </div>
+        @endif
+
+        @if (($desconto ?? 0) > 0.009)
+            <div class="flex justify-between text-green-600 text-sm mb-1">
+                <span>Desconto</span>
+                <span>- R$ {{ number_format($desconto, 2, ',', '.') }}</span>
             </div>
         @endif
 
