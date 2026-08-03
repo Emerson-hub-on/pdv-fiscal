@@ -137,8 +137,8 @@ class VendaController extends Controller
                 'caixa_id_central' => $caixa->id,
                 'operador_id_central' => Auth::id(),
                 'total' => $total,
-                'desconto' => $descontoTotal,
                 'troco' => $troco,
+                'desconto' => $descontoTotal,
                 'forma_pagamento' => null,
                 'pagamentos' => json_encode($validado['pagamentos']),
                 'itens' => json_encode($itensParaSalvar),
@@ -148,16 +148,36 @@ class VendaController extends Controller
                 'updated_at' => now(),
             ]);
 
+            $emissao = ['sucesso' => false, 'contingencia' => false, 'erro' => null];
+
             try {
                 (new SyncService())->enviarVendasPendentes();
+
+                // Ja sincronizou? Tenta emitir automaticamente, sem esperar o operador clicar
+                $vendaCentral = \App\Models\Venda::where('uuid', $uuid)->first();
+
+                if ($vendaCentral) {
+                    try {
+                        $resultado = (new \App\Services\FiscalEmissorService())->emitir($vendaCentral);
+                        $emissao = ['sucesso' => true, 'contingencia' => false, 'chave' => $resultado['chave']];
+                    } catch (\Exception $e) {
+                        $vendaCentral->refresh();
+                        $emissao = [
+                            'sucesso' => false,
+                            'contingencia' => $vendaCentral->status === 'contingencia',
+                            'erro' => $e->getMessage(),
+                        ];
+                    }
+                }
             } catch (\Exception $e) {
-                // Silencioso - o scheduler tenta de novo depois
+                // Nem a sincronizacao rolou - venda fica local, o scheduler tenta depois
             }
 
             return response()->json([
                 'sucesso' => true,
                 'venda_uuid' => $uuid,
                 'total' => $total,
+                'emissao' => $emissao,
             ]);
         } catch (\Exception $e) {
             return response()->json(['erro' => $e->getMessage()], 422);

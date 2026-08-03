@@ -408,7 +408,11 @@ async function finalizarVenda() {
 
     const btn = document.getElementById('btn-finalizar');
     const erroP = document.getElementById('erro-venda');
+
     btn.disabled = true;
+    btn.innerText = 'Processando...';
+    btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+    btn.classList.add('bg-blue-600');
     erroP.classList.add('hidden');
 
     const itensCalculados = calcularItensComDescontoRateado().filter(i => !i.cancelado);
@@ -439,6 +443,9 @@ async function finalizarVenda() {
             erroP.innerText = data.erro || 'Erro ao finalizar venda.';
             erroP.classList.remove('hidden');
             btn.disabled = false;
+            btn.innerText = 'Finalizar Venda';
+            btn.classList.remove('bg-blue-600');
+            btn.classList.add('bg-green-600', 'hover:bg-green-700');
             return;
         }
 
@@ -447,6 +454,9 @@ async function finalizarVenda() {
         erroP.innerText = 'Erro de conexão. Tente novamente.';
         erroP.classList.remove('hidden');
         btn.disabled = false;
+        btn.innerText = 'Finalizar Venda';
+        btn.classList.remove('bg-blue-600');
+        btn.classList.add('bg-green-600', 'hover:bg-green-700');
     }
 }
 

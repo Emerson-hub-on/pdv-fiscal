@@ -37,9 +37,19 @@ class FiscalEmissorService
             $venda->update(['numero_nfce' => $numero, 'serie_nfce' => $serie]);
         }
 
-        $this->nfeService = new NfeService($pdv);
-        $empresa = $this->nfeService->empresa();
-        $tools = $this->nfeService->tools();
+        try {
+            $this->nfeService = new NfeService($pdv);
+            $empresa = $this->nfeService->empresa();
+            $tools = $this->nfeService->tools();
+        } catch (\Throwable $e) {
+            $venda->update([
+                'status' => 'contingencia',
+                'motivo_rejeicao' => 'Erro ao preparar emissão (certificado/config fiscal): ' . $e->getMessage(),
+            ]);
+
+            throw new Exception("Erro ao preparar emissão (NFC-e nº {$numero}): " . $e->getMessage());
+        }
+
         $idLote = str_pad($numero, 15, '0', STR_PAD_LEFT);
 
         // Se essa venda ja foi comprometida em contingencia SEFAZ antes (tpEmis=9),
@@ -51,17 +61,13 @@ class FiscalEmissorService
             try {
                 $resposta = $tools->sefazEnviaLote([$xmlAssinado], $idLote, 1);
             } catch (\Throwable $e) {
-                // Ainda sem conexao - continua em contingencia, nada muda
                 throw new Exception("Ainda sem conexão com a SEFAZ (NFC-e nº {$numero} continua em contingência).");
             }
 
             return $this->processarResposta($resposta, $venda, $xmlAssinado);
         }
 
-        // Fluxo normal: tenta emissao online (tpEmis = 1)
-        $xmlBruto = null;
-        $xmlAssinado = null;
-
+        // PASSO 1: montar e assinar o XML - falha aqui e problema de DADOS, nao de conexao
         try {
             $nfe = new Make();
 
@@ -81,10 +87,21 @@ class FiscalEmissorService
             }
 
             $xmlAssinado = $tools->signNFe($xmlBruto);
+        } catch (\Throwable $e) {
+            // Erro de dado/schema - venda fica em contingencia normal (reenviavel via F1
+            // depois de corrigir o cadastro), NUNCA vira contingencia SEFAZ real
+            $venda->update([
+                'status' => 'contingencia',
+                'motivo_rejeicao' => $e->getMessage(),
+            ]);
+
+            throw new Exception("Erro ao montar/validar XML (NFC-e nº {$numero}): " . $e->getMessage());
+        }
+
+        // PASSO 2: enviar pra SEFAZ - falha aqui, sim, e problema de conexao -> contingencia SEFAZ real
+        try {
             $resposta = $tools->sefazEnviaLote([$xmlAssinado], $idLote, 1);
         } catch (\Throwable $e) {
-            // Sem conexao com a SEFAZ - entra em contingencia REAL (tpEmis=9),
-            // gera um documento novo e valido pra impressao imediata
             return $this->entrarEmContingenciaSefaz($venda, $pdv, $empresa, $numero, $e->getMessage());
         }
 
@@ -475,6 +492,7 @@ class FiscalEmissorService
         $cStat = $infInut?->getElementsByTagName('cStat')->item(0)?->nodeValue;
         $xMotivo = $infInut?->getElementsByTagName('xMotivo')->item(0)?->nodeValue;
         $nProt = $infInut?->getElementsByTagName('nProt')->item(0)?->nodeValue;
+        $idEvento = $infInut?->getAttribute('Id');
 
         $sucesso = $cStat === '102';
 
@@ -494,9 +512,11 @@ class FiscalEmissorService
             throw new Exception('Falha na inutilização: ' . $xMotivo);
         }
 
-        // Cancela qualquer venda em contingencia que estava presa nessa faixa de numero,
+        $this->salvarXmlInutilizacaoEmDisco($resposta, $idEvento);
+
+        // Cancela qualquer venda em contingencia/pendente que estava presa nessa faixa de numero,
         // e estorna o estoque de cada item vendido nela
-        $vendasAfetadas = Venda::where('status', 'contingencia')
+        $vendasAfetadas = Venda::whereIn('status', ['contingencia', 'pendente'])
             ->where('serie_nfce', $pdv->serie_nfce)
             ->whereHas('caixa', fn($q) => $q->where('pdv_id', $pdv->id))
             ->whereBetween('numero_nfce', [$numeroInicial, $numeroFinal])
@@ -525,6 +545,31 @@ class FiscalEmissorService
         }
 
         return ['protocolo' => $nProt, 'motivo' => $xMotivo];
+    }
+
+    /**
+     * Salva o XML da inutilizacao em disco, na mesma estrutura de pastas por data usada pras NFC-e.
+     */
+    protected function salvarXmlInutilizacaoEmDisco(string $resposta, ?string $idEvento): void
+    {
+        if (!$idEvento) {
+            $idEvento = 'inutilizacao_' . now()->format('YmdHis'); // fallback, caso a SEFAZ nao retorne o Id
+        }
+
+        $agora = new \DateTime('now', new \DateTimeZone('America/Sao_Paulo'));
+        $ano = $agora->format('y');
+        $mes = $agora->format('m');
+        $dia = $agora->format('d');
+
+        $pasta = storage_path("app/XML_nfce/{$ano}/{$mes}/{$dia}");
+
+        if (!is_dir($pasta)) {
+            mkdir($pasta, 0755, true);
+        }
+
+        $arquivo = "{$pasta}/{$idEvento}-inutilizado.xml";
+
+        file_put_contents($arquivo, $resposta);
     }
 
         public function cancelar(Venda $venda, string $justificativa): array
