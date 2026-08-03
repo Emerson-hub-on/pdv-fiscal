@@ -94,8 +94,8 @@
             <p id="msg-emissao" class="text-sm mt-3 text-center hidden"></p>
         @endif
 
-        <a href="{{ route('vendas.pdv') }}" class="block text-center text-sm text-gray-500 mt-4 hover:underline">
-            ← Nova venda
+        <a href="{{ route('vendas.pdv') }}" class="no-print block text-center text-sm text-gray-500 mt-4 hover:underline">
+            ← Nova venda <span class="text-xs text-gray-400">(ou aperte Enter)</span>
         </a>
     </div>
 @endsection
@@ -146,5 +146,15 @@ async function emitirCupom() {
         window.location.href = '{{ route("vendas.pdv") }}';
     }, 1500);
 }
+
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        window.location.href = '{{ route("vendas.pdv") }}';
+    }
+});
+
+
 </script>
 @endsection

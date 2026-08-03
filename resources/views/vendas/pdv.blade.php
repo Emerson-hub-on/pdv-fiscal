@@ -29,6 +29,9 @@
         <button onclick="abrirModalCancelarItem()" class="text-red-600 hover:underline text-sm">
             Cancelar Item (F6)
         </button>
+        <button onclick="abrirModalLimparPdv()" class="text-red-800 hover:underline text-sm font-semibold">
+            Cancelar Cupom (F7)
+        </button>
         <a href="{{ route('caixa.fechar-form') }}" class="text-red-600 hover:underline text-sm">Fechar Caixa</a>
     </div>
 </div>
@@ -265,6 +268,19 @@
 <script>
 
 
+let carrinho = [];
+let resultadosAtuais = [];
+let indiceSelecionado = -1;
+let descontoGlobal = 0;
+let tipoDescontoPendente = null;
+let timeoutBusca;
+let pagamentos = [];
+
+const inputBusca = document.getElementById('busca-produto');
+const resultadosDiv = document.getElementById('resultados-busca');
+
+
+
 document.addEventListener('keydown', (e) => {
     if (e.key === 'F1') { e.preventDefault(); abrirModalContingencias(); }
     if (e.key === 'F2') { e.preventDefault(); abrirModalInutilizacao(); }
@@ -272,24 +288,73 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'F4') { e.preventDefault(); abrirModalDescontoItem(); }
     if (e.key === 'F5') { e.preventDefault(); abrirModalDescontoGlobal(); }
     if (e.key === 'F6') { e.preventDefault(); abrirModalCancelarItem(); }
+    if (e.key === 'F7') { e.preventDefault(); abrirModalLimparPdv(); }
+    if (e.key === 'Escape') { fecharTodosModais(); }
 });
 
 
+inputBusca.addEventListener('keydown', (e) => {
+    if (resultadosAtuais.length === 0) return;
 
-let carrinho = [];
-let descontoGlobal = 0;
-let tipoDescontoPendente = null;
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        indiceSelecionado = (indiceSelecionado + 1) % resultadosAtuais.length;
+        renderizarResultados();
+        scrollParaSelecionado();
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        indiceSelecionado = (indiceSelecionado - 1 + resultadosAtuais.length) % resultadosAtuais.length;
+        renderizarResultados();
+        scrollParaSelecionado();
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (indiceSelecionado >= 0) {
+            selecionarResultado(indiceSelecionado);
+        }
+    }
+});
 
-const inputBusca = document.getElementById('busca-produto');
-const resultadosDiv = document.getElementById('resultados-busca');
+function scrollParaSelecionado() {
+    const elemento = resultadosDiv.querySelector(`[data-index="${indiceSelecionado}"]`);
+    elemento?.scrollIntoView({ block: 'nearest' });
+}
 
-let timeoutBusca;
+
+
+function fecharTodosModais() {
+    const idsModais = [
+        'modal-contingencias',
+        'modal-inutilizacao',
+        'modal-cancelamento',
+        'modal-desconto-item',
+        'modal-desconto-global',
+        'modal-cancelar-item',
+        'modal-autorizacao',
+    ];
+
+    idsModais.forEach(id => {
+        const modal = document.getElementById(id);
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    });
+
+    tipoDescontoPendente = null;
+}
+
+
+
+
+
 inputBusca.addEventListener('input', () => {
     clearTimeout(timeoutBusca);
     const termo = inputBusca.value.trim();
 
     if (termo.length < 2) {
         resultadosDiv.classList.add('hidden');
+        resultadosAtuais = [];
+        indiceSelecionado = -1;
         return;
     }
 
@@ -300,25 +365,39 @@ async function buscarProduto(termo) {
     const resp = await fetch(`{{ route('vendas.buscar-produto') }}?termo=${encodeURIComponent(termo)}`);
     const produtos = await resp.json();
 
-    if (produtos.length === 0) {
+    // Monta uma lista "achatada": cada opcao e um produto OU uma variante especifica
+    resultadosAtuais = [];
+    produtos.forEach(p => {
+        if (p.tem_variacao && p.variantes.length > 0) {
+            p.variantes.forEach(v => resultadosAtuais.push({ produto: p, variante: v }));
+        } else {
+            resultadosAtuais.push({ produto: p, variante: null });
+        }
+    });
+
+    indiceSelecionado = resultadosAtuais.length > 0 ? 0 : -1;
+
+    renderizarResultados();
+}
+
+function renderizarResultados() {
+    if (resultadosAtuais.length === 0) {
         resultadosDiv.innerHTML = '<div class="p-3 text-sm text-gray-400">Nenhum produto encontrado.</div>';
         resultadosDiv.classList.remove('hidden');
         return;
     }
 
-    resultadosDiv.innerHTML = produtos.map(p => {
-        if (p.tem_variacao && p.variantes.length > 0) {
-            return p.variantes.map(v => `
-                <div class="p-3 hover:bg-gray-100 cursor-pointer border-b text-sm"
-                     onclick='adicionarAoCarrinho(${JSON.stringify(p)}, ${JSON.stringify(v)})'>
-                    ${p.nome} — ${v.cor ?? ''} ${v.tamanho ?? ''} (estoque: ${v.estoque})
-                </div>
-            `).join('');
-        }
+    resultadosDiv.innerHTML = resultadosAtuais.map((op, index) => {
+        const destacado = index === indiceSelecionado;
+        const texto = op.variante
+            ? `${op.produto.nome} — ${op.variante.cor ?? ''} ${op.variante.tamanho ?? ''} (estoque: ${op.variante.estoque})`
+            : `${op.produto.nome} — R$ ${Number(op.produto.preco_venda).toFixed(2)} (estoque: ${op.produto.estoque})`;
+
         return `
-            <div class="p-3 hover:bg-gray-100 cursor-pointer border-b text-sm"
-                 onclick='adicionarAoCarrinho(${JSON.stringify(p)}, null)'>
-                ${p.nome} — R$ ${Number(p.preco_venda).toFixed(2)} (estoque: ${p.estoque})
+            <div class="p-3 cursor-pointer border-b text-sm ${destacado ? 'bg-blue-100' : 'hover:bg-gray-100'}"
+                 data-index="${index}"
+                 onclick="selecionarResultado(${index})">
+                ${texto}
             </div>
         `;
     }).join('');
@@ -326,13 +405,25 @@ async function buscarProduto(termo) {
     resultadosDiv.classList.remove('hidden');
 }
 
+function selecionarResultado(index) {
+    const op = resultadosAtuais[index];
+    adicionarAoCarrinho(op.produto, op.variante);
+    resultadosAtuais = [];
+    indiceSelecionado = -1;
+}
+
+
 function adicionarAoCarrinho(produto, variante) {
-    const chave = produto.id + '-' + (variante ? variante.id : '0');
-    const existente = carrinho.find(i => i.chave === chave);
+    const chaveBase = produto.id + '-' + (variante ? variante.id : '0');
+    const existente = carrinho.find(i => i.chave === chaveBase && !i.cancelado);
 
     if (existente) {
         existente.quantidade++;
     } else {
+        // Se ja existe um item cancelado com essa mesma chave base, gera uma chave unica pro novo
+        const chave = carrinho.some(i => i.chave === chaveBase)
+            ? chaveBase + '-' + Date.now()
+            : chaveBase;
         carrinho.push({
             chave,
             produto_id: produto.id,
@@ -721,7 +812,6 @@ async function confirmarCancelamento(id) {
 }
 
 
-let pagamentos = [];
 
 function atualizarRestante() {
     const itensCalculados = calcularItensComDescontoRateado();
@@ -856,6 +946,15 @@ function abrirModalCancelarItem() {
     abrirModalAutorizacao('Autorização necessária para cancelar um item.');
 }
 
+function abrirModalLimparPdv() {
+    if (carrinho.length === 0) {
+        alert('O carrinho já está vazio.');
+        return;
+    }
+    tipoDescontoPendente = 'limpar_pdv';
+    abrirModalAutorizacao('Autorização necessária para cancelar o cupom (limpar todos os itens).');
+}
+
 
 document.getElementById('desconto-item-numero')?.addEventListener('input', function () {
     const indice = parseInt(this.value) - 1;
@@ -963,6 +1062,8 @@ async function confirmarAutorizacao() {
         abrirLancamentoDescontoGlobal();
     } else if (tipoDescontoPendente === 'cancelar_item') {
         abrirLancamentoCancelarItem();
+    } else if (tipoDescontoPendente === 'limpar_pdv') {
+        executarLimparPdv();
     }
 }
 
@@ -1062,6 +1163,19 @@ function confirmarCancelarItem() {
     fecharModalCancelarItem();
 }
 
+
+function executarLimparPdv() {
+    if (!confirm('Confirma o cancelamento do cupom? Todos os itens do carrinho serão removidos.')) {
+        return;
+    }
+
+    carrinho = [];
+    pagamentos = [];
+    descontoGlobal = 0;
+
+    renderizarCarrinho();
+    renderizarPagamentos();
+}
 
 
 async function autorizarSupervisor(usuario, senha, erroP) {
