@@ -11,6 +11,9 @@
         <a href="{{ route('produtos.index') }}" class="hover:text-blue-300">Produtos</a>
         <a href="{{ route('empresa.editar') }}" class="hover:text-blue-300">Empresa</a>
         <a href="{{ route('pdvs.index') }}" class="hover:text-blue-300">PDVs</a>
+        <button onclick="sincronizarAgora()" id="btn-sincronizar" class="hover:text-blue-300 bg-transparent border-0 text-white cursor-pointer">
+            Atualizar Caixa
+        </button>
         {{-- outros links de menu vão entrar aqui conforme criarmos os módulos --}}
     </nav>
 
@@ -26,3 +29,40 @@
     @yield('scripts')
 </body>
 </html>
+<script>
+async function sincronizarAgora() {
+    const btn = document.getElementById('btn-sincronizar');
+    const textoOriginal = btn.innerText;
+
+    btn.disabled = true;
+    btn.innerText = 'Sincronizando...';
+
+    try {
+        const resp = await fetch('{{ route("sincronizacao.executar") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            },
+        });
+
+        const resultado = await resp.json();
+
+        if (resultado.sucesso) {
+            alert(
+                `Sincronização concluída!\n` +
+                `Produtos atualizados: ${resultado.produtos_atualizados}\n` +
+                `Vendas enviadas: ${resultado.vendas_enviadas}` +
+                (resultado.vendas_falhas > 0 ? `\nVendas com falha: ${resultado.vendas_falhas}` : '')
+            );
+        } else {
+            alert('Erro ao sincronizar: ' + resultado.erro);
+        }
+    } catch (e) {
+        alert('Erro de conexão ao tentar sincronizar.');
+    }
+
+    btn.disabled = false;
+    btn.innerText = textoOriginal;
+}
+</script>
