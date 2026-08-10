@@ -33,6 +33,8 @@ Route::middleware('auth')->group(function () {
     Route::get('pdv', [VendaController::class, 'pdv'])->name('vendas.pdv');
     Route::get('pdv/buscar-produto', [VendaController::class, 'buscarProduto'])->name('vendas.buscar-produto');
     Route::post('pdv/finalizar', [VendaController::class, 'finalizar'])->name('vendas.finalizar');
+    Route::post('pdv/pagamento/preparar', [VendaController::class, 'prepararPagamento'])->name('vendas.preparar-pagamento');
+    Route::get('pdv/pagamento', [VendaController::class, 'telaPagamento'])->name('vendas.pagamento');
     Route::get('pdv/venda/{uuid}/comprovante', [FiscalController::class, 'comprovante'])->name('vendas.comprovante');
     Route::post('pdv/venda/{uuid}/emitir', [FiscalController::class, 'emitir'])->name('vendas.emitir');
     Route::resource('pdvs', PdvController::class)->except(['destroy', 'show']);
