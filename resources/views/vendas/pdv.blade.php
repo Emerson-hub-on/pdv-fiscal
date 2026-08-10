@@ -199,8 +199,8 @@
         </div>
     </div>
 </div>
-<!-- TELA 1: Itens -->
-<div id="tela-itens">
+    
+
     <div class="grid grid-cols-3 gap-6">
         <div class="col-span-2 bg-white rounded shadow p-4">
             <div class="relative mb-4">
@@ -230,68 +230,28 @@
         <div class="bg-white rounded shadow p-4 h-fit">
             <p class="text-sm text-gray-500 mb-1">Total</p>
             <p id="total-venda" class="text-3xl font-bold mb-4">R$ 0,00</p>
+        <label class="block text-sm font-medium mb-1">Pagamentos</label>
+        <div id="lista-pagamentos" class="space-y-2 mb-2"></div>
 
-            <div class="text-sm mb-4 space-y-1">
-                <p>Desconto por item: <strong id="desconto-item-exibido" class="text-green-600">R$ 0,00</strong></p>
-                <p>Desconto global: <strong id="desconto-global-exibido" class="text-green-600">R$ 0,00</strong></p>
-                <p>Desconto aplicado: <strong id="desconto-total-exibido" class="text-green-700">R$ 0,00</strong></p>
-            </div>
-
-            <button id="btn-prosseguir" onclick="irParaPagamento()"
-                    class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded font-bold text-lg disabled:opacity-50">
-                Prosseguir para pagamento →
-            </button>
-
-            <p id="erro-itens" class="text-red-600 text-sm mt-2 hidden"></p>
-        </div>
-    </div>
-</div>
-
-<!-- TELA 2: Pagamento -->
-<div id="tela-pagamento" class="hidden">
-    <div class="grid grid-cols-3 gap-6">
-        <div class="col-span-2 bg-white rounded shadow p-4">
-            <button onclick="voltarParaItens()" class="text-sm text-gray-500 hover:underline mb-4">← Voltar aos itens</button>
-
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="text-left text-xs text-gray-500 border-b">
-                        <th class="py-2">Produto</th>
-                        <th class="py-2">Qtd</th>
-                        <th class="py-2 text-right">Subtotal</th>
-                    </tr>
-                </thead>
-                <tbody id="resumo-itens-pagamento"></tbody>
-            </table>
+        <div class="flex gap-2 mb-2">
+            <select id="nova-forma-pagamento" class="flex-1 border rounded px-2 py-1 text-sm">
+                <option value="dinheiro">Dinheiro</option>
+                <option value="pix">PIX</option>
+                <option value="credito">Cartão de Crédito</option>
+                <option value="debito">Cartão de Débito</option>
+            </select>
+            <input type="number" step="0.01" id="novo-valor-pagamento" placeholder="Valor" class="w-24 border rounded px-2 py-1 text-sm">
+            <button type="button" onclick="adicionarPagamento()" class="bg-gray-200 hover:bg-gray-300 px-3 rounded text-sm">+</button>
         </div>
 
-        <div class="bg-white rounded shadow p-4 h-fit">
-            <p class="text-sm text-gray-500 mb-1">Total a pagar</p>
-            <p id="total-pagamento-tela" class="text-3xl font-bold mb-4">R$ 0,00</p>
-
-            <div class="text-sm mb-4 space-y-1">
-                <p>Desconto por item: <strong id="desconto-item-exibido-2" class="text-green-600">R$ 0,00</strong></p>
-                <p>Desconto global: <strong id="desconto-global-exibido-2" class="text-green-600">R$ 0,00</strong></p>
-                <p>Desconto aplicado: <strong id="desconto-total-exibido-2" class="text-green-700">R$ 0,00</strong></p>
-            </div>
-
-            <label class="block text-sm font-medium mb-1">Pagamentos</label>
-            <div id="lista-pagamentos" class="space-y-2 mb-2"></div>
-
-            <div class="flex gap-2 mb-2">
-                <select id="nova-forma-pagamento" class="flex-1 border rounded px-2 py-1 text-sm">
-                    <option value="dinheiro">Dinheiro</option>
-                    <option value="pix">PIX</option>
-                    <option value="credito">Cartão de Crédito</option>
-                    <option value="debito">Cartão de Débito</option>
-                </select>
-                <input type="number" step="0.01" id="novo-valor-pagamento" placeholder="Valor" class="w-24 border rounded px-2 py-1 text-sm">
-                <button type="button" onclick="adicionarPagamento()" class="bg-gray-200 hover:bg-gray-300 px-3 rounded text-sm">+</button>
-            </div>
-
-            <p class="text-sm mb-4">
-                Restante a pagar: <strong id="restante-pagamento">R$ 0,00</strong>
-            </p>
+        <p class="text-sm mb-4">
+            Restante a pagar: <strong id="restante-pagamento">R$ 0,00</strong>
+        </p>
+        <div class="text-sm mb-4 space-y-1">
+            <p>Desconto por item: <strong id="desconto-item-exibido" class="text-green-600">R$ 0,00</strong></p>
+            <p>Desconto global: <strong id="desconto-global-exibido" class="text-green-600">R$ 0,00</strong></p>
+            <p>Desconto aplicado: <strong id="desconto-total-exibido" class="text-green-700">R$ 0,00</strong></p>
+        </div>
 
             <button id="btn-finalizar" onclick="finalizarVenda()"
                     class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded font-bold text-lg disabled:opacity-50">
@@ -301,7 +261,6 @@
             <p id="erro-venda" class="text-red-600 text-sm mt-2 hidden"></p>
         </div>
     </div>
-</div>
 @endsection
 
 @section('scripts')
@@ -335,12 +294,6 @@ document.addEventListener('keydown', (e) => {
 
 
 inputBusca.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && resultadosAtuais.length === 0) {
-        e.preventDefault();
-        irParaPagamento();
-        return;
-    }
-
     if (resultadosAtuais.length === 0) return;
 
     if (e.key === 'ArrowDown') {
@@ -531,48 +484,6 @@ function renderizarCarrinho() {
     `).join('');
 
     atualizarTotais();
-}
-
-function irParaPagamento() {
-    if (carrinho.filter(i => !i.cancelado).length === 0) {
-        document.getElementById('erro-itens').innerText = 'Adicione ao menos um item antes de prosseguir.';
-        document.getElementById('erro-itens').classList.remove('hidden');
-        return;
-    }
-
-    document.getElementById('erro-itens').classList.add('hidden');
-    document.getElementById('tela-itens').classList.add('hidden');
-    document.getElementById('tela-pagamento').classList.remove('hidden');
-
-    renderizarResumoPagamento();
-}
-
-function voltarParaItens() {
-    document.getElementById('tela-pagamento').classList.add('hidden');
-    document.getElementById('tela-itens').classList.remove('hidden');
-    inputBusca.focus();
-}
-
-function renderizarResumoPagamento() {
-    const itensCalculados = calcularItensComDescontoRateado().filter(i => !i.cancelado);
-
-    document.getElementById('resumo-itens-pagamento').innerHTML = itensCalculados.map(item => `
-        <tr class="border-b">
-            <td class="py-2">${item.nome}</td>
-            <td class="py-2">${item.quantidade}</td>
-            <td class="py-2 text-right">R$ ${item.subtotalLiquido.toFixed(2)}</td>
-        </tr>
-    `).join('');
-
-    const totalLiquido = itensCalculados.reduce((soma, i) => soma + i.subtotalLiquido, 0);
-    const descontoPorItem = carrinho.reduce((soma, i) => soma + (i.desconto ?? 0), 0);
-
-    document.getElementById('total-pagamento-tela').innerText = 'R$ ' + totalLiquido.toFixed(2).replace('.', ',');
-    document.getElementById('desconto-item-exibido-2').innerText = 'R$ ' + descontoPorItem.toFixed(2).replace('.', ',');
-    document.getElementById('desconto-global-exibido-2').innerText = 'R$ ' + descontoGlobal.toFixed(2).replace('.', ',');
-    document.getElementById('desconto-total-exibido-2').innerText = 'R$ ' + (descontoPorItem + descontoGlobal).toFixed(2).replace('.', ',');
-
-    atualizarRestante();
 }
 
 
@@ -1001,18 +912,16 @@ function atualizarTotais() {
     const itensCalculados = calcularItensComDescontoRateado();
     const totalLiquido = itensCalculados.reduce((soma, i) => soma + i.subtotalLiquido, 0);
 
+    // Desconto lançado item a item (F4), sem contar a fatia do rateio do desconto global
     const descontoPorItem = carrinho.reduce((soma, i) => soma + (i.desconto ?? 0), 0);
+
+    // Desconto geral lançado via F5
     const descontoGlobalAplicado = descontoGlobal;
 
     document.getElementById('total-venda').innerText = 'R$ ' + totalLiquido.toFixed(2).replace('.', ',');
     document.getElementById('desconto-item-exibido').innerText = 'R$ ' + descontoPorItem.toFixed(2).replace('.', ',');
     document.getElementById('desconto-global-exibido').innerText = 'R$ ' + descontoGlobalAplicado.toFixed(2).replace('.', ',');
     document.getElementById('desconto-total-exibido').innerText = 'R$ ' + (descontoPorItem + descontoGlobalAplicado).toFixed(2).replace('.', ',');
-
-    // Se a tela de pagamento estiver ativa, mantem o resumo dela sincronizado tambem
-    if (!document.getElementById('tela-pagamento').classList.contains('hidden')) {
-        renderizarResumoPagamento();
-    }
 
     atualizarRestante();
 }
