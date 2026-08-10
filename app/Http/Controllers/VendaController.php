@@ -55,6 +55,39 @@ class VendaController extends Controller
     /**
      * Grava a venda no banco LOCAL (fila de pendentes), nao mais direto no MySQL.
      */
+
+    public function prepararPagamento(Request $request)
+    {
+        $validado = $request->validate([
+            'itens' => 'required|array|min:1',
+            'itens.*.produto_id' => 'required|integer',
+            'itens.*.produto_variante_id' => 'nullable|integer',
+            'itens.*.nome' => 'required|string',
+            'itens.*.quantidade' => 'required|integer|min:1',
+            'itens.*.preco' => 'required|numeric',
+            'itens.*.desconto' => 'nullable|numeric',
+            'itens.*.subtotal' => 'required|numeric',
+            'desconto_item' => 'required|numeric',
+            'desconto_global' => 'required|numeric',
+            'total' => 'required|numeric',
+        ]);
+
+        session(['venda_carrinho' => $validado]);
+
+        return response()->json(['sucesso' => true]);
+    }
+
+    public function telaPagamento()
+    {
+        $dados = session('venda_carrinho');
+
+        if (!$dados) {
+            return redirect()->route('vendas.pdv')->with('erro', 'Nenhum item no carrinho. Adicione itens antes de prosseguir.');
+        }
+
+        return view('vendas.pagamento', $dados);
+    }
+    
     public function finalizar(Request $request)
     {
     $validado = $request->validate([
