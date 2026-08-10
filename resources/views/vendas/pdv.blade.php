@@ -253,12 +253,13 @@
             <p>Desconto aplicado: <strong id="desconto-total-exibido" class="text-green-700">R$ 0,00</strong></p>
         </div>
 
-            <button id="btn-finalizar" onclick="finalizarVenda()"
-                    class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded font-bold text-lg disabled:opacity-50">
-                Finalizar Venda
-            </button>
+        <button id="btn-prosseguir" onclick="irParaPagamento()"
+                class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded font-bold text-lg disabled:opacity-50">
+            Prosseguir para pagamento →
+        </button>
 
-            <p id="erro-venda" class="text-red-600 text-sm mt-2 hidden"></p>
+        <p id="erro-itens" class="text-red-600 text-sm mt-2 hidden"></p>
+        
         </div>
     </div>
 @endsection
@@ -274,11 +275,9 @@ let indiceSelecionado = -1;
 let descontoGlobal = 0;
 let tipoDescontoPendente = null;
 let timeoutBusca;
-let pagamentos = [];
 
 const inputBusca = document.getElementById('busca-produto');
 const resultadosDiv = document.getElementById('resultados-busca');
-
 
 
 document.addEventListener('keydown', (e) => {
@@ -294,7 +293,11 @@ document.addEventListener('keydown', (e) => {
 
 
 inputBusca.addEventListener('keydown', (e) => {
-    if (resultadosAtuais.length === 0) return;
+    if (e.key === 'Enter' && resultadosAtuais.length === 0) {
+        e.preventDefault();
+        irParaPagamento();
+        return;
+    }
 
     if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -342,8 +345,6 @@ function fecharTodosModais() {
 
     tipoDescontoPendente = null;
 }
-
-
 
 
 
@@ -486,70 +487,6 @@ function renderizarCarrinho() {
     atualizarTotais();
 }
 
-
-async function finalizarVenda() {
-    if (carrinho.length === 0) return;
-
-    const diferenca = atualizarRestante();
-    if (diferenca < -0.009) {
-        document.getElementById('erro-venda').innerText = 'A soma dos pagamentos é menor que o total da venda.';
-        document.getElementById('erro-venda').classList.remove('hidden');
-        return;
-    }
-
-    const btn = document.getElementById('btn-finalizar');
-    const erroP = document.getElementById('erro-venda');
-
-    btn.disabled = true;
-    btn.innerText = 'Processando...';
-    btn.classList.remove('bg-green-600', 'hover:bg-green-700');
-    btn.classList.add('bg-blue-600');
-    erroP.classList.add('hidden');
-
-    const itensCalculados = calcularItensComDescontoRateado().filter(i => !i.cancelado);
-
-    const payload = {
-        itens: itensCalculados.map(i => ({
-            produto_id: i.produto_id,
-            produto_variante_id: i.produto_variante_id,
-            quantidade: i.quantidade,
-            desconto: Math.round(i.descontoEfetivo * 100) / 100,
-        })),
-        pagamentos: pagamentos,
-    };
-
-    try {
-        const resp = await fetch('{{ route("vendas.finalizar") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            },
-            body: JSON.stringify(payload),
-        });
-
-        const data = await resp.json();
-
-        if (!resp.ok) {
-            erroP.innerText = data.erro || 'Erro ao finalizar venda.';
-            erroP.classList.remove('hidden');
-            btn.disabled = false;
-            btn.innerText = 'Finalizar Venda';
-            btn.classList.remove('bg-blue-600');
-            btn.classList.add('bg-green-600', 'hover:bg-green-700');
-            return;
-        }
-
-        window.location.href = `/pdv/venda/${data.venda_uuid}/comprovante`;
-    } catch (e) {
-        erroP.innerText = 'Erro de conexão. Tente novamente.';
-        erroP.classList.remove('hidden');
-        btn.disabled = false;
-        btn.innerText = 'Finalizar Venda';
-        btn.classList.remove('bg-blue-600');
-        btn.classList.add('bg-green-600', 'hover:bg-green-700');
-    }
-}
 
 
 function abrirModalContingencias() {
@@ -811,61 +748,6 @@ async function confirmarCancelamento(id) {
     }
 }
 
-
-
-function atualizarRestante() {
-    const itensCalculados = calcularItensComDescontoRateado();
-    const total = itensCalculados.reduce((soma, i) => soma + i.subtotalLiquido, 0);
-    const pago = pagamentos.reduce((soma, p) => soma + p.valor, 0);
-    const diferenca = pago - total; // positivo = troco, negativo = falta pagar
-
-    const label = document.getElementById('restante-pagamento');
-
-    if (diferenca < -0.009) {
-        label.innerText = 'Falta: R$ ' + Math.abs(diferenca).toFixed(2).replace('.', ',');
-        label.className = 'text-red-600';
-    } else if (diferenca > 0.009) {
-        label.innerText = 'Troco: R$ ' + diferenca.toFixed(2).replace('.', ',');
-        label.className = 'text-blue-600 font-semibold';
-    } else {
-        label.innerText = 'R$ 0,00';
-        label.className = 'text-green-600';
-    }
-
-    return diferenca;
-}
-
-function adicionarPagamento() {
-    const forma = document.getElementById('nova-forma-pagamento').value;
-    const valor = parseFloat(document.getElementById('novo-valor-pagamento').value);
-
-    if (!valor || valor <= 0) {
-        alert('Informe um valor válido.');
-        return;
-    }
-
-    pagamentos.push({ forma_pagamento: forma, valor });
-    document.getElementById('novo-valor-pagamento').value = '';
-    renderizarPagamentos();
-}
-
-function removerPagamento(index) {
-    pagamentos.splice(index, 1);
-    renderizarPagamentos();
-}
-
-function renderizarPagamentos() {
-    const nomes = { dinheiro: 'Dinheiro', pix: 'PIX', credito: 'Crédito', debito: 'Débito' };
-
-    document.getElementById('lista-pagamentos').innerHTML = pagamentos.map((p, i) => `
-        <div class="flex justify-between items-center bg-gray-50 border rounded px-2 py-1 text-sm">
-            <span>${nomes[p.forma_pagamento]} — R$ ${p.valor.toFixed(2)}</span>
-            <button onclick="removerPagamento(${i})" class="text-red-500 text-xs hover:underline">Remover</button>
-        </div>
-    `).join('');
-
-    atualizarRestante();
-}
 
 
 function calcularItensComDescontoRateado() {
@@ -1202,6 +1084,51 @@ async function autorizarSupervisor(usuario, senha, erroP) {
         erroP.innerText = 'Erro de conexão ao validar supervisor.';
         erroP.classList.remove('hidden');
         return false;
+    }
+}
+
+
+async function irParaPagamento() {
+    const itensAtivos = calcularItensComDescontoRateado().filter(i => !i.cancelado);
+
+    if (itensAtivos.length === 0) {
+        document.getElementById('erro-itens').innerText = 'Adicione ao menos um item antes de prosseguir.';
+        document.getElementById('erro-itens').classList.remove('hidden');
+        return;
+    }
+
+    const descontoPorItem = carrinho.reduce((soma, i) => soma + (i.desconto ?? 0), 0);
+    const total = itensAtivos.reduce((soma, i) => soma + i.subtotalLiquido, 0);
+
+    const payload = {
+        itens: itensAtivos.map(i => ({
+            produto_id: i.produto_id,
+            produto_variante_id: i.produto_variante_id,
+            nome: i.nome,
+            quantidade: i.quantidade,
+            preco: i.preco,
+            desconto: Math.round(i.descontoEfetivo * 100) / 100,
+            subtotal: Math.round(i.subtotalLiquido * 100) / 100,
+        })),
+        desconto_item: descontoPorItem,
+        desconto_global: descontoGlobal,
+        total: Math.round(total * 100) / 100,
+    };
+
+    const resp = await fetch('{{ route("vendas.preparar-pagamento") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (resp.ok) {
+        window.location.href = '{{ route("vendas.pagamento") }}';
+    } else {
+        document.getElementById('erro-itens').innerText = 'Erro ao prosseguir. Tente novamente.';
+        document.getElementById('erro-itens').classList.remove('hidden');
     }
 }
 
