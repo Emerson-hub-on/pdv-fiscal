@@ -230,23 +230,6 @@
         <div class="bg-white rounded shadow p-4 h-fit">
             <p class="text-sm text-gray-500 mb-1">Total</p>
             <p id="total-venda" class="text-3xl font-bold mb-4">R$ 0,00</p>
-        <label class="block text-sm font-medium mb-1">Pagamentos</label>
-        <div id="lista-pagamentos" class="space-y-2 mb-2"></div>
-
-        <div class="flex gap-2 mb-2">
-            <select id="nova-forma-pagamento" class="flex-1 border rounded px-2 py-1 text-sm">
-                <option value="dinheiro">Dinheiro</option>
-                <option value="pix">PIX</option>
-                <option value="credito">Cartão de Crédito</option>
-                <option value="debito">Cartão de Débito</option>
-            </select>
-            <input type="number" step="0.01" id="novo-valor-pagamento" placeholder="Valor" class="w-24 border rounded px-2 py-1 text-sm">
-            <button type="button" onclick="adicionarPagamento()" class="bg-gray-200 hover:bg-gray-300 px-3 rounded text-sm">+</button>
-        </div>
-
-        <p class="text-sm mb-4">
-            Restante a pagar: <strong id="restante-pagamento">R$ 0,00</strong>
-        </p>
         <div class="text-sm mb-4 space-y-1">
             <p>Desconto por item: <strong id="desconto-item-exibido" class="text-green-600">R$ 0,00</strong></p>
             <p>Desconto global: <strong id="desconto-global-exibido" class="text-green-600">R$ 0,00</strong></p>
@@ -805,7 +788,6 @@ function atualizarTotais() {
     document.getElementById('desconto-global-exibido').innerText = 'R$ ' + descontoGlobalAplicado.toFixed(2).replace('.', ',');
     document.getElementById('desconto-total-exibido').innerText = 'R$ ' + (descontoPorItem + descontoGlobalAplicado).toFixed(2).replace('.', ',');
 
-    atualizarRestante();
 }
 
 
@@ -1052,40 +1034,11 @@ function executarLimparPdv() {
     }
 
     carrinho = [];
-    pagamentos = [];
     descontoGlobal = 0;
 
     renderizarCarrinho();
-    renderizarPagamentos();
 }
 
-
-async function autorizarSupervisor(usuario, senha, erroP) {
-    try {
-        const resp = await fetch('{{ route("supervisor.autorizar") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            },
-            body: JSON.stringify({ username: usuario, password: senha }),
-        });
-
-        const resultado = await resp.json();
-
-        if (!resultado.autorizado) {
-            erroP.innerText = 'Usuário ou senha do supervisor inválidos.';
-            erroP.classList.remove('hidden');
-            return false;
-        }
-
-        return true;
-    } catch (e) {
-        erroP.innerText = 'Erro de conexão ao validar supervisor.';
-        erroP.classList.remove('hidden');
-        return false;
-    }
-}
 
 
 async function irParaPagamento() {

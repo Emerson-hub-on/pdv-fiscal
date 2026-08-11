@@ -182,5 +182,6 @@ async function finalizarVenda() {
         btn.classList.add('bg-green-600', 'hover:bg-green-700');
     }
 }
+atualizarRestante();
 </script>
 @endsection
