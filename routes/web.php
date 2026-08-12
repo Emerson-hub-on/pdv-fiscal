@@ -47,5 +47,9 @@ Route::middleware('auth')->group(function () {
     Route::post('cancelamento/{venda}/cancelar', [CancelamentoController::class, 'cancelar'])->name('cancelamento.cancelar');
     Route::post('supervisor/autorizar', [SupervisorController::class, 'autorizar'])->name('supervisor.autorizar');
     Route::post('sincronizar-agora', [SincronizacaoController::class, 'executar'])->name('sincronizacao.executar');
+    Route::post('pdv/limpar-sessao', [VendaController::class, 'limparSessaoCarrinho'])->name('vendas.limpar-sessao');
+
+
+
     
     });

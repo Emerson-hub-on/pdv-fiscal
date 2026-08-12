@@ -36,6 +36,38 @@
     </div>
 </div>
 
+
+
+<!-- Modal de busca de produto -->
+<div id="modal-busca-produto" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded shadow-lg w-full max-w-3xl max-h-[80vh] overflow-y-auto p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold">Selecionar Produto</h2>
+            <button onclick="fecharModalBusca()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        <p id="indicador-multiplicador" class="text-sm text-blue-600 font-semibold mb-2 hidden"></p>
+        <input type="text" id="busca-produto-modal" placeholder="Buscar por nome, código ou código de barras..."
+               class="w-full border rounded px-3 py-2 mb-4">
+
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs text-gray-500 border-b">
+                    <th class="py-2">Código</th>
+                    <th class="py-2">Produto</th>
+                    <th class="py-2">Preço</th>
+                    <th class="py-2">Estoque</th>
+                </tr>
+            </thead>
+            <tbody id="linhas-busca-produto"></tbody>
+        </table>
+
+        <p class="text-xs text-gray-400 mt-3">Use ↑ ↓ para navegar e Enter para selecionar.</p>
+    </div>
+</div>
+
+
+
 <!-- Modal de contingencias -->
 <div id="modal-contingencias" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
     <div class="bg-white rounded shadow-lg w-full max-w-2xl max-h-[80vh] overflow-y-auto p-6">
@@ -203,11 +235,10 @@
 
     <div class="grid grid-cols-3 gap-6">
         <div class="col-span-2 bg-white rounded shadow p-4">
-            <div class="relative mb-4">
-                <input type="text" id="busca-produto" placeholder="Buscar por nome, código ou código de barras..."
-                       class="w-full border rounded px-3 py-2" autofocus>
-                <div id="resultados-busca" class="absolute bg-white border rounded shadow w-full mt-1 hidden z-10"></div>
-            </div>
+        <div class="relative mb-4">
+            <input type="text" id="busca-produto" placeholder="Buscar por nome, código ou código de barras..."
+                class="w-full border rounded px-3 py-2" autofocus>
+        </div>
 
             <table class="w-full">
                 <thead>
@@ -249,18 +280,33 @@
 
 @section('scripts')
 
+
+@php
+    $itensParaCarrinho = collect($itensIniciais)->map(fn($i) => [
+        'chave' => $i['produto_id'] . '-' . ($i['produto_variante_id'] ?? '0'),
+        'produto_id' => $i['produto_id'],
+        'produto_variante_id' => $i['produto_variante_id'],
+        'nome' => $i['nome'],
+        'preco' => $i['preco'],
+        'quantidade' => $i['quantidade'],
+        'desconto' => $i['desconto_bruto'] ?? 0,
+    ])->values();
+@endphp
+
 <script>
 
 
-let carrinho = [];
+let carrinho = @json($itensParaCarrinho);
+let quantidadeMultiplicador = 1;
 let resultadosAtuais = [];
 let indiceSelecionado = -1;
-let descontoGlobal = 0;
+let descontoGlobal = {{ $descontoGlobalInicial }};
 let tipoDescontoPendente = null;
 let timeoutBusca;
 
 const inputBusca = document.getElementById('busca-produto');
-const resultadosDiv = document.getElementById('resultados-busca');
+const inputBuscaModal = document.getElementById('busca-produto-modal');
+const linhasBuscaDiv = document.getElementById('linhas-busca-produto');
 
 
 document.addEventListener('keydown', (e) => {
@@ -275,12 +321,20 @@ document.addEventListener('keydown', (e) => {
 });
 
 
-inputBusca.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && resultadosAtuais.length === 0) {
+inputBuscaModal.addEventListener('keydown', (e) => {
+    // Enter forca a busca imediata, mesmo se o texto for so numeros
+    // (util pra codigo de produto puramente numerico, sem multiplicador)
+    if (e.key === 'Enter' && resultadosAtuais.length === 0 && inputBuscaModal.value.trim().length > 0) {
         e.preventDefault();
-        irParaPagamento();
+        const { multiplicador, termo } = interpretarBusca(inputBuscaModal.value);
+        quantidadeMultiplicador = multiplicador;
+        if (termo.length > 0) {
+            buscarProduto(termo);
+        }
         return;
     }
+
+    if (resultadosAtuais.length === 0) return;
 
     if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -300,8 +354,47 @@ inputBusca.addEventListener('keydown', (e) => {
     }
 });
 
+
+inputBusca.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && inputBusca.value.trim().length > 0) {
+        e.preventDefault();
+        const { multiplicador, termo } = interpretarBusca(inputBusca.value);
+        quantidadeMultiplicador = multiplicador;
+        if (termo.length > 0) {
+            buscarProduto(termo);
+        }
+    }
+});
+
+function interpretarBusca(valor) {
+    const match = valor.match(/^(\d+)\*(.*)$/);
+
+    if (match) {
+        return {
+            multiplicador: parseInt(match[1]),
+            termo: match[2].trim(),
+        };
+    }
+
+    return { multiplicador: 1, termo: valor.trim() };
+}
+
+
+
+function atualizarIndicadorMultiplicador() {
+    const indicador = document.getElementById('indicador-multiplicador');
+
+    if (quantidadeMultiplicador > 1) {
+        indicador.innerText = `Quantidade: ${quantidadeMultiplicador}x`;
+        indicador.classList.remove('hidden');
+    } else {
+        indicador.classList.add('hidden');
+    }
+}
+
+
 function scrollParaSelecionado() {
-    const elemento = resultadosDiv.querySelector(`[data-index="${indiceSelecionado}"]`);
+    const elemento = linhasBuscaDiv.querySelector(`[data-index="${indiceSelecionado}"]`);
     elemento?.scrollIntoView({ block: 'nearest' });
 }
 
@@ -316,6 +409,7 @@ function fecharTodosModais() {
         'modal-desconto-global',
         'modal-cancelar-item',
         'modal-autorizacao',
+        'modal-busca-produto',
     ];
 
     idsModais.forEach(id => {
@@ -329,27 +423,31 @@ function fecharTodosModais() {
     tipoDescontoPendente = null;
 }
 
-
-
 inputBusca.addEventListener('input', () => {
     clearTimeout(timeoutBusca);
-    const termo = inputBusca.value.trim();
+    const valor = inputBusca.value;
 
-    if (termo.length < 2) {
-        resultadosDiv.classList.add('hidden');
-        resultadosAtuais = [];
-        indiceSelecionado = -1;
+    // Enquanto for só numeros (sem * ainda), aguarda - pode ser o começo de "3*produto"
+    if (/^\d+$/.test(valor)) {
+        return;
+    }
+
+    const { multiplicador, termo } = interpretarBusca(valor);
+    quantidadeMultiplicador = multiplicador;
+
+    if (termo.length < 1) {
         return;
     }
 
     timeoutBusca = setTimeout(() => buscarProduto(termo), 300);
 });
 
+
+
 async function buscarProduto(termo) {
     const resp = await fetch(`{{ route('vendas.buscar-produto') }}?termo=${encodeURIComponent(termo)}`);
     const produtos = await resp.json();
 
-    // Monta uma lista "achatada": cada opcao e um produto OU uma variante especifica
     resultadosAtuais = [];
     produtos.forEach(p => {
         if (p.tem_variacao && p.variantes.length > 0) {
@@ -361,39 +459,64 @@ async function buscarProduto(termo) {
 
     indiceSelecionado = resultadosAtuais.length > 0 ? 0 : -1;
 
+    abrirModalBusca();
     renderizarResultados();
 }
 
+
+function abrirModalBusca() {
+    document.getElementById('modal-busca-produto').classList.remove('hidden');
+    document.getElementById('modal-busca-produto').classList.add('flex');
+    inputBuscaModal.value = inputBusca.value;
+    inputBuscaModal.focus();
+}
+
+function fecharModalBusca() {
+    document.getElementById('modal-busca-produto').classList.add('hidden');
+    document.getElementById('modal-busca-produto').classList.remove('flex');
+    inputBusca.value = '';
+    inputBuscaModal.value = '';
+    quantidadeMultiplicador = 1;
+    document.getElementById('indicador-multiplicador').classList.add('hidden');
+    inputBusca.focus();
+}
+
+
 function renderizarResultados() {
     if (resultadosAtuais.length === 0) {
-        resultadosDiv.innerHTML = '<div class="p-3 text-sm text-gray-400">Nenhum produto encontrado.</div>';
-        resultadosDiv.classList.remove('hidden');
+        linhasBuscaDiv.innerHTML = '<tr><td colspan="4" class="p-3 text-sm text-gray-400 text-center">Nenhum produto encontrado.</td></tr>';
         return;
     }
 
-    resultadosDiv.innerHTML = resultadosAtuais.map((op, index) => {
+    linhasBuscaDiv.innerHTML = resultadosAtuais.map((op, index) => {
         const destacado = index === indiceSelecionado;
-        const texto = op.variante
-            ? `${op.produto.nome} — ${op.variante.cor ?? ''} ${op.variante.tamanho ?? ''} (estoque: ${op.variante.estoque})`
-            : `${op.produto.nome} — R$ ${Number(op.produto.preco_venda).toFixed(2)} (estoque: ${op.produto.estoque})`;
+        const codigo = op.produto.codigo_barras || op.produto.codigo_interno;
+        const nome = op.variante
+            ? `${op.produto.nome} — ${op.variante.cor ?? ''} ${op.variante.tamanho ?? ''}`
+            : op.produto.nome;
+        const preco = Number(op.produto.preco_venda).toFixed(2);
+        const estoque = op.variante ? op.variante.estoque : op.produto.estoque;
 
         return `
-            <div class="p-3 cursor-pointer border-b text-sm ${destacado ? 'bg-blue-100' : 'hover:bg-gray-100'}"
-                 data-index="${index}"
-                 onclick="selecionarResultado(${index})">
-                ${texto}
-            </div>
+            <tr class="cursor-pointer border-b ${destacado ? 'bg-blue-100' : 'hover:bg-gray-100'}"
+                data-index="${index}"
+                onclick="selecionarResultado(${index})">
+                <td class="py-2">${codigo}</td>
+                <td class="py-2">${nome}</td>
+                <td class="py-2">R$ ${preco}</td>
+                <td class="py-2">${estoque}</td>
+            </tr>
         `;
     }).join('');
-
-    resultadosDiv.classList.remove('hidden');
 }
+
 
 function selecionarResultado(index) {
     const op = resultadosAtuais[index];
     adicionarAoCarrinho(op.produto, op.variante);
     resultadosAtuais = [];
     indiceSelecionado = -1;
+    fecharModalBusca();
 }
 
 
@@ -402,9 +525,8 @@ function adicionarAoCarrinho(produto, variante) {
     const existente = carrinho.find(i => i.chave === chaveBase && !i.cancelado);
 
     if (existente) {
-        existente.quantidade++;
+        existente.quantidade += quantidadeMultiplicador;
     } else {
-        // Se ja existe um item cancelado com essa mesma chave base, gera uma chave unica pro novo
         const chave = carrinho.some(i => i.chave === chaveBase)
             ? chaveBase + '-' + Date.now()
             : chaveBase;
@@ -414,12 +536,11 @@ function adicionarAoCarrinho(produto, variante) {
             produto_variante_id: variante ? variante.id : null,
             nome: produto.nome + (variante ? ` — ${variante.cor ?? ''} ${variante.tamanho ?? ''}` : ''),
             preco: parseFloat(produto.preco_venda),
-            quantidade: 1,
+            quantidade: quantidadeMultiplicador,
         });
     }
 
-    inputBusca.value = '';
-    resultadosDiv.classList.add('hidden');
+    quantidadeMultiplicador = 1; // reseta pra proxima busca
     renderizarCarrinho();
 }
 
@@ -1028,13 +1149,18 @@ function confirmarCancelarItem() {
 }
 
 
-function executarLimparPdv() {
+async function executarLimparPdv() {
     if (!confirm('Confirma o cancelamento do cupom? Todos os itens do carrinho serão removidos.')) {
         return;
     }
 
     carrinho = [];
     descontoGlobal = 0;
+
+    await fetch('{{ route("vendas.limpar-sessao") }}', {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+    });
 
     renderizarCarrinho();
 }
@@ -1060,7 +1186,8 @@ async function irParaPagamento() {
             nome: i.nome,
             quantidade: i.quantidade,
             preco: i.preco,
-            desconto: Math.round(i.descontoEfetivo * 100) / 100,
+            desconto: Math.round(i.descontoEfetivo * 100) / 100, // usado na finalizacao da venda
+            desconto_bruto: i.desconto ?? 0, // usado so pra recarregar o carrinho depois
             subtotal: Math.round(i.subtotalLiquido * 100) / 100,
         })),
         desconto_item: descontoPorItem,
@@ -1084,6 +1211,6 @@ async function irParaPagamento() {
         document.getElementById('erro-itens').classList.remove('hidden');
     }
 }
-
+renderizarCarrinho();
 </script>
 @endsection

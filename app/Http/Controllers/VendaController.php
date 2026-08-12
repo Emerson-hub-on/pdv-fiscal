@@ -19,7 +19,11 @@ class VendaController extends Controller
             return redirect()->route('caixa.abrir-form');
         }
 
-        return view('vendas.pdv', compact('caixa'));
+        $carrinhoSalvo = session('venda_carrinho');
+        $itensIniciais = $carrinhoSalvo['itens'] ?? [];
+        $descontoGlobalInicial = $carrinhoSalvo['desconto_global'] ?? 0;
+
+        return view('vendas.pdv', compact('caixa', 'itensIniciais', 'descontoGlobalInicial'));
     }
 
     /**
@@ -70,6 +74,7 @@ class VendaController extends Controller
             'desconto_item' => 'required|numeric',
             'desconto_global' => 'required|numeric',
             'total' => 'required|numeric',
+            'itens.*.desconto_bruto' => 'nullable|numeric',
         ]);
 
         session(['venda_carrinho' => $validado]);
@@ -86,6 +91,12 @@ class VendaController extends Controller
         }
 
         return view('vendas.pagamento', $dados);
+    }
+
+    public function limparSessaoCarrinho()
+    {
+        session()->forget('venda_carrinho');
+        return response()->json(['sucesso' => true]);
     }
     
     public function finalizar(Request $request)
@@ -180,6 +191,7 @@ class VendaController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+            session()->forget('venda_carrinho');
 
             $emissao = ['sucesso' => false, 'contingencia' => false, 'erro' => null];
 
