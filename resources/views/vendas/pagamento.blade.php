@@ -3,66 +3,45 @@
 @section('titulo', 'Pagamento')
 
 @section('conteudo')
-    <div class="grid grid-cols-3 gap-6">
-        <div class="col-span-2 bg-white rounded shadow p-4">
-            <a href="{{ route('vendas.pdv') }}" class="text-sm text-gray-500 hover:underline mb-4 inline-block">← Voltar aos itens</a>
+<div class="max-w-md mx-auto">
+    <a href="{{ route('vendas.pdv') }}" class="text-sm text-gray-500 hover:underline mb-4 inline-block">← Voltar aos itens</a>
 
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="text-left text-xs text-gray-500 border-b">
-                        <th class="py-2">Produto</th>
-                        <th class="py-2">Qtd</th>
-                        <th class="py-2 text-right">Subtotal</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($itens as $item)
-                        <tr class="border-b">
-                            <td class="py-2">{{ $item['nome'] }}</td>
-                            <td class="py-2">{{ $item['quantidade'] }}</td>
-                            <td class="py-2 text-right">R$ {{ number_format($item['subtotal'], 2, ',', '.') }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+    <div class="bg-white rounded shadow p-4">
+        <p class="text-sm text-gray-500 mb-1">Total a pagar</p>
+        <p class="text-3xl font-bold mb-4">R$ {{ number_format($total, 2, ',', '.') }}</p>
+
+        <div class="text-sm mb-4 space-y-1">
+            <p>Desconto por item: <strong class="text-green-600">R$ {{ number_format($desconto_item, 2, ',', '.') }}</strong></p>
+            <p>Desconto global: <strong class="text-green-600">R$ {{ number_format($desconto_global, 2, ',', '.') }}</strong></p>
+            <p>Desconto aplicado: <strong class="text-green-700">R$ {{ number_format($desconto_item + $desconto_global, 2, ',', '.') }}</strong></p>
         </div>
 
-        <div class="bg-white rounded shadow p-4 h-fit">
-            <p class="text-sm text-gray-500 mb-1">Total a pagar</p>
-            <p class="text-3xl font-bold mb-4">R$ {{ number_format($total, 2, ',', '.') }}</p>
+        <label class="block text-sm font-medium mb-1">Pagamentos</label>
+        <div id="lista-pagamentos" class="space-y-2 mb-2"></div>
 
-            <div class="text-sm mb-4 space-y-1">
-                <p>Desconto por item: <strong class="text-green-600">R$ {{ number_format($desconto_item, 2, ',', '.') }}</strong></p>
-                <p>Desconto global: <strong class="text-green-600">R$ {{ number_format($desconto_global, 2, ',', '.') }}</strong></p>
-                <p>Desconto aplicado: <strong class="text-green-700">R$ {{ number_format($desconto_item + $desconto_global, 2, ',', '.') }}</strong></p>
-            </div>
-
-            <label class="block text-sm font-medium mb-1">Pagamentos</label>
-            <div id="lista-pagamentos" class="space-y-2 mb-2"></div>
-
-            <div class="flex gap-2 mb-2">
-                <select id="nova-forma-pagamento" class="flex-1 border rounded px-2 py-1 text-sm">
-                    <option value="dinheiro">Dinheiro</option>
-                    <option value="pix">PIX</option>
-                    <option value="credito">Cartão de Crédito</option>
-                    <option value="debito">Cartão de Débito</option>
-                </select>
-                <input type="number" step="0.01" id="novo-valor-pagamento" placeholder="Valor" class="w-24 border rounded px-2 py-1 text-sm">
-                <button type="button" onclick="adicionarPagamento()" class="bg-gray-200 hover:bg-gray-300 px-3 rounded text-sm">+</button>
-            </div>
-
-            <p class="text-sm mb-4">
-                Restante a pagar: <strong id="restante-pagamento">R$ 0,00</strong>
-            </p>
-
-            <button id="btn-finalizar" onclick="finalizarVenda()"
-                    class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded font-bold text-lg disabled:opacity-50">
-                Finalizar Venda
-            </button>
-
-            <p id="erro-venda" class="text-red-600 text-sm mt-2 hidden"></p>
+        <div class="flex gap-2 mb-2">
+            <select id="nova-forma-pagamento" class="flex-1 border rounded px-2 py-1 text-sm">
+                <option value="dinheiro">Dinheiro</option>
+                <option value="pix">PIX</option>
+                <option value="credito">Cartão de Crédito</option>
+                <option value="debito">Cartão de Débito</option>
+            </select>
+            <input type="number" step="0.01" id="novo-valor-pagamento" placeholder="Valor" autofocus class="w-24 border rounded px-2 py-1 text-sm">
+            <button type="button" onclick="adicionarPagamento()" class="bg-gray-200 hover:bg-gray-300 px-3 rounded text-sm">+</button>
         </div>
+
+        <p class="text-sm mb-4">
+            Restante a pagar: <strong id="restante-pagamento">R$ 0,00</strong>
+        </p>
+
+        <button id="btn-finalizar" onclick="finalizarVenda()"
+                class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded font-bold text-lg disabled:opacity-50">
+            Aperte F2 Para Finalizar
+        </button>
+
+        <p id="erro-venda" class="text-red-600 text-sm mt-2 hidden"></p>
     </div>
+</div>
 @endsection
 
 @section('scripts')
@@ -70,6 +49,42 @@
 const itensDaVenda = @json($itens);
 const totalDaVenda = {{ $total }};
 let pagamentos = [];
+
+
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        window.location.href = '{{ route("vendas.pdv") }}';
+    }
+    if (e.key === 'F2') {
+        e.preventDefault();
+        finalizarVenda();
+    }
+});
+
+
+document.getElementById('novo-valor-pagamento').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const valor = parseFloat(document.getElementById('novo-valor-pagamento').value);
+
+        if (!valor || valor <= 0) {
+            alert('Informe um valor válido.');
+            return;
+        }
+
+        document.getElementById('nova-forma-pagamento').focus();
+    }
+});
+
+document.getElementById('nova-forma-pagamento').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        adicionarPagamento();
+        document.getElementById('novo-valor-pagamento').focus();
+    }
+});
+
 
 function atualizarRestante() {
     const pago = pagamentos.reduce((soma, p) => soma + p.valor, 0);
@@ -102,6 +117,7 @@ function adicionarPagamento() {
 
     pagamentos.push({ forma_pagamento: forma, valor });
     document.getElementById('novo-valor-pagamento').value = '';
+    document.getElementById('novo-valor-pagamento').focus();
     renderizarPagamentos();
 }
 
