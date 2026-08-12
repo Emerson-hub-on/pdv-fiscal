@@ -117,8 +117,17 @@ function adicionarPagamento() {
 
     pagamentos.push({ forma_pagamento: forma, valor });
     document.getElementById('novo-valor-pagamento').value = '';
-    document.getElementById('novo-valor-pagamento').focus();
     renderizarPagamentos();
+
+    const diferenca = atualizarRestante();
+
+    if (diferenca >= -0.009) {
+        // Valor total (ou mais) ja foi coberto - nao abre novo campo, foca no botao de finalizar
+        document.getElementById('btn-finalizar').focus();
+    } else {
+        // Ainda falta pagar - abre o campo de valor de novo, pronto pra proxima forma
+        document.getElementById('novo-valor-pagamento').focus();
+    }
 }
 
 function removerPagamento(index) {
