@@ -20,13 +20,13 @@
         <div id="lista-pagamentos" class="space-y-2 mb-2"></div>
 
         <div class="flex gap-2 mb-2">
+            <input type="number" step="0.01" id="novo-valor-pagamento" placeholder="Valor" autofocus class="w-24 border rounded px-2 py-1 text-sm">
             <select id="nova-forma-pagamento" class="flex-1 border rounded px-2 py-1 text-sm">
                 <option value="dinheiro">Dinheiro</option>
                 <option value="pix">PIX</option>
                 <option value="credito">Cartão de Crédito</option>
                 <option value="debito">Cartão de Débito</option>
             </select>
-            <input type="number" step="0.01" id="novo-valor-pagamento" placeholder="Valor" autofocus class="w-24 border rounded px-2 py-1 text-sm">
             <button type="button" onclick="adicionarPagamento()" class="bg-gray-200 hover:bg-gray-300 px-3 rounded text-sm">+</button>
         </div>
 
