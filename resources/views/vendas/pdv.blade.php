@@ -544,16 +544,6 @@ function adicionarAoCarrinho(produto, variante) {
     renderizarCarrinho();
 }
 
-function alterarQuantidade(chave, delta) {
-    const item = carrinho.find(i => i.chave === chave);
-    item.quantidade += delta;
-    if (item.quantidade <= 0) {
-        carrinho = carrinho.filter(i => i.chave !== chave);
-    }
-    renderizarCarrinho();
-}
-
-
 
 function renderizarCarrinho() {
     const tbody = document.getElementById('linhas-carrinho');
@@ -574,13 +564,7 @@ function renderizarCarrinho() {
         <tr class="border-b ${item.cancelado ? 'bg-red-50' : ''}">
             <td class="py-2 text-gray-400 font-mono">${index + 1}</td>
             <td class="py-2 ${item.cancelado ? 'text-red-600 line-through' : ''}">${item.nome}</td>
-            <td class="py-2 ${item.cancelado ? 'text-red-600 line-through' : ''}">
-                ${item.cancelado ? item.quantidade : `
-                    <button onclick="alterarQuantidade('${item.chave}', -1)" class="px-2 bg-gray-200 rounded">-</button>
-                    <span class="mx-2">${item.quantidade}</span>
-                    <button onclick="alterarQuantidade('${item.chave}', 1)" class="px-2 bg-gray-200 rounded">+</button>
-                `}
-            </td>
+            <td class="py-2 ${item.cancelado ? 'text-red-600 line-through' : ''}">${item.quantidade}</td>
             <td class="py-2 ${item.cancelado ? 'text-red-600 line-through' : ''}">R$ ${item.preco.toFixed(2)}</td>
             <td class="py-2 ${item.cancelado ? 'text-red-600 line-through' : ''}">R$ ${item.descontoEfetivo.toFixed(2)}</td>
             <td class="py-2 ${item.cancelado ? 'text-red-600 line-through' : ''}">R$ ${item.subtotalLiquido.toFixed(2)}</td>
