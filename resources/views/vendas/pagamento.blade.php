@@ -21,12 +21,20 @@
 
         <div class="flex gap-2 mb-2">
             <input type="number" step="0.01" id="novo-valor-pagamento" placeholder="Valor" autofocus class="w-24 border rounded px-2 py-1 text-sm">
-            <select id="nova-forma-pagamento" class="flex-1 border rounded px-2 py-1 text-sm">
-                <option value="dinheiro">Dinheiro</option>
-                <option value="pix">PIX</option>
-                <option value="credito">Cartão de Crédito</option>
-                <option value="debito">Cartão de Débito</option>
-            </select>
+
+            <div class="relative flex-1">
+                <button type="button" id="btn-forma-pagamento" onclick="toggleDropdownFormaPagamento()"
+                        class="w-full border rounded px-2 py-1 text-sm text-left bg-white">
+                    Dinheiro
+                </button>
+                <div id="dropdown-forma-pagamento" class="absolute bg-white border rounded shadow w-full mt-1 hidden z-10">
+                    <div class="p-2 cursor-pointer text-sm" data-forma="dinheiro" data-index="0" onclick="selecionarFormaPagamento('dinheiro')">Dinheiro</div>
+                    <div class="p-2 cursor-pointer text-sm" data-forma="pix" data-index="1" onclick="selecionarFormaPagamento('pix')">PIX</div>
+                    <div class="p-2 cursor-pointer text-sm" data-forma="credito" data-index="2" onclick="selecionarFormaPagamento('credito')">Cartão de Crédito</div>
+                    <div class="p-2 cursor-pointer text-sm" data-forma="debito" data-index="3" onclick="selecionarFormaPagamento('debito')">Cartão de Débito</div>
+                </div>
+            </div>
+
             <button type="button" onclick="adicionarPagamento()" class="bg-gray-200 hover:bg-gray-300 px-3 rounded text-sm">+</button>
         </div>
 
@@ -51,6 +59,69 @@ const totalDaVenda = {{ $total }};
 let pagamentos = [];
 
 
+const formasPagamento = [
+    { valor: 'dinheiro', label: 'Dinheiro' },
+    { valor: 'pix', label: 'PIX' },
+    { valor: 'credito', label: 'Cartão de Crédito' },
+    { valor: 'debito', label: 'Cartão de Débito' },
+];
+
+let formaSelecionada = 'dinheiro';
+let indiceFormaDestacada = 0;
+
+function toggleDropdownFormaPagamento() {
+    const dropdown = document.getElementById('dropdown-forma-pagamento');
+    dropdown.classList.toggle('hidden');
+    if (!dropdown.classList.contains('hidden')) {
+        destacarFormaDropdown();
+    }
+}
+
+function abrirDropdownFormaPagamento() {
+    const dropdown = document.getElementById('dropdown-forma-pagamento');
+    dropdown.classList.remove('hidden');
+    indiceFormaDestacada = formasPagamento.findIndex(f => f.valor === formaSelecionada);
+    destacarFormaDropdown();
+}
+
+function fecharDropdownFormaPagamento() {
+    document.getElementById('dropdown-forma-pagamento').classList.add('hidden');
+}
+
+function destacarFormaDropdown() {
+    document.querySelectorAll('#dropdown-forma-pagamento > div').forEach((el, i) => {
+        el.classList.toggle('bg-blue-100', i === indiceFormaDestacada);
+    });
+}
+
+function selecionarFormaPagamento(valor) {
+    formaSelecionada = valor;
+    const label = formasPagamento.find(f => f.valor === valor).label;
+    document.getElementById('btn-forma-pagamento').innerText = label;
+    fecharDropdownFormaPagamento();
+    document.getElementById('btn-forma-pagamento').focus();
+}
+
+document.getElementById('btn-forma-pagamento').addEventListener('keydown', (e) => {
+    const dropdown = document.getElementById('dropdown-forma-pagamento');
+
+    if (dropdown.classList.contains('hidden')) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        indiceFormaDestacada = (indiceFormaDestacada + 1) % formasPagamento.length;
+        destacarFormaDropdown();
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        indiceFormaDestacada = (indiceFormaDestacada - 1 + formasPagamento.length) % formasPagamento.length;
+        destacarFormaDropdown();
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        selecionarFormaPagamento(formasPagamento[indiceFormaDestacada].valor);
+        adicionarPagamento();
+    }
+});
+
 
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -73,7 +144,8 @@ document.getElementById('novo-valor-pagamento').addEventListener('keydown', (e) 
             return;
         }
 
-        document.getElementById('nova-forma-pagamento').focus();
+        document.getElementById('btn-forma-pagamento').focus();
+        abrirDropdownFormaPagamento();
     }
 });
 
@@ -107,7 +179,7 @@ function atualizarRestante() {
 }
 
 function adicionarPagamento() {
-    const forma = document.getElementById('nova-forma-pagamento').value;
+    const forma = formaSelecionada;
     const valor = parseFloat(document.getElementById('novo-valor-pagamento').value);
 
     if (!valor || valor <= 0) {
@@ -122,10 +194,8 @@ function adicionarPagamento() {
     const diferenca = atualizarRestante();
 
     if (diferenca >= -0.009) {
-        // Valor total (ou mais) ja foi coberto - nao abre novo campo, foca no botao de finalizar
         document.getElementById('btn-finalizar').focus();
     } else {
-        // Ainda falta pagar - abre o campo de valor de novo, pronto pra proxima forma
         document.getElementById('novo-valor-pagamento').focus();
     }
 }
