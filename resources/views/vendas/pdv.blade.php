@@ -66,30 +66,32 @@
 
 
 <!-- Modal de busca de produto -->
-<div id="modal-busca-produto" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded shadow-lg w-full max-w-3xl max-h-[80vh] overflow-y-auto p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-bold">Selecionar Produto</h2>
-            <button onclick="fecharModalBusca()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+<div id="modal-busca-produto" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center px-6 py-4 bg-gradient-to-r from-slate-800 via-slate-900 to-slate-900">
+            <h2 class="text-lg font-bold text-white">🔍 Selecionar Produto</h2>
+            <button onclick="fecharModalBusca()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
 
-        <p id="indicador-multiplicador" class="text-sm text-blue-600 font-semibold mb-2 hidden"></p>
-        <input type="text" id="busca-produto-modal" placeholder="Buscar por nome, código ou código de barras..."
-               class="w-full border rounded px-3 py-2 mb-4">
+        <div class="p-6">
+            <p id="indicador-multiplicador" class="text-sm text-blue-600 font-semibold mb-2 hidden"></p>
+            <input type="text" id="busca-produto-modal" placeholder="Buscar por nome, código ou código de barras..."
+                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
 
-        <table class="w-full text-sm">
-            <thead>
-                <tr class="text-left text-xs text-gray-500 border-b">
-                    <th class="py-2">Código</th>
-                    <th class="py-2">Produto</th>
-                    <th class="py-2">Preço</th>
-                    <th class="py-2">Estoque</th>
-                </tr>
-            </thead>
-            <tbody id="linhas-busca-produto"></tbody>
-        </table>
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
+                        <th class="py-2">Código</th>
+                        <th class="py-2">Produto</th>
+                        <th class="py-2">Preço</th>
+                        <th class="py-2">Estoque</th>
+                    </tr>
+                </thead>
+                <tbody id="linhas-busca-produto"></tbody>
+            </table>
 
-        <p class="text-xs text-gray-400 mt-3">Use ↑ ↓ para navegar e Enter para selecionar.</p>
+            <p class="text-xs text-gray-400 mt-3">Use ↑ ↓ para navegar e Enter para selecionar.</p>
+        </div>
     </div>
 </div>
 
@@ -261,46 +263,48 @@
     
 
     <div class="grid grid-cols-3 gap-6 shadow-md">
-        <div class="col-span-2 bg-white rounded shadow p-4">
-        <div class="relative mb-4">
-            <input type="text" id="busca-produto" placeholder="Buscar por nome, código ou código de barras..."
-                class="w-full border rounded px-3 py-2" autofocus>
-        </div>
+        <div class="col-span-2 bg-white rounded-xl shadow-lg overflow-hidden">
+<div class="p-4">
+    <div class="relative mb-4">
+        <input type="text" id="busca-produto" placeholder="🔍 Buscar por nome, código ou código de barras..."
+            class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition" autofocus>
+    </div>
+</div>
 
-            <table class="w-full rounded-full">
-                <thead class="bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
-                    <tr class=" text-left text-sm text-gray-300 border-b">
-                        <th class="py-2 pl-1">Item</th>
-                        <th class="py-2">Produto</th>
-                        <th class="py-2">Qtd</th>
-                        <th class="py-2">Preço</th>
-                        <th class="py-2">Desconto</th>
-                        <th class="py-2">Subtotal</th>
-                        <th class="py-2"></th>
-                    </tr>
-                </thead>
-                <tbody id="linhas-carrinho"></tbody>
-            </table>
+<table class="w-full">
+    <thead class="bg-gradient-to-r from-slate-800 via-slate-900 to-slate-900">
+        <tr class="text-left text-xs text-slate-300 uppercase tracking-wide">
+            <th class="py-3 pl-4">Item</th>
+            <th class="py-3">Produto</th>
+            <th class="py-3">Qtd</th>
+            <th class="py-3">Preço</th>
+            <th class="py-3">Desconto</th>
+            <th class="py-3 pr-4">Subtotal</th>
+        </tr>
+    </thead>
+    <tbody id="linhas-carrinho"></tbody>
+</table>
+<p id="carrinho-vazio" class="text-center text-gray-400 py-16">🛒 Nenhum item adicionado.</p></table>
             <p id="carrinho-vazio" class="text-center text-gray-300 py-10">Nenhum item adicionado.</p>
         </div>
 
-        <div class="bg-white rounded shadow p-4 h-fit">
-            <p class="text-sm text-gray-500 mb-1">Total</p>
-            <p id="total-venda" class="text-3xl font-bold mb-4">R$ 0,00</p>
-        <div class="text-sm mb-4 space-y-1">
-            <p>Desconto por item: <strong id="desconto-item-exibido" class="text-green-600">R$ 0,00</strong></p>
-            <p>Desconto global: <strong id="desconto-global-exibido" class="text-green-600">R$ 0,00</strong></p>
-            <p>Desconto aplicado: <strong id="desconto-total-exibido" class="text-green-700">R$ 0,00</strong></p>
-        </div>
+<div class="bg-white rounded-xl shadow-lg p-5 h-fit">
+    <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Total</p>
+    <p id="total-venda" class="text-4xl font-bold text-slate-900 mb-5">R$ 0,00</p>
 
-        <button id="btn-prosseguir" onclick="irParaPagamento()"
-                class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded font-bold text-lg disabled:opacity-50">
-            Prosseguir para pagamento →
-        </button>
+    <div class="bg-gray-50 rounded-lg p-3 text-sm mb-5 space-y-1.5">
+        <p class="flex justify-between">Desconto por item <strong id="desconto-item-exibido" class="text-green-600">R$ 0,00</strong></p>
+        <p class="flex justify-between">Desconto global <strong id="desconto-global-exibido" class="text-green-600">R$ 0,00</strong></p>
+        <p class="flex justify-between border-t border-gray-200 pt-1.5 mt-1.5">Total de desconto <strong id="desconto-total-exibido" class="text-green-700">R$ 0,00</strong></p>
+    </div>
 
-        <p id="erro-itens" class="text-red-600 text-sm mt-2 hidden"></p>
-        
-        </div>
+    <button id="btn-prosseguir" onclick="irParaPagamento()"
+            class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-lg font-bold text-lg transition shadow-md disabled:opacity-50">
+        Prosseguir para pagamento →
+    </button>
+
+    <p id="erro-itens" class="text-red-600 text-sm mt-2 hidden"></p>
+</div>
     </div>
 @endsection
 
@@ -514,26 +518,26 @@ function renderizarResultados() {
         return;
     }
 
-    linhasBuscaDiv.innerHTML = resultadosAtuais.map((op, index) => {
-        const destacado = index === indiceSelecionado;
-        const codigo = op.produto.codigo_barras || op.produto.codigo_interno;
-        const nome = op.variante
-            ? `${op.produto.nome} — ${op.variante.cor ?? ''} ${op.variante.tamanho ?? ''}`
-            : op.produto.nome;
-        const preco = Number(op.produto.preco_venda).toFixed(2);
-        const estoque = op.variante ? op.variante.estoque : op.produto.estoque;
+linhasBuscaDiv.innerHTML = resultadosAtuais.map((op, index) => {
+    const destacado = index === indiceSelecionado;
+    const codigo = op.produto.codigo_barras || op.produto.codigo_interno;
+    const nome = op.variante
+        ? `${op.produto.nome} — ${op.variante.cor ?? ''} ${op.variante.tamanho ?? ''}`
+        : op.produto.nome;
+    const preco = Number(op.produto.preco_venda).toFixed(2);
+    const estoque = op.variante ? op.variante.estoque : op.produto.estoque;
 
-        return `
-            <tr class="cursor-pointer border-b ${destacado ? 'bg-blue-100' : 'hover:bg-gray-100'}"
-                data-index="${index}"
-                onclick="selecionarResultado(${index})">
-                <td class="py-2">${codigo}</td>
-                <td class="py-2">${nome}</td>
-                <td class="py-2">R$ ${preco}</td>
-                <td class="py-2">${estoque}</td>
-            </tr>
-        `;
-    }).join('');
+    return `
+        <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
+            data-index="${index}"
+            onclick="selecionarResultado(${index})">
+            <td class="py-3 font-mono text-sm ${destacado ? 'text-slate-300' : 'text-gray-500'}">${codigo}</td>
+            <td class="py-3 font-medium">${nome}</td>
+            <td class="py-3 ${destacado ? 'text-emerald-300' : 'text-emerald-600'} font-semibold">R$ ${preco}</td>
+            <td class="py-3 ${destacado ? 'text-slate-300' : 'text-gray-500'}">${estoque}</td>
+        </tr>
+    `;
+}).join('');
 }
 
 
@@ -586,17 +590,17 @@ function renderizarCarrinho() {
 
     const itensCalculados = calcularItensComDescontoRateado();
 
-    tbody.innerHTML = itensCalculados.map((item, index) => `
-        <tr class="border-b ${item.cancelado ? 'bg-red-50' : ''}">
-            <td class="py-2 text-gray-400 font-mono">${index + 1}</td>
-            <td class="py-2 ${item.cancelado ? 'text-red-600 line-through' : ''}">${item.nome}</td>
-            <td class="py-2 ${item.cancelado ? 'text-red-600 line-through' : ''}">${item.quantidade}</td>
-            <td class="py-2 ${item.cancelado ? 'text-red-600 line-through' : ''}">R$ ${item.preco.toFixed(2)}</td>
-            <td class="py-2 ${item.cancelado ? 'text-red-600 line-through' : ''}">R$ ${item.descontoEfetivo.toFixed(2)}</td>
-            <td class="py-2 ${item.cancelado ? 'text-red-600 line-through' : ''}">R$ ${item.subtotalLiquido.toFixed(2)}</td>
-            <td class="py-2 text-red-600 text-xs font-semibold">${item.cancelado ? 'Cancelado' : ''}</td>
-        </tr>
-    `).join('');
+tbody.innerHTML = itensCalculados.map((item, index) => `
+    <tr class="border-b border-gray-100 hover:bg-slate-50 transition ${item.cancelado ? 'bg-red-50' : ''}">
+        <td class="py-3 pl-4 text-gray-400 font-mono text-sm">${index + 1}</td>
+        <td class="py-3 font-medium ${item.cancelado ? 'text-red-500 line-through' : 'text-gray-800'}">${item.nome}</td>
+        <td class="py-3 ${item.cancelado ? 'text-red-500 line-through' : 'text-gray-600'}">${item.quantidade}</td>
+        <td class="py-3 ${item.cancelado ? 'text-red-500 line-through' : 'text-gray-600'}">R$ ${item.preco.toFixed(2)}</td>
+        <td class="py-3 ${item.cancelado ? 'text-red-500 line-through' : (item.descontoEfetivo > 0 ? 'text-green-600 font-medium' : 'text-gray-400')}">R$ ${item.descontoEfetivo.toFixed(2)}</td>
+        <td class="py-3 pr-4 font-semibold ${item.cancelado ? 'text-red-500 line-through' : 'text-gray-900'}">R$ ${item.subtotalLiquido.toFixed(2)}</td>
+        ${item.cancelado ? `<td class="py-3 pr-4 text-red-600 text-xs font-bold text-right">✕ Cancelado</td>` : ''}
+    </tr>
+`).join('');
 
     atualizarTotais();
 }
