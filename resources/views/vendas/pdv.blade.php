@@ -9,7 +9,7 @@
 </style>
 
 <div class="fixed top-0 left-0 right-0 z-50
-            bg-gradient-to-r from-slate-800 via-slate-900 to-slate-900
+            bg-linear-to-r from-slate-800 via-slate-900 to-slate-900
             shadow-lg overflow-hidden">
     <div class="flex justify-between items-center px-6 py-4 border-b border-white/10">
         <div>
