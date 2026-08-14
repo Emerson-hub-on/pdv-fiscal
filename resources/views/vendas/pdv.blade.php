@@ -268,7 +268,7 @@
         </div>
 
             <table class="w-full rounded-full">
-                <thead class="bg-gradient-to-r from-slate-800 via-slate-900 to-slate-900">
+                <thead class="bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
                     <tr class=" text-left text-sm text-gray-300 border-b">
                         <th class="py-2 pl-1">Item</th>
                         <th class="py-2">Produto</th>
