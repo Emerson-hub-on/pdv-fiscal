@@ -3,12 +3,14 @@
 @section('titulo', 'PDV - Venda')
 
 @section('conteudo')
-<div class="flex justify-between items-center mb-4">
+<div class="pt-32 flex justify-between items-center mb-4">
 <style>
     #nav-principal { display: none; }
 </style>
 
-<div class="bg-gradient-to-r from-slate-800 via-slate-900 to-slate-900 rounded-xl shadow-lg mb-6 overflow-hidden">
+<div class="fixed top-0 left-0 right-0 z-50
+            bg-gradient-to-r from-slate-800 via-slate-900 to-slate-900
+            shadow-lg overflow-hidden">
     <div class="flex justify-between items-center px-6 py-4 border-b border-white/10">
         <div>
             <h1 class="text-xl font-bold text-white tracking-tight">🛒 {{ $caixa->pdv->nome }}</h1>
