@@ -272,7 +272,7 @@
 </div>
 
 <table class="w-full">
-    <thead class="bg-gradient-to-r from-slate-800 via-slate-900 to-slate-900">
+    <thead class="bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
         <tr class="text-left text-xs text-slate-300 uppercase tracking-wide">
             <th class="py-3 pl-4">Item</th>
             <th class="py-3">Produto</th>
