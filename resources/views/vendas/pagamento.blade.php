@@ -34,8 +34,6 @@
                     <div class="p-2 cursor-pointer text-sm" data-forma="debito" data-index="3" onclick="selecionarFormaPagamento('debito')">Cartão de Débito</div>
                 </div>
             </div>
-
-            <button type="button" onclick="adicionarPagamento()" class="bg-gray-200 hover:bg-gray-300 px-3 rounded text-sm">+</button>
         </div>
 
         <p class="text-sm mb-4">
@@ -149,13 +147,6 @@ document.getElementById('novo-valor-pagamento').addEventListener('keydown', (e) 
     }
 });
 
-document.getElementById('nova-forma-pagamento').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        adicionarPagamento();
-        document.getElementById('novo-valor-pagamento').focus();
-    }
-});
 
 
 function atualizarRestante() {
