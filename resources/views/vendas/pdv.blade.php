@@ -4,36 +4,61 @@
 
 @section('conteudo')
 <div class="flex justify-between items-center mb-4">
-    <div>
-        <h1 class="text-2xl font-bold">Nova Venda</h1>
-        <p class="text-sm text-gray-500">
-            {{ $caixa->pdv->nome }} — Série {{ $caixa->pdv->serie_nfce }} — Próxima NFC-e: nº {{ $caixa->pdv->numero_atual_nfce + 1 }}
-        </p>
+<style>
+    #nav-principal { display: none; }
+</style>
+
+<div class="bg-gradient-to-r from-slate-800 via-slate-900 to-slate-900 rounded-xl shadow-lg mb-6 overflow-hidden">
+    <div class="flex justify-between items-center px-6 py-4 border-b border-white/10">
+        <div>
+            <h1 class="text-xl font-bold text-white tracking-tight">🛒 {{ $caixa->pdv->nome }}</h1>
+            <p class="text-xs text-slate-400 mt-0.5">
+                Série {{ $caixa->pdv->serie_nfce }} · Próxima NFC-e nº {{ $caixa->pdv->numero_atual_nfce + 1 }}
+            </p>
+        </div>
+        <div class="flex gap-2">
+            <button id="btn-sincronizar" onclick="sincronizarAgora()"
+                    class="bg-blue-700 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
+                🔄 Atualizar Caixa
+            </button>
+            <a href="{{ route('caixa.fechar-form') }}"
+               class="bg-red-700 hover:bg-red-500 text-white text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
+                🚪 Fechar Caixa
+            </a>
+        </div>
     </div>
-    <div class="flex gap-4 items-center">
-        <button onclick="abrirModalContingencias()" class="text-orange-600 hover:underline text-sm">
-            Contingências (F1)
+
+    <div class="flex flex-wrap gap-2 px-6 py-3 bg-black/20">
+        <button onclick="abrirModalContingencias()"
+                class="bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 text-xs font-semibold px-3 py-1.5 transition">
+            ⚠️ Contingências <span class="opacity-60">F1</span>
         </button>
-        <button onclick="abrirModalCancelamento()" class="text-red-700 hover:underline text-sm">
-            Cancelar NFC-e (F3)
+        <button onclick="abrirModalInutilizacao()"
+                class="bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-semibold px-3 py-1.5 transition">
+            Inutilizar <span class="opacity-60">F2</span>
         </button>
-        <button onclick="abrirModalInutilizacao()" class="text-red-600 hover:underline text-sm">
-            Inutilizar NFC-e (F2)
+        <button onclick="abrirModalCancelamento()"
+                class="bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-semibold px-3 py-1.5 transition">
+            Cancelar NFC-e <span class="opacity-60">F3</span>
         </button>
-        <button onclick="abrirModalDescontoItem()" class="text-purple-600 hover:underline text-sm">
-            Desconto Item (F4)
+        <button onclick="abrirModalDescontoItem()"
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-semibold px-3 py-1.5 transition">
+            Desconto Item <span class="opacity-60">F4</span>
         </button>
-        <button onclick="abrirModalDescontoGlobal()" class="text-purple-700 hover:underline text-sm">
-            Desconto Geral (F5)
+        <button onclick="abrirModalDescontoGlobal()"
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-semibold px-3 py-1.5 transition">
+            Desconto Geral <span class="opacity-60">F5</span>
         </button>
-        <button onclick="abrirModalCancelarItem()" class="text-red-600 hover:underline text-sm">
-            Cancelar Item (F6)
+        <button onclick="abrirModalCancelarItem()"
+                class="bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs font-semibold px-3 py-1.5 transition">
+            Cancelar Item <span class="opacity-60">F6</span>
         </button>
-        <button onclick="abrirModalLimparPdv()" class="text-red-800 hover:underline text-sm font-semibold">
-            Cancelar Cupom (F7)
+        <button onclick="abrirModalLimparPdv()"
+                class="bg-red-600/30 hover:bg-red-600/40 text-red-200 text-xs font-bold px-3 py-1.5 transition">
+            Cancelar Cupom <span class="opacity-60">F7</span>
         </button>
-        <a href="{{ route('caixa.fechar-form') }}" class="text-red-600 hover:underline text-sm">Fechar Caixa</a>
     </div>
+</div>
 </div>
 
 
@@ -233,7 +258,7 @@
 </div>
     
 
-    <div class="grid grid-cols-3 gap-6">
+    <div class="grid grid-cols-3 gap-6 shadow-md">
         <div class="col-span-2 bg-white rounded shadow p-4">
         <div class="relative mb-4">
             <input type="text" id="busca-produto" placeholder="Buscar por nome, código ou código de barras..."
@@ -241,8 +266,8 @@
         </div>
 
             <table class="w-full">
-                <thead>
-                    <tr class="text-left text-sm text-gray-500 border-b">
+                <thead class="bg-gradient-to-r from-slate-800 via-slate-900 to-slate-900">
+                    <tr class=" text-left text-sm text-gray-500 border-b">
                         <th class="py-2">Item</th>
                         <th class="py-2">Produto</th>
                         <th class="py-2">Qtd</th>
@@ -254,7 +279,6 @@
                 </thead>
                 <tbody id="linhas-carrinho"></tbody>
             </table>
-
             <p id="carrinho-vazio" class="text-center text-gray-400 py-10">Nenhum item adicionado.</p>
         </div>
 
