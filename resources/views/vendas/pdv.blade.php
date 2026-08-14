@@ -265,10 +265,10 @@
                 class="w-full border rounded px-3 py-2" autofocus>
         </div>
 
-            <table class="w-full">
+            <table class="w-full rounded-full">
                 <thead class="bg-gradient-to-r from-slate-800 via-slate-900 to-slate-900">
-                    <tr class=" text-left text-sm text-gray-500 border-b">
-                        <th class="py-2">Item</th>
+                    <tr class=" text-left text-sm text-gray-300 border-b">
+                        <th class="py-2 pl-1">Item</th>
                         <th class="py-2">Produto</th>
                         <th class="py-2">Qtd</th>
                         <th class="py-2">Preço</th>
@@ -279,7 +279,7 @@
                 </thead>
                 <tbody id="linhas-carrinho"></tbody>
             </table>
-            <p id="carrinho-vazio" class="text-center text-gray-400 py-10">Nenhum item adicionado.</p>
+            <p id="carrinho-vazio" class="text-center text-gray-300 py-10">Nenhum item adicionado.</p>
         </div>
 
         <div class="bg-white rounded shadow p-4 h-fit">
