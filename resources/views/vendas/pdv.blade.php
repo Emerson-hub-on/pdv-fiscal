@@ -69,7 +69,7 @@
 <div id="modal-busca-produto" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
         <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
-            <h2 class="text-lg font-bold text-white">🔍 Selecionar Produto</h2>
+            <h2 class="text-lg font-bold text-white">Selecionar Produto</h2>
             <button onclick="fecharModalBusca()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
 
@@ -77,7 +77,6 @@
             <p id="indicador-multiplicador" class="text-sm text-blue-600 font-semibold mb-2 hidden"></p>
             <input type="text" id="busca-produto-modal" placeholder="Buscar por nome, código ou código de barras..."
                    class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
-
             <table class="w-full text-sm">
                 <thead>
                     <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
@@ -284,8 +283,7 @@
     </thead>
     <tbody id="linhas-carrinho"></tbody>
 </table>
-<p id="carrinho-vazio" class="text-center text-gray-400 py-16">🛒 Nenhum item adicionado.</p></table>
-            <p id="carrinho-vazio" class="text-center text-gray-300 py-10">Nenhum item adicionado.</p>
+        <p id="carrinho-vazio" class="text-center text-gray-400 py-16">Nenhum item adicionado.</p></table>
         </div>
 
 <div class="bg-white rounded-xl shadow-lg p-5 h-fit">
