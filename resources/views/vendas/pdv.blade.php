@@ -32,15 +32,15 @@
 
     <div class="flex flex-wrap gap-2 px-6 py-3 bg-black/20">
         <button onclick="abrirModalContingencias()"
-                class="bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 text-xs font-semibold px-3 py-1.5 transition">
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-semibold px-3 py-1.5 transition">
             ⚠️ Contingências <span class="opacity-60">F1</span>
         </button>
         <button onclick="abrirModalInutilizacao()"
-                class="bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-semibold px-3 py-1.5 transition">
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-semibold px-3 py-1.5 transition">
             Inutilizar <span class="opacity-60">F2</span>
         </button>
         <button onclick="abrirModalCancelamento()"
-                class="bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-semibold px-3 py-1.5 transition">
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-semibold px-3 py-1.5 transition">
             Cancelar NFC-e <span class="opacity-60">F3</span>
         </button>
         <button onclick="abrirModalDescontoItem()"
@@ -52,11 +52,11 @@
             Desconto Geral <span class="opacity-60">F5</span>
         </button>
         <button onclick="abrirModalCancelarItem()"
-                class="bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs font-semibold px-3 py-1.5 transition">
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-semibold px-3 py-1.5 transition">
             Cancelar Item <span class="opacity-60">F6</span>
         </button>
         <button onclick="abrirModalLimparPdv()"
-                class="bg-red-600/30 hover:bg-red-600/40 text-red-200 text-xs font-bold px-3 py-1.5 transition">
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-bold px-3 py-1.5 transition">
             Cancelar Cupom <span class="opacity-60">F7</span>
         </button>
     </div>
