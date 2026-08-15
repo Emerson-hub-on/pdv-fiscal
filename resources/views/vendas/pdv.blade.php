@@ -68,7 +68,7 @@
 <!-- Modal de busca de produto -->
 <div id="modal-busca-produto" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
-        <div class="flex justify-between items-center px-6 py-4 bg-gradient-to-r from-slate-800 via-slate-900 to-slate-900">
+        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
             <h2 class="text-lg font-bold text-white">🔍 Selecionar Produto</h2>
             <button onclick="fecharModalBusca()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
