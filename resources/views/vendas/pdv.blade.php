@@ -20,43 +20,43 @@
         </div>
         <div class="flex gap-2">
             <button id="btn-sincronizar" onclick="sincronizarAgora()"
-                    class="bg-blue-700 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
-                🔄 Atualizar Caixa
+                    class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
+                Atualizar Caixa
             </button>
             <a href="{{ route('caixa.fechar-form') }}"
-               class="bg-red-700 hover:bg-red-500 text-white text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
-                🚪 Fechar Caixa
+               class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
+                Fechar Caixa
             </a>
         </div>
     </div>
 
     <div class="flex flex-wrap gap-2 px-6 py-3 bg-black/20">
         <button onclick="abrirModalContingencias()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-semibold px-3 py-1.5 transition">
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-xs font-semibold px-3 py-1.5 transition">
             ⚠️ Contingências <span class="opacity-60">F1</span>
         </button>
         <button onclick="abrirModalInutilizacao()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-semibold px-3 py-1.5 transition">
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-xs font-semibold px-3 py-1.5 transition">
             Inutilizar <span class="opacity-60">F2</span>
         </button>
         <button onclick="abrirModalCancelamento()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-semibold px-3 py-1.5 transition">
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-xs font-semibold px-3 py-1.5 transition">
             Cancelar NFC-e <span class="opacity-60">F3</span>
         </button>
         <button onclick="abrirModalDescontoItem()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-semibold px-3 py-1.5 transition">
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-xs font-semibold px-3 py-1.5 transition">
             Desconto Item <span class="opacity-60">F4</span>
         </button>
         <button onclick="abrirModalDescontoGlobal()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-semibold px-3 py-1.5 transition">
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-xs font-semibold px-3 py-1.5 transition">
             Desconto Geral <span class="opacity-60">F5</span>
         </button>
         <button onclick="abrirModalCancelarItem()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-semibold px-3 py-1.5 transition">
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-xs font-semibold px-3 py-1.5 transition">
             Cancelar Item <span class="opacity-60">F6</span>
         </button>
         <button onclick="abrirModalLimparPdv()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-bold px-3 py-1.5 transition">
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-xs font-bold px-3 py-1.5 transition">
             Cancelar Cupom <span class="opacity-60">F7</span>
         </button>
     </div>
