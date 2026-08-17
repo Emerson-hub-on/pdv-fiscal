@@ -52,7 +52,7 @@
             Desconto Geral <span class="opacity-60">F5</span>
         </button>
         <button onclick="abrirModalCancelarItem()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-xs font-semibold px-3 py-1.5 transition">
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
             Cancelar Item <span class="opacity-60">F6</span>
         </button>
         <button onclick="abrirModalLimparPdv()"
