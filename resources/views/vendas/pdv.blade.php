@@ -527,10 +527,19 @@ async function buscarProduto(termo) {
 
 
 function abrirModalBusca() {
-    document.getElementById('modal-busca-produto').classList.remove('hidden');
-    document.getElementById('modal-busca-produto').classList.add('flex');
-    inputBuscaModal.value = inputBusca.value;
-    inputBuscaModal.focus();
+    const modal = document.getElementById('modal-busca-produto');
+    const jaEstavaAberto = !modal.classList.contains('hidden');
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    if (!jaEstavaAberto) {
+        // So sincroniza o texto do campo de tras na PRIMEIRA vez que o modal abre.
+        // Enquanto o modal ja estiver aberto, o campo dele manda sozinho - nunca sobrescreve.
+        inputBuscaModal.value = inputBusca.value;
+        inputBusca.value = '';
+        inputBuscaModal.focus();
+    }
 }
 
 function fecharModalBusca() {
