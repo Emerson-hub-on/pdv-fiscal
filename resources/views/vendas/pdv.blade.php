@@ -20,7 +20,7 @@
         </div>
         <div class="flex gap-2">
             <button id="btn-sincronizar" onclick="sincronizarAgora()"
-                    class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
+                    class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-sm font-medium px-4 py-2 cursor-pointer transition flex items-center gap-1.5">
                 Atualizar Caixa
             </button>
             <a href="{{ route('caixa.fechar-form') }}"
@@ -32,7 +32,7 @@
 
     <div class="flex flex-wrap gap-2 px-6 py-3 bg-black/20">
         <button onclick="abrirModalContingencias()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-xs font-semibold px-3 py-1.5 transition">
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
             ⚠️ Contingências <span class="opacity-60">F1</span>
         </button>
         <button onclick="abrirModalInutilizacao()"
