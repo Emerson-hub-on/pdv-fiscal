@@ -383,6 +383,31 @@ inputBuscaModal.addEventListener('keydown', (e) => {
 });
 
 
+inputBuscaModal.addEventListener('input', () => {
+    clearTimeout(timeoutBusca);
+    const valor = inputBuscaModal.value;
+
+    if (/^\d+$/.test(valor)) {
+        atualizarIndicadorMultiplicador();
+        return;
+    }
+
+    const { multiplicador, termo } = interpretarBusca(valor);
+    quantidadeMultiplicador = multiplicador;
+    atualizarIndicadorMultiplicador();
+
+    if (termo.length < 1) {
+        fecharModalBusca();
+        resultadosAtuais = [];
+        indiceSelecionado = -1;
+        return;
+    }
+
+    timeoutBusca = setTimeout(() => buscarProduto(termo), 300);
+});
+
+
+
 inputBusca.addEventListener('keydown', (e) => {
     // Mesma trava - se o modal ja esta aberto, esse campo nao participa mais da busca
     if (!document.getElementById('modal-busca-produto').classList.contains('hidden')) {
