@@ -13,7 +13,7 @@
             shadow-lg overflow-hidden">
     <div class="flex justify-between items-center px-6 py-4 border-b border-white/10">
         <div>
-            <h1 class="text-xl font-bold text-white tracking-tight">🛒 {{ $caixa->pdv->nome }}</h1>
+            <h1 class="text-xl font-bold text-white tracking-tight">{{ $caixa->pdv->nome }}</h1>
             <p class="text-xs text-slate-400 mt-0.5">
                 Série {{ $caixa->pdv->serie_nfce }} · Próxima NFC-e nº {{ $caixa->pdv->numero_atual_nfce + 1 }}
             </p>
