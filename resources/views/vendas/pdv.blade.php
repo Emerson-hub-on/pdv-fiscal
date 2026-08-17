@@ -56,7 +56,7 @@
             Cancelar Item <span class="opacity-60">F6</span>
         </button>
         <button onclick="abrirModalLimparPdv()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-xs font-bold px-3 py-1.5 transition">
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-bold px-3 py-1.5 transition">
             Cancelar Cupom <span class="opacity-60">F7</span>
         </button>
     </div>
