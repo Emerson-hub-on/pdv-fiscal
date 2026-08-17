@@ -41,10 +41,9 @@
         </p>
 
         <button id="btn-finalizar" onclick="finalizarVenda()"
-                class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded font-bold text-lg disabled:opacity-50">
+                class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded font-bold text-lg disabled:opacity-50">
             Aperte F2 Para Finalizar
         </button>
-
         <p id="erro-venda" class="text-red-600 text-sm mt-2 hidden"></p>
     </div>
 </div>
