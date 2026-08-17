@@ -384,6 +384,11 @@ inputBuscaModal.addEventListener('keydown', (e) => {
 
 
 inputBusca.addEventListener('keydown', (e) => {
+    // Mesma trava - se o modal ja esta aberto, esse campo nao participa mais da busca
+    if (!document.getElementById('modal-busca-produto').classList.contains('hidden')) {
+        return;
+    }
+
     if (e.key === 'Enter' && inputBusca.value.trim().length > 0) {
         e.preventDefault();
         const { multiplicador, termo } = interpretarBusca(inputBusca.value);
@@ -452,10 +457,14 @@ function fecharTodosModais() {
 }
 
 inputBusca.addEventListener('input', () => {
+    // Se o modal ja esta aberto, quem manda na busca e o campo de dentro dele - ignora esse
+    if (!document.getElementById('modal-busca-produto').classList.contains('hidden')) {
+        return;
+    }
+
     clearTimeout(timeoutBusca);
     const valor = inputBusca.value;
 
-    // Enquanto for só numeros (sem * ainda), aguarda - pode ser o começo de "3*produto"
     if (/^\d+$/.test(valor)) {
         return;
     }
