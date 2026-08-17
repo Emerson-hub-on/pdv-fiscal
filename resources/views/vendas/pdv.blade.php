@@ -48,7 +48,7 @@
             Desconto Item <span class="opacity-60">F4</span>
         </button>
         <button onclick="abrirModalDescontoGlobal()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-xs font-semibold px-3 py-1.5 transition">
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
             Desconto Geral <span class="opacity-60">F5</span>
         </button>
         <button onclick="abrirModalCancelarItem()"
