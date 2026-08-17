@@ -36,7 +36,7 @@
             ⚠️ Contingências <span class="opacity-60">F1</span>
         </button>
         <button onclick="abrirModalInutilizacao()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-xs font-semibold px-3 py-1.5 transition">
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
             Inutilizar <span class="opacity-60">F2</span>
         </button>
         <button onclick="abrirModalCancelamento()"
