@@ -40,7 +40,7 @@
             Inutilizar <span class="opacity-60">F2</span>
         </button>
         <button onclick="abrirModalCancelamento()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-xs font-semibold px-3 py-1.5 transition">
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
             Cancelar NFC-e <span class="opacity-60">F3</span>
         </button>
         <button onclick="abrirModalDescontoItem()"
