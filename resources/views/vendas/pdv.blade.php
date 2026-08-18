@@ -39,10 +39,27 @@
                 class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
             Inutilizar <span class="opacity-60">F2</span>
         </button>
-        <button onclick="abrirModalCancelamento()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
-            Cancelar NFC-e <span class="opacity-60">F3</span>
-        </button>
+        <div class="relative">
+            <button onclick="toggleDropdownCancelamento()"
+                    class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
+                Cancelamento <span class="opacity-60">F3</span> ▾
+            </button>
+            <div id="dropdown-cancelamento" class="absolute hidden bg-white rounded-lg shadow-xl mt-2 w-52 overflow-hidden z-50">
+                <button onclick="fecharDropdownCancelamento(); abrirModalCancelamento();"
+                        class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition">
+                    Cancelar NFC-e
+                </button>
+                <button onclick="fecharDropdownCancelamento(); abrirModalCancelarItem();"
+                        class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition border-t border-gray-100">
+                    Cancelar Item
+                </button>
+                <button onclick="fecharDropdownCancelamento(); abrirModalLimparPdv();"
+                        class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition border-t border-gray-100">
+                    Cancelar Cupom
+                </button>
+            </div>
+        </div>
+
         <button onclick="abrirModalDescontoItem()"
                 class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
             Desconto Item <span class="opacity-60">F4</span>
@@ -50,14 +67,6 @@
         <button onclick="abrirModalDescontoGlobal()"
                 class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
             Desconto Geral <span class="opacity-60">F5</span>
-        </button>
-        <button onclick="abrirModalCancelarItem()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
-            Cancelar Item <span class="opacity-60">F6</span>
-        </button>
-        <button onclick="abrirModalLimparPdv()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-bold px-3 py-1.5 transition">
-            Cancelar Cupom <span class="opacity-60">F7</span>
         </button>
     </div>
 </div>
@@ -340,11 +349,9 @@ const linhasBuscaDiv = document.getElementById('linhas-busca-produto');
 document.addEventListener('keydown', (e) => {
     if (e.key === 'F1') { e.preventDefault(); abrirModalContingencias(); }
     if (e.key === 'F2') { e.preventDefault(); abrirModalInutilizacao(); }
-    if (e.key === 'F3') { e.preventDefault(); abrirModalCancelamento(); }
+    if (e.key === 'F3') { e.preventDefault(); toggleDropdownCancelamento(); }
     if (e.key === 'F4') { e.preventDefault(); abrirModalDescontoItem(); }
     if (e.key === 'F5') { e.preventDefault(); abrirModalDescontoGlobal(); }
-    if (e.key === 'F6') { e.preventDefault(); abrirModalCancelarItem(); }
-    if (e.key === 'F7') { e.preventDefault(); abrirModalLimparPdv(); }
     if (e.key === 'Escape') { fecharTodosModais(); }
 });
 
@@ -424,6 +431,27 @@ inputBusca.addEventListener('keydown', (e) => {
     }
 });
 
+
+
+function toggleDropdownCancelamento() {
+    document.getElementById('dropdown-cancelamento').classList.toggle('hidden');
+}
+
+function fecharDropdownCancelamento() {
+    document.getElementById('dropdown-cancelamento').classList.add('hidden');
+}
+
+// Fecha o dropdown se o operador clicar fora dele
+document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('dropdown-cancelamento');
+    const container = dropdown?.closest('.relative');
+    if (dropdown && !dropdown.classList.contains('hidden') && container && !container.contains(e.target)) {
+        fecharDropdownCancelamento();
+    }
+});
+
+
+
 function interpretarBusca(valor) {
     const match = valor.match(/^(\d+)\*(.*)$/);
 
@@ -478,8 +506,11 @@ function fecharTodosModais() {
         }
     });
 
+    fecharDropdownCancelamento();
     tipoDescontoPendente = null;
 }
+
+
 
 inputBusca.addEventListener('input', () => {
     // Se o modal ja esta aberto, quem manda na busca e o campo de dentro dele - ignora esse
