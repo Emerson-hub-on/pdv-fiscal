@@ -45,17 +45,17 @@
         Cancelamento <span class="opacity-60">F3</span> ▾
     </button>
     <!-- Adicionado id no container do menu -->
-    <div id="dropdown-cancelamento" class="absolute hidden bg-white rounded-lg shadow-xl mt-2 w-52 overflow-hidden z-50">
+    <div id="dropdown-cancelamento" class="absolute hidden bg-slate-200 rounded-lg shadow-xl mt-2 w-52 overflow-hidden z-50 border border-white/10">
         <button onclick="fecharDropdownCancelamento(); abrirModalCancelamento();"
-                class="opcao-dropdown w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition" data-index="0">
+                class="opcao-dropdown w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-700 hover:text-white transition" data-index="0">
             Cancelar NFC-e
         </button>
         <button onclick="fecharDropdownCancelamento(); abrirModalCancelarItem();"
-                class="opcao-dropdown w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition border-t border-gray-100" data-index="1">
+                class="opcao-dropdown w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-700 hover:text-white transition border-t border-white/10" data-index="1">
             Cancelar Item
         </button>
         <button onclick="fecharDropdownCancelamento(); abrirModalLimparPdv();"
-                class="opcao-dropdown w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition border-t border-gray-100" data-index="2">
+                class="opcao-dropdown w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-700 hover:text-white transition border-t border-white/10" data-index="2">
             Cancelar Cupom
         </button>
     </div>
@@ -376,13 +376,16 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+
 function atualizarFocoDropdownCancelamento(opcoes) {
     opcoes.forEach((opcao, index) => {
         if (index === indiceDropdownCancelamento) {
-            opcao.classList.add('bg-gray-100'); // Aplica destaque visual (hover)
+            opcao.classList.add('bg-slate-800', 'text-white');
+            opcao.classList.remove('text-slate-300');
             opcao.focus();
         } else {
-            opcao.classList.remove('bg-gray-100');
+            opcao.classList.remove('bg-slate-800', 'text-white');
+            opcao.classList.add('text-slate-300');
         }
     });
 }
@@ -1044,7 +1047,9 @@ function atualizarTotais() {
     const totalLiquido = itensCalculados.reduce((soma, i) => soma + i.subtotalLiquido, 0);
 
     // Desconto lançado item a item (F4), sem contar a fatia do rateio do desconto global
-    const descontoPorItem = carrinho.reduce((soma, i) => soma + (i.desconto ?? 0), 0);
+    const descontoPorItem = carrinho
+    .filter(i => !i.cancelado)
+    .reduce((soma, i) => soma + (i.desconto ?? 0), 0);
 
     // Desconto geral lançado via F5
     const descontoGlobalAplicado = descontoGlobal;
