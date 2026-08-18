@@ -10,7 +10,7 @@
 
 <div class="fixed top-0 left-0 right-0 z-50
             bg-linear-to-r from-slate-800 via-slate-900 to-slate-900
-            shadow-lg overflow-hidden">
+            shadow-lg">
     <div class="flex justify-between items-center px-6 py-4 border-b border-white/10">
         <div>
             <h1 class="text-xl font-bold text-white tracking-tight">{{ $caixa->pdv->nome }}</h1>
@@ -39,26 +39,27 @@
                 class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
             Inutilizar <span class="opacity-60">F2</span>
         </button>
-        <div class="relative">
-            <button onclick="toggleDropdownCancelamento()"
-                    class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
-                Cancelamento <span class="opacity-60">F3</span> ▾
-            </button>
-            <div id="dropdown-cancelamento" class="absolute hidden bg-white rounded-lg shadow-xl mt-2 w-52 overflow-hidden z-50">
-                <button onclick="fecharDropdownCancelamento(); abrirModalCancelamento();"
-                        class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition">
-                    Cancelar NFC-e
-                </button>
-                <button onclick="fecharDropdownCancelamento(); abrirModalCancelarItem();"
-                        class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition border-t border-gray-100">
-                    Cancelar Item
-                </button>
-                <button onclick="fecharDropdownCancelamento(); abrirModalLimparPdv();"
-                        class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition border-t border-gray-100">
-                    Cancelar Cupom
-                </button>
-            </div>
-        </div>
+<div class="relative">
+    <button onclick="toggleDropdownCancelamento()" id="btn-cancelamento-main"
+            class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
+        Cancelamento <span class="opacity-60">F3</span> ▾
+    </button>
+    <!-- Adicionado id no container do menu -->
+    <div id="dropdown-cancelamento" class="absolute hidden bg-white rounded-lg shadow-xl mt-2 w-52 overflow-hidden z-50">
+        <button onclick="fecharDropdownCancelamento(); abrirModalCancelamento();"
+                class="opcao-dropdown w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition" data-index="0">
+            Cancelar NFC-e
+        </button>
+        <button onclick="fecharDropdownCancelamento(); abrirModalCancelarItem();"
+                class="opcao-dropdown w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition border-t border-gray-100" data-index="1">
+            Cancelar Item
+        </button>
+        <button onclick="fecharDropdownCancelamento(); abrirModalLimparPdv();"
+                class="opcao-dropdown w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition border-t border-gray-100" data-index="2">
+            Cancelar Cupom
+        </button>
+    </div>
+</div>
 
         <button onclick="abrirModalDescontoItem()"
                 class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
@@ -340,11 +341,69 @@ let indiceSelecionado = -1;
 let descontoGlobal = {{ $descontoGlobalInicial }};
 let tipoDescontoPendente = null;
 let timeoutBusca;
+let indiceDropdownCancelamento = -1;
 
 const inputBusca = document.getElementById('busca-produto');
 const inputBuscaModal = document.getElementById('busca-produto-modal');
 const linhasBuscaDiv = document.getElementById('linhas-busca-produto');
 
+
+// Atualize ou adicione este ouvinte de eventos global para as setas e Enter
+document.addEventListener('keydown', (e) => {
+    const dropdown = document.getElementById('dropdown-cancelamento');
+    const aberto = dropdown && !dropdown.classList.contains('hidden');
+
+    if (aberto) {
+        const opcoes = dropdown.querySelectorAll('.opcao-dropdown');
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            indiceDropdownCancelamento = (indiceDropdownCancelamento + 1) % opcoes.length;
+            atualizarFocoDropdownCancelamento(opcoes);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            indiceDropdownCancelamento = (indiceDropdownCancelamento - 1 + opcoes.length) % opcoes.length;
+            atualizarFocoDropdownCancelamento(opcoes);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (indiceDropdownCancelamento >= 0 && opcoes[indiceDropdownCancelamento]) {
+                opcoes[indiceDropdownCancelamento].click();
+            }
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            fecharDropdownCancelamento();
+        }
+    }
+});
+
+function atualizarFocoDropdownCancelamento(opcoes) {
+    opcoes.forEach((opcao, index) => {
+        if (index === indiceDropdownCancelamento) {
+            opcao.classList.add('bg-gray-100'); // Aplica destaque visual (hover)
+            opcao.focus();
+        } else {
+            opcao.classList.remove('bg-gray-100');
+        }
+    });
+}
+
+// Modifique a função que abre o dropdown para resetar o índice
+function toggleDropdownCancelamento() {
+    const dropdown = document.getElementById('dropdown-cancelamento');
+    dropdown.classList.toggle('hidden');
+    
+    if (!dropdown.classList.contains('hidden')) {
+        indiceDropdownCancelamento = -1; // Reseta ao abrir
+    }
+}
+
+function fecharDropdownCancelamento() {
+    const dropdown = document.getElementById('dropdown-cancelamento');
+    if (dropdown) {
+        dropdown.classList.add('hidden');
+        indiceDropdownCancelamento = -1;
+    }
+}
 
 document.addEventListener('keydown', (e) => {
     if (e.key === 'F1') { e.preventDefault(); abrirModalContingencias(); }
