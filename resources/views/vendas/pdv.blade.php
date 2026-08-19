@@ -65,10 +65,6 @@
                 class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
             Desconto Item <span class="opacity-60">F4</span>
         </button>
-        <button onclick="abrirModalDescontoGlobal()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
-            Desconto Geral <span class="opacity-60">F5</span>
-        </button>
     </div>
 </div>
 </div>
@@ -411,7 +407,6 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'F2') { e.preventDefault(); abrirModalInutilizacao(); }
     if (e.key === 'F3') { e.preventDefault(); toggleDropdownCancelamento(); }
     if (e.key === 'F4') { e.preventDefault(); abrirModalDescontoItem(); }
-    if (e.key === 'F5') { e.preventDefault(); abrirModalDescontoGlobal(); }
     if (e.key === 'Escape') { fecharTodosModais(); }
 });
 
@@ -1043,20 +1038,12 @@ function calcularItensComDescontoRateado() {
 function atualizarTotais() {
     const itensCalculados = calcularItensComDescontoRateado();
     const totalLiquido = itensCalculados.reduce((soma, i) => soma + i.subtotalLiquido, 0);
-
-    // Desconto lançado item a item (F4), sem contar a fatia do rateio do desconto global
     const descontoPorItem = carrinho
-    .filter(i => !i.cancelado)
-    .reduce((soma, i) => soma + (i.desconto ?? 0), 0);
-
-    // Desconto geral lançado via F5
-    const descontoGlobalAplicado = descontoGlobal;
+        .filter(i => !i.cancelado)
+        .reduce((soma, i) => soma + (i.desconto ?? 0), 0);
 
     document.getElementById('total-venda').innerText = 'R$ ' + totalLiquido.toFixed(2).replace('.', ',');
     document.getElementById('desconto-item-exibido').innerText = 'R$ ' + descontoPorItem.toFixed(2).replace('.', ',');
-    document.getElementById('desconto-global-exibido').innerText = 'R$ ' + descontoGlobalAplicado.toFixed(2).replace('.', ',');
-    document.getElementById('desconto-total-exibido').innerText = 'R$ ' + (descontoPorItem + descontoGlobalAplicado).toFixed(2).replace('.', ',');
-
 }
 
 
