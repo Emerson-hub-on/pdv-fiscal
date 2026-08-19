@@ -300,10 +300,8 @@
     <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Total</p>
     <p id="total-venda" class="text-4xl font-bold text-slate-900 mb-5">R$ 0,00</p>
 
-    <div class="bg-gray-50 rounded-lg p-3 text-sm mb-5 space-y-1.5">
+    <div class="bg-gray-50 rounded-lg p-3 text-sm mb-5">
         <p class="flex justify-between">Desconto por item <strong id="desconto-item-exibido" class="text-green-600">R$ 0,00</strong></p>
-        <p class="flex justify-between">Desconto global <strong id="desconto-global-exibido" class="text-green-600">R$ 0,00</strong></p>
-        <p class="flex justify-between border-t border-gray-200 pt-1.5 mt-1.5">Total de desconto <strong id="desconto-total-exibido" class="text-green-700">R$ 0,00</strong></p>
     </div>
 
     <button id="btn-prosseguir" onclick="irParaPagamento()"
