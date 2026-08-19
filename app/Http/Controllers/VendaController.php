@@ -101,16 +101,17 @@ class VendaController extends Controller
     
     public function finalizar(Request $request)
     {
-    $validado = $request->validate([
-        'itens' => 'required|array|min:1',
-        'itens.*.produto_id' => 'required|integer',
-        'itens.*.produto_variante_id' => 'nullable|integer',
-        'itens.*.quantidade' => 'required|integer|min:1',
-        'itens.*.desconto' => 'nullable|numeric|min:0',
-        'pagamentos' => 'required|array|min:1',
-        'pagamentos.*.forma_pagamento' => 'required|in:dinheiro,pix,credito,debito',
-        'pagamentos.*.valor' => 'required|numeric|min:0.01',
-    ]);
+        $validado = $request->validate([
+            'itens' => 'required|array|min:1',
+            'itens.*.produto_id' => 'required|integer',
+            'itens.*.produto_variante_id' => 'nullable|integer',
+            'itens.*.quantidade' => 'required|integer|min:1',
+            'itens.*.desconto' => 'nullable|numeric|min:0',
+            'pagamentos' => 'required|array|min:1',
+            'pagamentos.*.forma_pagamento' => 'required|in:dinheiro,pix,credito,debito',
+            'pagamentos.*.valor' => 'required|numeric|min:0.01',
+            'desconto_global' => 'nullable|numeric|min:0',
+        ]);
 
         $caixa = Caixa::aberto(Auth::id());
 
@@ -164,11 +165,19 @@ class VendaController extends Controller
                     ];
                 }
             });
-            $descontoTotal = collect($itensParaSalvar)->sum('desconto');
 
-            // Confere se a soma dos pagamentos bate com o total calculado dos itens
+            $descontoGlobal = $validado['desconto_global'] ?? 0;
+            $descontoTotal = collect($itensParaSalvar)->sum('desconto') + $descontoGlobal;
+
+            // Abate o desconto global do total antes de conferir os pagamentos
+            $totalComDesconto = $total - $descontoGlobal;
+
+            if ($totalComDesconto < 0) {
+                return response()->json(['erro' => 'Desconto global maior que o total da venda.'], 422);
+            }
+
             $totalPagamentos = collect($validado['pagamentos'])->sum('valor');
-            $troco = round($totalPagamentos - $total, 2);
+            $troco = round($totalPagamentos - $totalComDesconto, 2);
 
             if ($troco < -0.01) {
                 return response()->json(['erro' => 'A soma dos pagamentos é menor que o total da venda.'], 422);
@@ -180,7 +189,7 @@ class VendaController extends Controller
                 'uuid' => $uuid,
                 'caixa_id_central' => $caixa->id,
                 'operador_id_central' => Auth::id(),
-                'total' => $total,
+                'total' => $totalComDesconto,
                 'troco' => $troco,
                 'desconto' => $descontoTotal,
                 'forma_pagamento' => null,
@@ -191,6 +200,7 @@ class VendaController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+
             session()->forget('venda_carrinho');
 
             $emissao = ['sucesso' => false, 'contingencia' => false, 'erro' => null];
@@ -198,7 +208,6 @@ class VendaController extends Controller
             try {
                 (new SyncService())->enviarVendasPendentes();
 
-                // Ja sincronizou? Tenta emitir automaticamente, sem esperar o operador clicar
                 $vendaCentral = \App\Models\Venda::where('uuid', $uuid)->first();
 
                 if ($vendaCentral) {
@@ -215,13 +224,13 @@ class VendaController extends Controller
                     }
                 }
             } catch (\Exception $e) {
-                // Nem a sincronizacao rolou - venda fica local, o scheduler tenta depois
+                // Nem a sincronização rolou - venda fica local, o scheduler tenta depois
             }
 
             return response()->json([
                 'sucesso' => true,
                 'venda_uuid' => $uuid,
-                'total' => $total,
+                'total' => $totalComDesconto,
                 'emissao' => $emissao,
             ]);
         } catch (\Exception $e) {
