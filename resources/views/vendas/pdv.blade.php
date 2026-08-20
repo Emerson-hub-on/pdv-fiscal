@@ -269,10 +269,7 @@
 </div>
 
 
-
-
 <!-- Modal de inutilização -->
-
 <div id="modal-inutilizacao" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
     <div class="bg-white rounded shadow-lg w-full max-w-md p-6">
         <div class="flex justify-between items-center mb-4">
@@ -407,7 +404,7 @@ function abrirModalBalanca(produto, variante) {
     produtoBalancaPendente = { produto, variante };
 
     document.getElementById('balanca-nome-produto').innerText = produto.nome;
-    document.getElementById('balanca-preco-kg').innerText = `R$ ${Number(produto.preco_venda).toFixed(2)} / KG`;
+    document.getElementById('balanca-preco-kg').innerText = `R$ ${Number(produto.preco_venda).toFixed(1)} por KG`;
     document.getElementById('balanca-peso').value = '';
     document.getElementById('balanca-total-calculado').innerText = '';
     document.getElementById('balanca-erro').classList.add('hidden');
@@ -466,7 +463,7 @@ function adicionarAoCarrinhoBalanca(produto, variante, peso) {
         chave,
         produto_id: produto.id,
         produto_variante_id: variante ? variante.id : null,
-        nome: produto.nome + ` (${peso.toFixed(3)} KG)`,
+        nome: produto.nome + ` (R$ ${peso.toFixed(1)} por KG)`,
         preco: parseFloat(produto.preco_venda) * peso, // preço total = preco_kg * peso
         quantidade: 1, // sempre 1 — o "peso" já está incorporado no preço
         eh_balanca: true,
