@@ -3,13 +3,29 @@
 @section('titulo', 'Pagamento')
 
 @section('conteudo')
-<div class="max-w-md mx-auto">
-    <div class="flex justify-between items-center mb-4">
-        <a href="{{ route('vendas.pdv') }}" class="text-sm text-gray-500 hover:underline">← Voltar aos itens</a>
-        <button onclick="abrirModalDescontoGlobal()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-xs font-semibold px-3 py-1.5 rounded-lg transition">
-            Desconto Geral (F5)
-        </button>
+<style>
+    #nav-principal { display: none; }
+</style>
+<div class="max-w-md mx-auto pt-32">
+    <div class="fixed top-0 left-0 right-0 z-50
+            bg-linear-to-r from-slate-800 via-slate-900 to-slate-900
+            shadow-lg">
+        <div class="flex justify-between items-center px-6 py-4">
+            <div>
+                <h1 class="text-xl font-bold text-white tracking-tight">Pagamento</h1>
+                <p class="text-xs text-slate-400 mt-0.5">Finalize a venda ou volte para ajustar os itens</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="abrirModalDescontoGlobal()"
+                        class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
+                    Desconto Geral <span class="opacity-60 text-xs">F5</span>
+                </button>
+                <button onclick="abrirModalConfirmarVoltar()"
+                        class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
+                    ← Voltar aos itens
+                </button>
+            </div>
+        </div>
     </div>
     <div class="bg-white rounded shadow p-4">
         <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Total a pagar</p>
@@ -119,6 +135,30 @@
     </div>
 </div>
 
+
+<!-- Modal de confirmação de volta -->
+<div id="modal-confirmar-voltar" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold">Voltar aos itens?</h2>
+        </div>
+        <p class="text-sm text-gray-500 mb-6">Os pagamentos lançados serão perdidos. Deseja realmente voltar?</p>
+        <div class="grid grid-cols-2 gap-4">
+            <button onclick="confirmarVoltar()"
+                    class="flex flex-col items-center justify-center gap-1 border-2 border-gray-200 hover:border-green-500 hover:bg-green-50 rounded-xl p-4 transition">
+                <span class="text-2xl font-bold text-green-600">1</span>
+                <span class="text-sm font-semibold text-gray-700">Sim, voltar</span>
+            </button>
+            <button onclick="fecharModalConfirmarVoltar()"
+                    class="flex flex-col items-center justify-center gap-1 border-2 border-gray-200 hover:border-red-500 hover:bg-red-50 rounded-xl p-4 transition">
+                <span class="text-2xl font-bold text-red-500">2</span>
+                <span class="text-sm font-semibold text-gray-700">Não, continuar</span>
+            </button>
+        </div>
+        <p class="text-center text-xs text-gray-400 mt-4">Pressione <strong>1</strong> para confirmar · <strong>2</strong> para cancelar</p>
+    </div>
+</div>
+
 </div>
 @endsection
 
@@ -133,6 +173,7 @@ let formaSelecionada = 'dinheiro';
 let indiceFormaDestacada = 0;
 let tipoDescontoEscolhido = null;
 let _handlerTipoDesconto = null;
+let _handlerConfirmarVoltar = null;
 
 
 const formasPagamento = [
@@ -141,6 +182,33 @@ const formasPagamento = [
     { valor: 'credito', label: 'Cartão de Crédito' },
     { valor: 'debito', label: 'Cartão de Débito' },
 ];
+
+
+
+function abrirModalConfirmarVoltar() {
+    document.getElementById('modal-confirmar-voltar').classList.remove('hidden');
+    document.getElementById('modal-confirmar-voltar').classList.add('flex');
+
+    _handlerConfirmarVoltar = function (e) {
+        if (e.key === '1') { e.preventDefault(); confirmarVoltar(); }
+        if (e.key === '2') { e.preventDefault(); fecharModalConfirmarVoltar(); }
+    };
+    document.addEventListener('keydown', _handlerConfirmarVoltar);
+}
+
+function fecharModalConfirmarVoltar() {
+    document.getElementById('modal-confirmar-voltar').classList.add('hidden');
+    document.getElementById('modal-confirmar-voltar').classList.remove('flex');
+
+    if (_handlerConfirmarVoltar) {
+        document.removeEventListener('keydown', _handlerConfirmarVoltar);
+        _handlerConfirmarVoltar = null;
+    }
+}
+
+function confirmarVoltar() {
+    window.location.href = '{{ route("vendas.pdv") }}';
+}
 
 
 function toggleDropdownFormaPagamento() {
@@ -199,13 +267,12 @@ document.getElementById('btn-forma-pagamento').addEventListener('keydown', (e) =
 
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        // Fecha modais se abertos, senao volta pro PDV
-        const modalAberto = ['modal-autorizacao', 'modal-desconto-global']
+        const modalAberto = ['modal-autorizacao', 'modal-desconto-global', 'modal-tipo-desconto', 'modal-confirmar-voltar']
             .some(id => !document.getElementById(id).classList.contains('hidden'));
         if (modalAberto) {
             fecharTodosModais();
         } else {
-            window.location.href = '{{ route("vendas.pdv") }}';
+            abrirModalConfirmarVoltar(); // era window.location.href
         }
     }
     if (e.key === 'F2') { e.preventDefault(); finalizarVenda(); }
@@ -214,7 +281,7 @@ document.addEventListener('keydown', (e) => {
 
 
 function fecharTodosModais() {
-    ['modal-autorizacao', 'modal-desconto-global', 'modal-tipo-desconto'].forEach(id => {
+    ['modal-autorizacao', 'modal-desconto-global', 'modal-tipo-desconto', 'modal-confirmar-voltar'].forEach(id => {
         document.getElementById(id).classList.add('hidden');
         document.getElementById(id).classList.remove('flex');
     });
@@ -222,6 +289,11 @@ function fecharTodosModais() {
     if (_handlerTipoDesconto) {
         document.removeEventListener('keydown', _handlerTipoDesconto);
         _handlerTipoDesconto = null;
+    }
+
+    if (_handlerConfirmarVoltar) {
+        document.removeEventListener('keydown', _handlerConfirmarVoltar);
+        _handlerConfirmarVoltar = null;
     }
 }
 
