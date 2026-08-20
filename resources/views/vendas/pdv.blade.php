@@ -101,6 +101,31 @@
 </div>
 
 
+<!-- Modal produto de balança -->
+<div id="modal-balanca" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold">Produto de Balança</h2>
+            <button onclick="fecharModalBalanca()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        <p id="balanca-nome-produto" class="text-sm text-gray-500 mb-1"></p>
+        <p id="balanca-preco-kg" class="text-sm text-gray-600 mb-4"></p>
+
+        <label class="block text-sm font-medium mb-1">Peso (KG)</label>
+        <input type="number" step="0.001" min="0.001" id="balanca-peso" placeholder="Ex: 1.350"
+               class="w-full border rounded-lg px-3 py-2 mb-2 text-lg font-mono">
+
+        <p id="balanca-total-calculado" class="text-right text-blue-600 font-semibold text-sm mb-4"></p>
+        <p id="balanca-erro" class="text-red-600 text-sm mb-3 hidden"></p>
+
+        <button onclick="confirmarProdutoBalanca()"
+                class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold">
+            Adicionar ao Carrinho
+        </button>
+    </div>
+</div>
+
 
 <!-- Modal de contingencias -->
 <div id="modal-contingencias" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
@@ -291,47 +316,54 @@
 </div>
     
 
-<div class="grid grid-cols-3 gap-6 shadow-md">
-    <div class="col-span-2 bg-white rounded-xl shadow-lg overflow-hidden">
-    <div class="p-4">
-        <div class="relative mb-4">
-            <input type="text" id="busca-produto" placeholder="Buscar por nome, código ou código de barras..."
-                    class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition" autofocus>
-    </div>
-</div>
+<!-- Container principal -->
+<div class="h-screen pt-21.25 pb-4 px-6 flex flex-col box-border overflow-hidden">
+    
+    <div class="grid grid-cols-3 gap-6 shadow-md w-full">
+        
+        <div class="col-span-2 bg-white rounded-xl shadow-lg overflow-hidden flex flex-col h-[calc(100vh-125px)]">
+            <div class="p-4 shrink-0">
+                <div class="relative">
+                    <input type="text" id="busca-produto" placeholder="-> Buscar por nome, código ou código de barras..."
+                        class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition" autofocus>
+                </div>
+            </div>
 
-<table class="w-full">
-    <thead class="bg-linear-to-r bg-slate-800">
-        <tr class="text-left text-xs text-slate-300 uppercase tracking-wide">
-            <th class="py-3 pl-4">Item</th>
-            <th class="py-3">Produto</th>
-            <th class="py-3">Qtd</th>
-            <th class="py-3">Preço</th>
-            <th class="py-3">Desconto</th>
-            <th class="py-3 pr-4">Subtotal</th>
-        </tr>
-    </thead>
-    <tbody id="linhas-carrinho"></tbody>
-</table>
-        <p id="carrinho-vazio" class="text-center text-gray-400 py-16">Nenhum item adicionado.</p></table>
+            <div class="flex-1 overflow-y-auto">
+                <table class="w-full">
+                    <thead class="bg-slate-800 sticky top-0 z-10">
+                        <tr class="text-left text-xs text-slate-300 uppercase tracking-wide">
+                            <th class="py-3 pl-4">Item</th>
+                            <th class="py-3">Produto</th>
+                            <th class="py-3">Qtd</th>
+                            <th class="py-3">Preço</th>
+                            <th class="py-3">Desconto</th>
+                            <th class="py-3 pr-4">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="linhas-carrinho"></tbody>
+                </table>
+                <p id="carrinho-vazio" class="text-center text-gray-400 py-16">Nenhum item adicionado.</p>
+            </div>
         </div>
+        <!-- Coluna da Direita (Total e Pagamento) -->
+        <div class="bg-white rounded-xl shadow-lg p-5 h-fit">
+            <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Total</p>
+            <p id="total-venda" class="text-4xl font-bold text-slate-900 mb-5">R$ 0,00</p>
 
-<div class="bg-white rounded-xl shadow-lg p-5 h-fit">
-    <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Total</p>
-    <p id="total-venda" class="text-4xl font-bold text-slate-900 mb-5">R$ 0,00</p>
+            <div class="bg-gray-50 rounded-lg p-3 text-sm mb-5">
+                <p class="flex justify-between">Desconto por item <strong id="desconto-item-exibido" class="text-green-600">R$ 0,00</strong></p>
+            </div>
 
-    <div class="bg-gray-50 rounded-lg p-3 text-sm mb-5">
-        <p class="flex justify-between">Desconto por item <strong id="desconto-item-exibido" class="text-green-600">R$ 0,00</strong></p>
+            <button id="btn-prosseguir" onclick="irParaPagamento()"
+                    class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-lg font-bold text-lg transition shadow-md disabled:opacity-50">
+                Prosseguir para pagamento →
+            </button>
+
+            <p id="erro-itens" class="text-red-600 text-sm mt-2 hidden"></p>
+        </div>
     </div>
-
-    <button id="btn-prosseguir" onclick="irParaPagamento()"
-            class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-lg font-bold text-lg transition shadow-md disabled:opacity-50">
-        Prosseguir para pagamento →
-    </button>
-
-    <p id="erro-itens" class="text-red-600 text-sm mt-2 hidden"></p>
 </div>
-    </div>
 @endsection
 
 @section('scripts')
@@ -362,10 +394,87 @@ let timeoutBusca;
 let indiceDropdownCancelamento = -1;
 let tipoDescontoEscolhido = null;
 let _handlerTipoDesconto = null;
+let produtoBalancaPendente = null;
 
 const inputBusca = document.getElementById('busca-produto');
 const inputBuscaModal = document.getElementById('busca-produto-modal');
 const linhasBuscaDiv = document.getElementById('linhas-busca-produto');
+
+
+
+
+function abrirModalBalanca(produto, variante) {
+    produtoBalancaPendente = { produto, variante };
+
+    document.getElementById('balanca-nome-produto').innerText = produto.nome;
+    document.getElementById('balanca-preco-kg').innerText = `R$ ${Number(produto.preco_venda).toFixed(2)} / KG`;
+    document.getElementById('balanca-peso').value = '';
+    document.getElementById('balanca-total-calculado').innerText = '';
+    document.getElementById('balanca-erro').classList.add('hidden');
+
+    document.getElementById('modal-balanca').classList.remove('hidden');
+    document.getElementById('modal-balanca').classList.add('flex');
+
+    setTimeout(() => document.getElementById('balanca-peso').focus(), 100);
+}
+
+function fecharModalBalanca() {
+    document.getElementById('modal-balanca').classList.add('hidden');
+    document.getElementById('modal-balanca').classList.remove('flex');
+    produtoBalancaPendente = null;
+}
+
+document.getElementById('balanca-peso')?.addEventListener('input', function () {
+    const peso = parseFloat(this.value) || 0;
+    const preco = produtoBalancaPendente ? Number(produtoBalancaPendente.produto.preco_venda) : 0;
+    const total = peso * preco;
+
+    document.getElementById('balanca-total-calculado').innerText = peso > 0
+        ? `Total: R$ ${total.toFixed(2)}`
+        : '';
+});
+
+document.getElementById('balanca-peso')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        confirmarProdutoBalanca();
+    }
+});
+
+function confirmarProdutoBalanca() {
+    const peso = parseFloat(document.getElementById('balanca-peso').value) || 0;
+    const erroP = document.getElementById('balanca-erro');
+
+    if (peso <= 0) {
+        erroP.innerText = 'Informe um peso válido (maior que zero).';
+        erroP.classList.remove('hidden');
+        return;
+    }
+
+    const { produto, variante } = produtoBalancaPendente;
+    adicionarAoCarrinhoBalanca(produto, variante, peso);
+    fecharModalBalanca();
+}
+
+function adicionarAoCarrinhoBalanca(produto, variante, peso) {
+    const chaveBase = produto.id + '-' + (variante ? variante.id : '0') + '-balanca';
+
+    // Produto de balança NUNCA agrupa — cada pesagem é uma linha separada
+    const chave = chaveBase + '-' + Date.now();
+
+    carrinho.push({
+        chave,
+        produto_id: produto.id,
+        produto_variante_id: variante ? variante.id : null,
+        nome: produto.nome + ` (${peso.toFixed(3)} KG)`,
+        preco: parseFloat(produto.preco_venda) * peso, // preço total = preco_kg * peso
+        quantidade: 1, // sempre 1 — o "peso" já está incorporado no preço
+        eh_balanca: true,
+        peso_kg: peso,
+    });
+
+    renderizarCarrinho();
+}
 
 
 // Atualize ou adicione este ouvinte de eventos global para as setas e Enter
@@ -608,6 +717,7 @@ function fecharTodosModais() {
         'modal-autorizacao',
         'modal-tipo-desconto',
         'modal-busca-produto',
+        'modal-balanca',
     ];
 
     idsModais.forEach(id => {
@@ -732,10 +842,15 @@ linhasBuscaDiv.innerHTML = resultadosAtuais.map((op, index) => {
 
 function selecionarResultado(index) {
     const op = resultadosAtuais[index];
-    adicionarAoCarrinho(op.produto, op.variante);
     resultadosAtuais = [];
     indiceSelecionado = -1;
     fecharModalBusca();
+
+    if (op.produto.produto_balanca) {
+        abrirModalBalanca(op.produto, op.variante);
+    } else {
+        adicionarAoCarrinho(op.produto, op.variante);
+    }
 }
 
 

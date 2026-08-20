@@ -115,13 +115,28 @@
                class="w-full border rounded px-3 py-2">
     </div>
 
-<div class="col-span-2 flex items-center gap-2">
-    <input type="hidden" name="tem_variacao" value="0">
-    <input type="checkbox" id="tem_variacao" name="tem_variacao" value="1"
-           {{ old('tem_variacao', $produto->tem_variacao ?? false) ? 'checked' : '' }}
-           onchange="toggleVariacao(this.checked)">
-    <label for="tem_variacao" class="text-sm font-medium">Produto tem variação (cor/tamanho)</label>
-</div>
+    <div class="col-span-2 flex items-center gap-2">
+        <input type="hidden" name="tem_variacao" value="0">
+        <input type="checkbox" id="tem_variacao" name="tem_variacao" value="1"
+            {{ old('tem_variacao', $produto->tem_variacao ?? false) ? 'checked' : '' }}
+            onchange="toggleVariacao(this.checked)">
+        <label for="tem_variacao" class="text-sm font-medium">Produto tem variação (cor/tamanho)</label>
+    </div>
+
+    <div class="col-span-2 flex items-center gap-3 mt-2">
+        <label class="relative inline-flex items-center cursor-pointer">
+            <input type="hidden" name="produto_balanca" value="0">
+            <input type="checkbox" id="produto_balanca" name="produto_balanca" value="1"
+                {{ old('produto_balanca', $produto->produto_balanca ?? false) ? 'checked' : '' }}
+                class="sr-only peer"
+                onchange="validarProdutoBalanca(this)">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            <span class="ml-3 text-sm font-medium text-gray-700">Produto de balança (KG)</span>
+        </label>
+        <span id="aviso-balanca" class="text-xs text-orange-500 hidden">
+            ⚠️ Disponível apenas quando a unidade comercial for KG
+        </span>
+    </div>
 
     <div id="bloco-estoque-simples" class="col-span-2 grid grid-cols-2 gap-4 {{ old('tem_variacao', $produto->tem_variacao ?? false) ? 'hidden' : '' }}">
         <div>
@@ -171,6 +186,29 @@
 
 <script>
 let indiceVariante = 0;
+
+
+function validarProdutoBalanca(checkbox) {
+    const unidade = document.querySelector('input[name="unidade_comercial"]').value.toUpperCase().trim();
+
+    if (checkbox.checked && unidade !== 'KG') {
+        checkbox.checked = false;
+        document.getElementById('aviso-balanca').classList.remove('hidden');
+        setTimeout(() => document.getElementById('aviso-balanca').classList.add('hidden'), 3000);
+    }
+}
+
+// Também valida se o usuário mudar a unidade depois de já ter marcado balança
+document.querySelector('input[name="unidade_comercial"]')?.addEventListener('input', () => {
+    const checkbox = document.getElementById('produto_balanca');
+    const unidade = document.querySelector('input[name="unidade_comercial"]').value.toUpperCase().trim();
+
+    if (checkbox.checked && unidade !== 'KG') {
+        checkbox.checked = false;
+        document.getElementById('aviso-balanca').classList.remove('hidden');
+        setTimeout(() => document.getElementById('aviso-balanca').classList.add('hidden'), 3000);
+    }
+});
 
 function toggleVariacao(temVariacao) {
     document.getElementById('bloco-estoque-simples').classList.toggle('hidden', temVariacao);

@@ -120,6 +120,8 @@ class ProdutoController extends Controller
             'tem_variacao' => 'boolean',
             'estoque' => 'required_if:tem_variacao,false|integer|min:0',
             'estoque_minimo' => 'nullable|integer|min:0',
-        ]);
+            'produto_balanca' => 'boolean',
+
+            ]);
     }
 }

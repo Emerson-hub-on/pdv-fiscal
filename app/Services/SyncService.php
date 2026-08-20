@@ -41,6 +41,7 @@ class SyncService
                     'estoque' => $produto->estoque,
                     'ativo' => $produto->ativo,
                     'atualizado_em_origem' => $produto->updated_at,
+                    'produto_balanca' => $produto->produto_balanca,
                     'updated_at' => now(),
                 ]
             );

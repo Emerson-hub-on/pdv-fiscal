@@ -14,7 +14,7 @@ class Produto extends Model
         'origem_mercadoria', 'csosn', 'class_trib_ibs_cbs',
         'preco_venda', 'preco_custo',
         'tem_variacao', 'estoque', 'estoque_minimo',
-        'ativo',
+        'ativo','produto_balanca',
     ];
 
     protected $casts = [
@@ -22,6 +22,7 @@ class Produto extends Model
         'ativo' => 'boolean',
         'preco_venda' => 'decimal:2',
         'preco_custo' => 'decimal:2',
+        'produto_balanca' => 'boolean',
     ];
 
     public function variantes()
