@@ -7,7 +7,7 @@
     <div class="flex justify-between items-center mb-4">
         <a href="{{ route('vendas.pdv') }}" class="text-sm text-gray-500 hover:underline">← Voltar aos itens</a>
         <button onclick="abrirModalDescontoGlobal()"
-                class="bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition">
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-xs font-semibold px-3 py-1.5 rounded-lg transition">
             Desconto Geral (F5)
         </button>
     </div>
@@ -299,8 +299,9 @@ document.getElementById('novo-valor-pagamento').addEventListener('keydown', (e) 
 
 
 function atualizarRestante() {
+    const totalComDesconto = Math.max(totalDaVenda - descontoGlobal, 0);
     const pago = pagamentos.reduce((soma, p) => soma + p.valor, 0);
-    const diferenca = pago - totalDaVenda;
+    const diferenca = pago - totalComDesconto;
 
     const label = document.getElementById('restante-pagamento');
 
