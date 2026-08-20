@@ -313,52 +313,52 @@
 </div>
     
 
-<!-- Container principal -->
-<div class="h-screen pt-21.25 pb-4 px-6 flex flex-col box-border overflow-hidden">
+<!-- Container do Grid ajustado para ocupar a altura restante da tela -->
+<div class="grid grid-cols-3 gap-6 shadow-md flex-1 h-[calc(100vh-120px)] pb-4">
     
-    <div class="grid grid-cols-3 gap-6 shadow-md w-full">
-        
-        <div class="col-span-2 bg-white rounded-xl shadow-lg overflow-hidden flex flex-col h-[calc(100vh-125px)]">
-            <div class="p-4 shrink-0">
-                <div class="relative">
-                    <input type="text" id="busca-produto" placeholder="-> Buscar por nome, código ou código de barras..."
-                        class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition" autofocus>
-                </div>
-            </div>
-
-            <div class="flex-1 overflow-y-auto">
-                <table class="w-full">
-                    <thead class="bg-slate-800 sticky top-0 z-10">
-                        <tr class="text-left text-xs text-slate-300 uppercase tracking-wide">
-                            <th class="py-3 pl-4">Item</th>
-                            <th class="py-3">Produto</th>
-                            <th class="py-3">Qtd</th>
-                            <th class="py-3">Preço</th>
-                            <th class="py-3">Desconto</th>
-                            <th class="py-3 pr-4">Subtotal</th>
-                        </tr>
-                    </thead>
-                    <tbody id="linhas-carrinho"></tbody>
-                </table>
-                <p id="carrinho-vazio" class="text-center text-gray-400 py-16">Nenhum item adicionado.</p>
+    <!-- Coluna da Esquerda (Carrinho) -->
+    <div class="col-span-2 bg-white rounded-xl shadow-lg overflow-hidden flex flex-col h-full">
+        <div class="p-4 shrink-0">
+            <div class="relative">
+                <input type="text" id="busca-produto" placeholder="🔍 Buscar por nome, código ou código de barras..."
+                    class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition" autofocus>
             </div>
         </div>
-        <!-- Coluna da Direita (Total e Pagamento) -->
-        <div class="bg-white rounded-xl shadow-lg p-5 h-fit">
-            <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Total</p>
-            <p id="total-venda" class="text-4xl font-bold text-slate-900 mb-5">R$ 0,00</p>
 
-            <div class="bg-gray-50 rounded-lg p-3 text-sm mb-5">
-                <p class="flex justify-between">Desconto por item <strong id="desconto-item-exibido" class="text-green-600">R$ 0,00</strong></p>
-            </div>
-
-            <button id="btn-prosseguir" onclick="irParaPagamento()"
-                    class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-lg font-bold text-lg transition shadow-md disabled:opacity-50">
-                Prosseguir para pagamento →
-            </button>
-
-            <p id="erro-itens" class="text-red-600 text-sm mt-2 hidden"></p>
+        <!-- Container da tabela com scroll interno se passar da altura -->
+        <div class="flex-1 overflow-y-auto">
+            <table class="w-full">
+                <thead class="bg-slate-800 sticky top-0 z-10">
+                    <tr class="text-left text-xs text-slate-300 uppercase tracking-wide">
+                        <th class="py-3 pl-4">Item</th>
+                        <th class="py-3">Produto</th>
+                        <th class="py-3">Qtd</th>
+                        <th class="py-3">Preço</th>
+                        <th class="py-3">Desconto</th>
+                        <th class="py-3 pr-4">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody id="linhas-carrinho"></tbody>
+            </table>
+            <p id="carrinho-vazio" class="text-center text-gray-400 py-16">Nenhum item adicionado.</p>
         </div>
+    </div>
+
+    <!-- Coluna da Direita (Total e Pagamento) -->
+    <div class="bg-white rounded-xl shadow-lg p-5 h-fit">
+        <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Total</p>
+        <p id="total-venda" class="text-4xl font-bold text-slate-900 mb-5">R$ 0,00</p>
+
+        <div class="bg-gray-50 rounded-lg p-3 text-sm mb-5">
+            <p class="flex justify-between">Desconto por item <strong id="desconto-item-exibido" class="text-green-600">R$ 0,00</strong></p>
+        </div>
+
+        <button id="btn-prosseguir" onclick="irParaPagamento()"
+                class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-lg font-bold text-lg transition shadow-md disabled:opacity-50">
+            Prosseguir para pagamento →
+        </button>
+
+        <p id="erro-itens" class="text-red-600 text-sm mt-2 hidden"></p>
     </div>
 </div>
 @endsection

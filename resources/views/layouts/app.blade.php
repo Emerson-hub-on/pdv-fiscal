@@ -9,25 +9,40 @@
 <body class="bg-gray-100 text-gray-800">
 
 <!-- Sidebar corrigido para altura total fixa com h-screen -->
-<aside id="nav-principal" class="bg-gray-800 fixed top-0 left-0 h-screen w-56 flex flex-col z-40 overflow-y-auto">
+<aside id="nav-principal" class="bg-gray-800 fixed top-0 left-0 h-screen w-50 flex flex-col z-40 overflow-y-auto">
     <div class="px-6 py-5 border-b border-white/10 shrink-0">
         <p class="text-white font-bold text-lg tracking-tight">PDV Fiscal</p>
         <p class="text-slate-400 text-xs mt-0.5">Painel administrativo</p>
     </div>
 
-    <nav class="flex flex-col gap-1 px-3 py-4 flex-1">
-        <a href="{{ route('produtos.index') }}"
-           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-white/10 hover:text-white text-sm font-medium transition">
-            Produtos
-        </a>
-        <a href="{{ route('empresa.editar') }}"
-           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-white/10 hover:text-white text-sm font-medium transition">
-            Empresa
-        </a>
-        <a href="{{ route('pdvs.index') }}"
-           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-white/10 hover:text-white text-sm font-medium transition">
-            PDVs
-        </a>
+    <nav class="flex flex-col gap-1 px-3 py-4 flex-1 overflow-y-auto">
+        <!-- Menu Dropdown: Cadastros -->
+        <div class="flex flex-col">
+            <button onclick="toggleCadastros()" 
+                    class="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-slate-300 hover:bg-white/10 hover:text-white text-sm font-medium transition cursor-pointer">
+                <span class="flex items-center gap-3">Cadastros</span>
+                <!-- Seta indicativa -->
+                <svg id="seta-cadastros" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+
+            <!-- Subopções (inicialmente ocultas com 'hidden') -->
+            <div id="sub-cadastros" class="hidden flex flex-col gap-1 pl-4 mt-1 border-l border-white/10 ml-3">
+                <a href="{{ route('produtos.index') }}"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white text-sm transition">
+                    Produtos
+                </a>
+                <a href="{{ route('empresa.editar') }}"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white text-sm transition">
+                    Empresa
+                </a>
+                <a href="{{ route('pdvs.index') }}"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white text-sm transition">
+                    PDVs
+                </a>
+            </div>
+        </div>
     </nav>
 
     <div class="px-3 py-4 border-t border-white/10 shrink-0">
@@ -54,6 +69,18 @@
     @yield('scripts')
 
     <script>
+
+    function toggleCadastros() {
+    const subMenu = document.getElementById('sub-cadastros');
+    const seta = document.getElementById('seta-cadastros');
+    
+    // Alterna a classe 'hidden' do Tailwind para mostrar/esconder
+    subMenu.classList.toggle('hidden');
+    
+    // Gira a setinha para indicar aberto/fechado
+    seta.classList.toggle('rotate-180');
+    }   
+    
     async function sincronizarAgora() {
         const btn = document.getElementById('btn-sincronizar');
         const textoOriginal = btn.innerText;
