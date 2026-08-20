@@ -151,6 +151,47 @@ class FiscalEmissorService
         );
     }
 
+    protected function ratearDescontoGlobal(Venda $venda): array
+    {
+        $itens = $venda->itens->filter(fn($i) => !is_null($i->produto_id))->values();
+        $descontoGlobal = $venda->desconto - $itens->sum('desconto');
+
+        if ($descontoGlobal <= 0) {
+            return $itens->map(fn($i) => [
+                'item' => $i,
+                'desconto_efetivo' => $i->desconto ?? 0,
+            ])->toArray();
+        }
+
+        $subtotalBrutoTotal = $itens->sum(fn($i) => $i->preco_unitario * $i->quantidade);
+        $somaRateios = 0;
+        $resultado = [];
+
+        foreach ($itens as $index => $item) {
+            $subtotalBruto = $item->preco_unitario * $item->quantidade;
+            $descontoItem = $item->desconto ?? 0;
+
+            if ($index === count($itens) - 1) {
+                // ultimo item absorve a diferenca de arredondamento
+                $rateio = $descontoGlobal - $somaRateios;
+            } else {
+                $rateio = $subtotalBrutoTotal > 0
+                    ? round(($descontoGlobal * ($subtotalBruto / $subtotalBrutoTotal)), 2)
+                    : 0;
+                $somaRateios += $rateio;
+            }
+
+            $descontoEfetivo = min($descontoItem + $rateio, $subtotalBruto);
+
+            $resultado[] = [
+                'item' => $item,
+                'desconto_efetivo' => $descontoEfetivo,
+            ];
+        }
+
+        return $resultado;
+    }
+
     /**
      * Processa a resposta da SEFAZ (autorizacao ou rejeicao), seja do fluxo normal ou de um reenvio de contingencia.
      */
@@ -309,7 +350,11 @@ class FiscalEmissorService
 
     protected function montarItens(Make $nfe, Venda $venda): void
     {
-        foreach ($venda->itens as $index => $item) {
+        $itensComDesconto = $this->ratearDescontoGlobal($venda);
+
+        foreach ($itensComDesconto as $index => $dado) {
+            $item = $dado['item'];
+            $descontoEfetivo = $dado['desconto_efetivo'];
             $produto = $item->produto;
             $n = $index + 1;
 
@@ -324,14 +369,15 @@ class FiscalEmissorService
             $prod->qCom = $item->quantidade;
             $prod->vUnCom = number_format($item->preco_unitario, 10, '.', '');
             $prod->vProd = number_format($item->preco_unitario * $item->quantidade, 2, '.', '');
-
-            if (($item->desconto ?? 0) > 0) {
-                $prod->vDesc = number_format($item->desconto, 2, '.', '');
-            }
             $prod->cEANTrib = $produto->codigo_barras ?: 'SEM GTIN';
             $prod->uTrib = $produto->unidade_tributavel;
             $prod->qTrib = $item->quantidade;
             $prod->vUnTrib = number_format($item->preco_unitario, 10, '.', '');
+
+            if ($descontoEfetivo > 0) {
+                $prod->vDesc = number_format($descontoEfetivo, 2, '.', '');
+            }
+
             $prod->indTot = 1;
             $nfe->tagprod($prod);
 
