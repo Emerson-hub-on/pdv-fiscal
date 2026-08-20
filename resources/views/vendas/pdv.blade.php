@@ -277,7 +277,6 @@
 </div>
 
 <!-- Modal de cancelamento -->
-
 <div id="modal-cancelamento" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
     <div class="bg-white rounded shadow-lg w-full max-w-2xl max-h-[80vh] overflow-y-auto p-6">
         <div class="flex justify-between items-center mb-4">
@@ -292,12 +291,12 @@
 </div>
     
 
-    <div class="grid grid-cols-3 gap-6 shadow-md">
-        <div class="col-span-2 bg-white rounded-xl shadow-lg overflow-hidden">
-<div class="p-4">
-    <div class="relative mb-4">
-        <input type="text" id="busca-produto" placeholder="🔍 Buscar por nome, código ou código de barras..."
-            class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition" autofocus>
+<div class="grid grid-cols-3 gap-6 shadow-md">
+    <div class="col-span-2 bg-white rounded-xl shadow-lg overflow-hidden">
+    <div class="p-4">
+        <div class="relative mb-4">
+            <input type="text" id="busca-produto" placeholder="Buscar por nome, código ou código de barras..."
+                    class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition" autofocus>
     </div>
 </div>
 
