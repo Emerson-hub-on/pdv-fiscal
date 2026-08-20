@@ -80,6 +80,29 @@
     </div>
 </div>
 
+<!-- Modal de escolha de tipo de desconto -->
+<div id="modal-tipo-desconto" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-lg font-bold">Tipo de Desconto</h2>
+            <button onclick="fecharModalTipoDesconto()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+            <button onclick="escolherTipoDesconto('valor')"
+                    class="flex flex-col items-center justify-center gap-2 border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 rounded-xl p-6 transition">
+                <span class="text-3xl">R$</span>
+                <span class="text-sm font-semibold text-gray-700">Por Valor</span>
+            </button>
+            <button onclick="escolherTipoDesconto('porcentagem')"
+                    class="flex flex-col items-center justify-center gap-2 border-2 border-gray-200 hover:border-purple-500 hover:bg-purple-50 rounded-xl p-6 transition">
+                <span class="text-3xl">%</span>
+                <span class="text-sm font-semibold text-gray-700">Por Porcentagem</span>
+            </button>
+        </div>
+        <p class="text-center text-xs text-gray-400 mt-4">Ou pressione <strong>1</strong> para valor · <strong>2</strong> para porcentagem</p>
+    </div>
+</div>
+
 <!-- Modal desconto global -->
 <div id="modal-desconto-global" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-6">
@@ -87,7 +110,7 @@
             <h2 class="text-lg font-bold">Desconto Geral</h2>
             <button onclick="fecharModalDescontoGlobal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
         </div>
-        <label class="block text-sm font-medium mb-1">Valor do desconto (R$)</label>
+        <label class="block text-sm font-medium mb-1" for-valor>Valor do desconto (R$)</label>
         <input type="number" step="0.01" min="0" id="desconto-global-valor" class="w-full border rounded px-3 py-2 mb-4">
         <p id="desconto-global-erro" class="text-red-600 text-sm mb-3 hidden"></p>
         <button onclick="confirmarDescontoGlobal()" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded font-semibold">
@@ -108,6 +131,8 @@ let descontoGlobal = 0;
 let tipoDescontoPendente = null;
 let formaSelecionada = 'dinheiro';
 let indiceFormaDestacada = 0;
+let tipoDescontoEscolhido = null;
+let _handlerTipoDesconto = null;
 
 
 const formasPagamento = [
@@ -189,10 +214,15 @@ document.addEventListener('keydown', (e) => {
 
 
 function fecharTodosModais() {
-    ['modal-autorizacao', 'modal-desconto-global'].forEach(id => {
+    ['modal-autorizacao', 'modal-desconto-global', 'modal-tipo-desconto'].forEach(id => {
         document.getElementById(id).classList.add('hidden');
         document.getElementById(id).classList.remove('flex');
     });
+
+    if (_handlerTipoDesconto) {
+        document.removeEventListener('keydown', _handlerTipoDesconto);
+        _handlerTipoDesconto = null;
+    }
 }
 
 
@@ -245,7 +275,39 @@ async function confirmarAutorizacao() {
     document.getElementById('modal-autorizacao').classList.add('hidden');
     document.getElementById('modal-autorizacao').classList.remove('flex');
 
-    // So tem um tipo pendente aqui, mas estrutura igual ao PDV pra facilitar expansao futura
+    document.getElementById('modal-tipo-desconto').classList.remove('hidden');
+    document.getElementById('modal-tipo-desconto').classList.add('flex');
+
+    _handlerTipoDesconto = function (e) {
+        if (e.key === '1') { e.preventDefault(); escolherTipoDesconto('valor'); }
+        if (e.key === '2') { e.preventDefault(); escolherTipoDesconto('porcentagem'); }
+    };
+    document.addEventListener('keydown', _handlerTipoDesconto);
+}
+
+
+function fecharModalTipoDesconto() {
+    document.getElementById('modal-tipo-desconto').classList.add('hidden');
+    document.getElementById('modal-tipo-desconto').classList.remove('flex');
+    tipoDescontoEscolhido = null;
+
+    if (_handlerTipoDesconto) {
+        document.removeEventListener('keydown', _handlerTipoDesconto);
+        _handlerTipoDesconto = null;
+    }
+}
+
+function escolherTipoDesconto(tipo) {
+    tipoDescontoEscolhido = tipo;
+
+    if (_handlerTipoDesconto) {
+        document.removeEventListener('keydown', _handlerTipoDesconto);
+        _handlerTipoDesconto = null;
+    }
+
+    document.getElementById('modal-tipo-desconto').classList.add('hidden');
+    document.getElementById('modal-tipo-desconto').classList.remove('flex');
+
     abrirLancamentoDescontoGlobal();
 }
 
@@ -253,9 +315,16 @@ async function confirmarAutorizacao() {
 function abrirLancamentoDescontoGlobal() {
     document.getElementById('desconto-global-valor').value = descontoGlobal || '';
     document.getElementById('desconto-global-erro').classList.add('hidden');
+
+    const label = tipoDescontoEscolhido === 'porcentagem' ? 'Porcentagem de desconto (%)' : 'Valor do desconto (R$)';
+    const placeholder = tipoDescontoEscolhido === 'porcentagem' ? 'Ex: 10 para 10%' : 'Ex: 5.00';
+    document.querySelector('#modal-desconto-global label[for-valor]').innerText = label;
+    document.getElementById('desconto-global-valor').placeholder = placeholder;
+
     document.getElementById('modal-desconto-global').classList.remove('hidden');
     document.getElementById('modal-desconto-global').classList.add('flex');
 }
+
 
 function fecharModalDescontoGlobal() {
     document.getElementById('modal-desconto-global').classList.add('hidden');
@@ -263,8 +332,22 @@ function fecharModalDescontoGlobal() {
 }
 
 function confirmarDescontoGlobal() {
-    const valor = parseFloat(document.getElementById('desconto-global-valor').value) || 0;
-    descontoGlobal = valor;
+    let entrada = parseFloat(document.getElementById('desconto-global-valor').value) || 0;
+    const erroP = document.getElementById('desconto-global-erro');
+
+    if (tipoDescontoEscolhido === 'porcentagem') {
+        if (entrada < 0 || entrada > 100) {
+            erroP.innerText = 'Porcentagem deve ser entre 0 e 100.';
+            erroP.classList.remove('hidden');
+            return;
+        }
+        const totalAtivo = Math.max(totalDaVenda, 0);
+        descontoGlobal = Math.round((totalAtivo * entrada / 100) * 100) / 100;
+    } else {
+        descontoGlobal = entrada;
+    }
+
+    tipoDescontoEscolhido = null;
     fecharModalDescontoGlobal();
     atualizarResumoDesconto();
 }
