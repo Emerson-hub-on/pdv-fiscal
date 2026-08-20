@@ -3,7 +3,25 @@
 @section('titulo', 'Comprovante de Venda')
 
 @section('conteudo')
-    <div class="max-w-lg mx-auto bg-white p-6 rounded shadow">
+<style>
+    #nav-principal { display: none; }
+</style>
+    <div class="fixed top-0 left-0 right-0 z-50
+                bg-linear-to-r from-slate-800 via-slate-900 to-slate-900
+                shadow-lg">
+        <div class="flex justify-between items-center px-6 py-4">
+            <div>
+                <h1 class="text-xl font-bold text-white tracking-tight">Comprovante de Venda</h1>
+                <p class="text-xs text-slate-400 mt-0.5">Pressione Enter ou clique no botão para iniciar uma nova venda</p>
+            </div>
+            <a href="{{ route('vendas.pdv') }}"
+            class="bg-emerald-500/20 hover:bg-emerald-500/30 text-slate-300 text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
+                Nova venda <span class="opacity-60 text-xs">Enter</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="max-w-lg mx-auto bg-white p-6 rounded shadow pt-32 mt-2">
         <h1 class="text-xl font-bold mb-4">Comprovante de Venda</h1>
 
         @if ($status === 'aguardando_sincronizacao')
@@ -93,10 +111,6 @@
             </button>
             <p id="msg-emissao" class="text-sm mt-3 text-center hidden"></p>
         @endif
-
-        <a href="{{ route('vendas.pdv') }}" class="no-print block text-center text-sm text-gray-500 mt-4 hover:underline">
-            ← Nova venda <span class="text-xs text-gray-400">(ou aperte Enter)</span>
-        </a>
     </div>
 @endsection
 
@@ -144,7 +158,7 @@ async function emitirCupom() {
     // Volta pra tela de nova venda automaticamente, dando tempo do operador ler a mensagem
     setTimeout(() => {
         window.location.href = '{{ route("vendas.pdv") }}';
-    }, 1500);
+    }, 1000);
 }
 
 
