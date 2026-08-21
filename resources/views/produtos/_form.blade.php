@@ -11,22 +11,34 @@
                   class="w-full border rounded px-3 py-2">{{ old('descricao', $produto->descricao ?? '') }}</textarea>
     </div>
 
+    {{-- Campos hidden para guardar os IDs selecionados --}}
+    <input type="hidden" name="categoria_id" id="categoria_id" value="{{ old('categoria_id', $produto->categoria_id ?? '') }}">
+    <input type="hidden" name="marca_id" id="marca_id" value="{{ old('marca_id', $produto->marca_id ?? '') }}">
+    <input type="hidden" name="grupo_id" id="grupo_id" value="{{ old('grupo_id', $produto->grupo_id ?? '') }}">
+    <input type="hidden" name="ncm_id" id="ncm_id" value="{{ old('ncm_id', $produto->ncm_id ?? '') }}">
+
     <div>
         <label class="block text-sm font-medium mb-1">Categoria</label>
-        <input type="text" name="categoria" value="{{ old('categoria', $produto->categoria ?? '') }}"
-               class="w-full border rounded px-3 py-2">
+        <button type="button" onclick="abrirModalCatalogo('categoria')"
+                class="w-full border rounded px-3 py-2 text-left bg-white hover:bg-gray-50 text-sm">
+            <span id="categoria_label">{{ old('categoria_id') ? '' : ($produto->categoria->nome ?? 'Clique para selecionar...') }}</span>
+        </button>
     </div>
 
     <div>
         <label class="block text-sm font-medium mb-1">Marca</label>
-        <input type="text" name="marca" value="{{ old('marca', $produto->marca ?? '') }}"
-               class="w-full border rounded px-3 py-2">
+        <button type="button" onclick="abrirModalCatalogo('marca')"
+                class="w-full border rounded px-3 py-2 text-left bg-white hover:bg-gray-50 text-sm">
+            <span id="marca_label">{{ old('marca_id') ? '' : ($produto->marca->nome ?? 'Clique para selecionar...') }}</span>
+        </button>
     </div>
 
     <div>
         <label class="block text-sm font-medium mb-1">Grupo</label>
-        <input type="text" name="grupo" value="{{ old('grupo', $produto->grupo ?? '') }}"
-               class="w-full border rounded px-3 py-2">
+        <button type="button" onclick="abrirModalCatalogo('grupo')"
+                class="w-full border rounded px-3 py-2 text-left bg-white hover:bg-gray-50 text-sm">
+            <span id="grupo_label">{{ old('grupo_id') ? '' : ($produto->grupo->nome ?? 'Clique para selecionar...') }}</span>
+        </button>
     </div>
 
     <div>
@@ -45,10 +57,12 @@
     <hr class="col-span-2 my-2">
     <h3 class="col-span-2 font-semibold text-gray-700">Dados fiscais</h3>
 
-    <div>
+    <div class="col-span-2">
         <label class="block text-sm font-medium mb-1">NCM *</label>
-        <input type="text" name="ncm" maxlength="8" value="{{ old('ncm', $produto->ncm ?? '') }}" required
-               class="w-full border rounded px-3 py-2">
+        <button type="button" onclick="abrirModalNcm()"
+                class="w-full border rounded px-3 py-2 text-left bg-white hover:bg-gray-50 text-sm">
+            <span id="ncm_label">{{ old('ncm_id') ? '' : ($produto->ncm ? $produto->ncm->codigo . ' — ' . $produto->ncm->descricao : 'Clique para selecionar...') }}</span>
+        </button>
     </div>
 
     <div>

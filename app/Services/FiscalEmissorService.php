@@ -23,7 +23,7 @@ class FiscalEmissorService
 
     public function emitir(Venda $venda): array
     {
-        $venda->load('itens.produto', 'itens.variante', 'caixa.pdv');
+        $venda->load('itens.produto.ncm', 'itens.variante', 'caixa.pdv');
         $pdv = $venda->caixa->pdv;
 
         if ($venda->numero_nfce) {
@@ -363,7 +363,7 @@ class FiscalEmissorService
             $prod->cProd = $produto->codigo_interno;
             $prod->cEAN = $produto->codigo_barras ?: 'SEM GTIN';
             $prod->xProd = $produto->nome . ($item->variante ? " - {$item->variante->cor} {$item->variante->tamanho}" : '');
-            $prod->NCM = $produto->ncm;
+            $prod->NCM = $produto->ncm->codigo;
             $prod->CFOP = $produto->cfop_padrao;
             $prod->uCom = $produto->unidade_comercial;
             $prod->qCom = $item->quantidade;

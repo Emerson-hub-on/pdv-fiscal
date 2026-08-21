@@ -14,6 +14,9 @@ use App\Http\Controllers\InutilizacaoController;
 use App\Http\Controllers\CancelamentoController;
 use App\Http\Controllers\SupervisorController;
 use App\Http\Controllers\SincronizacaoController;
+use App\Http\Controllers\CatalogoController;
+use App\Http\Controllers\NcmController;
+
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -48,8 +51,11 @@ Route::middleware('auth')->group(function () {
     Route::post('supervisor/autorizar', [SupervisorController::class, 'autorizar'])->name('supervisor.autorizar');
     Route::post('sincronizar-agora', [SincronizacaoController::class, 'executar'])->name('sincronizacao.executar');
     Route::post('pdv/limpar-sessao', [VendaController::class, 'limparSessaoCarrinho'])->name('vendas.limpar-sessao');
+    Route::get('catalogo/listar', [CatalogoController::class, 'listar'])->name('catalogo.listar');
+    Route::post('catalogo/criar', [CatalogoController::class, 'criar'])->name('catalogo.criar');
+    Route::get('ncm/listar', [NcmController::class, 'listar'])->name('ncm.listar');
+    Route::post('ncm/criar', [NcmController::class, 'criar'])->name('ncm.criar');
 
 
 
-    
     });

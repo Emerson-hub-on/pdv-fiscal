@@ -102,12 +102,12 @@ class ProdutoController extends Controller
         return $request->validate([
             'nome' => 'required|string|max:255',
             'descricao' => 'nullable|string',
-            'categoria' => 'nullable|string|max:100',
-            'marca' => 'nullable|string|max:100',
-            'grupo' => 'nullable|string|max:100',
+            'categoria_id' => 'nullable|exists:categorias,id',
+            'marca_id' => 'nullable|exists:marcas,id',
+            'grupo_id' => 'nullable|exists:grupos,id',
             'codigo_interno' => 'required|string|max:50|unique:produtos,codigo_interno,' . $idAtual,
             'codigo_barras' => 'nullable|string|max:50',
-            'ncm' => 'required|string|size:8',
+            'ncm_id' => 'required|exists:ncms,id',
             'cest' => 'nullable|string|size:7',
             'cfop_padrao' => 'required|string|size:4',
             'unidade_comercial' => 'required|string|max:6',
@@ -118,10 +118,9 @@ class ProdutoController extends Controller
             'preco_venda' => 'required|numeric|min:0',
             'preco_custo' => 'nullable|numeric|min:0',
             'tem_variacao' => 'boolean',
+            'produto_balanca' => 'boolean',
             'estoque' => 'required_if:tem_variacao,false|integer|min:0',
             'estoque_minimo' => 'nullable|integer|min:0',
-            'produto_balanca' => 'boolean',
-
-            ]);
+        ]);
     }
 }
