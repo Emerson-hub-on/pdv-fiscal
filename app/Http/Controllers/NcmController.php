@@ -36,4 +36,39 @@ class NcmController extends Controller
 
         return response()->json($ncm);
     }
+
+        public function editar(Request $request)
+    {
+        $validado = $request->validate([
+            'id' => 'required|exists:ncms,id',
+            'codigo' => 'required|string|size:8',
+            'descricao' => 'required|string|max:255',
+        ]);
+
+        $ncm = Ncm::findOrFail($validado['id']);
+        $ncm->update([
+            'codigo' => $validado['codigo'],
+            'descricao' => $validado['descricao'],
+        ]);
+
+        return response()->json($ncm);
+    }
+
+    public function excluir(Request $request)
+    {
+        $id = $request->get('id');
+        $ncm = Ncm::findOrFail($id);
+
+        $emUso = \App\Models\Produto::where('ncm_id', $id)->exists();
+
+        if ($emUso) {
+            return response()->json([
+                'erro' => 'Não é possível excluir: existem produtos usando este NCM.'
+            ], 422);
+        }
+
+        $ncm->delete();
+
+        return response()->json(['sucesso' => true]);
+    }
 }

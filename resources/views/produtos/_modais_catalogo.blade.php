@@ -78,6 +78,8 @@
 let tipoCatalogoAtivo = null;
 let timeoutCatalogo;
 let timeoutNcm;
+let editandoCatalogoId = null;
+let editandoNcmId = null;
 
 // ===================== CATALOGO (categoria, marca, grupo) =====================
 
@@ -120,10 +122,16 @@ function buscarCatalogo() {
 
         vazio.classList.add('hidden');
         lista.innerHTML = items.map(i => `
-            <li class="py-2 px-1 hover:bg-blue-50 cursor-pointer rounded text-sm flex justify-between items-center"
-                onclick="selecionarCatalogo(${i.id}, '${i.nome.replace(/'/g, "\\'")}')">
-                <span>${i.nome}</span>
-                <span class="text-blue-500 text-xs">Selecionar</span>
+            <li class="py-2 px-1 hover:bg-blue-50 rounded text-sm flex justify-between items-center gap-2 group">
+                <span class="flex-1 cursor-pointer" onclick="selecionarCatalogo(${i.id}, '${i.nome.replace(/'/g, "\\'")}')">
+                    ${i.nome}
+                </span>
+                <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                    <button onclick="editarCatalogo(${i.id}, '${i.nome.replace(/'/g, "\\'")}')"
+                            class="text-xs text-blue-500 hover:underline px-1">Editar</button>
+                    <button onclick="excluirCatalogo(${i.id}, '${i.nome.replace(/'/g, "\\'")}')"
+                            class="text-xs text-red-500 hover:underline px-1">Excluir</button>
+                </div>
             </li>
         `).join('');
     }, 200);
@@ -143,23 +151,75 @@ function abrirFormNovoCatalogo() {
 function fecharFormNovoCatalogo() {
     document.getElementById('form-novo-catalogo').classList.add('hidden');
     document.getElementById('novo-catalogo-nome').value = '';
+    editandoCatalogoId = null;
 }
+
+
+function editarCatalogo(id, nomeAtual) {
+    editandoCatalogoId = id;
+    document.getElementById('form-novo-catalogo').classList.remove('hidden');
+    document.getElementById('novo-catalogo-nome').value = nomeAtual;
+    document.getElementById('novo-catalogo-nome').focus();
+}
+
+
+async function excluirCatalogo(id, nome) {
+    if (!confirm(`Excluir "${nome}"? Esta ação não pode ser desfeita.`)) return;
+
+    const resp = await fetch('{{ route("catalogo.excluir") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body: JSON.stringify({ tipo: tipoCatalogoAtivo, id }),
+    });
+
+    const resultado = await resp.json();
+
+    if (resultado.erro) {
+        alert(resultado.erro);
+        return;
+    }
+
+    // Se o excluído era o selecionado atualmente, limpa o campo
+    const idAtual = document.getElementById(`${tipoCatalogoAtivo}_id`).value;
+    if (idAtual == id) {
+        document.getElementById(`${tipoCatalogoAtivo}_id`).value = '';
+        document.getElementById(`${tipoCatalogoAtivo}_label`).innerText = 'Clique para selecionar...';
+    }
+
+    buscarCatalogo();
+}
+
 
 async function salvarNovoCatalogo() {
     const nome = document.getElementById('novo-catalogo-nome').value.trim();
     if (!nome) return;
 
-    const resp = await fetch('{{ route('catalogo.criar') }}', {
+    let url, body;
+
+    if (editandoCatalogoId) {
+        url = '{{ route("catalogo.editar") }}';
+        body = JSON.stringify({ tipo: tipoCatalogoAtivo, id: editandoCatalogoId, nome });
+    } else {
+        url = '{{ route("catalogo.criar") }}';
+        body = JSON.stringify({ tipo: tipoCatalogoAtivo, nome });
+    }
+
+    const resp = await fetch(url, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-        },
-        body: JSON.stringify({ tipo: tipoCatalogoAtivo, nome }),
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body,
     });
 
     const item = await resp.json();
-    selecionarCatalogo(item.id, item.nome);
+    editandoCatalogoId = null;
+    fecharFormNovoCatalogo();
+    buscarCatalogo();
+
+    // Se estava editando o item atualmente selecionado, atualiza o label
+    const idAtual = document.getElementById(`${tipoCatalogoAtivo}_id`).value;
+    if (idAtual == item.id) {
+        document.getElementById(`${tipoCatalogoAtivo}_label`).innerText = item.nome;
+    }
 }
 
 // ===================== NCM =====================
@@ -197,10 +257,23 @@ function buscarNcm() {
 
         vazio.classList.add('hidden');
         lista.innerHTML = items.map(i => `
-            <tr class="hover:bg-blue-50 cursor-pointer border-b"
-                onclick="selecionarNcm(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
-                <td class="py-2 font-mono text-xs">${i.codigo}</td>
-                <td class="py-2 text-sm">${i.descricao}</td>
+            <tr class="border-b hover:bg-blue-50 group">
+                <td class="py-2 font-mono text-xs cursor-pointer"
+                    onclick="selecionarNcm(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
+                    ${i.codigo}
+                </td>
+                <td class="py-2 text-sm cursor-pointer"
+                    onclick="selecionarNcm(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
+                    ${i.descricao}
+                </td>
+                <td class="py-2 w-28">
+                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition justify-end">
+                        <button onclick="editarNcm(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')"
+                                class="text-xs text-blue-500 hover:underline">Editar</button>
+                        <button onclick="excluirNcm(${i.id})"
+                                class="text-xs text-red-500 hover:underline">Excluir</button>
+                    </div>
+                </td>
             </tr>
         `).join('');
     }, 200);
@@ -219,33 +292,78 @@ function abrirFormNovoNcm() {
 
 function fecharFormNovoNcm() {
     document.getElementById('form-novo-ncm').classList.add('hidden');
+    document.getElementById('novo-ncm-codigo').value = '';
+    document.getElementById('novo-ncm-descricao').value = '';
+    editandoNcmId = null;
+}
+
+function editarNcm(id, codigo, descricao) {
+    editandoNcmId = id;
+    document.getElementById('form-novo-ncm').classList.remove('hidden');
+    document.getElementById('novo-ncm-codigo').value = codigo;
+    document.getElementById('novo-ncm-descricao').value = descricao;
+    document.getElementById('novo-ncm-codigo').focus();
 }
 
 async function salvarNovoNcm() {
     const codigo = document.getElementById('novo-ncm-codigo').value.trim();
     const descricao = document.getElementById('novo-ncm-descricao').value.trim();
 
-    if (codigo.length !== 8) {
-        alert('O código NCM deve ter exatamente 8 dígitos.');
-        return;
+    if (codigo.length !== 8) { alert('O código NCM deve ter exatamente 8 dígitos.'); return; }
+    if (!descricao) { alert('Informe uma descrição.'); return; }
+
+    let url, body;
+
+    if (editandoNcmId) {
+        url = '{{ route("ncm.editar") }}';
+        body = JSON.stringify({ id: editandoNcmId, codigo, descricao });
+    } else {
+        url = '{{ route("ncm.criar") }}';
+        body = JSON.stringify({ codigo, descricao });
     }
 
-    if (!descricao) {
-        alert('Informe uma descrição para o NCM.');
-        return;
-    }
-
-    const resp = await fetch('{{ route('ncm.criar') }}', {
+    const resp = await fetch(url, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-        },
-        body: JSON.stringify({ codigo, descricao }),
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body,
     });
 
     const item = await resp.json();
-    selecionarNcm(item.id, item.codigo, item.descricao);
+    editandoNcmId = null;
     fecharFormNovoNcm();
+    buscarNcm();
+
+    // Atualiza o label se estava editando o NCM selecionado
+    const idAtual = document.getElementById('ncm_id').value;
+    if (idAtual == item.id) {
+        document.getElementById('ncm_label').innerText = `${item.codigo} — ${item.descricao}`;
+    }
 }
+
+async function excluirNcm(id) {
+    if (!confirm('Excluir este NCM? Esta ação não pode ser desfeita.')) return;
+
+    const resp = await fetch('{{ route("ncm.excluir") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body: JSON.stringify({ id }),
+    });
+
+    const resultado = await resp.json();
+
+    if (resultado.erro) {
+        alert(resultado.erro);
+        return;
+    }
+
+    const idAtual = document.getElementById('ncm_id').value;
+    if (idAtual == id) {
+        document.getElementById('ncm_id').value = '';
+        document.getElementById('ncm_label').innerText = 'Clique para selecionar...';
+    }
+
+    buscarNcm();
+}
+
+
 </script>

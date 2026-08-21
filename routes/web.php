@@ -55,7 +55,10 @@ Route::middleware('auth')->group(function () {
     Route::post('catalogo/criar', [CatalogoController::class, 'criar'])->name('catalogo.criar');
     Route::get('ncm/listar', [NcmController::class, 'listar'])->name('ncm.listar');
     Route::post('ncm/criar', [NcmController::class, 'criar'])->name('ncm.criar');
-
+    Route::post('catalogo/editar', [CatalogoController::class, 'editar'])->name('catalogo.editar');
+    Route::post('catalogo/excluir', [CatalogoController::class, 'excluir'])->name('catalogo.excluir');
+    Route::post('ncm/editar', [NcmController::class, 'editar'])->name('ncm.editar');
+    Route::post('ncm/excluir', [NcmController::class, 'excluir'])->name('ncm.excluir');
 
 
     });
