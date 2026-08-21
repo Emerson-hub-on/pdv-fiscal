@@ -42,7 +42,7 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
             <button type="button" onclick="abrirModalCatalogo('categoria')"
                     class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
-                <span id="categoria_label" class="text-gray-600">{{ old('categoria_id') ? '' : ($produto?->categoria->nome ?? 'Selecionar...') }}</span>
+                <span id="categoria_label" class="text-gray-600">{{ old('categoria_id') ? '' : ($produto?->categoria->nome ?? 'Clique para selecionar...') }}</span>
             </button>
         </div>
 
@@ -50,7 +50,7 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Marca</label>
             <button type="button" onclick="abrirModalCatalogo('marca')"
                     class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
-                <span id="marca_label" class="text-gray-600">{{ old('marca_id') ? '' : ($produto?->marca->nome ?? 'Selecionar...') }}</span>
+                <span id="marca_label" class="text-gray-600">{{ old('marca_id') ? '' : ($produto?->marca->nome ?? 'Clique para selecionar...') }}</span>
             </button>
         </div>
 
@@ -58,7 +58,7 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Grupo</label>
             <button type="button" onclick="abrirModalCatalogo('grupo')"
                     class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
-                <span id="grupo_label" class="text-gray-600">{{ old('grupo_id') ? '' : ($produto?->grupo->nome ?? 'Selecionar...') }}</span>
+                <span id="grupo_label" class="text-gray-600">{{ old('grupo_id') ? '' : ($produto?->grupo->nome ?? 'Clique para selecionar...') }}</span>
             </button>
         </div>
 
@@ -83,7 +83,7 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">NCM <span class="text-red-500">*</span></label>
             <button type="button" onclick="abrirModalNcm()"
                     class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
-                <span id="ncm_label" class="text-gray-600">{{ old('ncm_id') ? '' : ($produto?->ncm ? $produto->ncm->codigo . ' — ' . $produto->ncm->descricao : 'Selecionar...') }}</span>
+                <span id="ncm_label" class="text-gray-600">{{ old('ncm_id') ? '' : ($produto?->ncm ? $produto->ncm->codigo . ' — ' . $produto->ncm->descricao : 'Clique para selecionar...') }}</span>
             </button>
         </div>
 
