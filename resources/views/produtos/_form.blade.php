@@ -27,18 +27,27 @@
                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
         </div>
 
+                <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Código de barras (EAN)</label>
+            <input type="text" name="codigo_barras" value="{{ old('codigo_barras', $produto->codigo_barras ?? '') }}"
+                   placeholder="Deixe em branco se não tiver"
+                   class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+        </div>
+
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Código interno <span class="text-red-500">*</span></label>
+            <input type="text" name="codigo_interno" value="{{ old('codigo_interno', $produto->codigo_interno ?? '') }}" required
+                   class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+        </div>
+
         <div class="col-span-2">
             <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
             <textarea name="descricao" rows="3"
                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-none">{{ old('descricao', $produto->descricao ?? '') }}</textarea>
         </div>
 
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Código de barras (EAN)</label>
-            <input type="text" name="codigo_barras" value="{{ old('codigo_barras', $produto->codigo_barras ?? '') }}"
-                   placeholder="Deixe em branco se não tiver"
-                   class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
-        </div>
+
 
         <input type="hidden" name="categoria_id" id="categoria_id" value="{{ old('categoria_id', $produto->categoria_id ?? '') }}">
         <input type="hidden" name="marca_id"     id="marca_id"     value="{{ old('marca_id',     $produto->marca_id     ?? '') }}">
@@ -69,10 +78,22 @@
             </button>
         </div>
 
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Código interno <span class="text-red-500">*</span></label>
-            <input type="text" name="codigo_interno" value="{{ old('codigo_interno', $produto->codigo_interno ?? '') }}" required
-                   class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+        <div class="flex flex-col justify-center">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Produto de balança</label>
+            <div class="flex items-center gap-3">
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="hidden" name="produto_balanca" value="0">
+                    <input type="checkbox" id="produto_balanca" name="produto_balanca" value="1"
+                           {{ old('produto_balanca', $produto->produto_balanca ?? false) ? 'checked' : '' }}
+                           class="sr-only peer"
+                           onchange="validarProdutoBalanca(this)">
+                    <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+                <span class="text-sm text-gray-600">Pesado em KG</span>
+                <span id="aviso-balanca" class="text-xs text-orange-500 hidden">
+                    ⚠️ Unidade comercial deve ser KG
+                </span>
+            </div>
         </div>
 
 
@@ -81,7 +102,7 @@
     {{-- Tab: Dados Fiscais --}}
     <div id="tab-fiscal" class="tab-painel p-6 grid grid-cols-2 gap-5 hidden">
 
-        <div class="col-span-2">
+        <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">NCM <span class="text-red-500">*</span></label>
             <button type="button" onclick="abrirModalNcm()"
                     class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
@@ -161,29 +182,6 @@
             </div>
         </div>
 
-        <div class="col-span-2 flex items-center gap-3 py-1">
-            <input type="hidden" name="tem_variacao" value="0">
-            <input type="checkbox" id="tem_variacao" name="tem_variacao" value="1"
-                   {{ old('tem_variacao', $produto->tem_variacao ?? false) ? 'checked' : '' }}
-                   onchange="toggleVariacao(this.checked)"
-                   class="w-4 h-4 text-blue-600 rounded">
-            <label for="tem_variacao" class="text-sm font-medium text-gray-700">Produto tem variação (cor/tamanho)</label>
-        </div>
-
-        <div class="col-span-2 flex items-center gap-3 py-1">
-            <label class="relative inline-flex items-center cursor-pointer">
-                <input type="hidden" name="produto_balanca" value="0">
-                <input type="checkbox" id="produto_balanca" name="produto_balanca" value="1"
-                       {{ old('produto_balanca', $produto->produto_balanca ?? false) ? 'checked' : '' }}
-                       class="sr-only peer"
-                       onchange="validarProdutoBalanca(this)">
-                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                <span class="ml-3 text-sm font-medium text-gray-700">Produto de balança (KG)</span>
-            </label>
-            <span id="aviso-balanca" class="text-xs text-orange-500 hidden">
-                ⚠️ Disponível apenas quando a unidade comercial for KG
-            </span>
-        </div>
 
         <div id="bloco-estoque-simples" class="col-span-2 grid grid-cols-2 gap-5 {{ old('tem_variacao', $produto->tem_variacao ?? false) ? 'hidden' : '' }}">
             <div>
@@ -198,6 +196,16 @@
             </div>
         </div>
 
+
+
+        <div class="col-span-2 flex items-center gap-3 py-1">
+            <input type="hidden" name="tem_variacao" value="0">
+            <input type="checkbox" id="tem_variacao" name="tem_variacao" value="1"
+                   {{ old('tem_variacao', $produto->tem_variacao ?? false) ? 'checked' : '' }}
+                   onchange="toggleVariacao(this.checked)"
+                   class="w-4 h-4 text-blue-600 rounded">
+            <label for="tem_variacao" class="text-sm font-medium text-gray-700">Produto tem variação (cor/tamanho)</label>
+        </div>
         <div id="bloco-variantes" class="col-span-2 {{ old('tem_variacao', $produto->tem_variacao ?? false) ? '' : 'hidden' }}">
             <h3 class="font-semibold text-gray-700 mb-3">Variações</h3>
             <div class="border border-gray-200 rounded-lg overflow-hidden mb-3">

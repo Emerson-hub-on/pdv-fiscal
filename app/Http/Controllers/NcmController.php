@@ -9,15 +9,23 @@ class NcmController extends Controller
 {
     public function listar(Request $request)
     {
-        $termo = $request->get('q', '');
+        $termo = trim($request->get('q', ''));
 
         $ncms = Ncm::when($termo, function ($q) use ($termo) {
-            $q->where('codigo', 'like', "%{$termo}%")
-              ->orWhere('descricao', 'like', "%{$termo}%");
-        })
-        ->orderBy('codigo')
-        ->limit(30) // limita pra nao travar com os 10000 registros
-        ->get(['id', 'codigo', 'descricao', 'cadastro_avulso']);
+                $q->where('codigo', 'like', "%{$termo}%")
+                  ->orWhere('descricao', 'like', "%{$termo}%");
+            })
+            ->orderByRaw("
+                CASE
+                    WHEN codigo = ? THEN 0
+                    WHEN codigo LIKE ? THEN 1
+                    WHEN descricao LIKE ? THEN 2
+                    ELSE 3
+                END
+            ", [$termo, "{$termo}%", "{$termo}%"])
+            ->orderBy('codigo')
+            ->limit(50)
+            ->get(['id', 'codigo', 'descricao', 'cadastro_avulso']);
 
         return response()->json($ncms);
     }
@@ -25,7 +33,7 @@ class NcmController extends Controller
     public function criar(Request $request)
     {
         $validado = $request->validate([
-            'codigo' => 'required|string|size:8',
+            'codigo'    => 'required|string|size:8',
             'descricao' => 'required|string|max:255',
         ]);
 
@@ -37,17 +45,17 @@ class NcmController extends Controller
         return response()->json($ncm);
     }
 
-        public function editar(Request $request)
+    public function editar(Request $request)
     {
         $validado = $request->validate([
-            'id' => 'required|exists:ncms,id',
-            'codigo' => 'required|string|size:8',
+            'id'        => 'required|exists:ncms,id',
+            'codigo'    => 'required|string|size:8',
             'descricao' => 'required|string|max:255',
         ]);
 
         $ncm = Ncm::findOrFail($validado['id']);
         $ncm->update([
-            'codigo' => $validado['codigo'],
+            'codigo'    => $validado['codigo'],
             'descricao' => $validado['descricao'],
         ]);
 

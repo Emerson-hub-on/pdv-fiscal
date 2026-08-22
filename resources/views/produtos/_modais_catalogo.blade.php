@@ -256,15 +256,22 @@ function buscarNcm() {
         }
 
         vazio.classList.add('hidden');
+
+        const highlight = (texto, termo) => {
+            if (!termo) return texto;
+            const regex = new RegExp(`(${termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return texto.replace(regex, '<mark class="bg-yellow-200 rounded-sm">$1</mark>');
+        };
+
         lista.innerHTML = items.map(i => `
             <tr class="border-b hover:bg-blue-50 group">
                 <td class="py-2 font-mono text-xs cursor-pointer"
                     onclick="selecionarNcm(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
-                    ${i.codigo}
+                    ${highlight(i.codigo, termo)}
                 </td>
                 <td class="py-2 text-sm cursor-pointer"
                     onclick="selecionarNcm(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
-                    ${i.descricao}
+                    ${highlight(i.descricao, termo)}
                 </td>
                 <td class="py-2 w-28">
                     <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition justify-end">
