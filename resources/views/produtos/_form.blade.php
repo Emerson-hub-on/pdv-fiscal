@@ -108,7 +108,7 @@
                            {{ old('produto_balanca', $produto->produto_balanca ?? false) ? 'checked' : '' }}
                            class="sr-only peer"
                            onchange="validarProdutoBalanca(this)">
-                    <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                 </label>
                 <span class="text-sm text-gray-600">Pesado em KG</span>
                 <span id="aviso-balanca" class="text-xs text-orange-500 hidden">
