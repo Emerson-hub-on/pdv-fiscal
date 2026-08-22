@@ -1,5 +1,24 @@
 @php $produto = $produto ?? null; @endphp
 
+{{-- Modal de aviso de validação --}}
+<div id="modal-aviso-validacao" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-6">
+        <div class="flex items-start gap-3 mb-4">
+            <div class="text-yellow-500 text-2xl leading-none mt-0.5">⚠️</div>
+            <div>
+                <h3 class="text-base font-semibold text-gray-800 mb-1">Campo obrigatório</h3>
+                <p id="modal-aviso-mensagem" class="text-sm text-gray-600"></p>
+            </div>
+        </div>
+        <div class="flex justify-end">
+            <button id="modal-aviso-ok"
+                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2 rounded-lg transition">
+                OK
+            </button>
+        </div>
+    </div>
+</div>
+
 <div class="bg-white rounded-xl shadow-sm border border-gray-200">
 
     {{-- Tabs --}}
@@ -27,18 +46,22 @@
                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
         </div>
 
-                <div>
+        <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Código de barras (EAN)</label>
             <input type="text" name="codigo_barras" value="{{ old('codigo_barras', $produto->codigo_barras ?? '') }}"
                    placeholder="Deixe em branco se não tiver"
                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
         </div>
 
-
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Código interno <span class="text-red-500">*</span></label>
-            <input type="text" name="codigo_interno" value="{{ old('codigo_interno', $produto->codigo_interno ?? '') }}" required
-                   class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+            <label class="block text-sm font-medium mb-1">
+                Código interno *
+                <span class="text-xs text-gray-400 font-normal">(gerado automaticamente)</span>
+            </label>
+            <input type="text" name="codigo_interno"
+                value="{{ old('codigo_interno', $produto->codigo_interno ?? $proximoCodigo ?? '') }}"
+                readonly
+                class="w-full border rounded px-3 py-2 bg-gray-50 text-gray-500 cursor-not-allowed">
         </div>
 
         <div class="col-span-2">
@@ -46,8 +69,6 @@
             <textarea name="descricao" rows="3"
                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-none">{{ old('descricao', $produto->descricao ?? '') }}</textarea>
         </div>
-
-
 
         <input type="hidden" name="categoria_id" id="categoria_id" value="{{ old('categoria_id', $produto->categoria_id ?? '') }}">
         <input type="hidden" name="marca_id"     id="marca_id"     value="{{ old('marca_id',     $produto->marca_id     ?? '') }}">
@@ -95,8 +116,6 @@
                 </span>
             </div>
         </div>
-
-
     </div>
 
     {{-- Tab: Dados Fiscais --}}
@@ -182,7 +201,6 @@
             </div>
         </div>
 
-
         <div id="bloco-estoque-simples" class="col-span-2 grid grid-cols-2 gap-5 {{ old('tem_variacao', $produto->tem_variacao ?? false) ? 'hidden' : '' }}">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Estoque</label>
@@ -196,8 +214,6 @@
             </div>
         </div>
 
-
-
         <div class="col-span-2 flex items-center gap-3 py-1">
             <input type="hidden" name="tem_variacao" value="0">
             <input type="checkbox" id="tem_variacao" name="tem_variacao" value="1"
@@ -206,6 +222,7 @@
                    class="w-4 h-4 text-blue-600 rounded">
             <label for="tem_variacao" class="text-sm font-medium text-gray-700">Produto tem variação (cor/tamanho)</label>
         </div>
+
         <div id="bloco-variantes" class="col-span-2 {{ old('tem_variacao', $produto->tem_variacao ?? false) ? '' : 'hidden' }}">
             <h3 class="font-semibold text-gray-700 mb-3">Variações</h3>
             <div class="border border-gray-200 rounded-lg overflow-hidden mb-3">
@@ -233,7 +250,8 @@
 
 {{-- Botões de ação --}}
 <div class="mt-6 flex gap-3">
-    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-semibold text-sm transition">
+    <button type="button" onclick="salvarProduto()"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-semibold text-sm transition">
         Salvar produto
     </button>
     <a href="{{ route('produtos.index') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2.5 rounded-lg text-sm font-medium transition">
@@ -244,18 +262,99 @@
 <script>
 let indiceVariante = 0;
 
+// ===================== TABS =====================
+
 function trocarTab(tab) {
     document.querySelectorAll('.tab-painel').forEach(p => p.classList.add('hidden'));
     document.querySelectorAll('.tab-btn').forEach(b => {
         b.classList.remove('border-blue-600', 'text-blue-600');
         b.classList.add('border-transparent', 'text-gray-500');
     });
-
     document.getElementById('tab-' + tab).classList.remove('hidden');
     const btn = document.getElementById('tab-btn-' + tab);
     btn.classList.add('border-blue-600', 'text-blue-600');
     btn.classList.remove('border-transparent', 'text-gray-500');
 }
+
+// ===================== MODAL DE AVISO =====================
+
+function abrirModalAviso(mensagem, tab) {
+    document.getElementById('modal-aviso-mensagem').innerHTML = mensagem;
+    const modal = document.getElementById('modal-aviso-validacao');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    if (tab) trocarTab(tab);
+    setTimeout(() => document.getElementById('modal-aviso-ok').focus(), 50);
+}
+
+function fecharModalAviso() {
+    const modal = document.getElementById('modal-aviso-validacao');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+document.getElementById('modal-aviso-ok').addEventListener('click', fecharModalAviso);
+
+document.addEventListener('keydown', (e) => {
+    const modal = document.getElementById('modal-aviso-validacao');
+    if (e.key === 'Enter' && !modal.classList.contains('hidden')) {
+        e.preventDefault();
+        fecharModalAviso();
+    }
+});
+
+// ===================== VALIDAÇÃO E SUBMIT =====================
+
+const validacoes = [
+    {
+        mensagem: 'O campo <strong>Nome</strong> é obrigatório.',
+        tab: 'geral',
+        checar: () => !document.querySelector('input[name="nome"]').value.trim(),
+    },
+    {
+        mensagem: 'O campo <strong>NCM</strong> é obrigatório. Selecione o NCM do produto em <em>Dados Fiscais</em>.',
+        tab: 'fiscal',
+        checar: () => !document.getElementById('ncm_id').value,
+    },
+    {
+        mensagem: 'O campo <strong>CFOP padrão</strong> é obrigatório. Preencha em <em>Dados Fiscais</em>.',
+        tab: 'fiscal',
+        checar: () => !document.querySelector('input[name="cfop_padrao"]').value.trim(),
+    },
+    {
+        mensagem: 'O campo <strong>CSOSN</strong> é obrigatório. Preencha em <em>Dados Fiscais</em>.',
+        tab: 'fiscal',
+        checar: () => !document.querySelector('input[name="csosn"]').value.trim(),
+    },
+    {
+        mensagem: 'O campo <strong>Unidade comercial</strong> é obrigatório. Preencha em <em>Dados Fiscais</em>.',
+        tab: 'fiscal',
+        checar: () => !document.querySelector('input[name="unidade_comercial"]').value.trim(),
+    },
+    {
+        mensagem: 'O campo <strong>Unidade tributável</strong> é obrigatório. Preencha em <em>Dados Fiscais</em>.',
+        tab: 'fiscal',
+        checar: () => !document.querySelector('input[name="unidade_tributavel"]').value.trim(),
+    },
+    {
+        mensagem: 'O campo <strong>Preço de venda</strong> é obrigatório. Preencha em <em>Preço e Estoque</em>.',
+        tab: 'preco',
+        checar: () => !document.querySelector('input[name="preco_venda"]').value,
+    },
+];
+
+function salvarProduto() {
+    for (const regra of validacoes) {
+        if (regra.checar()) {
+            abrirModalAviso(regra.mensagem, regra.tab);
+            return;
+        }
+    }
+    // Todas as validações passaram — submete o form pai
+    document.querySelector('form').submit();
+}
+
+// ===================== BALANÇA =====================
 
 function validarProdutoBalanca(checkbox) {
     const unidade = document.querySelector('input[name="unidade_comercial"]').value.toUpperCase().trim();
@@ -275,6 +374,8 @@ document.querySelector('input[name="unidade_comercial"]')?.addEventListener('inp
         setTimeout(() => document.getElementById('aviso-balanca').classList.add('hidden'), 3000);
     }
 });
+
+// ===================== VARIAÇÕES =====================
 
 function toggleVariacao(temVariacao) {
     document.getElementById('bloco-estoque-simples').classList.toggle('hidden', temVariacao);

@@ -22,7 +22,8 @@ class ProdutoController extends Controller
 
     public function create()
     {
-        return view('produtos.create');
+        $proximoCodigo = Produto::proximoCodigoInterno();
+        return view('produtos.create', compact('proximoCodigo'));
     }
 
     public function store(Request $request)

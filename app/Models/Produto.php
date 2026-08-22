@@ -46,6 +46,16 @@ class Produto extends Model
         'produto_balanca' => 'boolean',
     ];
 
+    public static function proximoCodigoInterno(): string
+    {
+        // Pega o maior codigo_interno que seja puramente numérico
+        $ultimo = static::whereRaw('codigo_interno REGEXP "^[0-9]+$"')
+            ->orderByRaw('CAST(codigo_interno AS UNSIGNED) DESC')
+            ->value('codigo_interno');
+
+        return $ultimo ? (string)((int)$ultimo + 1) : '1';
+    }
+
     public function variantes()
     {
         return $this->hasMany(ProdutoVariante::class);
