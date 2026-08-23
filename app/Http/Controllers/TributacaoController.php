@@ -17,7 +17,7 @@ class TributacaoController extends Controller
         $tributacoes = Tributacao::where('crt', $crt)
             ->where('ativo', true)
             ->when($termo, fn($q) => $q->where('descricao', 'like', "%{$termo}%"))
-            ->orderBy('descricao')
+            ->orderByDesc('descricao')
             ->get(['id', 'descricao', 'cfop', 'csosn', 'cst_icms', 'aliquota_icms', 'observacao']);
 
         return response()->json($tributacoes);
