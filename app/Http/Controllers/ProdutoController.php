@@ -109,7 +109,7 @@ class ProdutoController extends Controller
             'codigo_interno' => 'required|string|max:50|unique:produtos,codigo_interno,' . $idAtual,
             'codigo_barras' => 'nullable|string|max:50',
             'ncm_id' => 'required|exists:ncms,id',
-            'cest' => 'nullable|string|size:7',
+            'cest_id' => 'nullable|exists:cests,id',
             'tributacao_id' => 'required|exists:tributacoes,id',
             'unidade_comercial' => 'required|string|max:6',
             'unidade_tributavel' => 'required|string|max:6',

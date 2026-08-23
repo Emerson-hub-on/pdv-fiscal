@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Produto extends Model
 {
@@ -10,7 +11,7 @@ class Produto extends Model
         'nome', 'descricao',
         'categoria_id', 'marca_id', 'grupo_id',
         'codigo_interno', 'codigo_barras',
-        'ncm_id', 'cest', 
+        'ncm_id', 'cest_id',
         'unidade_comercial', 'unidade_tributavel',
         'origem_mercadoria', 'class_trib_ibs_cbs',
         'preco_venda', 'preco_custo',
@@ -36,6 +37,11 @@ class Produto extends Model
     public function ncm()
     {
         return $this->belongsTo(Ncm::class);
+    }
+
+    public function cest(): BelongsTo
+    {
+        return $this->belongsTo(Cest::class);
     }
 
     protected $casts = [

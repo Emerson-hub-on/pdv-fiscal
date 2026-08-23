@@ -8,6 +8,10 @@
     $tributacaoSelecionada = old('tributacao_id')
         ? \App\Models\Tributacao::find(old('tributacao_id'))
         : $produto?->tributacao;
+
+    $cestSelecionado = old('cest_id')
+        ? \App\Models\Cest::find(old('cest_id'))
+        : $produto?->cest;
 @endphp
 
 @if ($errors->any())
@@ -39,12 +43,6 @@
         </div>
     </div>
 </div>
-
-
-
-
-
-
 
 <div class="bg-white rounded-xl shadow-sm border border-gray-200">
 
@@ -101,8 +99,7 @@
         <input type="hidden" name="marca_id"     id="marca_id"     value="{{ old('marca_id',     $produto->marca_id     ?? '') }}">
         <input type="hidden" name="grupo_id"     id="grupo_id"     value="{{ old('grupo_id',     $produto->grupo_id     ?? '') }}">
         <input type="hidden" name="ncm_id"       id="ncm_id"       value="{{ old('ncm_id',       $produto->ncm_id       ?? '') }}">
-        
-
+        <input type="hidden" name="cest_id"      id="cest_id"      value="{{ old('cest_id',      $produto->cest_id      ?? '') }}">
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
@@ -162,9 +159,12 @@
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">CEST</label>
-            <input type="text" name="cest" maxlength="7" value="{{ old('cest', $produto->cest ?? '') }}"
-                   placeholder="Só se o NCM exigir ICMS-ST"
-                   class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+            <button type="button" onclick="abrirModalCest()"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                <span id="cest_label" class="text-gray-600">
+                    {{ $cestSelecionado ? $cestSelecionado->codigo . ' — ' . $cestSelecionado->descricao : 'Clique para selecionar (opcional)...' }}
+                </span>
+            </button>
         </div>
 
 <div class="col-span-2">
@@ -456,7 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    @if ($errors->has('ncm_id') || $errors->has('tributacao_id') || $errors->has('cest') || $errors->has('unidade_comercial') || $errors->has('unidade_tributavel') || $errors->has('origem_mercadoria') || $errors->has('class_trib_ibs_cbs'))
+    @if ($errors->has('ncm_id') || $errors->has('tributacao_id') || $errors->has('cest_id') || $errors->has('unidade_comercial') || $errors->has('unidade_tributavel') || $errors->has('origem_mercadoria') || $errors->has('class_trib_ibs_cbs'))
         trocarTab('fiscal');
     @elseif ($errors->has('preco_venda') || $errors->has('preco_custo') || $errors->has('estoque'))
         trocarTab('preco');

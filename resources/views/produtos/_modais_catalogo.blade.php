@@ -74,6 +74,56 @@
     </div>
 </div>
 
+<!-- Modal CEST -->
+<div id="modal-cest" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6 max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold">Selecionar CEST</h2>
+            <button type="button" onclick="fecharModalCest()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        <div class="flex gap-2 mb-2">
+            <input type="text" id="cest-busca" placeholder="Buscar por código ou descrição..."
+                   class="flex-1 border rounded px-3 py-2 text-sm" oninput="buscarCest()">
+            <button type="button" onclick="abrirFormNovoCest()"
+                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-2 rounded whitespace-nowrap">
+                + Novo CEST
+            </button>
+        </div>
+
+        <div class="text-right mb-4">
+            <button type="button" onclick="limparCest()" class="text-xs text-gray-500 hover:underline">
+                Produto não sujeito a ICMS-ST (limpar seleção)
+            </button>
+        </div>
+
+        <div id="form-novo-cest" class="hidden bg-gray-50 rounded-lg p-3 mb-3">
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <input type="text" id="novo-cest-codigo" placeholder="Código (7 dígitos)"
+                       maxlength="7" class="border rounded px-3 py-2 text-sm">
+                <input type="text" id="novo-cest-descricao" placeholder="Descrição"
+                       class="border rounded px-3 py-2 text-sm">
+            </div>
+            <div class="flex gap-2 justify-end">
+                <button type="button" onclick="fecharFormNovoCest()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
+                <button type="button" onclick="salvarNovoCest()"
+                        class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded">Salvar</button>
+            </div>
+        </div>
+
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs text-gray-500 border-b">
+                    <th class="py-2 w-28">Código</th>
+                    <th class="py-2">Descrição</th>
+                    <th class="py-2 w-28"></th>
+                </tr>
+            </thead>
+            <tbody id="cest-lista"></tbody>
+        </table>
+        <p id="cest-vazio" class="text-sm text-gray-400 text-center py-4 hidden">Nenhum CEST encontrado. Use "+ Novo CEST" para cadastrar.</p>
+    </div>
+</div>
 
 <!-- Modal Tributação -->
 <input type="hidden" name="tributacao_id" id="tributacao_id" value="{{ old('tributacao_id', $produto->tributacao_id ?? '') }}">
@@ -109,8 +159,10 @@
 let tipoCatalogoAtivo = null;
 let timeoutCatalogo;
 let timeoutNcm;
+let timeoutCest;
 let editandoCatalogoId = null;
 let editandoNcmId = null;
+let editandoCestId = null;
 let timeoutTributacao;
 
 
@@ -462,5 +514,166 @@ async function excluirNcm(id) {
     buscarNcm();
 }
 
+// ===================== CEST =====================
+
+function abrirModalCest() {
+    document.getElementById('cest-busca').value = '';
+    document.getElementById('form-novo-cest').classList.add('hidden');
+    document.getElementById('modal-cest').classList.remove('hidden');
+    document.getElementById('modal-cest').classList.add('flex');
+
+    buscarCest();
+    setTimeout(() => document.getElementById('cest-busca').focus(), 100);
+}
+
+function fecharModalCest() {
+    document.getElementById('modal-cest').classList.add('hidden');
+    document.getElementById('modal-cest').classList.remove('flex');
+}
+
+function buscarCest() {
+    clearTimeout(timeoutCest);
+    timeoutCest = setTimeout(async () => {
+        const termo = document.getElementById('cest-busca').value;
+        const resp = await fetch(`{{ route('cest.listar') }}?q=${encodeURIComponent(termo)}`);
+        const items = await resp.json();
+
+        const lista = document.getElementById('cest-lista');
+        const vazio = document.getElementById('cest-vazio');
+
+        if (items.length === 0) {
+            lista.innerHTML = '';
+            vazio.classList.remove('hidden');
+            return;
+        }
+
+        vazio.classList.add('hidden');
+
+        const highlight = (texto, termo) => {
+            if (!termo) return texto;
+            const regex = new RegExp(`(${termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return texto.replace(regex, '<mark class="bg-yellow-200 rounded-sm">$1</mark>');
+        };
+
+        lista.innerHTML = items.map(i => `
+            <tr class="border-b hover:bg-blue-50 group">
+                <td class="py-2 font-mono text-xs cursor-pointer"
+                    onclick="selecionarCest(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
+                    ${highlight(i.codigo, termo)}
+                </td>
+                <td class="py-2 text-sm cursor-pointer"
+                    onclick="selecionarCest(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
+                    ${highlight(i.descricao, termo)}
+                </td>
+                <td class="py-2 w-28">
+                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition justify-end">
+                        <button type="button" onclick="editarCest(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')"
+                                class="text-xs text-blue-500 hover:underline">Editar</button>
+                        <button type="button" onclick="excluirCest(${i.id})"
+                                class="text-xs text-red-500 hover:underline">Excluir</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }, 200);
+}
+
+function selecionarCest(id, codigo, descricao) {
+    document.getElementById('cest_id').value = id;
+    document.getElementById('cest_label').innerText = `${codigo} — ${descricao}`;
+    fecharModalCest();
+}
+
+function limparCest() {
+    document.getElementById('cest_id').value = '';
+    document.getElementById('cest_label').innerText = 'Clique para selecionar (opcional)...';
+    fecharModalCest();
+}
+
+function abrirFormNovoCest() {
+    document.getElementById('form-novo-cest').classList.remove('hidden');
+    document.getElementById('novo-cest-codigo').focus();
+}
+
+function fecharFormNovoCest() {
+    document.getElementById('form-novo-cest').classList.add('hidden');
+    document.getElementById('novo-cest-codigo').value = '';
+    document.getElementById('novo-cest-descricao').value = '';
+    editandoCestId = null;
+}
+
+function editarCest(id, codigo, descricao) {
+    editandoCestId = id;
+    document.getElementById('form-novo-cest').classList.remove('hidden');
+    document.getElementById('novo-cest-codigo').value = codigo;
+    document.getElementById('novo-cest-descricao').value = descricao;
+    document.getElementById('novo-cest-codigo').focus();
+}
+
+async function salvarNovoCest() {
+    const codigo = document.getElementById('novo-cest-codigo').value.trim();
+    const descricao = document.getElementById('novo-cest-descricao').value.trim();
+
+    if (codigo.length !== 7) { alert('O código CEST deve ter exatamente 7 dígitos.'); return; }
+    if (!descricao) { alert('Informe uma descrição.'); return; }
+
+    let url, body;
+
+    if (editandoCestId) {
+        url = '{{ route("cest.editar") }}';
+        body = JSON.stringify({ id: editandoCestId, codigo, descricao });
+    } else {
+        url = '{{ route("cest.criar") }}';
+        body = JSON.stringify({ codigo, descricao });
+    }
+
+    const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body,
+    });
+
+    const item = await resp.json();
+
+    if (item.errors) {
+        alert(Object.values(item.errors).flat().join('\n'));
+        return;
+    }
+
+    editandoCestId = null;
+    fecharFormNovoCest();
+    buscarCest();
+
+    // Atualiza o label se estava editando o CEST selecionado
+    const idAtual = document.getElementById('cest_id').value;
+    if (idAtual == item.id) {
+        document.getElementById('cest_label').innerText = `${item.codigo} — ${item.descricao}`;
+    }
+}
+
+async function excluirCest(id) {
+    if (!confirm('Excluir este CEST? Esta ação não pode ser desfeita.')) return;
+
+    const resp = await fetch('{{ route("cest.excluir") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body: JSON.stringify({ id }),
+    });
+
+    const resultado = await resp.json();
+
+    if (resultado.erro) {
+        alert(resultado.erro);
+        return;
+    }
+
+    const idAtual = document.getElementById('cest_id').value;
+    if (idAtual == id) {
+        document.getElementById('cest_id').value = '';
+        document.getElementById('cest_label').innerText = 'Clique para selecionar (opcional)...';
+    }
+
+    buscarCest();
+}
 
 </script>

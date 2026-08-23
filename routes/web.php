@@ -17,6 +17,9 @@ use App\Http\Controllers\SincronizacaoController;
 use App\Http\Controllers\CatalogoController;
 use App\Http\Controllers\NcmController;
 use App\Http\Controllers\TributacaoController;
+use App\Http\Controllers\CestController;
+
+
 
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
@@ -61,5 +64,11 @@ Route::middleware('auth')->group(function () {
     Route::post('ncm/editar', [NcmController::class, 'editar'])->name('ncm.editar');
     Route::post('ncm/excluir', [NcmController::class, 'excluir'])->name('ncm.excluir');
     Route::get('tributacao/listar', [TributacaoController::class, 'listar'])->name('tributacao.listar');
+    Route::get('/cests/buscar', [CestController::class, 'buscar'])->name('cests.buscar');
+    Route::get('/cest/listar', [CestController::class, 'listar'])->name('cest.listar');
+    Route::post('/cest/criar', [CestController::class, 'criar'])->name('cest.criar');
+    Route::post('/cest/editar', [CestController::class, 'editar'])->name('cest.editar');
+    Route::post('/cest/excluir', [CestController::class, 'excluir'])->name('cest.excluir');
+
 
     });
