@@ -3,13 +3,13 @@
     <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6 max-h-[80vh] overflow-y-auto">
         <div class="flex justify-between items-center mb-4">
             <h2 id="modal-catalogo-titulo" class="text-lg font-bold">Selecionar</h2>
-            <button onclick="fecharModalCatalogo()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            <button type="button" onclick="fecharModalCatalogo()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
         </div>
 
         <div class="flex gap-2 mb-4">
             <input type="text" id="catalogo-busca" placeholder="Buscar..."
                    class="flex-1 border rounded px-3 py-2 text-sm" oninput="buscarCatalogo()">
-            <button onclick="abrirFormNovoCatalogo()"
+            <button type="button" onclick="abrirFormNovoCatalogo()"
                     class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-2 rounded whitespace-nowrap">
                 + Novo
             </button>
@@ -19,8 +19,8 @@
             <input type="text" id="novo-catalogo-nome" placeholder="Nome..."
                    class="w-full border rounded px-3 py-2 text-sm mb-2">
             <div class="flex gap-2 justify-end">
-                <button onclick="fecharFormNovoCatalogo()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
-                <button onclick="salvarNovoCatalogo()"
+                <button type="button" onclick="fecharFormNovoCatalogo()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
+                <button type="button" onclick="salvarNovoCatalogo()"
                         class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded">Salvar</button>
             </div>
         </div>
@@ -35,13 +35,13 @@
     <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6 max-h-[80vh] overflow-y-auto">
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-bold">Selecionar NCM</h2>
-            <button onclick="fecharModalNcm()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            <button type="button" onclick="fecharModalNcm()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
         </div>
 
         <div class="flex gap-2 mb-4">
             <input type="text" id="ncm-busca" placeholder="Buscar por código ou descrição..."
                    class="flex-1 border rounded px-3 py-2 text-sm" oninput="buscarNcm()">
-            <button onclick="abrirFormNovoNcm()"
+            <button type="button" onclick="abrirFormNovoNcm()"
                     class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-2 rounded whitespace-nowrap">
                 + Novo NCM
             </button>
@@ -55,8 +55,8 @@
                        class="border rounded px-3 py-2 text-sm">
             </div>
             <div class="flex gap-2 justify-end">
-                <button onclick="fecharFormNovoNcm()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
-                <button onclick="salvarNovoNcm()"
+                <button type="button" onclick="fecharFormNovoNcm()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
+                <button type="button" onclick="salvarNovoNcm()"
                         class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded">Salvar</button>
             </div>
         </div>
@@ -82,7 +82,7 @@
     <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6 max-h-[80vh] overflow-y-auto">
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-bold">Classificação Tributária</h2>
-            <button onclick="fecharModalTributacao()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            <button type="button" onclick="fecharModalTributacao()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
         </div>
 
         <input type="text" id="tributacao-busca" placeholder="Buscar tributação..."
@@ -91,9 +91,9 @@
         <table class="w-full text-sm">
             <thead>
                 <tr class="text-left text-xs text-gray-500 border-b">
-                    <th class="py-2">Descrição</th>
-                    <th class="py-2">CFOP</th>
-                    <th class="py-2">CSOSN/CST</th>
+                    <th class="py-2 pr-4">Descrição</th>
+                    <th class="py-2 pr-4">CFOP</th>
+                    <th class="py-2 pr-4">CSOSN/CST</th>
                     <th class="py-2">Alíquota</th>
                 </tr>
             </thead>
@@ -161,9 +161,9 @@ function buscarCatalogo() {
                     ${i.nome}
                 </span>
                 <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                    <button onclick="editarCatalogo(${i.id}, '${i.nome.replace(/'/g, "\\'")}')"
+                    <button type="button" onclick="editarCatalogo(${i.id}, '${i.nome.replace(/'/g, "\\'")}')"
                             class="text-xs text-blue-500 hover:underline px-1">Editar</button>
-                    <button onclick="excluirCatalogo(${i.id}, '${i.nome.replace(/'/g, "\\'")}')"
+                    <button type="button" onclick="excluirCatalogo(${i.id}, '${i.nome.replace(/'/g, "\\'")}')"
                             class="text-xs text-red-500 hover:underline px-1">Excluir</button>
                 </div>
             </li>
@@ -257,12 +257,12 @@ function buscarTributacao() {
         lista.innerHTML = items.map(i => `
             <tr class="border-b hover:bg-blue-50 cursor-pointer"
                 onclick="selecionarTributacao(${i.id}, '${i.descricao.replace(/'/g, "\\'")}', '${i.cfop}', '${i.csosn ?? i.cst_icms}', ${i.aliquota_icms})">
-                <td class="py-2">
+                <td class="py-2 pr-4">
                     <p class="font-medium">${i.descricao}</p>
                     ${i.observacao ? `<p class="text-xs text-gray-400">${i.observacao}</p>` : ''}
                 </td>
-                <td class="py-2 font-mono">${i.cfop}</td>
-                <td class="py-2 font-mono">${i.csosn ?? i.cst_icms ?? '-'}</td>
+                <td class="py-2 pr-4 font-mono">${i.cfop}</td>
+                <td class="py-2 pr-4 font-mono">0${i.csosn ?? i.cst_icms ?? '-'}</td>
                 <td class="py-2">${i.aliquota_icms > 0 ? i.aliquota_icms + '%' : '-'}</td>
             </tr>
         `).join('');
@@ -365,9 +365,9 @@ function buscarNcm() {
                 </td>
                 <td class="py-2 w-28">
                     <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition justify-end">
-                        <button onclick="editarNcm(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')"
+                        <button type="button" onclick="editarNcm(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')"
                                 class="text-xs text-blue-500 hover:underline">Editar</button>
-                        <button onclick="excluirNcm(${i.id})"
+                        <button type="button" onclick="excluirNcm(${i.id})"
                                 class="text-xs text-red-500 hover:underline">Excluir</button>
                     </div>
                 </td>
