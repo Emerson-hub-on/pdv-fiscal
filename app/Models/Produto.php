@@ -10,12 +10,12 @@ class Produto extends Model
         'nome', 'descricao',
         'categoria_id', 'marca_id', 'grupo_id',
         'codigo_interno', 'codigo_barras',
-        'ncm_id', 'cest', 'cfop_padrao',
+        'ncm_id', 'cest', 
         'unidade_comercial', 'unidade_tributavel',
-        'origem_mercadoria', 'csosn', 'class_trib_ibs_cbs',
+        'origem_mercadoria', 'class_trib_ibs_cbs',
         'preco_venda', 'preco_custo',
         'tem_variacao', 'produto_balanca', 'estoque', 'estoque_minimo',
-        'ativo',
+        'ativo', 'tributacao_id',
     ];
 
     public function categoria()
@@ -45,6 +45,11 @@ class Produto extends Model
         'preco_custo' => 'decimal:2',
         'produto_balanca' => 'boolean',
     ];
+
+    public function tributacao()
+    {
+        return $this->belongsTo(Tributacao::class);
+    }
 
     public static function proximoCodigoInterno(): string
     {

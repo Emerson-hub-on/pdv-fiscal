@@ -74,12 +74,46 @@
     </div>
 </div>
 
+
+<!-- Modal Tributação -->
+<input type="hidden" name="tributacao_id" id="tributacao_id" value="{{ old('tributacao_id', $produto->tributacao_id ?? '') }}">
+
+<div id="modal-tributacao" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6 max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold">Classificação Tributária</h2>
+            <button onclick="fecharModalTributacao()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        <input type="text" id="tributacao-busca" placeholder="Buscar tributação..."
+               class="w-full border rounded px-3 py-2 text-sm mb-4" oninput="buscarTributacao()">
+
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs text-gray-500 border-b">
+                    <th class="py-2">Descrição</th>
+                    <th class="py-2">CFOP</th>
+                    <th class="py-2">CSOSN/CST</th>
+                    <th class="py-2">Alíquota</th>
+                </tr>
+            </thead>
+            <tbody id="tributacao-lista"></tbody>
+        </table>
+        <p id="tributacao-vazio" class="text-sm text-gray-400 text-center py-4 hidden">Nenhuma tributação encontrada.</p>
+    </div>
+</div>
+
+
+
 <script>
 let tipoCatalogoAtivo = null;
 let timeoutCatalogo;
 let timeoutNcm;
 let editandoCatalogoId = null;
 let editandoNcmId = null;
+let timeoutTributacao;
+
+
 
 // ===================== CATALOGO (categoria, marca, grupo) =====================
 
@@ -187,6 +221,62 @@ async function excluirCatalogo(id, nome) {
     }
 
     buscarCatalogo();
+}
+
+
+function abrirModalTributacao() {
+    document.getElementById('tributacao-busca').value = '';
+    document.getElementById('modal-tributacao').classList.remove('hidden');
+    document.getElementById('modal-tributacao').classList.add('flex');
+    buscarTributacao();
+    setTimeout(() => document.getElementById('tributacao-busca').focus(), 100);
+}
+
+function fecharModalTributacao() {
+    document.getElementById('modal-tributacao').classList.add('hidden');
+    document.getElementById('modal-tributacao').classList.remove('flex');
+}
+
+function buscarTributacao() {
+    clearTimeout(timeoutTributacao);
+    timeoutTributacao = setTimeout(async () => {
+        const termo = document.getElementById('tributacao-busca').value;
+        const resp = await fetch(`{{ route('tributacao.listar') }}?q=${encodeURIComponent(termo)}`);
+        const items = await resp.json();
+
+        const lista = document.getElementById('tributacao-lista');
+        const vazio = document.getElementById('tributacao-vazio');
+
+        if (items.length === 0) {
+            lista.innerHTML = '';
+            vazio.classList.remove('hidden');
+            return;
+        }
+
+        vazio.classList.add('hidden');
+        lista.innerHTML = items.map(i => `
+            <tr class="border-b hover:bg-blue-50 cursor-pointer"
+                onclick="selecionarTributacao(${i.id}, '${i.descricao.replace(/'/g, "\\'")}', '${i.cfop}', '${i.csosn ?? i.cst_icms}', ${i.aliquota_icms})">
+                <td class="py-2">
+                    <p class="font-medium">${i.descricao}</p>
+                    ${i.observacao ? `<p class="text-xs text-gray-400">${i.observacao}</p>` : ''}
+                </td>
+                <td class="py-2 font-mono">${i.cfop}</td>
+                <td class="py-2 font-mono">${i.csosn ?? i.cst_icms ?? '-'}</td>
+                <td class="py-2">${i.aliquota_icms > 0 ? i.aliquota_icms + '%' : '-'}</td>
+            </tr>
+        `).join('');
+    }, 200);
+}
+
+function selecionarTributacao(id, descricao, cfop, codigoSit, aliquota) {
+    document.getElementById('tributacao_id').value = id;
+
+    const aliqLabel = aliquota > 0 ? ` (${aliquota}%)` : '';
+    document.getElementById('tributacao_label').innerText =
+        `${descricao} — CFOP ${cfop} / ${codigoSit}${aliqLabel}`;
+
+    fecharModalTributacao();
 }
 
 

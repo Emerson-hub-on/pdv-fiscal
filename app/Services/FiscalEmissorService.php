@@ -23,7 +23,7 @@ class FiscalEmissorService
 
     public function emitir(Venda $venda): array
     {
-        $venda->load('itens.produto.ncm', 'itens.variante', 'caixa.pdv');
+        $venda->load('itens.produto.ncm', 'itens.produto.tributacao', 'itens.variante', 'caixa.pdv');
         $pdv = $venda->caixa->pdv;
 
         if ($venda->numero_nfce) {
@@ -357,6 +357,7 @@ class FiscalEmissorService
             $descontoEfetivo = $dado['desconto_efetivo'];
             $produto = $item->produto;
             $n = $index + 1;
+            $trib = $produto->tributacao;
 
             $prod = new \stdClass();
             $prod->item = $n;
@@ -364,7 +365,7 @@ class FiscalEmissorService
             $prod->cEAN = $produto->codigo_barras ?: 'SEM GTIN';
             $prod->xProd = $produto->nome . ($item->variante ? " - {$item->variante->cor} {$item->variante->tamanho}" : '');
             $prod->NCM = $produto->ncm->codigo;
-            $prod->CFOP = $produto->cfop_padrao;
+            $prod->CFOP = $trib->cfop;
             $prod->uCom = $produto->unidade_comercial;
             $prod->qCom = $item->quantidade;
             $prod->vUnCom = number_format($item->preco_unitario, 10, '.', '');
@@ -386,11 +387,29 @@ class FiscalEmissorService
             $imposto->vTotTrib = 0;
             $nfe->tagimposto($imposto);
 
-            $icms = new \stdClass();
-            $icms->item = $n;
-            $icms->orig = $produto->origem_mercadoria;
-            $icms->CSOSN = $produto->csosn;
-            $nfe->tagICMSSN($icms);
+
+// ... dentro do tagICMSSN ou tagICMS, dependendo do CRT:
+$empresa = $this->nfeService->empresa();
+
+if ($empresa->crt <= 2) {
+    // Simples Nacional
+    $icms = new \stdClass();
+    $icms->item = $n;
+    $icms->orig = $produto->origem_mercadoria;
+    $icms->CSOSN = $trib->csosn;
+    $nfe->tagICMSSN($icms);
+} else {
+    // Lucro Presumido / Real
+    $icms = new \stdClass();
+    $icms->item = $n;
+    $icms->orig = $produto->origem_mercadoria;
+    $icms->CST = $trib->cst_icms;
+    $icms->modBC = 3;
+    $icms->vBC = number_format($item->preco_unitario * $item->quantidade, 2, '.', '');
+    $icms->pICMS = number_format($trib->aliquota_icms, 2, '.', '');
+    $icms->vICMS = number_format(($item->preco_unitario * $item->quantidade * $trib->aliquota_icms / 100), 2, '.', '');
+    $nfe->tagICMS($icms);
+}
 
             // PIS e COFINS - Simples Nacional geralmente CST 99 (outras operacoes)
             $pis = new \stdClass();

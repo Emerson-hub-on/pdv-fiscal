@@ -5,6 +5,6 @@
     <form action="{{ route('produtos.store') }}" method="POST" class="bg-white p-6 rounded shadow">
         @csrf
         @include('produtos._form', ['proximoCodigo' => $proximoCodigo])
+        @include('produtos._modais_catalogo')
     </form>
-    @include('produtos._modais_catalogo')
 @endsection

@@ -1,5 +1,26 @@
 @php $produto = $produto ?? null; @endphp
 
+@php
+    $ncmSelecionado = old('ncm_id')
+        ? \App\Models\Ncm::find(old('ncm_id'))
+        : $produto?->ncm;
+
+    $tributacaoSelecionada = old('tributacao_id')
+        ? \App\Models\Tributacao::find(old('tributacao_id'))
+        : $produto?->tributacao;
+@endphp
+
+@if ($errors->any())
+    <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+        <p class="font-semibold mb-1">Corrija os erros abaixo:</p>
+        <ul class="list-disc pl-5 space-y-0.5">
+            @foreach ($errors->all() as $erro)
+                <li>{{ $erro }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
 {{-- Modal de aviso de validação --}}
 <div id="modal-aviso-validacao" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-6">
@@ -18,6 +39,12 @@
         </div>
     </div>
 </div>
+
+
+
+
+
+
 
 <div class="bg-white rounded-xl shadow-sm border border-gray-200">
 
@@ -74,6 +101,8 @@
         <input type="hidden" name="marca_id"     id="marca_id"     value="{{ old('marca_id',     $produto->marca_id     ?? '') }}">
         <input type="hidden" name="grupo_id"     id="grupo_id"     value="{{ old('grupo_id',     $produto->grupo_id     ?? '') }}">
         <input type="hidden" name="ncm_id"       id="ncm_id"       value="{{ old('ncm_id',       $produto->ncm_id       ?? '') }}">
+        
+
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
@@ -125,7 +154,9 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">NCM <span class="text-red-500">*</span></label>
             <button type="button" onclick="abrirModalNcm()"
                     class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
-                <span id="ncm_label" class="text-gray-600">{{ old('ncm_id') ? '' : ($produto?->ncm ? $produto->ncm->codigo . ' — ' . $produto->ncm->descricao : 'Clique para selecionar...') }}</span>
+                <span id="ncm_label" class="text-gray-600">
+                    {{ $ncmSelecionado ? $ncmSelecionado->codigo . ' — ' . $ncmSelecionado->descricao : 'Clique para selecionar...' }}
+                </span>
             </button>
         </div>
 
@@ -136,17 +167,15 @@
                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
         </div>
 
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">CFOP padrão <span class="text-red-500">*</span></label>
-            <input type="text" name="cfop_padrao" maxlength="4" value="{{ old('cfop_padrao', $produto->cfop_padrao ?? '5102') }}" required
-                   class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">CSOSN <span class="text-red-500">*</span></label>
-            <input type="text" name="csosn" maxlength="3" value="{{ old('csosn', $produto->csosn ?? '102') }}" required
-                   class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
-        </div>
+<div class="col-span-2">
+    <label class="block text-sm font-medium mb-1">Classificação Tributária *</label>
+    <button type="button" onclick="abrirModalTributacao()"
+            class="w-full border rounded px-3 py-2 text-left bg-white hover:bg-gray-50 text-sm">
+        <span id="tributacao_label">
+            {{ $tributacaoSelecionada ? $tributacaoSelecionada->labelCompleto() : 'Clique para selecionar...' }}
+        </span>
+    </button>
+</div>
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Unidade comercial <span class="text-red-500">*</span></label>
@@ -262,6 +291,7 @@
 <script>
 let indiceVariante = 0;
 
+
 // ===================== TABS =====================
 
 function trocarTab(tab) {
@@ -317,16 +347,6 @@ const validacoes = [
         checar: () => !document.getElementById('ncm_id').value,
     },
     {
-        mensagem: 'O campo <strong>CFOP padrão</strong> é obrigatório. Preencha em <em>Dados Fiscais</em>.',
-        tab: 'fiscal',
-        checar: () => !document.querySelector('input[name="cfop_padrao"]').value.trim(),
-    },
-    {
-        mensagem: 'O campo <strong>CSOSN</strong> é obrigatório. Preencha em <em>Dados Fiscais</em>.',
-        tab: 'fiscal',
-        checar: () => !document.querySelector('input[name="csosn"]').value.trim(),
-    },
-    {
         mensagem: 'O campo <strong>Unidade comercial</strong> é obrigatório. Preencha em <em>Dados Fiscais</em>.',
         tab: 'fiscal',
         checar: () => !document.querySelector('input[name="unidade_comercial"]').value.trim(),
@@ -340,6 +360,11 @@ const validacoes = [
         mensagem: 'O campo <strong>Preço de venda</strong> é obrigatório. Preencha em <em>Preço e Estoque</em>.',
         tab: 'preco',
         checar: () => !document.querySelector('input[name="preco_venda"]').value,
+    },
+    {
+        mensagem: 'O campo <strong>Classificação Tributária</strong> é obrigatório. Selecione em <em>Dados Fiscais</em>.',
+        tab: 'fiscal',
+        checar: () => !document.getElementById('tributacao_id').value,
     },
 ];
 
@@ -374,6 +399,7 @@ document.querySelector('input[name="unidade_comercial"]')?.addEventListener('inp
         setTimeout(() => document.getElementById('aviso-balanca').classList.add('hidden'), 3000);
     }
 });
+
 
 // ===================== VARIAÇÕES =====================
 
@@ -425,6 +451,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 {{ $variante->estoque }}, {{ $variante->estoque_minimo }}, {{ $variante->id }}
             );
         @endforeach
+    @endif
+});
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    @if ($errors->has('ncm_id') || $errors->has('tributacao_id') || $errors->has('cest') || $errors->has('unidade_comercial') || $errors->has('unidade_tributavel') || $errors->has('origem_mercadoria') || $errors->has('class_trib_ibs_cbs'))
+        trocarTab('fiscal');
+    @elseif ($errors->has('preco_venda') || $errors->has('preco_custo') || $errors->has('estoque'))
+        trocarTab('preco');
     @endif
 });
 </script>

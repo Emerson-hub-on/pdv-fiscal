@@ -16,6 +16,7 @@ use App\Http\Controllers\SupervisorController;
 use App\Http\Controllers\SincronizacaoController;
 use App\Http\Controllers\CatalogoController;
 use App\Http\Controllers\NcmController;
+use App\Http\Controllers\TributacaoController;
 
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
@@ -59,6 +60,6 @@ Route::middleware('auth')->group(function () {
     Route::post('catalogo/excluir', [CatalogoController::class, 'excluir'])->name('catalogo.excluir');
     Route::post('ncm/editar', [NcmController::class, 'editar'])->name('ncm.editar');
     Route::post('ncm/excluir', [NcmController::class, 'excluir'])->name('ncm.excluir');
-
+    Route::get('tributacao/listar', [TributacaoController::class, 'listar'])->name('tributacao.listar');
 
     });
