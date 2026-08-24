@@ -46,7 +46,7 @@
             </thead>
             <tbody class="divide-y divide-gray-100">
                 @forelse ($produtos as $produto)
-                    <tr class="hover:bg-gray-50 transition">
+                    <tr class="hover:bg-gray-200 transition">
                         <td class="px-4 py-3 font-medium text-gray-800">{{ $produto->nome }}</td>
                         <td class="px-4 py-3 text-gray-600">{{ $produto->categoria->nome ?? '-' }}</td>
                         <td class="px-4 py-3 text-gray-600">R$ {{ number_format($produto->preco_venda, 2, ',', '.') }}</td>
