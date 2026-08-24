@@ -125,6 +125,62 @@
     </div>
 </div>
 
+<!-- Modal Classificação Tributária IBS/CBS (cClassTrib) -->
+<div id="modal-classtrib" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-3xl p-6 max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold">Selecionar Classificação Tributária (IBS/CBS)</h2>
+            <button type="button" onclick="fecharModalClassTrib()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        <div class="flex gap-2 mb-2">
+            <input type="text" id="classtrib-busca" placeholder="Buscar por código, CST ou descrição..."
+                   class="flex-1 border rounded px-3 py-2 text-sm" oninput="buscarClassTrib()">
+            <button type="button" onclick="abrirFormNovoClassTrib()"
+                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-2 rounded whitespace-nowrap">
+                + Nova
+            </button>
+        </div>
+
+        <div class="text-right mb-4">
+            <button type="button" onclick="limparClassTrib()" class="text-xs text-gray-500 hover:underline">
+                Produto sem classificação IBS/CBS específica (limpar seleção)
+            </button>
+        </div>
+
+        <div id="form-novo-classtrib" class="hidden bg-gray-50 rounded-lg p-3 mb-3">
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <input type="text" id="novo-classtrib-codigo" placeholder="cClassTrib (6 dígitos)"
+                       maxlength="6" class="border rounded px-3 py-2 text-sm">
+                <input type="text" id="novo-classtrib-cst" placeholder="CST (3 dígitos)"
+                       maxlength="3" class="border rounded px-3 py-2 text-sm">
+            </div>
+            <input type="text" id="novo-classtrib-descricao" placeholder="Descrição do cClassTrib"
+                   class="w-full border rounded px-3 py-2 text-sm mb-2">
+            <input type="text" id="novo-classtrib-cst-descricao" placeholder="Descrição do CST (opcional)"
+                   class="w-full border rounded px-3 py-2 text-sm mb-2">
+            <div class="flex gap-2 justify-end">
+                <button type="button" onclick="fecharFormNovoClassTrib()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
+                <button type="button" onclick="salvarNovoClassTrib()"
+                        class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded">Salvar</button>
+            </div>
+        </div>
+
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs text-gray-500 border-b">
+                    <th class="py-2 w-24">cClassTrib</th>
+                    <th class="py-2 w-16">CST</th>
+                    <th class="py-2">Descrição</th>
+                    <th class="py-2 w-28"></th>
+                </tr>
+            </thead>
+            <tbody id="classtrib-lista"></tbody>
+        </table>
+        <p id="classtrib-vazio" class="text-sm text-gray-400 text-center py-4 hidden">Nenhuma classificação encontrada. Use "+ Nova" para cadastrar.</p>
+    </div>
+</div>
+
 <!-- Modal Tributação -->
 <input type="hidden" name="tributacao_id" id="tributacao_id" value="{{ old('tributacao_id', $produto->tributacao_id ?? '') }}">
 
@@ -160,9 +216,11 @@ let tipoCatalogoAtivo = null;
 let timeoutCatalogo;
 let timeoutNcm;
 let timeoutCest;
+let timeoutClassTrib;
 let editandoCatalogoId = null;
 let editandoNcmId = null;
 let editandoCestId = null;
+let editandoClassTribId = null;
 let timeoutTributacao;
 
 
@@ -674,6 +732,183 @@ async function excluirCest(id) {
     }
 
     buscarCest();
+}
+
+// ===================== CLASSIFICAÇÃO TRIBUTÁRIA (IBS/CBS) =====================
+
+function abrirModalClassTrib() {
+    document.getElementById('classtrib-busca').value = '';
+    document.getElementById('form-novo-classtrib').classList.add('hidden');
+    document.getElementById('modal-classtrib').classList.remove('hidden');
+    document.getElementById('modal-classtrib').classList.add('flex');
+
+    buscarClassTrib();
+    setTimeout(() => document.getElementById('classtrib-busca').focus(), 100);
+}
+
+function fecharModalClassTrib() {
+    document.getElementById('modal-classtrib').classList.add('hidden');
+    document.getElementById('modal-classtrib').classList.remove('flex');
+}
+
+function buscarClassTrib() {
+    clearTimeout(timeoutClassTrib);
+    timeoutClassTrib = setTimeout(async () => {
+        const termo = document.getElementById('classtrib-busca').value;
+        const resp = await fetch(`{{ route('classtrib.listar') }}?q=${encodeURIComponent(termo)}`);
+        const items = await resp.json();
+
+        const lista = document.getElementById('classtrib-lista');
+        const vazio = document.getElementById('classtrib-vazio');
+
+        if (items.length === 0) {
+            lista.innerHTML = '';
+            vazio.classList.remove('hidden');
+            return;
+        }
+
+        vazio.classList.add('hidden');
+
+        const highlight = (texto, termo) => {
+            if (!termo || !texto) return texto ?? '';
+            const regex = new RegExp(`(${termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return texto.replace(regex, '<mark class="bg-yellow-200 rounded-sm">$1</mark>');
+        };
+
+        lista.innerHTML = items.map(i => `
+            <tr class="border-b hover:bg-blue-50 group">
+                <td class="py-2 font-mono text-xs cursor-pointer"
+                    onclick="selecionarClassTrib(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
+                    ${highlight(i.codigo, termo)}
+                </td>
+                <td class="py-2 font-mono text-xs text-gray-500 cursor-pointer"
+                    onclick="selecionarClassTrib(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
+                    ${highlight(i.cst_codigo, termo)}
+                </td>
+                <td class="py-2 text-sm cursor-pointer"
+                    onclick="selecionarClassTrib(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
+                    ${highlight(i.descricao, termo)}
+                    ${i.cst_descricao ? `<p class="text-xs text-gray-400">${i.cst_descricao}</p>` : ''}
+                </td>
+                <td class="py-2 w-28">
+                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition justify-end">
+                        <button type="button" onclick="editarClassTrib(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}', '${i.cst_codigo}', '${(i.cst_descricao ?? '').replace(/'/g, "\\'")}')"
+                                class="text-xs text-blue-500 hover:underline">Editar</button>
+                        <button type="button" onclick="excluirClassTrib(${i.id})"
+                                class="text-xs text-red-500 hover:underline">Excluir</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }, 200);
+}
+
+function selecionarClassTrib(id, codigo, descricao) {
+    document.getElementById('class_trib_ibs_cbs_id').value = id;
+    document.getElementById('class_trib_ibs_cbs_label').innerText = `${codigo} — ${descricao}`;
+    fecharModalClassTrib();
+}
+
+function limparClassTrib() {
+    document.getElementById('class_trib_ibs_cbs_id').value = '';
+    document.getElementById('class_trib_ibs_cbs_label').innerText = 'Clique para selecionar (opcional)...';
+    fecharModalClassTrib();
+}
+
+function abrirFormNovoClassTrib() {
+    document.getElementById('form-novo-classtrib').classList.remove('hidden');
+    document.getElementById('novo-classtrib-codigo').focus();
+}
+
+function fecharFormNovoClassTrib() {
+    document.getElementById('form-novo-classtrib').classList.add('hidden');
+    document.getElementById('novo-classtrib-codigo').value = '';
+    document.getElementById('novo-classtrib-cst').value = '';
+    document.getElementById('novo-classtrib-descricao').value = '';
+    document.getElementById('novo-classtrib-cst-descricao').value = '';
+    editandoClassTribId = null;
+}
+
+function editarClassTrib(id, codigo, descricao, cstCodigo, cstDescricao) {
+    editandoClassTribId = id;
+    document.getElementById('form-novo-classtrib').classList.remove('hidden');
+    document.getElementById('novo-classtrib-codigo').value = codigo;
+    document.getElementById('novo-classtrib-cst').value = cstCodigo;
+    document.getElementById('novo-classtrib-descricao').value = descricao;
+    document.getElementById('novo-classtrib-cst-descricao').value = cstDescricao;
+    document.getElementById('novo-classtrib-codigo').focus();
+}
+
+async function salvarNovoClassTrib() {
+    const codigo = document.getElementById('novo-classtrib-codigo').value.trim();
+    const cstCodigo = document.getElementById('novo-classtrib-cst').value.trim();
+    const descricao = document.getElementById('novo-classtrib-descricao').value.trim();
+    const cstDescricao = document.getElementById('novo-classtrib-cst-descricao').value.trim();
+
+    if (codigo.length !== 6) { alert('O código cClassTrib deve ter exatamente 6 dígitos.'); return; }
+    if (cstCodigo.length !== 3) { alert('O código CST deve ter exatamente 3 dígitos.'); return; }
+    if (!descricao) { alert('Informe uma descrição.'); return; }
+
+    let url, body;
+
+    if (editandoClassTribId) {
+        url = '{{ route("classtrib.editar") }}';
+        body = JSON.stringify({ id: editandoClassTribId, codigo, cst_codigo: cstCodigo, descricao, cst_descricao: cstDescricao || null });
+    } else {
+        url = '{{ route("classtrib.criar") }}';
+        body = JSON.stringify({ codigo, cst_codigo: cstCodigo, descricao, cst_descricao: cstDescricao || null });
+    }
+
+    const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body,
+    });
+
+    const item = await resp.json();
+
+    if (item.erro) {
+        alert(item.erro);
+        return;
+    }
+    if (item.errors) {
+        alert(Object.values(item.errors).flat().join('\n'));
+        return;
+    }
+
+    editandoClassTribId = null;
+    fecharFormNovoClassTrib();
+    buscarClassTrib();
+
+    const idAtual = document.getElementById('class_trib_ibs_cbs_id').value;
+    if (idAtual == item.id) {
+        document.getElementById('class_trib_ibs_cbs_label').innerText = `${item.codigo} — ${item.descricao}`;
+    }
+}
+
+async function excluirClassTrib(id) {
+    if (!confirm('Excluir esta Classificação Tributária? Esta ação não pode ser desfeita.')) return;
+
+    const resp = await fetch('{{ route("classtrib.excluir") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body: JSON.stringify({ id }),
+    });
+
+    const resultado = await resp.json();
+
+    if (resultado.erro) {
+        alert(resultado.erro);
+        return;
+    }
+
+    const idAtual = document.getElementById('class_trib_ibs_cbs_id').value;
+    if (idAtual == id) {
+        document.getElementById('class_trib_ibs_cbs_id').value = '';
+        document.getElementById('class_trib_ibs_cbs_label').innerText = 'Clique para selecionar (opcional)...';
+    }
+
+    buscarClassTrib();
 }
 
 </script>

@@ -12,6 +12,10 @@
     $cestSelecionado = old('cest_id')
         ? \App\Models\Cest::find(old('cest_id'))
         : $produto?->cest;
+
+    $classTribSelecionado = old('class_trib_ibs_cbs_id')
+        ? \App\Models\ClassificacaoTributaria::find(old('class_trib_ibs_cbs_id'))
+        : $produto?->classificacaoTributaria;
 @endphp
 
 @if ($errors->any())
@@ -100,6 +104,7 @@
         <input type="hidden" name="grupo_id"     id="grupo_id"     value="{{ old('grupo_id',     $produto->grupo_id     ?? '') }}">
         <input type="hidden" name="ncm_id"       id="ncm_id"       value="{{ old('ncm_id',       $produto->ncm_id       ?? '') }}">
         <input type="hidden" name="cest_id"      id="cest_id"      value="{{ old('cest_id',      $produto->cest_id      ?? '') }}">
+        <input type="hidden" name="class_trib_ibs_cbs_id" id="class_trib_ibs_cbs_id" value="{{ old('class_trib_ibs_cbs_id', $produto->class_trib_ibs_cbs_id ?? '') }}">
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
@@ -203,9 +208,12 @@
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Classificação IBS/CBS</label>
-            <input type="text" name="class_trib_ibs_cbs" maxlength="6" value="{{ old('class_trib_ibs_cbs', $produto->class_trib_ibs_cbs ?? '') }}"
-                   placeholder="cClassTrib (Reforma Tributária)"
-                   class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+            <button type="button" onclick="abrirModalClassTrib()"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                <span id="class_trib_ibs_cbs_label" class="text-gray-600">
+                    {{ $classTribSelecionado ? $classTribSelecionado->codigo . ' — ' . $classTribSelecionado->descricao : 'Clique para selecionar (opcional)...' }}
+                </span>
+            </button>
         </div>
     </div>
 
@@ -456,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    @if ($errors->has('ncm_id') || $errors->has('tributacao_id') || $errors->has('cest_id') || $errors->has('unidade_comercial') || $errors->has('unidade_tributavel') || $errors->has('origem_mercadoria') || $errors->has('class_trib_ibs_cbs'))
+    @if ($errors->has('ncm_id') || $errors->has('tributacao_id') || $errors->has('cest_id') || $errors->has('unidade_comercial') || $errors->has('unidade_tributavel') || $errors->has('origem_mercadoria') || $errors->has('class_trib_ibs_cbs_id'))
         trocarTab('fiscal');
     @elseif ($errors->has('preco_venda') || $errors->has('preco_custo') || $errors->has('estoque'))
         trocarTab('preco');

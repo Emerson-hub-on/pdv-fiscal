@@ -18,6 +18,7 @@ use App\Http\Controllers\CatalogoController;
 use App\Http\Controllers\NcmController;
 use App\Http\Controllers\TributacaoController;
 use App\Http\Controllers\CestController;
+use App\Http\Controllers\ClassificacaoTributariaController;
 
 
 
@@ -69,6 +70,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/cest/criar', [CestController::class, 'criar'])->name('cest.criar');
     Route::post('/cest/editar', [CestController::class, 'editar'])->name('cest.editar');
     Route::post('/cest/excluir', [CestController::class, 'excluir'])->name('cest.excluir');
+    Route::get('/classificacao-tributaria/listar', [ClassificacaoTributariaController::class, 'listar'])->name('classtrib.listar');
+    Route::post('/classificacao-tributaria/criar', [ClassificacaoTributariaController::class, 'criar'])->name('classtrib.criar');
+    Route::post('/classificacao-tributaria/editar', [ClassificacaoTributariaController::class, 'editar'])->name('classtrib.editar');
+    Route::post('/classificacao-tributaria/excluir', [ClassificacaoTributariaController::class, 'excluir'])->name('classtrib.excluir');
 
 
+
+    
     });

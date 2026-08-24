@@ -114,7 +114,7 @@ class ProdutoController extends Controller
             'unidade_comercial' => 'required|string|max:6',
             'unidade_tributavel' => 'required|string|max:6',
             'origem_mercadoria' => 'required|integer|between:0,8',
-            'class_trib_ibs_cbs' => 'nullable|string|max:6',
+            'class_trib_ibs_cbs_id' => 'nullable|exists:classificacoes_tributarias,id',
             'preco_venda' => 'required|numeric|min:0',
             'preco_custo' => 'nullable|numeric|min:0',
             'tem_variacao' => 'boolean',

@@ -14,63 +14,66 @@ class SyncService
      * So traz o que mudou desde a ultima sincronizacao.
      */
     public function puxarCatalogo(): array
-    {
-        try {
-            $ultimaSync = $this->obterMeta('ultima_sincronizacao_produtos', '1970-01-01 00:00:00');
+        {
+            try {
+                $ultimaSync = $this->obterMeta('ultima_sincronizacao_produtos', '1970-01-01 00:00:00');
 
-            $produtos = Produto::where('updated_at', '>', $ultimaSync)->get();
+                $produtos = Produto::with(['ncm', 'cest', 'tributacao', 'classificacaoTributaria', 'variantes'])
+                    ->where('updated_at', '>', $ultimaSync)
+                    ->get();
 
-            foreach ($produtos as $produto) {
-            DB::connection('sqlite_local')->table('produtos_cache')->updateOrInsert(
-                ['id' => $produto->id],
-                [
-                    'nome' => $produto->nome,
-                    'codigo_interno' => $produto->codigo_interno,
-                    'codigo_barras' => $produto->codigo_barras,
-                    'ncm' => $produto->ncm,
-                    'cest' => $produto->cest,
-                    'cfop_padrao' => $produto->cfop_padrao,
-                    'unidade_comercial' => $produto->unidade_comercial,
-                    'unidade_tributavel' => $produto->unidade_tributavel,
-                    'origem_mercadoria' => $produto->origem_mercadoria,
-                    'csosn' => $produto->csosn,
-                    'class_trib_ibs_cbs' => $produto->class_trib_ibs_cbs,
-                    'preco_venda' => $produto->preco_venda,
-                    'preco_custo' => $produto->preco_custo,
-                    'tem_variacao' => $produto->tem_variacao,
-                    'estoque' => $produto->estoque,
-                    'ativo' => $produto->ativo,
-                    'atualizado_em_origem' => $produto->updated_at,
-                    'produto_balanca' => $produto->produto_balanca,
-                    'updated_at' => now(),
-                ]
-            );
+                foreach ($produtos as $produto) {
+                    DB::connection('sqlite_local')->table('produtos_cache')->updateOrInsert(
+                        ['id' => $produto->id],
+                        [
+                            'nome' => $produto->nome,
+                            'codigo_interno' => $produto->codigo_interno,
+                            'codigo_barras' => $produto->codigo_barras,
+                            'ncm' => $produto->ncm?->codigo,
+                            'cest' => $produto->cest?->codigo,
+                            'cfop_padrao' => $produto->tributacao?->cfop,
+                            'unidade_comercial' => $produto->unidade_comercial,
+                            'unidade_tributavel' => $produto->unidade_tributavel,
+                            'origem_mercadoria' => $produto->origem_mercadoria,
+                            'csosn' => $produto->tributacao?->csosn,
+                            'class_trib_ibs_cbs' => $produto->classificacaoTributaria?->codigo,
+                            'preco_venda' => $produto->preco_venda,
+                            'preco_custo' => $produto->preco_custo,
+                            'tem_variacao' => $produto->tem_variacao,
+                            'estoque' => $produto->estoque,
+                            'ativo' => $produto->ativo,
+                            'atualizado_em_origem' => $produto->updated_at,
+                            'produto_balanca' => $produto->produto_balanca,
+                            'updated_at' => now(),
+                        ]
+                    );
 
-                // Sincroniza variantes desse produto, se tiver
-                if ($produto->tem_variacao) {
-                    foreach ($produto->variantes as $variante) {
-                        DB::connection('sqlite_local')->table('produto_variantes_cache')->updateOrInsert(
-                            ['id' => $variante->id],
-                            [
-                                'produto_id' => $variante->produto_id,
-                                'cor' => $variante->cor,
-                                'tamanho' => $variante->tamanho,
-                                'estoque' => $variante->estoque,
-                                'updated_at' => now(),
-                            ]
-                        );
+                    // Sincroniza variantes desse produto, se tiver
+                    if ($produto->tem_variacao) {
+                        foreach ($produto->variantes as $variante) {
+                            DB::connection('sqlite_local')->table('produto_variantes_cache')->updateOrInsert(
+                                ['id' => $variante->id],
+                                [
+                                    'produto_id' => $variante->produto_id,
+                                    'cor' => $variante->cor,
+                                    'tamanho' => $variante->tamanho,
+                                    'estoque' => $variante->estoque,
+                                    'updated_at' => now(),
+                                ]
+                            );
+                        }
                     }
                 }
+
+                $this->salvarMeta('ultima_sincronizacao_produtos', now()->toDateTimeString());
+
+                return ['sucesso' => true, 'produtos_atualizados' => $produtos->count()];
+            } catch (\Throwable $e) {
+                // Throwable (nao so Exception) pra capturar tambem TypeError/Error,
+                // como o de tentar gravar um objeto de relacao numa coluna de texto
+                return ['sucesso' => false, 'erro' => $e->getMessage()];
             }
-
-            $this->salvarMeta('ultima_sincronizacao_produtos', now()->toDateTimeString());
-
-            return ['sucesso' => true, 'produtos_atualizados' => $produtos->count()];
-        } catch (Exception $e) {
-            // Servidor pode estar fora do ar - falha silenciosa, tenta de novo na proxima chamada
-            return ['sucesso' => false, 'erro' => $e->getMessage()];
         }
-    }
 
     /**
      * Direcao 2: sobe vendas pendentes do SQLite local pro MySQL central.

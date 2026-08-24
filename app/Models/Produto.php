@@ -13,7 +13,7 @@ class Produto extends Model
         'codigo_interno', 'codigo_barras',
         'ncm_id', 'cest_id',
         'unidade_comercial', 'unidade_tributavel',
-        'origem_mercadoria', 'class_trib_ibs_cbs',
+        'origem_mercadoria', 'class_trib_ibs_cbs_id',
         'preco_venda', 'preco_custo',
         'tem_variacao', 'produto_balanca', 'estoque', 'estoque_minimo',
         'ativo', 'tributacao_id',
@@ -42,6 +42,11 @@ class Produto extends Model
     public function cest(): BelongsTo
     {
         return $this->belongsTo(Cest::class);
+    }
+
+    public function classificacaoTributaria(): BelongsTo
+    {
+        return $this->belongsTo(ClassificacaoTributaria::class, 'class_trib_ibs_cbs_id');
     }
 
     protected $casts = [

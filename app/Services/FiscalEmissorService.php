@@ -20,6 +20,11 @@ class FiscalEmissorService
 {
     protected NfeService $nfeService;
     protected ?string $chaveGerada = null;
+    protected float $totalIBSUF = 0.0;
+    protected float $totalIBSMun = 0.0;
+    protected float $totalIBS = 0.0;
+    protected float $totalCBS = 0.0;
+    protected float $totalBCIBSCBS = 0.0;
 
     public function emitir(Venda $venda): array
     {
@@ -69,7 +74,7 @@ class FiscalEmissorService
 
         // PASSO 1: montar e assinar o XML - falha aqui e problema de DADOS, nao de conexao
         try {
-            $nfe = new Make();
+            $nfe = new Make('PL_010');
 
             $this->montarInfNFe($nfe);
             $this->montarIde($nfe, $empresa, $pdv, $numero, tpEmis: 1);
@@ -99,9 +104,24 @@ class FiscalEmissorService
         }
 
         // PASSO 2: enviar pra SEFAZ - falha aqui, sim, e problema de conexao -> contingencia SEFAZ real
+        // (EXCETO quando a falha e na verdade rejeicao de schema/dados local, que nao e conexao)
         try {
             $resposta = $tools->sefazEnviaLote([$xmlAssinado], $idLote, 1);
         } catch (\Throwable $e) {
+            if ($this->pareceErroDeSchema($e)) {
+                // Nao e problema de conexao - e um dado invalido que a lib recusou
+                // ANTES de mandar pra SEFAZ. Trata igual ao PASSO 1: contingencia
+                // normal (corrigivel), e salva o XML que foi rejeitado.
+                $venda->update([
+                    'status' => 'contingencia',
+                    'motivo_rejeicao' => 'Rejeitado por schema/dados antes do envio: ' . $e->getMessage(),
+                ]);
+
+                $this->salvarXmlEmDisco($xmlAssinado, contingencia: true, venda: $venda);
+
+                throw new Exception("XML rejeitado por schema/dados (NFC-e nº {$numero}): " . $e->getMessage());
+            }
+
             return $this->entrarEmContingenciaSefaz($venda, $pdv, $empresa, $numero, $e->getMessage());
         }
 
@@ -109,47 +129,94 @@ class FiscalEmissorService
     }
 
     /**
+     * Distingue uma rejeicao de schema/validacao local (problema de DADO, corrigivel)
+     * de uma falha de conexao/timeout de verdade (motivo legitimo pra contingencia SEFAZ).
+     * Ajuste as strings abaixo se notar outras mensagens de validacao da lib passando batido.
+     */
+    protected function pareceErroDeSchema(\Throwable $e): bool
+    {
+        $msg = $e->getMessage();
+
+        $indicadoresDeSchema = [
+            'não é válido',
+            'not expected',
+            'XSD',
+            'schema',
+            'Element ',
+            'is not expected',
+        ];
+
+        foreach ($indicadoresDeSchema as $indicador) {
+            if (stripos($msg, $indicador) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Monta um documento novo em modo contingencia SEFAZ (tpEmis=9),
      * valido para impressao imediata, mesmo sem internet.
      */
     protected function entrarEmContingenciaSefaz(Venda $venda, Pdv $pdv, Empresa $empresa, int $numero, string $motivoFalha): array
-    {
-        $dhCont = (new \DateTime('now', new \DateTimeZone('America/Sao_Paulo')))->format('Y-m-d\TH:i:sP');
-        $xJust = 'Falha de conectividade com a internet no momento da emissão.';
-
-        $nfe = new Make();
-
-        $this->montarInfNFe($nfe);
-        $this->montarIde($nfe, $empresa, $pdv, $numero, tpEmis: 9, dhCont: $dhCont, xJust: $xJust);
-        $this->montarEmit($nfe, $empresa);
-        $this->montarItens($nfe, $venda);
-        $this->montarTotais($nfe, $venda);
-        $this->montarTransporte($nfe);
-        $this->montarPagamento($nfe, $venda);
-        $this->montarResponsavelTecnico($nfe);
-
-        $xmlBruto = $nfe->getXML();
-        $tools = $this->nfeService->tools();
-        $xmlAssinado = $tools->signNFe($xmlBruto);
-
-        // O documento ja e valido pra impressao a partir daqui - chave e definitiva
-        $venda->update([
-            'status' => 'contingencia',
-            'tp_emis' => 9,
-            'dh_cont' => $dhCont,
-            'x_just' => $xJust,
-            'xml_contingencia' => $xmlAssinado,
-            'chave_nfe' => $this->chaveGerada,
-            'motivo_rejeicao' => 'Emitido em contingência SEFAZ: ' . $motivoFalha,
-        ]);
-
-        $this->salvarXmlEmDisco($xmlAssinado, contingencia: true, venda: $venda);
-
-        throw new Exception(
-            "Sem conexão com a SEFAZ. NFC-e nº {$numero} emitida em CONTINGÊNCIA (tpEmis=9), " .
-            "chave: {$this->chaveGerada}. Documento já é válido para impressão."
-        );
-    }
+        {
+            $dhCont = (new \DateTime('now', new \DateTimeZone('America/Sao_Paulo')))->format('Y-m-d\TH:i:sP');
+            $xJust = 'Falha de conectividade com a internet no momento da emissão.';
+    
+            try {
+                $nfe = new Make('PL_010');
+    
+                $this->montarInfNFe($nfe);
+                $this->montarIde($nfe, $empresa, $pdv, $numero, tpEmis: 9, dhCont: $dhCont, xJust: $xJust);
+                $this->montarEmit($nfe, $empresa);
+                $this->montarItens($nfe, $venda);
+                $this->montarTotais($nfe, $venda);
+                $this->montarTransporte($nfe);
+                $this->montarPagamento($nfe, $venda);
+                $this->montarResponsavelTecnico($nfe);
+    
+                $xmlBruto = $nfe->getXML();
+    
+                if (!$xmlBruto) {
+                    throw new Exception('Erro ao montar XML de contingência: ' . implode(' | ', $nfe->getErrors()));
+                }
+    
+                $tools = $this->nfeService->tools();
+                $xmlAssinado = $tools->signNFe($xmlBruto);
+            } catch (\Throwable $e2) {
+                // A tentativa de contingencia TAMBEM falhou (provavelmente o mesmo
+                // problema de dado que causou a falha original) - sem isso aqui,
+                // a excecao subia sem nunca salvar nada nem atualizar a venda.
+                $venda->update([
+                    'status' => 'contingencia',
+                    'motivo_rejeicao' => "Falha ao montar contingência: {$e2->getMessage()} | Motivo original: {$motivoFalha}",
+                ]);
+    
+                throw new Exception(
+                    "Falha crítica ao emitir NFC-e nº {$numero}: nem o envio normal nem a contingência " .
+                    "puderam ser montados. Motivo original: {$motivoFalha} | Erro na contingência: {$e2->getMessage()}"
+                );
+            }
+    
+            // O documento ja e valido pra impressao a partir daqui - chave e definitiva
+            $venda->update([
+                'status' => 'contingencia',
+                'tp_emis' => 9,
+                'dh_cont' => $dhCont,
+                'x_just' => $xJust,
+                'xml_contingencia' => $xmlAssinado,
+                'chave_nfe' => $this->chaveGerada,
+                'motivo_rejeicao' => 'Emitido em contingência SEFAZ: ' . $motivoFalha,
+            ]);
+    
+            $this->salvarXmlEmDisco($xmlAssinado, contingencia: true, venda: $venda);
+    
+            throw new Exception(
+                "Sem conexão com a SEFAZ. NFC-e nº {$numero} emitida em CONTINGÊNCIA (tpEmis=9), " .
+                "chave: {$this->chaveGerada}. Documento já é válido para impressão."
+            );
+        }
 
     protected function ratearDescontoGlobal(Venda $venda): array
     {
@@ -348,8 +415,17 @@ class FiscalEmissorService
         $nfe->tagenderEmit($endereco);
     }
 
-    protected function montarItens(Make $nfe, Venda $venda): void
+protected function montarItens(Make $nfe, Venda $venda): void
     {
+        // zera acumuladores de IBS/CBS - essa funcao pode ser chamada 2x na mesma
+        // instancia (fluxo normal + fluxo de contingencia), entao sem isso os
+        // totais duplicariam na segunda chamada
+        $this->totalIBSUF = 0.0;
+        $this->totalIBSMun = 0.0;
+        $this->totalIBS = 0.0;
+        $this->totalCBS = 0.0;
+        $this->totalBCIBSCBS = 0.0;
+
         $itensComDesconto = $this->ratearDescontoGlobal($venda);
 
         foreach ($itensComDesconto as $index => $dado) {
@@ -365,6 +441,9 @@ class FiscalEmissorService
             $prod->cEAN = $produto->codigo_barras ?: 'SEM GTIN';
             $prod->xProd = $produto->nome . ($item->variante ? " - {$item->variante->cor} {$item->variante->tamanho}" : '');
             $prod->NCM = $produto->ncm->codigo;
+            if ($produto->cest) {
+                $prod->CEST = $produto->cest->codigo;
+            }
             $prod->CFOP = $trib->cfop;
             $prod->uCom = $produto->unidade_comercial;
             $prod->qCom = $item->quantidade;
@@ -427,6 +506,54 @@ if ($empresa->crt <= 2) {
             $cofins->pCOFINS = 0;
             $cofins->vCOFINS = 0;
             $nfe->tagCOFINS($cofins);
+
+            // ==================== IBS/CBS (Reforma Tributária) ====================
+            // Os percentuais de transicao (2026: 0,10% IBS-UF / 0,00% IBS-Mun / 0,90% CBS)
+            // sao nacionais e mudam por lei nos proximos anos - ficam em config, nunca hardcoded.
+            $classTrib = $produto->classificacaoTributaria;
+
+            if ($classTrib && config('fiscal.emitir_ibscbs', false)) {
+                $baseCalculoItem = $item->preco_unitario * $item->quantidade;
+
+                $pIBSUF  = config('fiscal.aliquotas_ibscbs_transicao.ibs_uf', 0.10);
+                $pIBSMun = config('fiscal.aliquotas_ibscbs_transicao.ibs_mun', 0.00);
+                $pCBS    = config('fiscal.aliquotas_ibscbs_transicao.cbs', 0.90);
+
+                $vIBSUF  = round($baseCalculoItem * $pIBSUF / 100, 2);
+                $vIBSMun = round($baseCalculoItem * $pIBSMun / 100, 2);
+                $vIBS    = round($vIBSUF + $vIBSMun, 2);
+                $vCBS    = round($baseCalculoItem * $pCBS / 100, 2);
+
+                $ibscbs = new \stdClass();
+                $ibscbs->item = $n;
+                $ibscbs->CST = $classTrib->cst_codigo;
+                $ibscbs->cClassTrib = $classTrib->codigo;
+
+                $ibscbs->gIBSCBS = new \stdClass();
+                $ibscbs->gIBSCBS->vBC = number_format($baseCalculoItem, 2, '.', '');
+
+                $ibscbs->gIBSCBS->gIBSUF = new \stdClass();
+                $ibscbs->gIBSCBS->gIBSUF->pIBSUF = number_format($pIBSUF, 4, '.', '');
+                $ibscbs->gIBSCBS->gIBSUF->vIBSUF = number_format($vIBSUF, 2, '.', '');
+
+                $ibscbs->gIBSCBS->gIBSMun = new \stdClass();
+                $ibscbs->gIBSCBS->gIBSMun->pIBSMun = number_format($pIBSMun, 4, '.', '');
+                $ibscbs->gIBSCBS->gIBSMun->vIBSMun = number_format($vIBSMun, 2, '.', '');
+
+                $ibscbs->gIBSCBS->vIBS = number_format($vIBS, 2, '.', '');
+
+                $ibscbs->gIBSCBS->gCBS = new \stdClass();
+                $ibscbs->gIBSCBS->gCBS->pCBS = number_format($pCBS, 4, '.', '');
+                $ibscbs->gIBSCBS->gCBS->vCBS = number_format($vCBS, 2, '.', '');
+
+                $nfe->tagIBSCBS($ibscbs);
+
+                $this->totalIBSUF += $vIBSUF;
+                $this->totalIBSMun += $vIBSMun;
+                $this->totalIBS += $vIBS;
+                $this->totalCBS += $vCBS;
+                $this->totalBCIBSCBS += $baseCalculoItem;
+            }
         }
     }
 
@@ -458,6 +585,36 @@ if ($empresa->crt <= 2) {
         $std->vOutro = 0;
         $std->vNF = number_format($venda->total, 2, '.', ''); // total liquido (o que o cliente realmente pagou)
         $nfe->tagICMSTot($std);
+
+        // ==================== IBS/CBS Totais ====================
+        if ($this->totalBCIBSCBS > 0) {
+            $stdIBSCBSTot = new \stdClass();
+            $stdIBSCBSTot->vBCIBSCBS = number_format($this->totalBCIBSCBS, 2, '.', '');
+            $stdIBSCBSTot->vIBS = number_format($this->totalIBS, 2, '.', '');
+            $stdIBSCBSTot->vCBS = number_format($this->totalCBS, 2, '.', '');
+
+            $stdIBSCBSTot->gIBSUF = new \stdClass();
+            $stdIBSCBSTot->gIBSUF->vDif = '0.00';
+            $stdIBSCBSTot->gIBSUF->vDevTrib = '0.00';
+            $stdIBSCBSTot->gIBSUF->vIBSUF = number_format($this->totalIBSUF, 2, '.', '');
+
+            $stdIBSCBSTot->gIBSMun = new \stdClass();
+            $stdIBSCBSTot->gIBSMun->vDif = '0.00';
+            $stdIBSCBSTot->gIBSMun->vDevTrib = '0.00';
+            $stdIBSCBSTot->gIBSMun->vIBSMun = number_format($this->totalIBSMun, 2, '.', '');
+
+            $stdIBSCBSTot->gIBS = new \stdClass();
+            $stdIBSCBSTot->gIBS->vCredPres = '0.00';
+            $stdIBSCBSTot->gIBS->vCredPresCondSus = '0.00';
+
+            $stdIBSCBSTot->gCBS = new \stdClass();
+            $stdIBSCBSTot->gCBS->vDif = '0.00';
+            $stdIBSCBSTot->gCBS->vDevTrib = '0.00';
+            $stdIBSCBSTot->gCBS->vCredPres = '0.00';
+            $stdIBSCBSTot->gCBS->vCredPresCondSus = '0.00';
+
+            $nfe->tagIBSCBSTot($stdIBSCBSTot);
+        }
     }
 
     protected function montarTransporte(Make $nfe): void
