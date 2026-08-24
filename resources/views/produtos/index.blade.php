@@ -4,62 +4,87 @@
 
 @section('conteudo')
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold">Produtos</h1>
-        <a href="{{ route('produtos.create') }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+        <h1 class="text-2xl font-bold text-gray-800">Produtos</h1>
+        <a href="{{ route('produtos.create') }}"
+           class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition">
             + Novo Produto
         </a>
     </div>
 
+    @if (session('sucesso'))
+        <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+            {{ session('sucesso') }}
+        </div>
+    @endif
+
     <div class="flex gap-2 mb-4">
         <a href="{{ route('produtos.index', ['status' => 'ativos']) }}"
-           class="px-3 py-1 rounded {{ $filtro === 'ativos' ? 'bg-blue-600 text-white' : 'bg-gray-200' }}">Ativos</a>
+           class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $filtro === 'ativos' ? 'bg-blue-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
+            Ativos
+        </a>
         <a href="{{ route('produtos.index', ['status' => 'inativos']) }}"
-           class="px-3 py-1 rounded {{ $filtro === 'inativos' ? 'bg-blue-600 text-white' : 'bg-gray-200' }}">Inativos</a>
+           class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $filtro === 'inativos' ? 'bg-blue-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
+            Inativos
+        </a>
         <a href="{{ route('produtos.index', ['status' => 'todos']) }}"
-           class="px-3 py-1 rounded {{ $filtro === 'todos' ? 'bg-blue-600 text-white' : 'bg-gray-200' }}">Todos</a>
+           class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $filtro === 'todos' ? 'bg-blue-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
+            Todos
+        </a>
     </div>
 
-    <table class="w-full bg-white rounded shadow overflow-hidden">
-        <thead class="bg-gray-800 text-white text-left">
-            <tr>
-                <th class="p-3">Nome</th>
-                <th class="p-3">Categoria</th>
-                <th class="p-3">Preço</th>
-                <th class="p-3">Estoque</th>
-                <th class="p-3">Status</th>
-                <th class="p-3">Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse ($produtos as $produto)
-                <tr class="border-b">
-                    <td class="p-3">{{ $produto->nome }}</td>
-                    <td class="p-3">{{ $produto->categoria ?? '-' }}</td>
-                    <td class="p-3">R$ {{ number_format($produto->preco_venda, 2, ',', '.') }}</td>
-                    <td class="p-3">{{ $produto->estoque_total }}</td>
-                    <td class="p-3">
-                        <span class="{{ $produto->ativo ? 'text-green-600' : 'text-red-500' }}">
-                            {{ $produto->ativo ? 'Ativo' : 'Inativo' }}
-                        </span>
-                    </td>
-                    <td class="p-3 flex gap-2">
-                        <a href="{{ route('produtos.edit', $produto) }}" class="text-blue-600 hover:underline">Editar</a>
-                        <form action="{{ route('produtos.toggle-ativo', $produto) }}" method="POST">
-                            @csrf
-                            @method('PATCH')
-                            <button type="submit" class="text-orange-600 hover:underline">
-                                {{ $produto->ativo ? 'Inativar' : 'Reativar' }}
-                            </button>
-                        </form>
-                    </td>
-                </tr>
-            @empty
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
                 <tr>
-                    <td colspan="6" class="p-6 text-center text-gray-400">Nenhum produto encontrado.</td>
+                    <th class="px-4 py-3 text-left font-medium">Nome</th>
+                    <th class="px-4 py-3 text-left font-medium">Categoria</th>
+                    <th class="px-4 py-3 text-left font-medium">Preço</th>
+                    <th class="px-4 py-3 text-left font-medium">Estoque</th>
+                    <th class="px-4 py-3 text-left font-medium">Status</th>
+                    <th class="px-4 py-3 text-left font-medium">Ações</th>
                 </tr>
-            @endforelse
-        </tbody>
-    </table>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                @forelse ($produtos as $produto)
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-4 py-3 font-medium text-gray-800">{{ $produto->nome }}</td>
+                        <td class="px-4 py-3 text-gray-600">{{ $produto->categoria->nome ?? '-' }}</td>
+                        <td class="px-4 py-3 text-gray-600">R$ {{ number_format($produto->preco_venda, 2, ',', '.') }}</td>
+                        <td class="px-4 py-3 text-gray-600">{{ $produto->estoque_total }}</td>
+                        <td class="px-4 py-3">
+                            @if ($produto->ativo)
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                    Ativo
+                                </span>
+                            @else
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-600">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                                    Inativo
+                                </span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-3">
+                                <a href="{{ route('produtos.edit', $produto) }}" class="text-blue-600 hover:text-blue-700 font-medium">Editar</a>
+                                <form action="{{ route('produtos.toggle-ativo', $produto) }}" method="POST">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="text-orange-600 hover:text-orange-700 font-medium">
+                                        {{ $produto->ativo ? 'Inativar' : 'Reativar' }}
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="6" class="px-4 py-10 text-center text-gray-400 text-sm">Nenhum produto encontrado.</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
 
     <div class="mt-4">
         {{ $produtos->links() }}
