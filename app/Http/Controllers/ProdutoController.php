@@ -99,28 +99,34 @@ class ProdutoController extends Controller
     }
 
     private function validarProduto(Request $request, $idAtual = null): array
-    {
-        return $request->validate([
-            'nome' => 'required|string|max:255',
-            'descricao' => 'nullable|string',
-            'categoria_id' => 'nullable|exists:categorias,id',
-            'marca_id' => 'nullable|exists:marcas,id',
-            'grupo_id' => 'nullable|exists:grupos,id',
-            'codigo_interno' => 'required|string|max:50|unique:produtos,codigo_interno,' . $idAtual,
-            'codigo_barras' => 'nullable|string|max:50',
-            'ncm_id' => 'required|exists:ncms,id',
-            'cest_id' => 'nullable|exists:cests,id',
-            'tributacao_id' => 'required|exists:tributacoes,id',
-            'unidade_comercial' => 'required|string|max:6',
-            'unidade_tributavel' => 'required|string|max:6',
-            'origem_mercadoria' => 'required|integer|between:0,8',
-            'class_trib_ibs_cbs_id' => 'nullable|exists:classificacoes_tributarias,id',
-            'preco_venda' => 'required|numeric|min:0',
-            'preco_custo' => 'nullable|numeric|min:0',
-            'tem_variacao' => 'boolean',
-            'produto_balanca' => 'boolean',
-            'estoque' => 'required_if:tem_variacao,false|integer|min:0',
-            'estoque_minimo' => 'nullable|integer|min:0',
-        ]);
-    }
+        {
+            // CRT 3 = Regime Normal (Lucro Presumido/Real) - único regime em que
+            // PIS/COFINS por produto é obrigatório de verdade. Ajuste o acesso
+            // abaixo se você já carrega a empresa de outra forma no seu app.
+            $regimeExigePisCofins = \App\Models\Empresa::atual()->crt == 3;
+
+            return $request->validate([
+                'nome' => 'required|string|max:255',
+                'descricao' => 'nullable|string',
+                'categoria_id' => 'nullable|exists:categorias,id',
+                'marca_id' => 'nullable|exists:marcas,id',
+                'grupo_id' => 'nullable|exists:grupos,id',
+                'codigo_interno' => 'required|string|max:50|unique:produtos,codigo_interno,' . $idAtual,
+                'codigo_barras' => 'nullable|string|max:50',
+                'ncm_id' => 'required|exists:ncms,id',
+                'cest_id' => 'nullable|exists:cests,id',
+                'class_trib_ibs_cbs_id' => 'nullable|exists:classificacoes_tributarias,id',
+                'pis_cofins_id' => ($regimeExigePisCofins ? 'required' : 'nullable') . '|exists:classificacoes_pis_cofins,id',
+                'tributacao_id' => 'required|exists:tributacoes,id',
+                'unidade_comercial' => 'required|string|max:6',
+                'unidade_tributavel' => 'required|string|max:6',
+                'origem_mercadoria' => 'required|integer|between:0,8',
+                'preco_venda' => 'required|numeric|min:0',
+                'preco_custo' => 'nullable|numeric|min:0',
+                'tem_variacao' => 'boolean',
+                'produto_balanca' => 'boolean',
+                'estoque' => 'required_if:tem_variacao,false|integer|min:0',
+                'estoque_minimo' => 'nullable|integer|min:0',
+            ]);
+        }
 }

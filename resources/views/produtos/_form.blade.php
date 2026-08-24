@@ -16,6 +16,15 @@
     $classTribSelecionado = old('class_trib_ibs_cbs_id')
         ? \App\Models\ClassificacaoTributaria::find(old('class_trib_ibs_cbs_id'))
         : $produto?->classificacaoTributaria;
+
+    $pisCofinsSelecionado = old('pis_cofins_id')
+        ? \App\Models\ClassificacaoPisCofins::find(old('pis_cofins_id'))
+        : $produto?->pisCofins;
+
+    // CRT 3 = Regime Normal (Lucro Presumido/Real) - único regime em que
+    // PIS/COFINS por produto é obrigatório de verdade. Ajuste o acesso
+    // abaixo se você já carrega a empresa de outra forma no seu app.
+    $pisCofinsObrigatorio = \App\Models\Empresa::atual()->crt == 3;
 @endphp
 
 @if ($errors->any())
@@ -105,6 +114,7 @@
         <input type="hidden" name="ncm_id"       id="ncm_id"       value="{{ old('ncm_id',       $produto->ncm_id       ?? '') }}">
         <input type="hidden" name="cest_id"      id="cest_id"      value="{{ old('cest_id',      $produto->cest_id      ?? '') }}">
         <input type="hidden" name="class_trib_ibs_cbs_id" id="class_trib_ibs_cbs_id" value="{{ old('class_trib_ibs_cbs_id', $produto->class_trib_ibs_cbs_id ?? '') }}">
+        <input type="hidden" name="pis_cofins_id" id="pis_cofins_id" value="{{ old('pis_cofins_id', $produto->pis_cofins_id ?? '') }}">
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
@@ -168,6 +178,23 @@
                     class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
                 <span id="cest_label" class="text-gray-600">
                     {{ $cestSelecionado ? $cestSelecionado->codigo . ' — ' . $cestSelecionado->descricao : 'Clique para selecionar (opcional)...' }}
+                </span>
+            </button>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+                PIS/COFINS
+                @if ($pisCofinsObrigatorio)
+                    <span class="text-red-500">*</span>
+                @else
+                    <span class="text-xs text-gray-400 font-normal">(obrigatório apenas no Lucro Presumido/Real)</span>
+                @endif
+            </label>
+            <button type="button" onclick="abrirModalPisCofins()"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                <span id="pis_cofins_label" class="text-gray-600">
+                    {{ $pisCofinsSelecionado ? 'CST ' . $pisCofinsSelecionado->codigo . ' — ' . $pisCofinsSelecionado->descricao : 'Clique para selecionar...' }}
                 </span>
             </button>
         </div>
@@ -374,6 +401,13 @@ const validacoes = [
         tab: 'fiscal',
         checar: () => !document.getElementById('tributacao_id').value,
     },
+@if ($pisCofinsObrigatorio)
+    {
+        mensagem: 'O campo <strong>PIS/COFINS</strong> é obrigatório no seu regime tributário (Lucro Presumido/Real). Selecione em <em>Dados Fiscais</em>.',
+        tab: 'fiscal',
+        checar: () => !document.getElementById('pis_cofins_id').value,
+    },
+@endif
 ];
 
 function salvarProduto() {

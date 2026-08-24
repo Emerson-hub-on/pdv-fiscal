@@ -181,6 +181,57 @@
     </div>
 </div>
 
+<!-- Modal PIS/COFINS -->
+<div id="modal-piscofins" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6 max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold">Selecionar Classificação PIS/COFINS</h2>
+            <button type="button" onclick="fecharModalPisCofins()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        <div class="flex gap-2 mb-4">
+            <input type="text" id="piscofins-busca" placeholder="Buscar por CST ou descrição..."
+                   class="flex-1 border rounded px-3 py-2 text-sm" oninput="buscarPisCofins()">
+            <button type="button" onclick="abrirFormNovoPisCofins()"
+                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-2 rounded whitespace-nowrap">
+                + Nova
+            </button>
+        </div>
+
+        <div id="form-novo-piscofins" class="hidden bg-gray-50 rounded-lg p-3 mb-3">
+            <div class="grid grid-cols-3 gap-2 mb-2">
+                <input type="text" id="novo-piscofins-codigo" placeholder="CST (2 dígitos)"
+                       maxlength="2" class="border rounded px-3 py-2 text-sm">
+                <input type="text" id="novo-piscofins-aliquota-pis" placeholder="Alíquota PIS (%)"
+                       class="border rounded px-3 py-2 text-sm">
+                <input type="text" id="novo-piscofins-aliquota-cofins" placeholder="Alíquota COFINS (%)"
+                       class="border rounded px-3 py-2 text-sm">
+            </div>
+            <input type="text" id="novo-piscofins-descricao" placeholder="Descrição"
+                   class="w-full border rounded px-3 py-2 text-sm mb-2">
+            <div class="flex gap-2 justify-end">
+                <button type="button" onclick="fecharFormNovoPisCofins()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
+                <button type="button" onclick="salvarNovoPisCofins()"
+                        class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded">Salvar</button>
+            </div>
+        </div>
+
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs text-gray-500 border-b">
+                    <th class="py-2 w-16">CST</th>
+                    <th class="py-2">Descrição</th>
+                    <th class="py-2 w-24">Alíq. PIS</th>
+                    <th class="py-2 w-24">Alíq. COFINS</th>
+                    <th class="py-2 w-28"></th>
+                </tr>
+            </thead>
+            <tbody id="piscofins-lista"></tbody>
+        </table>
+        <p id="piscofins-vazio" class="text-sm text-gray-400 text-center py-4 hidden">Nenhuma classificação encontrada. Use "+ Nova" para cadastrar.</p>
+    </div>
+</div>
+
 <!-- Modal Tributação -->
 <input type="hidden" name="tributacao_id" id="tributacao_id" value="{{ old('tributacao_id', $produto->tributacao_id ?? '') }}">
 
@@ -217,10 +268,12 @@ let timeoutCatalogo;
 let timeoutNcm;
 let timeoutCest;
 let timeoutClassTrib;
+let timeoutPisCofins;
 let editandoCatalogoId = null;
 let editandoNcmId = null;
 let editandoCestId = null;
 let editandoClassTribId = null;
+let editandoPisCofinsId = null;
 let timeoutTributacao;
 
 
@@ -372,7 +425,7 @@ function buscarTributacao() {
                     ${i.observacao ? `<p class="text-xs text-gray-400">${i.observacao}</p>` : ''}
                 </td>
                 <td class="py-2 pr-4 font-mono">${i.cfop}</td>
-                <td class="py-2 pr-4 font-mono">0${i.csosn ?? i.cst_icms ?? '-'}</td>
+                <td class="py-2 pr-4 font-mono">${i.csosn ?? i.cst_icms ?? '-'}</td>
                 <td class="py-2">${i.aliquota_icms > 0 ? i.aliquota_icms + '%' : '-'}</td>
             </tr>
         `).join('');
@@ -909,6 +962,175 @@ async function excluirClassTrib(id) {
     }
 
     buscarClassTrib();
+}
+
+// ===================== PIS/COFINS =====================
+
+function abrirModalPisCofins() {
+    document.getElementById('piscofins-busca').value = '';
+    document.getElementById('form-novo-piscofins').classList.add('hidden');
+    document.getElementById('modal-piscofins').classList.remove('hidden');
+    document.getElementById('modal-piscofins').classList.add('flex');
+
+    buscarPisCofins();
+    setTimeout(() => document.getElementById('piscofins-busca').focus(), 100);
+}
+
+function fecharModalPisCofins() {
+    document.getElementById('modal-piscofins').classList.add('hidden');
+    document.getElementById('modal-piscofins').classList.remove('flex');
+}
+
+function buscarPisCofins() {
+    clearTimeout(timeoutPisCofins);
+    timeoutPisCofins = setTimeout(async () => {
+        const termo = document.getElementById('piscofins-busca').value;
+        const resp = await fetch(`{{ route('piscofins.listar') }}?q=${encodeURIComponent(termo)}`);
+        const items = await resp.json();
+
+        const lista = document.getElementById('piscofins-lista');
+        const vazio = document.getElementById('piscofins-vazio');
+
+        if (items.length === 0) {
+            lista.innerHTML = '';
+            vazio.classList.remove('hidden');
+            return;
+        }
+
+        vazio.classList.add('hidden');
+
+        const fmtAliquota = (v) => v === null || v === undefined ? '—' : `${v}%`;
+
+        lista.innerHTML = items.map(i => `
+            <tr class="border-b hover:bg-blue-50 group">
+                <td class="py-2 font-mono text-xs cursor-pointer"
+                    onclick="selecionarPisCofins(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
+                    ${i.codigo}
+                </td>
+                <td class="py-2 text-sm cursor-pointer"
+                    onclick="selecionarPisCofins(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
+                    ${i.descricao}
+                </td>
+                <td class="py-2 text-sm text-gray-500">${fmtAliquota(i.aliquota_pis)}</td>
+                <td class="py-2 text-sm text-gray-500">${fmtAliquota(i.aliquota_cofins)}</td>
+                <td class="py-2 w-28">
+                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition justify-end">
+                        <button type="button" onclick="editarPisCofins(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}', ${i.aliquota_pis ?? 'null'}, ${i.aliquota_cofins ?? 'null'})"
+                                class="text-xs text-blue-500 hover:underline">Editar</button>
+                        <button type="button" onclick="excluirPisCofins(${i.id})"
+                                class="text-xs text-red-500 hover:underline">Excluir</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }, 200);
+}
+
+function selecionarPisCofins(id, codigo, descricao) {
+    document.getElementById('pis_cofins_id').value = id;
+    document.getElementById('pis_cofins_label').innerText = `CST ${codigo} — ${descricao}`;
+    fecharModalPisCofins();
+}
+
+function abrirFormNovoPisCofins() {
+    document.getElementById('form-novo-piscofins').classList.remove('hidden');
+    document.getElementById('novo-piscofins-codigo').focus();
+}
+
+function fecharFormNovoPisCofins() {
+    document.getElementById('form-novo-piscofins').classList.add('hidden');
+    document.getElementById('novo-piscofins-codigo').value = '';
+    document.getElementById('novo-piscofins-descricao').value = '';
+    document.getElementById('novo-piscofins-aliquota-pis').value = '';
+    document.getElementById('novo-piscofins-aliquota-cofins').value = '';
+    editandoPisCofinsId = null;
+}
+
+function editarPisCofins(id, codigo, descricao, aliquotaPis, aliquotaCofins) {
+    editandoPisCofinsId = id;
+    document.getElementById('form-novo-piscofins').classList.remove('hidden');
+    document.getElementById('novo-piscofins-codigo').value = codigo;
+    document.getElementById('novo-piscofins-descricao').value = descricao;
+    document.getElementById('novo-piscofins-aliquota-pis').value = aliquotaPis ?? '';
+    document.getElementById('novo-piscofins-aliquota-cofins').value = aliquotaCofins ?? '';
+    document.getElementById('novo-piscofins-codigo').focus();
+}
+
+async function salvarNovoPisCofins() {
+    const codigo = document.getElementById('novo-piscofins-codigo').value.trim();
+    const descricao = document.getElementById('novo-piscofins-descricao').value.trim();
+    const aliquotaPis = document.getElementById('novo-piscofins-aliquota-pis').value.trim();
+    const aliquotaCofins = document.getElementById('novo-piscofins-aliquota-cofins').value.trim();
+
+    if (codigo.length !== 2) { alert('O CST deve ter exatamente 2 dígitos.'); return; }
+    if (!descricao) { alert('Informe uma descrição.'); return; }
+
+    let url, body;
+    const payload = {
+        codigo,
+        descricao,
+        aliquota_pis: aliquotaPis === '' ? null : aliquotaPis,
+        aliquota_cofins: aliquotaCofins === '' ? null : aliquotaCofins,
+    };
+
+    if (editandoPisCofinsId) {
+        url = '{{ route("piscofins.editar") }}';
+        body = JSON.stringify({ id: editandoPisCofinsId, ...payload });
+    } else {
+        url = '{{ route("piscofins.criar") }}';
+        body = JSON.stringify(payload);
+    }
+
+    const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body,
+    });
+
+    const item = await resp.json();
+
+    if (item.erro) {
+        alert(item.erro);
+        return;
+    }
+    if (item.errors) {
+        alert(Object.values(item.errors).flat().join('\n'));
+        return;
+    }
+
+    editandoPisCofinsId = null;
+    fecharFormNovoPisCofins();
+    buscarPisCofins();
+
+    const idAtual = document.getElementById('pis_cofins_id').value;
+    if (idAtual == item.id) {
+        document.getElementById('pis_cofins_label').innerText = `CST ${item.codigo} — ${item.descricao}`;
+    }
+}
+
+async function excluirPisCofins(id) {
+    if (!confirm('Excluir esta Classificação PIS/COFINS? Esta ação não pode ser desfeita.')) return;
+
+    const resp = await fetch('{{ route("piscofins.excluir") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body: JSON.stringify({ id }),
+    });
+
+    const resultado = await resp.json();
+
+    if (resultado.erro) {
+        alert(resultado.erro);
+        return;
+    }
+
+    const idAtual = document.getElementById('pis_cofins_id').value;
+    if (idAtual == id) {
+        document.getElementById('pis_cofins_id').value = '';
+        document.getElementById('pis_cofins_label').innerText = 'Clique para selecionar...';
+    }
+
+    buscarPisCofins();
 }
 
 </script>

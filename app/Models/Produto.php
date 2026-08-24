@@ -16,7 +16,7 @@ class Produto extends Model
         'origem_mercadoria', 'class_trib_ibs_cbs_id',
         'preco_venda', 'preco_custo',
         'tem_variacao', 'produto_balanca', 'estoque', 'estoque_minimo',
-        'ativo', 'tributacao_id',
+        'ativo', 'tributacao_id', 'pis_cofins_id',
     ];
 
     public function categoria()
@@ -47,6 +47,11 @@ class Produto extends Model
     public function classificacaoTributaria(): BelongsTo
     {
         return $this->belongsTo(ClassificacaoTributaria::class, 'class_trib_ibs_cbs_id');
+    }
+
+    public function pisCofins(): BelongsTo
+    {
+        return $this->belongsTo(ClassificacaoPisCofins::class, 'pis_cofins_id');
     }
 
     protected $casts = [

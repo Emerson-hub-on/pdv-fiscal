@@ -19,7 +19,7 @@ use App\Http\Controllers\NcmController;
 use App\Http\Controllers\TributacaoController;
 use App\Http\Controllers\CestController;
 use App\Http\Controllers\ClassificacaoTributariaController;
-
+use App\Http\Controllers\ClassificacaoPisCofinsController;
 
 
 
@@ -74,8 +74,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/classificacao-tributaria/criar', [ClassificacaoTributariaController::class, 'criar'])->name('classtrib.criar');
     Route::post('/classificacao-tributaria/editar', [ClassificacaoTributariaController::class, 'editar'])->name('classtrib.editar');
     Route::post('/classificacao-tributaria/excluir', [ClassificacaoTributariaController::class, 'excluir'])->name('classtrib.excluir');
-
+    Route::get('/pis-cofins/listar', [ClassificacaoPisCofinsController::class, 'listar'])->name('piscofins.listar');
+    Route::post('/pis-cofins/criar', [ClassificacaoPisCofinsController::class, 'criar'])->name('piscofins.criar');
+    Route::post('/pis-cofins/editar', [ClassificacaoPisCofinsController::class, 'editar'])->name('piscofins.editar');
+    Route::post('/pis-cofins/excluir', [ClassificacaoPisCofinsController::class, 'excluir'])->name('piscofins.excluir');
 
 
     
+
     });
