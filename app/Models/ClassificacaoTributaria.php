@@ -14,6 +14,8 @@ class ClassificacaoTributaria extends Model
         'descricao',
         'cst_codigo',
         'cst_descricao',
+        'percentual_reducao_ibs',
+        'percentual_reducao_cbs',
     ];
 
     public function produtos(): HasMany
