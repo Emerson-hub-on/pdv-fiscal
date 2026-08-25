@@ -20,15 +20,13 @@ class FiscalEmissorService
 {
     protected NfeService $nfeService;
     protected ?string $chaveGerada = null;
-    protected float $totalIBSUF = 0.0;
-    protected float $totalIBSMun = 0.0;
-    protected float $totalIBS = 0.0;
-    protected float $totalCBS = 0.0;
-    protected float $totalBCIBSCBS = 0.0;
+    protected float $totalICMSBC = 0.0;
+    protected float $totalICMS = 0.0;
     protected float $totalPIS = 0.0;
     protected float $totalCOFINS = 0.0;
+    protected bool $houveIBSCBS = false;
 
-    public function emitir(Venda $venda): array
+public function emitir(Venda $venda): array
     {
         $venda->load('itens.produto.ncm', 'itens.produto.tributacao', 'itens.variante', 'caixa.pdv');
         $pdv = $venda->caixa->pdv;
@@ -75,6 +73,9 @@ class FiscalEmissorService
         }
 
         // PASSO 1: montar e assinar o XML - falha aqui e problema de DADOS, nao de conexao
+        $xmlBruto = null;
+        $xmlAssinado = null;
+
         try {
             $nfe = new Make('PL_010');
 
@@ -97,6 +98,16 @@ class FiscalEmissorService
         } catch (\Throwable $e) {
             // Erro de dado/schema - venda fica em contingencia normal (reenviavel via F1
             // depois de corrigir o cadastro), NUNCA vira contingencia SEFAZ real
+
+            // Salva o que conseguiu montar, pra dar pra investigar depois -
+            // prioriza o assinado (mais completo); se a falha foi no proprio
+            // signNFe(), salva pelo menos o bruto (sem assinatura) como evidencia
+            if ($xmlAssinado) {
+                $this->salvarXmlEmDisco($xmlAssinado, contingencia: true, venda: $venda);
+            } elseif ($xmlBruto) {
+                $this->salvarXmlEmDisco($xmlBruto, contingencia: true, venda: $venda);
+            }
+
             $venda->update([
                 'status' => 'contingencia',
                 'motivo_rejeicao' => $e->getMessage(),
@@ -362,14 +373,15 @@ class FiscalEmissorService
         $nfe->tagide($std);
     }
 
-    protected function salvarXmlEmDisco(string $xmlAssinado, bool $contingencia, Venda $venda): void
+protected function salvarXmlEmDisco(string $xmlAssinado, bool $contingencia, Venda $venda): void
     {
         if (!$this->chaveGerada) {
             return;
         }
 
-        // Apaga o arquivo de contingencia anterior dessa mesma venda, se existir,
-        // pra nao acumular um arquivo por tentativa
+        // Apaga o arquivo anterior dessa mesma venda, se existir - seja ele
+        // uma contingencia anterior ou nao. A cada reenvio (mesmo que caia em
+        // contingencia de novo), so fica o XML mais recente em disco.
         if ($venda->ultimo_arquivo_xml && file_exists($venda->ultimo_arquivo_xml)) {
             @unlink($venda->ultimo_arquivo_xml);
         }
@@ -417,240 +429,232 @@ class FiscalEmissorService
         $nfe->tagenderEmit($endereco);
     }
 
-    protected function montarItens(Make $nfe, Venda $venda): void
-        {
-            // zera acumuladores de IBS/CBS - essa funcao pode ser chamada 2x na mesma
-            // instancia (fluxo normal + fluxo de contingencia), entao sem isso os
-            // totais duplicariam na segunda chamada
-            $this->totalIBSUF = 0.0;
-            $this->totalIBSMun = 0.0;
-            $this->totalIBS = 0.0;
-            $this->totalCBS = 0.0;
-            $this->totalBCIBSCBS = 0.0;
-            $this->totalPIS = 0.0;
-            $this->totalCOFINS = 0.0;
+protected function montarItens(Make $nfe, Venda $venda): void
+    {
+        // zera acumuladores desta emissao - a funcao pode ser chamada 2x na mesma
+        // instancia (fluxo normal + fluxo de contingencia), entao sem isso os
+        // totais duplicariam na segunda chamada
+        $this->totalPIS = 0.0;
+        $this->totalCOFINS = 0.0;
+        $this->totalICMSBC = 0.0;
+        $this->totalICMS = 0.0;
+        $this->houveIBSCBS = false;
 
-            $itensComDesconto = $this->ratearDescontoGlobal($venda);
+        $itensComDesconto = $this->ratearDescontoGlobal($venda);
 
-            foreach ($itensComDesconto as $index => $dado) {
-                $item = $dado['item'];
-                $descontoEfetivo = $dado['desconto_efetivo'];
-                $produto = $item->produto;
-                $n = $index + 1;
-                $trib = $produto->tributacao;
+        foreach ($itensComDesconto as $index => $dado) {
+            $item = $dado['item'];
+            $descontoEfetivo = $dado['desconto_efetivo'];
+            $produto = $item->produto;
+            $n = $index + 1;
+            $trib = $produto->tributacao;
 
-                $prod = new \stdClass();
-                $prod->item = $n;
-                $prod->cProd = $produto->codigo_interno;
-                $prod->cEAN = $produto->codigo_barras ?: 'SEM GTIN';
-                $prod->xProd = $produto->nome . ($item->variante ? " - {$item->variante->cor} {$item->variante->tamanho}" : '');
-                $prod->NCM = $produto->ncm->codigo;
-                if ($produto->cest) {
-                    $prod->CEST = $produto->cest->codigo;
-                }
-                $prod->CFOP = $trib->cfop;
-                $prod->uCom = $produto->unidade_comercial;
-                $prod->qCom = $item->quantidade;
-                $prod->vUnCom = number_format($item->preco_unitario, 10, '.', '');
-                $prod->vProd = number_format($item->preco_unitario * $item->quantidade, 2, '.', '');
-                $prod->cEANTrib = $produto->codigo_barras ?: 'SEM GTIN';
-                $prod->uTrib = $produto->unidade_tributavel;
-                $prod->qTrib = $item->quantidade;
-                $prod->vUnTrib = number_format($item->preco_unitario, 10, '.', '');
+            $prod = new \stdClass();
+            $prod->item = $n;
+            $prod->cProd = $produto->codigo_interno;
+            $prod->cEAN = $produto->codigo_barras ?: 'SEM GTIN';
+            $prod->xProd = $produto->nome . ($item->variante ? " - {$item->variante->cor} {$item->variante->tamanho}" : '');
+            $prod->NCM = $produto->ncm->codigo;
+            if ($produto->cest) {
+                $prod->CEST = $produto->cest->codigo;
+            }
+            $prod->CFOP = $trib->cfop;
+            $prod->uCom = $produto->unidade_comercial;
+            $prod->qCom = $item->quantidade;
+            $prod->vUnCom = number_format($item->preco_unitario, 10, '.', '');
+            $prod->vProd = number_format($item->preco_unitario * $item->quantidade, 2, '.', '');
+            $prod->cEANTrib = $produto->codigo_barras ?: 'SEM GTIN';
+            $prod->uTrib = $produto->unidade_tributavel;
+            $prod->qTrib = $item->quantidade;
+            $prod->vUnTrib = number_format($item->preco_unitario, 10, '.', '');
 
-                if ($descontoEfetivo > 0) {
-                    $prod->vDesc = number_format($descontoEfetivo, 2, '.', '');
-                }
+            if ($descontoEfetivo > 0) {
+                $prod->vDesc = number_format($descontoEfetivo, 2, '.', '');
+            }
 
-                $prod->indTot = 1;
-                $nfe->tagprod($prod);
+            $prod->indTot = 1;
+            $nfe->tagprod($prod);
 
-                $imposto = new \stdClass();
-                $imposto->item = $n;
-                $imposto->vTotTrib = 0;
-                $nfe->tagimposto($imposto);
+            $imposto = new \stdClass();
+            $imposto->item = $n;
+            $imposto->vTotTrib = 0;
+            $nfe->tagimposto($imposto);
 
 
-    // ... dentro do tagICMSSN ou tagICMS, dependendo do CRT:
-    $empresa = $this->nfeService->empresa();
+// ... dentro do tagICMSSN ou tagICMS, dependendo do CRT:
+$empresa = $this->nfeService->empresa();
 
-    if ($empresa->crt <= 2) {
-        // Simples Nacional
-        $icms = new \stdClass();
-        $icms->item = $n;
-        $icms->orig = $produto->origem_mercadoria;
-        $icms->CSOSN = $trib->csosn;
-        $nfe->tagICMSSN($icms);
-    } else {
-        // Lucro Presumido / Real
-        $icms = new \stdClass();
-        $icms->item = $n;
-        $icms->orig = $produto->origem_mercadoria;
-        $icms->CST = $trib->cst_icms;
+if ($empresa->crt <= 2) {
+    // Simples Nacional
+    $icms = new \stdClass();
+    $icms->item = $n;
+    $icms->orig = $produto->origem_mercadoria;
+    $icms->CSOSN = $trib->csosn;
+    $nfe->tagICMSSN($icms);
+} else {
+    // Lucro Presumido / Real
+    // Normaliza pra sempre virar 2 digitos, corrigindo tanto zero perdido (coluna
+    // numerica engolindo zero a esquerda) quanto zero a mais digitado errado no
+    // cadastro (ex: "000" em vez de "00")
+    $cstIcms = str_pad((string) (int) $trib->cst_icms, 2, '0', STR_PAD_LEFT);
+
+    $icms = new \stdClass();
+    $icms->item = $n;
+    $icms->orig = $produto->origem_mercadoria;
+    $icms->CST = $cstIcms;
+
+    // Só CSTs com tributacao "normal" tem base de calculo propria. CST 40/41
+    // (isenta/nao tributada), 50 (suspensao), 51 (diferimento) e 60 (ST ja
+    // cobrado anteriormente) NAO tem vBC/vICMS - incluir esses campos ali
+    // gera total de BC divergente da soma dos itens (rejeicao da SEFAZ).
+    $cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
+
+    if (in_array($cstIcms, $cstsComBaseCalculo, true)) {
         $icms->modBC = 3;
         $icms->vBC = number_format($item->preco_unitario * $item->quantidade, 2, '.', '');
         $icms->pICMS = number_format($trib->aliquota_icms, 2, '.', '');
         $icms->vICMS = number_format(($item->preco_unitario * $item->quantidade * $trib->aliquota_icms / 100), 2, '.', '');
-        $nfe->tagICMS($icms);
+
+        $this->totalICMSBC += (float) $icms->vBC;
+        $this->totalICMS += (float) $icms->vICMS;
     }
 
-                // PIS e COFINS
-                // Simples Nacional (CRT 1/2): PIS/COFINS embutido no DAS, sempre CST 99 zerado.
-                // Lucro Presumido/Real (CRT 3): usa a classificação cadastrada no produto.
-                if ($empresa->crt <= 2 || !$produto->pisCofins) {
-                    $pis = new \stdClass();
-                    $pis->item = $n;
-                    $pis->CST = '99';
-                    $pis->vBC = 0;
-                    $pis->pPIS = 0;
-                    $pis->vPIS = 0;
-                    $nfe->tagPIS($pis);
+    $nfe->tagICMS($icms);
+}
 
-                    $cofins = new \stdClass();
-                    $cofins->item = $n;
-                    $cofins->CST = '99';
-                    $cofins->vBC = 0;
-                    $cofins->pCOFINS = 0;
-                    $cofins->vCOFINS = 0;
-                    $nfe->tagCOFINS($cofins);
+            // PIS e COFINS
+            // Simples Nacional (CRT 1/2): PIS/COFINS embutido no DAS, sempre CST 99 zerado.
+            // Lucro Presumido/Real (CRT 3): usa a classificação cadastrada no produto.
+            if ($empresa->crt <= 2 || !$produto->pisCofins) {
+                $pis = new \stdClass();
+                $pis->item = $n;
+                $pis->CST = '99';
+                $pis->vBC = 0;
+                $pis->pPIS = 0;
+                $pis->vPIS = 0;
+                $nfe->tagPIS($pis);
 
-                    $this->totalPIS += 0;
-                    $this->totalCOFINS += 0;
-                } else {
-                    $classPisCofins = $produto->pisCofins;
-                    $baseCalculoItem = $item->preco_unitario * $item->quantidade;
-                    $pAliquotaPis = (float) ($classPisCofins->aliquota_pis ?? 0);
-                    $pAliquotaCofins = (float) ($classPisCofins->aliquota_cofins ?? 0);
+                $cofins = new \stdClass();
+                $cofins->item = $n;
+                $cofins->CST = '99';
+                $cofins->vBC = 0;
+                $cofins->pCOFINS = 0;
+                $cofins->vCOFINS = 0;
+                $nfe->tagCOFINS($cofins);
 
-                    $pis = new \stdClass();
-                    $pis->item = $n;
-                    $pis->CST = $classPisCofins->codigo;
-                    $pis->vBC = number_format($baseCalculoItem, 2, '.', '');
-                    $pis->pPIS = number_format($pAliquotaPis, 4, '.', '');
-                    $pis->vPIS = number_format($baseCalculoItem * $pAliquotaPis / 100, 2, '.', '');
-                    $nfe->tagPIS($pis);
+                $this->totalPIS += 0;
+                $this->totalCOFINS += 0;
+            } else {
+                $classPisCofins = $produto->pisCofins;
+                $baseCalculoItem = $item->preco_unitario * $item->quantidade;
+                $pAliquotaPis = (float) ($classPisCofins->aliquota_pis ?? 0);
+                $pAliquotaCofins = (float) ($classPisCofins->aliquota_cofins ?? 0);
 
-                    $cofins = new \stdClass();
-                    $cofins->item = $n;
-                    $cofins->CST = $classPisCofins->codigo;
-                    $cofins->vBC = number_format($baseCalculoItem, 2, '.', '');
-                    $cofins->pCOFINS = number_format($pAliquotaCofins, 4, '.', '');
-                    $cofins->vCOFINS = number_format($baseCalculoItem * $pAliquotaCofins / 100, 2, '.', '');
-                    $nfe->tagCOFINS($cofins);
+                $pis = new \stdClass();
+                $pis->item = $n;
+                $pis->CST = $classPisCofins->codigo;
+                $pis->vBC = number_format($baseCalculoItem, 2, '.', '');
+                $pis->pPIS = number_format($pAliquotaPis, 4, '.', '');
+                $pis->vPIS = number_format($baseCalculoItem * $pAliquotaPis / 100, 2, '.', '');
+                $nfe->tagPIS($pis);
 
-                    $this->totalPIS += (float) $pis->vPIS;
-                    $this->totalCOFINS += (float) $cofins->vCOFINS;
-                }
+                $cofins = new \stdClass();
+                $cofins->item = $n;
+                $cofins->CST = $classPisCofins->codigo;
+                $cofins->vBC = number_format($baseCalculoItem, 2, '.', '');
+                $cofins->pCOFINS = number_format($pAliquotaCofins, 4, '.', '');
+                $cofins->vCOFINS = number_format($baseCalculoItem * $pAliquotaCofins / 100, 2, '.', '');
+                $nfe->tagCOFINS($cofins);
 
-                // ==================== IBS/CBS (Reforma Tributária) ====================
-                // Os percentuais de transicao (2026: 0,10% IBS-UF / 0,00% IBS-Mun / 0,90% CBS)
-                // sao nacionais e mudam por lei nos proximos anos - ficam em config, nunca hardcoded.
-                $classTrib = $produto->classificacaoTributaria;
+                $this->totalPIS += (float) $pis->vPIS;
+                $this->totalCOFINS += (float) $cofins->vCOFINS;
+            }
 
-                if ($classTrib && config('fiscal.emitir_ibscbs', false)) {
-                    $baseCalculoItem = $item->preco_unitario * $item->quantidade;
+            // ==================== IBS/CBS (Reforma Tributária) ====================
+            // Os percentuais de transicao (2026: 0,10% IBS-UF / 0,00% IBS-Mun / 0,90% CBS)
+            // sao nacionais e mudam por lei nos proximos anos - ficam em config, nunca hardcoded.
+            $classTrib = $produto->classificacaoTributaria;
 
-                    $pIBSUF  = config('fiscal.aliquotas_ibscbs_transicao.ibs_uf', 0.10);
-                    $pIBSMun = config('fiscal.aliquotas_ibscbs_transicao.ibs_mun', 0.00);
-                    $pCBS    = config('fiscal.aliquotas_ibscbs_transicao.cbs', 0.90);
+            // CRT 3 (Regime Normal) = obrigatorio por lei desde ago/2026, SEMPRE liga,
+            // independente da flag. CRT 1/2/4 (Simples/MEI) = so obrigatorio em 2027,
+            // a flag config('fiscal.emitir_ibscbs') serve so como override manual pra
+            // testar antes da hora (ex: SEFAZ aceitando em ambiente de teste).
+            $obrigaIBSCBS = $empresa->crt == 3 || config('fiscal.emitir_ibscbs', false);
 
-                    $vIBSUF  = round($baseCalculoItem * $pIBSUF / 100, 2);
-                    $vIBSMun = round($baseCalculoItem * $pIBSMun / 100, 2);
-                    $vIBS    = round($vIBSUF + $vIBSMun, 2);
-                    $vCBS    = round($baseCalculoItem * $pCBS / 100, 2);
+            if ($classTrib && $obrigaIBSCBS) {
+                $baseCalculoItem = $item->preco_unitario * $item->quantidade;
 
-                    $ibscbs = new \stdClass();
-                    $ibscbs->item = $n;
-                    $ibscbs->CST = $classTrib->cst_codigo;
-                    $ibscbs->cClassTrib = $classTrib->codigo;
+                $pIBSUF  = config('fiscal.aliquotas_ibscbs_transicao.ibs_uf', 0.10);
+                $pIBSMun = config('fiscal.aliquotas_ibscbs_transicao.ibs_mun', 0.00);
+                $pCBS    = config('fiscal.aliquotas_ibscbs_transicao.cbs', 0.90);
 
-                    $ibscbs->gIBSCBS = new \stdClass();
-                    $ibscbs->gIBSCBS->vBC = number_format($baseCalculoItem, 2, '.', '');
+                $vIBSUF  = round($baseCalculoItem * $pIBSUF / 100, 2);
+                $vIBSMun = round($baseCalculoItem * $pIBSMun / 100, 2);
+                $vCBS    = round($baseCalculoItem * $pCBS / 100, 2);
 
-                    $ibscbs->gIBSCBS->gIBSUF = new \stdClass();
-                    $ibscbs->gIBSCBS->gIBSUF->pIBSUF = number_format($pIBSUF, 4, '.', '');
-                    $ibscbs->gIBSCBS->gIBSUF->vIBSUF = number_format($vIBSUF, 2, '.', '');
+                // IMPORTANTE: a lib (TraitTagDetIBSCBS::tagIBSCBS) espera propriedades
+                // ACHATADAS com underscore (gIBSUF_pIBSUF, gCBS_vCBS, etc.), nao objetos
+                // aninhados. Ela mesma monta a estrutura <gIBSCBS><gIBSUF>... internamente,
+                // e tambem acumula os totais sozinha em $this->stdIBSCBSTot a cada chamada -
+                // por isso nao precisamos mais somar manualmente (soh o flag houveIBSCBS,
+                // pra saber se chama tagIBSCBSTot() depois).
+                $ibscbs = new \stdClass();
+                $ibscbs->item = $n;
+                $ibscbs->CST = $classTrib->cst_codigo;
+                $ibscbs->cClassTrib = $classTrib->codigo;
+                $ibscbs->vBC = number_format($baseCalculoItem, 2, '.', '');
+                $ibscbs->gIBSUF_pIBSUF = number_format($pIBSUF, 4, '.', '');
+                $ibscbs->gIBSUF_vIBSUF = number_format($vIBSUF, 2, '.', '');
+                $ibscbs->gIBSMun_pIBSMun = number_format($pIBSMun, 4, '.', '');
+                $ibscbs->gIBSMun_vIBSMun = number_format($vIBSMun, 2, '.', '');
+                $ibscbs->gCBS_pCBS = number_format($pCBS, 4, '.', '');
+                $ibscbs->gCBS_vCBS = number_format($vCBS, 2, '.', '');
 
-                    $ibscbs->gIBSCBS->gIBSMun = new \stdClass();
-                    $ibscbs->gIBSCBS->gIBSMun->pIBSMun = number_format($pIBSMun, 4, '.', '');
-                    $ibscbs->gIBSCBS->gIBSMun->vIBSMun = number_format($vIBSMun, 2, '.', '');
+                $nfe->tagIBSCBS($ibscbs);
 
-                    $ibscbs->gIBSCBS->vIBS = number_format($vIBS, 2, '.', '');
-
-                    $ibscbs->gIBSCBS->gCBS = new \stdClass();
-                    $ibscbs->gIBSCBS->gCBS->pCBS = number_format($pCBS, 4, '.', '');
-                    $ibscbs->gIBSCBS->gCBS->vCBS = number_format($vCBS, 2, '.', '');
-
-                    $nfe->tagIBSCBS($ibscbs);
-
-                    $this->totalIBSUF += $vIBSUF;
-                    $this->totalIBSMun += $vIBSMun;
-                    $this->totalIBS += $vIBS;
-                    $this->totalCBS += $vCBS;
-                    $this->totalBCIBSCBS += $baseCalculoItem;
-                }
+                $this->houveIBSCBS = true;
             }
         }
+    }
 
-    protected function montarTotais(Make $nfe, Venda $venda): void
-        {
-            // vProd deve ser a soma dos valores BRUTOS dos itens (antes do desconto)
-            $vProdBruto = $venda->itens->sum(fn($item) => $item->preco_unitario * $item->quantidade);
+protected function montarTotais(Make $nfe, Venda $venda): void
+    {
+        // vProd deve ser a soma dos valores BRUTOS dos itens (antes do desconto)
+        $vProdBruto = $venda->itens->sum(fn($item) => $item->preco_unitario * $item->quantidade);
 
-            $std = new \stdClass();
-            $std->vBC = 0;
-            $std->vICMS = 0;
-            $std->vICMSDeson = 0;
-            $std->vFCP = 0;
-            $std->vBCST = 0;
-            $std->vST = 0;
-            $std->vFCPST = 0;
-            $std->vFCPSTRet = 0;
-            $std->vProd = number_format($vProdBruto, 2, '.', '');
-            $std->vFrete = 0;
-            $std->vSeg = 0;
-            if (($venda->desconto ?? 0) > 0) {
-                $std->vDesc = number_format($venda->desconto, 2, '.', '');
-            }
-            $std->vII = 0;
-            $std->vIPI = 0;
-            $std->vIPIDevol = 0;
-            $std->vPIS = number_format($this->totalPIS, 2, '.', '');
-            $std->vCOFINS = number_format($this->totalCOFINS, 2, '.', '');
-            $std->vOutro = 0;
-            $std->vNF = number_format($venda->total, 2, '.', ''); // total liquido (o que o cliente realmente pagou)
-            $nfe->tagICMSTot($std);
-
-            // ==================== IBS/CBS Totais ====================
-            if ($this->totalBCIBSCBS > 0) {
-                $stdIBSCBSTot = new \stdClass();
-                $stdIBSCBSTot->vBCIBSCBS = number_format($this->totalBCIBSCBS, 2, '.', '');
-                $stdIBSCBSTot->vIBS = number_format($this->totalIBS, 2, '.', '');
-                $stdIBSCBSTot->vCBS = number_format($this->totalCBS, 2, '.', '');
-
-                $stdIBSCBSTot->gIBSUF = new \stdClass();
-                $stdIBSCBSTot->gIBSUF->vDif = '0.00';
-                $stdIBSCBSTot->gIBSUF->vDevTrib = '0.00';
-                $stdIBSCBSTot->gIBSUF->vIBSUF = number_format($this->totalIBSUF, 2, '.', '');
-
-                $stdIBSCBSTot->gIBSMun = new \stdClass();
-                $stdIBSCBSTot->gIBSMun->vDif = '0.00';
-                $stdIBSCBSTot->gIBSMun->vDevTrib = '0.00';
-                $stdIBSCBSTot->gIBSMun->vIBSMun = number_format($this->totalIBSMun, 2, '.', '');
-
-                $stdIBSCBSTot->gIBS = new \stdClass();
-                $stdIBSCBSTot->gIBS->vCredPres = '0.00';
-                $stdIBSCBSTot->gIBS->vCredPresCondSus = '0.00';
-
-                $stdIBSCBSTot->gCBS = new \stdClass();
-                $stdIBSCBSTot->gCBS->vDif = '0.00';
-                $stdIBSCBSTot->gCBS->vDevTrib = '0.00';
-                $stdIBSCBSTot->gCBS->vCredPres = '0.00';
-                $stdIBSCBSTot->gCBS->vCredPresCondSus = '0.00';
-
-                $nfe->tagIBSCBSTot($stdIBSCBSTot);
-            }
+        $std = new \stdClass();
+        $std->vBC = number_format($this->totalICMSBC, 2, '.', '');
+        $std->vICMS = number_format($this->totalICMS, 2, '.', '');
+        $std->vICMSDeson = 0;
+        $std->vFCP = 0;
+        $std->vBCST = 0;
+        $std->vST = 0;
+        $std->vFCPST = 0;
+        $std->vFCPSTRet = 0;
+        $std->vProd = number_format($vProdBruto, 2, '.', '');
+        $std->vFrete = 0;
+        $std->vSeg = 0;
+        if (($venda->desconto ?? 0) > 0) {
+            $std->vDesc = number_format($venda->desconto, 2, '.', '');
         }
+        $std->vII = 0;
+        $std->vIPI = 0;
+        $std->vIPIDevol = 0;
+        $std->vPIS = number_format($this->totalPIS, 2, '.', '');
+        $std->vCOFINS = number_format($this->totalCOFINS, 2, '.', '');
+        $std->vOutro = 0;
+        $std->vNF = number_format($venda->total, 2, '.', ''); // total liquido (o que o cliente realmente pagou)
+        $nfe->tagICMSTot($std);
+
+        // ==================== IBS/CBS Totais ====================
+        // A lib ja acumulou tudo sozinha em $this->stdIBSCBSTot a cada
+        // chamada de tagIBSCBS() dentro de montarItens() - so precisamos
+        // chamar tagIBSCBSTot() com um std vazio pra ela usar o que
+        // acumulou internamente.
+        if ($this->houveIBSCBS) {
+            $nfe->tagIBSCBSTot(new \stdClass());
+        }
+    }
 
     protected function montarTransporte(Make $nfe): void
     {

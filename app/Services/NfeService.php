@@ -38,7 +38,7 @@ class NfeService
             "razaosocial" => $this->empresa->razao_social,
             "siglaUF" => $this->empresa->uf,
             "cnpj" => $this->empresa->cnpj,
-            "schemes" => "PL_009_V4",
+            "schemes" => "PL_010_V1.30",
             "versao" => '4.00',
             "tokenIBPT" => "",
             "CSC" => $this->pdv->csc,
