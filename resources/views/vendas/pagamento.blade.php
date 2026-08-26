@@ -16,6 +16,10 @@
                 <p class="text-xs text-slate-400 mt-0.5">Finalize a venda ou volte para ajustar os itens</p>
             </div>
             <div class="flex gap-2">
+                <button onclick="abrirModalCliente()"
+                        class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
+                    <span id="btn-cliente-label">Adicionar consumidor</span> <span class="opacity-60 text-xs">F4</span>
+                </button>
                 <button onclick="abrirModalDescontoGlobal()"
                         class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
                     Desconto Geral <span class="opacity-60 text-xs">F5</span>
@@ -43,6 +47,11 @@
             <p class="flex justify-between border-t border-gray-200 pt-1.5 mt-1.5">Total de desconto
                 <strong id="desconto-total-exibido" class="text-green-700">R$ {{ number_format($desconto_item, 2, ',', '.') }}</strong>
             </p>
+        </div>
+
+        <div id="resumo-cliente" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm mb-4 flex justify-between items-center">
+            <span id="resumo-cliente-label" class="text-blue-800"></span>
+            <button type="button" onclick="removerClienteSelecionado()" class="text-xs text-blue-600 hover:underline">Remover</button>
         </div>
 
         <label class="block text-sm font-medium mb-1">Pagamentos</label>
@@ -76,6 +85,51 @@
         <p id="erro-venda" class="text-red-600 text-sm mt-2 hidden"></p>
     </div>
 
+
+<!-- Modal Adicionar Consumidor -->
+<div id="modal-cliente" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-lg p-6 max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold">Adicionar Consumidor</h2>
+            <button type="button" onclick="fecharModalCliente()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        <div class="flex gap-2 mb-2">
+            <input type="text" id="cliente-busca" placeholder="Buscar por nome ou CPF/CNPJ..."
+                   class="flex-1 border rounded px-3 py-2 text-sm" oninput="buscarCliente()">
+            <button type="button" onclick="abrirFormNovoCliente()"
+                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-2 rounded whitespace-nowrap">
+                + Novo
+            </button>
+        </div>
+
+        <div id="form-novo-cliente" class="hidden bg-gray-50 rounded-lg p-3 mb-3">
+            <div class="flex gap-4 mb-2 text-sm">
+                <label class="flex items-center gap-1.5">
+                    <input type="radio" name="novo-cliente-tipo" value="fisica" checked onchange="atualizarPlaceholderDoc()">
+                    Pessoa Física
+                </label>
+                <label class="flex items-center gap-1.5">
+                    <input type="radio" name="novo-cliente-tipo" value="juridica" onchange="atualizarPlaceholderDoc()">
+                    Pessoa Jurídica
+                </label>
+            </div>
+            <input type="text" id="novo-cliente-nome" placeholder="Nome / Razão social"
+                   class="w-full border rounded px-3 py-2 text-sm mb-2">
+            <input type="text" id="novo-cliente-documento" placeholder="CPF"
+                   class="w-full border rounded px-3 py-2 text-sm mb-2">
+            <p class="text-xs text-gray-400 mb-2">Cadastro rápido — complete o endereço depois na tela de Clientes, se precisar.</p>
+            <div class="flex gap-2 justify-end">
+                <button type="button" onclick="fecharFormNovoCliente()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
+                <button type="button" onclick="salvarNovoCliente()"
+                        class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded">Salvar e selecionar</button>
+            </div>
+        </div>
+
+        <ul id="cliente-lista" class="divide-y divide-gray-100"></ul>
+        <p id="cliente-vazio" class="text-sm text-gray-400 text-center py-4 hidden">Nenhum cliente encontrado.</p>
+    </div>
+</div>
 
 <!-- Modal de autorização do supervisor -->
 <div id="modal-autorizacao" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
@@ -174,6 +228,8 @@ let indiceFormaDestacada = 0;
 let tipoDescontoEscolhido = null;
 let _handlerTipoDesconto = null;
 let _handlerConfirmarVoltar = null;
+let clienteSelecionadoId = null;
+let timeoutCliente;
 
 
 const formasPagamento = [
@@ -183,7 +239,112 @@ const formasPagamento = [
     { valor: 'debito', label: 'Cartão de Débito' },
 ];
 
+// ===================== CLIENTE (Adicionar Consumidor) =====================
 
+function abrirModalCliente() {
+    document.getElementById('cliente-busca').value = '';
+    document.getElementById('form-novo-cliente').classList.add('hidden');
+    document.getElementById('modal-cliente').classList.remove('hidden');
+    document.getElementById('modal-cliente').classList.add('flex');
+
+    buscarCliente();
+    setTimeout(() => document.getElementById('cliente-busca').focus(), 100);
+}
+
+function fecharModalCliente() {
+    document.getElementById('modal-cliente').classList.add('hidden');
+    document.getElementById('modal-cliente').classList.remove('flex');
+}
+
+function buscarCliente() {
+    clearTimeout(timeoutCliente);
+    timeoutCliente = setTimeout(async () => {
+        const termo = document.getElementById('cliente-busca').value;
+
+        if (termo.length < 2) {
+            document.getElementById('cliente-lista').innerHTML = '';
+            document.getElementById('cliente-vazio').classList.add('hidden');
+            return;
+        }
+
+        const resp = await fetch(`{{ route('clientes.buscar') }}?q=${encodeURIComponent(termo)}`);
+        const items = await resp.json();
+
+        const lista = document.getElementById('cliente-lista');
+        const vazio = document.getElementById('cliente-vazio');
+
+        if (items.length === 0) {
+            lista.innerHTML = '';
+            vazio.classList.remove('hidden');
+            return;
+        }
+
+        vazio.classList.add('hidden');
+        lista.innerHTML = items.map(c => `
+            <li class="py-2 px-1 hover:bg-blue-50 rounded text-sm cursor-pointer"
+                onclick="selecionarCliente(${c.id}, '${c.label.replace(/'/g, "\\'")}')">
+                ${c.label}
+            </li>
+        `).join('');
+    }, 200);
+}
+
+function selecionarCliente(id, label) {
+    clienteSelecionadoId = id;
+    document.getElementById('btn-cliente-label').innerText = 'Consumidor identificado';
+    document.getElementById('resumo-cliente').classList.remove('hidden');
+    document.getElementById('resumo-cliente-label').innerText = label;
+    fecharModalCliente();
+}
+
+function removerClienteSelecionado() {
+    clienteSelecionadoId = null;
+    document.getElementById('btn-cliente-label').innerText = 'Adicionar consumidor';
+    document.getElementById('resumo-cliente').classList.add('hidden');
+}
+
+function abrirFormNovoCliente() {
+    document.getElementById('form-novo-cliente').classList.remove('hidden');
+    document.getElementById('novo-cliente-nome').value = '';
+    document.getElementById('novo-cliente-documento').value = '';
+    document.getElementById('novo-cliente-nome').focus();
+}
+
+function fecharFormNovoCliente() {
+    document.getElementById('form-novo-cliente').classList.add('hidden');
+}
+
+function atualizarPlaceholderDoc() {
+    const tipo = document.querySelector('input[name="novo-cliente-tipo"]:checked').value;
+    document.getElementById('novo-cliente-documento').placeholder = tipo === 'juridica' ? 'CNPJ' : 'CPF';
+}
+
+async function salvarNovoCliente() {
+    const tipo = document.querySelector('input[name="novo-cliente-tipo"]:checked').value;
+    const nome = document.getElementById('novo-cliente-nome').value.trim();
+    const documento = document.getElementById('novo-cliente-documento').value.trim();
+
+    if (!nome) { alert('Informe o nome do cliente.'); return; }
+    if (!documento) { alert('Informe o CPF/CNPJ.'); return; }
+
+    const resp = await fetch('{{ route("clientes.criarRapido") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body: JSON.stringify({ tipo_pessoa: tipo, nome, cpf_cnpj: documento }),
+    });
+
+    const item = await resp.json();
+
+    if (item.errors) {
+        alert(Object.values(item.errors).flat().join('\n'));
+        return;
+    }
+
+    fecharFormNovoCliente();
+    selecionarCliente(item.id, item.label);
+}
+
+// ===================== TABS/MODAIS ORIGINAIS =====================
 
 function abrirModalConfirmarVoltar() {
     document.getElementById('modal-confirmar-voltar').classList.remove('hidden');
@@ -267,7 +428,7 @@ document.getElementById('btn-forma-pagamento').addEventListener('keydown', (e) =
 
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        const modalAberto = ['modal-autorizacao', 'modal-desconto-global', 'modal-tipo-desconto', 'modal-confirmar-voltar']
+        const modalAberto = ['modal-autorizacao', 'modal-desconto-global', 'modal-tipo-desconto', 'modal-confirmar-voltar', 'modal-cliente']
             .some(id => !document.getElementById(id).classList.contains('hidden'));
         if (modalAberto) {
             fecharTodosModais();
@@ -276,12 +437,13 @@ document.addEventListener('keydown', (e) => {
         }
     }
     if (e.key === 'F2') { e.preventDefault(); finalizarVenda(); }
+    if (e.key === 'F4') { e.preventDefault(); abrirModalCliente(); }
     if (e.key === 'F5') { e.preventDefault(); abrirModalDescontoGlobal(); }
 });
 
 
 function fecharTodosModais() {
-    ['modal-autorizacao', 'modal-desconto-global', 'modal-tipo-desconto', 'modal-confirmar-voltar'].forEach(id => {
+    ['modal-autorizacao', 'modal-desconto-global', 'modal-tipo-desconto', 'modal-confirmar-voltar', 'modal-cliente'].forEach(id => {
         document.getElementById(id).classList.add('hidden');
         document.getElementById(id).classList.remove('flex');
     });
@@ -540,6 +702,7 @@ async function finalizarVenda() {
         })),
         pagamentos: pagamentos,
         desconto_global: descontoGlobal,
+        cliente_id: clienteSelecionadoId,
     };
 
     try {

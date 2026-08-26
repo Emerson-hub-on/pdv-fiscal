@@ -1,0 +1,182 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Cliente;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class ClienteController extends Controller
+{
+    public function index(Request $request)
+    {
+        $filtro = $request->get('status', 'ativos');
+
+        $clientes = Cliente::query()
+            ->when($filtro === 'ativos', fn ($q) => $q->where('ativo', true))
+            ->when($filtro === 'inativos', fn ($q) => $q->where('ativo', false))
+            ->when($request->filled('busca'), function ($q) use ($request) {
+                $termo = $request->get('busca');
+                $termoNumerico = preg_replace('/\D/', '', $termo);
+                $q->where(function ($qq) use ($termo, $termoNumerico) {
+                    $qq->where('nome', 'like', "%{$termo}%");
+                    if ($termoNumerico !== '') {
+                        $qq->orWhere('cpf_cnpj', 'like', "{$termoNumerico}%");
+                    }
+                });
+            })
+            ->orderBy('nome')
+            ->paginate(20)
+            ->withQueryString();
+
+        return view('clientes.index', compact('clientes', 'filtro'));
+    }
+
+    public function create()
+    {
+        return view('clientes.create');
+    }
+
+    public function store(Request $request)
+    {
+        $validado = $this->validarCliente($request);
+
+        Cliente::create($validado);
+
+        return redirect()->route('clientes.index')
+            ->with('sucesso', 'Cliente cadastrado com sucesso.');
+    }
+
+    public function edit(Cliente $cliente)
+    {
+        return view('clientes.edit', compact('cliente'));
+    }
+
+    public function update(Request $request, Cliente $cliente)
+    {
+        $validado = $this->validarCliente($request, $cliente->id);
+
+        $cliente->update($validado);
+
+        return redirect()->route('clientes.index')
+            ->with('sucesso', 'Cliente atualizado com sucesso.');
+    }
+
+    public function toggleAtivo(Cliente $cliente)
+    {
+        $cliente->update(['ativo' => ! $cliente->ativo]);
+
+        return redirect()->route('clientes.index')
+            ->with('sucesso', $cliente->ativo ? 'Cliente reativado.' : 'Cliente inativado.');
+    }
+
+    /**
+     * GET /clientes/buscar?q=termo
+     * Usado pelo modal "Adicionar consumidor" na tela de pagamento do caixa.
+     */
+    public function buscar(Request $request): JsonResponse
+    {
+        $termo = trim((string) $request->query('q', ''));
+
+        if (strlen($termo) < 2) {
+            return response()->json([]);
+        }
+
+        $termoNumerico = preg_replace('/\D/', '', $termo);
+
+        $query = Cliente::ativos();
+
+        $query->where(function ($q) use ($termo, $termoNumerico) {
+            $q->where('nome', 'like', "%{$termo}%");
+            if ($termoNumerico !== '') {
+                $q->orWhere('cpf_cnpj', 'like', "{$termoNumerico}%");
+            }
+        });
+
+        $resultados = $query->orderBy('nome')->limit(20)
+            ->get(['id', 'nome', 'cpf_cnpj', 'tipo_pessoa'])
+            ->map(fn ($c) => [
+                'id' => $c->id,
+                'nome' => $c->nome,
+                'cpf_cnpj' => $c->cpf_cnpj,
+                'cpf_cnpj_formatado' => $c->cpf_cnpj_formatado,
+                'label' => "{$c->nome} — {$c->cpf_cnpj_formatado}",
+            ]);
+
+        return response()->json($resultados);
+    }
+
+    /**
+     * POST /clientes/criar-rapido
+     * Cadastro rapido a partir do modal do caixa, sem sair da tela de pagamento.
+     * So exige o minimo (nome + CPF/CNPJ) - o operador pode completar o
+     * endereco depois pela tela de cadastro, se precisar pra NF-e no futuro.
+     */
+    public function criarRapido(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'tipo_pessoa' => ['required', 'in:fisica,juridica'],
+            'nome' => ['required', 'string', 'max:255'],
+            'cpf_cnpj' => ['required', 'string', 'unique:clientes,cpf_cnpj'],
+        ]);
+
+        $data['cpf_cnpj'] = preg_replace('/\D/', '', $data['cpf_cnpj']);
+
+        $tamanhoEsperado = $data['tipo_pessoa'] === 'fisica' ? 11 : 14;
+        if (strlen($data['cpf_cnpj']) !== $tamanhoEsperado) {
+            return response()->json([
+                'errors' => ['cpf_cnpj' => ["Documento inválido para " . ($data['tipo_pessoa'] === 'fisica' ? 'CPF (11 dígitos)' : 'CNPJ (14 dígitos)')],
+                ],
+            ], 422);
+        }
+
+        $cliente = Cliente::create($data);
+
+        return response()->json([
+            'id' => $cliente->id,
+            'nome' => $cliente->nome,
+            'cpf_cnpj' => $cliente->cpf_cnpj,
+            'cpf_cnpj_formatado' => $cliente->cpf_cnpj_formatado,
+            'label' => "{$cliente->nome} — {$cliente->cpf_cnpj_formatado}",
+        ]);
+    }
+
+    private function validarCliente(Request $request, $idAtual = null): array
+    {
+        $tipoPessoa = $request->input('tipo_pessoa');
+
+        $validado = $request->validate([
+            'tipo_pessoa' => 'required|in:fisica,juridica',
+            'nome' => 'required|string|max:255',
+            'nome_fantasia' => 'nullable|string|max:255',
+            'cpf_cnpj' => 'required|string|unique:clientes,cpf_cnpj,' . $idAtual,
+            'indicador_ie' => 'required|in:contribuinte,isento,nao_contribuinte',
+            'ie' => 'required_if:indicador_ie,contribuinte|nullable|string|max:20',
+            'email' => 'nullable|email|max:255',
+            'telefone' => 'nullable|string|max:20',
+            'cep' => 'nullable|string|size:8',
+            'logradouro' => 'nullable|string|max:255',
+            'numero' => 'nullable|string|max:20',
+            'complemento' => 'nullable|string|max:100',
+            'bairro' => 'nullable|string|max:100',
+            'municipio' => 'nullable|string|max:100',
+            'cod_municipio' => 'nullable|string|size:7',
+            'uf' => 'nullable|string|size:2',
+        ]);
+
+        $validado['cpf_cnpj'] = preg_replace('/\D/', '', $validado['cpf_cnpj']);
+
+        $tamanhoEsperado = $tipoPessoa === 'fisica' ? 11 : 14;
+        if (strlen($validado['cpf_cnpj']) !== $tamanhoEsperado) {
+            abort(422, 'Documento inválido para ' . ($tipoPessoa === 'fisica' ? 'CPF (11 dígitos)' : 'CNPJ (14 dígitos)'));
+        }
+
+        // PJ isento/contribuinte tem IE relevante; PF nunca tem
+        if ($tipoPessoa === 'fisica') {
+            $validado['indicador_ie'] = 'nao_contribuinte';
+            $validado['ie'] = null;
+        }
+
+        return $validado;
+    }
+}

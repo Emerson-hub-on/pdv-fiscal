@@ -480,35 +480,11 @@ protected function montarItens(Make $nfe, Venda $venda): void
             $imposto->vTotTrib = 0;
             $nfe->tagimposto($imposto);
 
-            // IPI
-            // A imensa maioria dos clientes (comercio nao-industrial revendendo
-            // produto ja tributado antes) usa sempre CST 53 - saida nao tributada,
-            // fixo, automatico, sem precisar cadastrar nada por produto. So quem
-            // cadastrou uma Classificacao IPI especifica no produto (estabelecimento
-            // industrial/equiparado) usa o CST/cEnq/aliquota configurados.
-            $classIpi = $produto->ipi;
-
-            $ipi = new \stdClass();
-            $ipi->item = $n;
-
-            if ($classIpi) {
-                $ipi->cEnq = $classIpi->cenq;
-                $ipi->CST = $classIpi->codigo;
-
-                // CST 50 (saida tributada) e o unico que realmente tem base/aliquota
-                if ($classIpi->codigo === '50' && $classIpi->aliquota !== null) {
-                    $baseCalculoIpiItem = $item->preco_unitario * $item->quantidade;
-                    $ipi->vBC = number_format($baseCalculoIpiItem, 2, '.', '');
-                    $ipi->pIPI = number_format((float) $classIpi->aliquota, 4, '.', '');
-                    $ipi->vIPI = number_format($baseCalculoIpiItem * (float) $classIpi->aliquota / 100, 2, '.', '');
-                }
-            } else {
-                // Padrao automatico: comercio nao-industrial, sem IPI configurado
-                $ipi->cEnq = '999';
-                $ipi->CST = '53';
-            }
-
-            $nfe->tagIPI($ipi);
+            // IPI: NFC-e (modelo 65) NAO aceita o grupo IPI de jeito nenhum -
+            // regra de negocio da SEFAZ, nao e questao de CST certo/errado.
+            // O cadastro (tabela classificacoes_ipi + modal) fica disponivel no
+            // produto pra uso futuro (ex: se um dia emitir NF-e modelo 55 pra
+            // operacao de atacado/industrial), mas NAO deve ser usado aqui.
 
 
 // ... dentro do tagICMSSN ou tagICMS, dependendo do CRT:

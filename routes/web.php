@@ -21,7 +21,7 @@ use App\Http\Controllers\CestController;
 use App\Http\Controllers\ClassificacaoTributariaController;
 use App\Http\Controllers\ClassificacaoPisCofinsController;
 use App\Http\Controllers\ClassificacaoIpiController;
-
+use App\Http\Controllers\ClienteController;
 
 
 
@@ -86,23 +86,31 @@ Route::middleware('auth')->group(function () {
     Route::post('/ipi/criar', [ClassificacaoIpiController::class, 'criar'])->name('ipi.criar');
     Route::post('/ipi/editar', [ClassificacaoIpiController::class, 'editar'])->name('ipi.editar');
     Route::post('/ipi/excluir', [ClassificacaoIpiController::class, 'excluir'])->name('ipi.excluir');
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    Route::get('/clientes', [ClienteController::class, 'index'])->name('clientes.index');
+    Route::get('/clientes/criar', [ClienteController::class, 'create'])->name('clientes.create');
+    Route::post('/clientes', [ClienteController::class, 'store'])->name('clientes.store');
+    Route::get('/clientes/{cliente}/editar', [ClienteController::class, 'edit'])->name('clientes.edit');
+    Route::put('/clientes/{cliente}', [ClienteController::class, 'update'])->name('clientes.update');
+    Route::post('/clientes/{cliente}/toggle-ativo', [ClienteController::class, 'toggleAtivo'])->name('clientes.toggleAtivo');
     
+    // Endpoints JSON usados pelo modal "Adicionar consumidor" no caixa
+    Route::get('/clientes/buscar', [ClienteController::class, 'buscar'])->name('clientes.buscar');
+    Route::post('/clientes/criar-rapido', [ClienteController::class, 'criarRapido'])->name('clientes.criarRapido');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     });

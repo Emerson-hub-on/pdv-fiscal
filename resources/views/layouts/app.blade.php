@@ -33,6 +33,10 @@
                 class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white text-sm transition">
                     Produtos
                 </a>
+                <a href="{{ route('clientes.index') }}"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white text-sm transition">
+                    Clientes
+                </a>
                 <a href="{{ route('empresa.editar') }}"
                 class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white text-sm transition">
                     Empresa
