@@ -127,6 +127,9 @@ class ProdutoController extends Controller
                 'produto_balanca' => 'boolean',
                 'estoque' => 'required_if:tem_variacao,false|integer|min:0',
                 'estoque_minimo' => 'nullable|integer|min:0',
-            ]);
+                'ipi_id' => 'nullable|exists:classificacoes_ipi,id',
+            
+            
+                ]);
         }
 }

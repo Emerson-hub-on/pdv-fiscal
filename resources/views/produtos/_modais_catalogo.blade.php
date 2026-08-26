@@ -232,6 +232,63 @@
     </div>
 </div>
 
+<!-- Modal IPI -->
+<div id="modal-ipi" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6 max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold">Selecionar Classificação IPI</h2>
+            <button type="button" onclick="fecharModalIpi()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        <div class="flex gap-2 mb-2">
+            <input type="text" id="ipi-busca" placeholder="Buscar por CST, enquadramento ou descrição..."
+                   class="flex-1 border rounded px-3 py-2 text-sm" oninput="buscarIpi()">
+            <button type="button" onclick="abrirFormNovoIpi()"
+                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-2 rounded whitespace-nowrap">
+                + Novo
+            </button>
+        </div>
+
+        <div class="text-right mb-4">
+            <button type="button" onclick="limparIpi()" class="text-xs text-gray-500 hover:underline">
+                Não informar IPI neste produto (limpar seleção)
+            </button>
+        </div>
+
+        <div id="form-novo-ipi" class="hidden bg-gray-50 rounded-lg p-3 mb-3">
+            <div class="grid grid-cols-3 gap-2 mb-2">
+                <input type="text" id="novo-ipi-codigo" placeholder="CST (2 dígitos)"
+                       maxlength="2" class="border rounded px-3 py-2 text-sm">
+                <input type="text" id="novo-ipi-cenq" placeholder="cEnq (3 dígitos)" value="999"
+                       maxlength="3" class="border rounded px-3 py-2 text-sm">
+                <input type="text" id="novo-ipi-aliquota" placeholder="Alíquota (%)"
+                       class="border rounded px-3 py-2 text-sm">
+            </div>
+            <input type="text" id="novo-ipi-descricao" placeholder="Descrição"
+                   class="w-full border rounded px-3 py-2 text-sm mb-2">
+            <div class="flex gap-2 justify-end">
+                <button type="button" onclick="fecharFormNovoIpi()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
+                <button type="button" onclick="salvarNovoIpi()"
+                        class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded">Salvar</button>
+            </div>
+        </div>
+
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs text-gray-500 border-b">
+                    <th class="py-2 w-16">CST</th>
+                    <th class="py-2 w-20">cEnq</th>
+                    <th class="py-2">Descrição</th>
+                    <th class="py-2 w-20">Alíquota</th>
+                    <th class="py-2 w-28"></th>
+                </tr>
+            </thead>
+            <tbody id="ipi-lista"></tbody>
+        </table>
+        <p id="ipi-vazio" class="text-sm text-gray-400 text-center py-4 hidden">Nenhuma classificação encontrada. Use "+ Novo" para cadastrar.</p>
+    </div>
+</div>
+
 <!-- Modal Tributação -->
 <input type="hidden" name="tributacao_id" id="tributacao_id" value="{{ old('tributacao_id', $produto->tributacao_id ?? '') }}">
 
@@ -269,11 +326,13 @@ let timeoutNcm;
 let timeoutCest;
 let timeoutClassTrib;
 let timeoutPisCofins;
+let timeoutIpi;
 let editandoCatalogoId = null;
 let editandoNcmId = null;
 let editandoCestId = null;
 let editandoClassTribId = null;
 let editandoPisCofinsId = null;
+let editandoIpiId = null;
 let timeoutTributacao;
 
 
@@ -425,7 +484,7 @@ function buscarTributacao() {
                     ${i.observacao ? `<p class="text-xs text-gray-400">${i.observacao}</p>` : ''}
                 </td>
                 <td class="py-2 pr-4 font-mono">${i.cfop}</td>
-                <td class="py-2 pr-4 font-mono">${i.csosn ?? i.cst_icms ?? '-'}</td>
+                <td class="py-2 pr-4 font-mono">0${i.csosn ?? i.cst_icms ?? '-'}</td>
                 <td class="py-2">${i.aliquota_icms > 0 ? i.aliquota_icms + '%' : '-'}</td>
             </tr>
         `).join('');
@@ -1131,6 +1190,185 @@ async function excluirPisCofins(id) {
     }
 
     buscarPisCofins();
+}
+
+// ===================== IPI =====================
+
+function abrirModalIpi() {
+    document.getElementById('ipi-busca').value = '';
+    document.getElementById('form-novo-ipi').classList.add('hidden');
+    document.getElementById('modal-ipi').classList.remove('hidden');
+    document.getElementById('modal-ipi').classList.add('flex');
+
+    buscarIpi();
+    setTimeout(() => document.getElementById('ipi-busca').focus(), 100);
+}
+
+function fecharModalIpi() {
+    document.getElementById('modal-ipi').classList.add('hidden');
+    document.getElementById('modal-ipi').classList.remove('flex');
+}
+
+function buscarIpi() {
+    clearTimeout(timeoutIpi);
+    timeoutIpi = setTimeout(async () => {
+        const termo = document.getElementById('ipi-busca').value;
+        const resp = await fetch(`{{ route('ipi.listar') }}?q=${encodeURIComponent(termo)}`);
+        const items = await resp.json();
+
+        const lista = document.getElementById('ipi-lista');
+        const vazio = document.getElementById('ipi-vazio');
+
+        if (items.length === 0) {
+            lista.innerHTML = '';
+            vazio.classList.remove('hidden');
+            return;
+        }
+
+        vazio.classList.add('hidden');
+
+        const fmtAliquota = (v) => v === null || v === undefined ? '—' : `${v}%`;
+
+        lista.innerHTML = items.map(i => `
+            <tr class="border-b hover:bg-blue-50 group">
+                <td class="py-2 font-mono text-xs cursor-pointer"
+                    onclick="selecionarIpi(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
+                    ${i.codigo}
+                </td>
+                <td class="py-2 font-mono text-xs text-gray-500 cursor-pointer"
+                    onclick="selecionarIpi(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
+                    ${i.cenq}
+                </td>
+                <td class="py-2 text-sm cursor-pointer"
+                    onclick="selecionarIpi(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
+                    ${i.descricao}
+                </td>
+                <td class="py-2 text-sm text-gray-500">${fmtAliquota(i.aliquota)}</td>
+                <td class="py-2 w-28">
+                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition justify-end">
+                        <button type="button" onclick="editarIpi(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}', '${i.cenq}', ${i.aliquota ?? 'null'})"
+                                class="text-xs text-blue-500 hover:underline">Editar</button>
+                        <button type="button" onclick="excluirIpi(${i.id})"
+                                class="text-xs text-red-500 hover:underline">Excluir</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }, 200);
+}
+
+function selecionarIpi(id, codigo, descricao) {
+    document.getElementById('ipi_id').value = id;
+    document.getElementById('ipi_label').innerText = `CST ${codigo} — ${descricao}`;
+    fecharModalIpi();
+}
+
+function limparIpi() {
+    document.getElementById('ipi_id').value = '';
+    document.getElementById('ipi_label').innerText = 'Clique para selecionar (opcional)...';
+    fecharModalIpi();
+}
+
+function abrirFormNovoIpi() {
+    document.getElementById('form-novo-ipi').classList.remove('hidden');
+    document.getElementById('novo-ipi-codigo').focus();
+}
+
+function fecharFormNovoIpi() {
+    document.getElementById('form-novo-ipi').classList.add('hidden');
+    document.getElementById('novo-ipi-codigo').value = '';
+    document.getElementById('novo-ipi-descricao').value = '';
+    document.getElementById('novo-ipi-cenq').value = '999';
+    document.getElementById('novo-ipi-aliquota').value = '';
+    editandoIpiId = null;
+}
+
+function editarIpi(id, codigo, descricao, cenq, aliquota) {
+    editandoIpiId = id;
+    document.getElementById('form-novo-ipi').classList.remove('hidden');
+    document.getElementById('novo-ipi-codigo').value = codigo;
+    document.getElementById('novo-ipi-descricao').value = descricao;
+    document.getElementById('novo-ipi-cenq').value = cenq;
+    document.getElementById('novo-ipi-aliquota').value = aliquota ?? '';
+    document.getElementById('novo-ipi-codigo').focus();
+}
+
+async function salvarNovoIpi() {
+    const codigo = document.getElementById('novo-ipi-codigo').value.trim();
+    const descricao = document.getElementById('novo-ipi-descricao').value.trim();
+    const cenq = document.getElementById('novo-ipi-cenq').value.trim();
+    const aliquota = document.getElementById('novo-ipi-aliquota').value.trim();
+
+    if (codigo.length !== 2) { alert('O CST deve ter exatamente 2 dígitos.'); return; }
+    if (cenq.length !== 3) { alert('O cEnq deve ter exatamente 3 dígitos.'); return; }
+    if (!descricao) { alert('Informe uma descrição.'); return; }
+
+    let url, body;
+    const payload = {
+        codigo,
+        descricao,
+        cenq,
+        aliquota: aliquota === '' ? null : aliquota,
+    };
+
+    if (editandoIpiId) {
+        url = '{{ route("ipi.editar") }}';
+        body = JSON.stringify({ id: editandoIpiId, ...payload });
+    } else {
+        url = '{{ route("ipi.criar") }}';
+        body = JSON.stringify(payload);
+    }
+
+    const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body,
+    });
+
+    const item = await resp.json();
+
+    if (item.erro) {
+        alert(item.erro);
+        return;
+    }
+    if (item.errors) {
+        alert(Object.values(item.errors).flat().join('\n'));
+        return;
+    }
+
+    editandoIpiId = null;
+    fecharFormNovoIpi();
+    buscarIpi();
+
+    const idAtual = document.getElementById('ipi_id').value;
+    if (idAtual == item.id) {
+        document.getElementById('ipi_label').innerText = `CST ${item.codigo} — ${item.descricao}`;
+    }
+}
+
+async function excluirIpi(id) {
+    if (!confirm('Excluir esta Classificação IPI? Esta ação não pode ser desfeita.')) return;
+
+    const resp = await fetch('{{ route("ipi.excluir") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body: JSON.stringify({ id }),
+    });
+
+    const resultado = await resp.json();
+
+    if (resultado.erro) {
+        alert(resultado.erro);
+        return;
+    }
+
+    const idAtual = document.getElementById('ipi_id').value;
+    if (idAtual == id) {
+        document.getElementById('ipi_id').value = '';
+        document.getElementById('ipi_label').innerText = 'Clique para selecionar (opcional)...';
+    }
+
+    buscarIpi();
 }
 
 </script>

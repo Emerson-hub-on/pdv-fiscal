@@ -20,6 +20,10 @@ use App\Http\Controllers\TributacaoController;
 use App\Http\Controllers\CestController;
 use App\Http\Controllers\ClassificacaoTributariaController;
 use App\Http\Controllers\ClassificacaoPisCofinsController;
+use App\Http\Controllers\ClassificacaoIpiController;
+
+
+
 
 
 
@@ -78,8 +82,27 @@ Route::middleware('auth')->group(function () {
     Route::post('/pis-cofins/criar', [ClassificacaoPisCofinsController::class, 'criar'])->name('piscofins.criar');
     Route::post('/pis-cofins/editar', [ClassificacaoPisCofinsController::class, 'editar'])->name('piscofins.editar');
     Route::post('/pis-cofins/excluir', [ClassificacaoPisCofinsController::class, 'excluir'])->name('piscofins.excluir');
+    Route::get('/ipi/listar', [ClassificacaoIpiController::class, 'listar'])->name('ipi.listar');
+    Route::post('/ipi/criar', [ClassificacaoIpiController::class, 'criar'])->name('ipi.criar');
+    Route::post('/ipi/editar', [ClassificacaoIpiController::class, 'editar'])->name('ipi.editar');
+    Route::post('/ipi/excluir', [ClassificacaoIpiController::class, 'excluir'])->name('ipi.excluir');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     
+
 
     });

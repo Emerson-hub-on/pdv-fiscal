@@ -480,6 +480,36 @@ protected function montarItens(Make $nfe, Venda $venda): void
             $imposto->vTotTrib = 0;
             $nfe->tagimposto($imposto);
 
+            // IPI
+            // A imensa maioria dos clientes (comercio nao-industrial revendendo
+            // produto ja tributado antes) usa sempre CST 53 - saida nao tributada,
+            // fixo, automatico, sem precisar cadastrar nada por produto. So quem
+            // cadastrou uma Classificacao IPI especifica no produto (estabelecimento
+            // industrial/equiparado) usa o CST/cEnq/aliquota configurados.
+            $classIpi = $produto->ipi;
+
+            $ipi = new \stdClass();
+            $ipi->item = $n;
+
+            if ($classIpi) {
+                $ipi->cEnq = $classIpi->cenq;
+                $ipi->CST = $classIpi->codigo;
+
+                // CST 50 (saida tributada) e o unico que realmente tem base/aliquota
+                if ($classIpi->codigo === '50' && $classIpi->aliquota !== null) {
+                    $baseCalculoIpiItem = $item->preco_unitario * $item->quantidade;
+                    $ipi->vBC = number_format($baseCalculoIpiItem, 2, '.', '');
+                    $ipi->pIPI = number_format((float) $classIpi->aliquota, 4, '.', '');
+                    $ipi->vIPI = number_format($baseCalculoIpiItem * (float) $classIpi->aliquota / 100, 2, '.', '');
+                }
+            } else {
+                // Padrao automatico: comercio nao-industrial, sem IPI configurado
+                $ipi->cEnq = '999';
+                $ipi->CST = '53';
+            }
+
+            $nfe->tagIPI($ipi);
+
 
 // ... dentro do tagICMSSN ou tagICMS, dependendo do CRT:
 $empresa = $this->nfeService->empresa();
@@ -584,13 +614,23 @@ if ($empresa->crt <= 2) {
             if ($classTrib && $obrigaIBSCBS) {
                 $baseCalculoItem = $item->preco_unitario * $item->quantidade;
 
-                $pIBSUF  = config('fiscal.aliquotas_ibscbs_transicao.ibs_uf', 0.10);
-                $pIBSMun = config('fiscal.aliquotas_ibscbs_transicao.ibs_mun', 0.00);
-                $pCBS    = config('fiscal.aliquotas_ibscbs_transicao.cbs', 0.90);
+                $pIBSUFBase  = config('fiscal.aliquotas_ibscbs_transicao.ibs_uf', 0.10);
+                $pIBSMunBase = config('fiscal.aliquotas_ibscbs_transicao.ibs_mun', 0.00);
+                $pCBSBase    = config('fiscal.aliquotas_ibscbs_transicao.cbs', 0.90);
 
-                $vIBSUF  = round($baseCalculoItem * $pIBSUF / 100, 2);
-                $vIBSMun = round($baseCalculoItem * $pIBSMun / 100, 2);
-                $vCBS    = round($baseCalculoItem * $pCBS / 100, 2);
+                $percRedIBS = (float) ($classTrib->percentual_reducao_ibs ?? 0);
+                $percRedCBS = (float) ($classTrib->percentual_reducao_cbs ?? 0);
+
+                // Aliquota EFETIVA = base * (1 - percentual de reducao). Sem reducao
+                // (percentual 0/null), efetiva = base, e o grupo gRed nem eh montado.
+                $pIBSUFEfet  = round($pIBSUFBase * (1 - $percRedIBS / 100), 4);
+                $pIBSMunEfet = round($pIBSMunBase * (1 - $percRedIBS / 100), 4);
+                $pCBSEfet    = round($pCBSBase * (1 - $percRedCBS / 100), 4);
+
+                // O valor cobrado usa sempre a aliquota EFETIVA (com reducao ja aplicada)
+                $vIBSUF  = round($baseCalculoItem * $pIBSUFEfet / 100, 2);
+                $vIBSMun = round($baseCalculoItem * $pIBSMunEfet / 100, 2);
+                $vCBS    = round($baseCalculoItem * $pCBSEfet / 100, 2);
 
                 // IMPORTANTE: a lib (TraitTagDetIBSCBS::tagIBSCBS) espera propriedades
                 // ACHATADAS com underscore (gIBSUF_pIBSUF, gCBS_vCBS, etc.), nao objetos
@@ -598,16 +638,35 @@ if ($empresa->crt <= 2) {
                 // e tambem acumula os totais sozinha em $this->stdIBSCBSTot a cada chamada -
                 // por isso nao precisamos mais somar manualmente (soh o flag houveIBSCBS,
                 // pra saber se chama tagIBSCBSTot() depois).
+                //
+                // gIBSUF_pRedAliq/gIBSUF_pAliqEfet (e equivalentes pra Mun/CBS) so sao
+                // adicionados quando ha reducao de verdade - a lib monta o <gRed> dentro
+                // do grupo automaticamente quando esses campos existem no std.
                 $ibscbs = new \stdClass();
                 $ibscbs->item = $n;
                 $ibscbs->CST = $classTrib->cst_codigo;
                 $ibscbs->cClassTrib = $classTrib->codigo;
                 $ibscbs->vBC = number_format($baseCalculoItem, 2, '.', '');
-                $ibscbs->gIBSUF_pIBSUF = number_format($pIBSUF, 4, '.', '');
+
+                $ibscbs->gIBSUF_pIBSUF = number_format($pIBSUFBase, 4, '.', '');
+                if ($percRedIBS > 0) {
+                    $ibscbs->gIBSUF_pRedAliq = number_format($percRedIBS, 4, '.', '');
+                    $ibscbs->gIBSUF_pAliqEfet = number_format($pIBSUFEfet, 4, '.', '');
+                }
                 $ibscbs->gIBSUF_vIBSUF = number_format($vIBSUF, 2, '.', '');
-                $ibscbs->gIBSMun_pIBSMun = number_format($pIBSMun, 4, '.', '');
+
+                $ibscbs->gIBSMun_pIBSMun = number_format($pIBSMunBase, 4, '.', '');
+                if ($percRedIBS > 0) {
+                    $ibscbs->gIBSMun_pRedAliq = number_format($percRedIBS, 4, '.', '');
+                    $ibscbs->gIBSMun_pAliqEfet = number_format($pIBSMunEfet, 4, '.', '');
+                }
                 $ibscbs->gIBSMun_vIBSMun = number_format($vIBSMun, 2, '.', '');
-                $ibscbs->gCBS_pCBS = number_format($pCBS, 4, '.', '');
+
+                $ibscbs->gCBS_pCBS = number_format($pCBSBase, 4, '.', '');
+                if ($percRedCBS > 0) {
+                    $ibscbs->gCBS_pRedAliq = number_format($percRedCBS, 4, '.', '');
+                    $ibscbs->gCBS_pAliqEfet = number_format($pCBSEfet, 4, '.', '');
+                }
                 $ibscbs->gCBS_vCBS = number_format($vCBS, 2, '.', '');
 
                 $nfe->tagIBSCBS($ibscbs);

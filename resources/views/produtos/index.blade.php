@@ -6,7 +6,7 @@
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-gray-800">Produtos</h1>
         <a href="{{ route('produtos.create') }}"
-           class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition">
+           class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition">
             + Novo Produto
         </a>
     </div>
@@ -19,7 +19,7 @@
 
     <div class="flex gap-2 mb-4">
         <a href="{{ route('produtos.index', ['status' => 'ativos']) }}"
-           class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $filtro === 'ativos' ? 'bg-blue-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
+           class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $filtro === 'ativos' ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
             Ativos
         </a>
         <a href="{{ route('produtos.index', ['status' => 'inativos']) }}"
@@ -34,14 +34,14 @@
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <table class="w-full text-sm">
-            <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+            <thead class="bg-blue-700 rounded-lg font-medium  text-xs uppercase tracking-wide">
                 <tr>
-                    <th class="px-4 py-3 text-left font-medium">Nome</th>
-                    <th class="px-4 py-3 text-left font-medium">Categoria</th>
-                    <th class="px-4 py-3 text-left font-medium">Preço</th>
-                    <th class="px-4 py-3 text-left font-medium">Estoque</th>
-                    <th class="px-4 py-3 text-left font-medium">Status</th>
-                    <th class="px-4 py-3 text-left font-medium">Ações</th>
+                    <th class="px-4 py-3 text-left font-medium text-amber-50">Nome</th>
+                    <th class="px-4 py-3 text-left font-medium text-amber-50">Categoria</th>
+                    <th class="px-4 py-3 text-left font-medium text-amber-50">Preço</th>
+                    <th class="px-4 py-3 text-left font-medium text-amber-50">Estoque</th>
+                    <th class="px-4 py-3 text-left font-medium text-amber-50">Status</th>
+                    <th class="px-4 py-3 text-left font-medium text-amber-50">Ações</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -66,7 +66,7 @@
                         </td>
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-3">
-                                <a href="{{ route('produtos.edit', $produto) }}" class="text-blue-600 hover:text-blue-700 font-medium">Editar</a>
+                                <a href="{{ route('produtos.edit', $produto) }}" class="text-blue-600 hover:text-blue-700 font-medium ">Editar</a>
                                 <form action="{{ route('produtos.toggle-ativo', $produto) }}" method="POST">
                                     @csrf
                                     @method('PATCH')
