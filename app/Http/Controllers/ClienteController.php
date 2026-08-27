@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Cliente;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 class ClienteController extends Controller
 {
@@ -138,6 +139,42 @@ class ClienteController extends Controller
             'cpf_cnpj' => $cliente->cpf_cnpj,
             'cpf_cnpj_formatado' => $cliente->cpf_cnpj_formatado,
             'label' => "{$cliente->nome} — {$cliente->cpf_cnpj_formatado}",
+        ]);
+    }
+
+    /**
+     * GET /api/consulta-cnpj/{cnpj}
+     * Consulta dados públicos de um CNPJ (BrasilAPI) para autopreencher o formulário.
+     */
+    public function consultarCnpj(string $cnpj): JsonResponse
+    {
+        $cnpj = preg_replace('/\D/', '', $cnpj);
+
+        if (strlen($cnpj) !== 14) {
+            return response()->json(['erro' => 'CNPJ inválido.'], 422);
+        }
+
+        $response = Http::timeout(10)->get("https://brasilapi.com.br/api/cnpj/v1/{$cnpj}");
+
+        if ($response->failed()) {
+            return response()->json(['erro' => 'CNPJ não encontrado ou serviço indisponível.'], 404);
+        }
+
+        $dados = $response->json();
+
+        return response()->json([
+            'nome' => $dados['razao_social'] ?? '',
+            'nome_fantasia' => $dados['nome_fantasia'] ?? '',
+            'telefone' => $dados['ddd_telefone_1'] ?? '',
+            'email' => $dados['email'] ?? '',
+            'cep' => $dados['cep'] ?? '',
+            'logradouro' => $dados['logradouro'] ?? '',
+            'numero' => $dados['numero'] ?? '',
+            'complemento' => $dados['complemento'] ?? '',
+            'bairro' => $dados['bairro'] ?? '',
+            'municipio' => $dados['municipio'] ?? '',
+            'uf' => $dados['uf'] ?? '',
+            'cod_municipio' => isset($dados['codigo_municipio_ibge']) ? (string) $dados['codigo_municipio_ibge'] : '',
         ]);
     }
 

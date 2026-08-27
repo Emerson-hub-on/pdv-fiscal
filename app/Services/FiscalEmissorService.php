@@ -28,7 +28,7 @@ class FiscalEmissorService
 
 public function emitir(Venda $venda): array
     {
-        $venda->load('itens.produto.ncm', 'itens.produto.tributacao', 'itens.variante', 'caixa.pdv');
+        $venda->load('itens.produto.ncm', 'itens.produto.tributacao', 'itens.variante', 'caixa.pdv', 'cliente');
         $pdv = $venda->caixa->pdv;
 
         if ($venda->numero_nfce) {
@@ -82,6 +82,7 @@ public function emitir(Venda $venda): array
             $this->montarInfNFe($nfe);
             $this->montarIde($nfe, $empresa, $pdv, $numero, tpEmis: 1);
             $this->montarEmit($nfe, $empresa);
+            $this->montarDest($nfe, $venda);
             $this->montarItens($nfe, $venda);
             $this->montarTotais($nfe, $venda);
             $this->montarTransporte($nfe);
@@ -183,6 +184,7 @@ public function emitir(Venda $venda): array
                 $this->montarInfNFe($nfe);
                 $this->montarIde($nfe, $empresa, $pdv, $numero, tpEmis: 9, dhCont: $dhCont, xJust: $xJust);
                 $this->montarEmit($nfe, $empresa);
+                $this->montarDest($nfe, $venda);
                 $this->montarItens($nfe, $venda);
                 $this->montarTotais($nfe, $venda);
                 $this->montarTransporte($nfe);
@@ -651,6 +653,71 @@ if ($empresa->crt <= 2) {
             }
         }
     }
+
+/**
+     * Monta a tag <dest> quando a venda tem um consumidor identificado.
+     * Sem cliente vinculado, simplesmente nao monta nada - NFC-e permite
+     * emissao sem destinatario (a grande maioria dos casos).
+     */
+    protected function montarDest(Make $nfe, Venda $venda): void
+    {
+        $cliente = $venda->cliente;
+
+        if (!$cliente) {
+            return;
+        }
+
+        $std = new \stdClass();
+
+        if (strlen($cliente->cpf_cnpj) === 11) {
+            $std->CPF = $cliente->cpf_cnpj;
+        } else {
+            $std->CNPJ = $cliente->cpf_cnpj;
+        }
+
+        $std->xNome = $cliente->nome;
+
+        // indIEDest: 1=Contribuinte ICMS, 2=Contribuinte isento, 9=Nao Contribuinte
+        $indIEDestMap = [
+            'contribuinte' => 1,
+            'isento' => 2,
+            'nao_contribuinte' => 9,
+        ];
+        $std->indIEDest = $indIEDestMap[$cliente->indicador_ie] ?? 9;
+
+        if ($cliente->indicador_ie === 'contribuinte' && $cliente->ie) {
+            $std->IE = $cliente->ie;
+        }
+
+        if ($cliente->email) {
+            $std->email = $cliente->email;
+        }
+
+        $nfe->tagdest($std);
+
+        // Endereco do destinatario e opcional na NFC-e - so monta se os
+        // campos minimos estiverem completos (cadastro rapido do caixa
+        // normalmente NAO tem endereco preenchido, e tudo bem)
+        $enderecoCompleto = $cliente->logradouro && $cliente->numero && $cliente->bairro
+            && $cliente->municipio && $cliente->cod_municipio && $cliente->uf && $cliente->cep;
+
+        if ($enderecoCompleto) {
+            $endereco = new \stdClass();
+            $endereco->xLgr = $cliente->logradouro;
+            $endereco->nro = $cliente->numero;
+            $endereco->xCpl = $cliente->complemento;
+            $endereco->xBairro = $cliente->bairro;
+            $endereco->cMun = $cliente->cod_municipio;
+            $endereco->xMun = $cliente->municipio;
+            $endereco->UF = $cliente->uf;
+            $endereco->CEP = $cliente->cep;
+            $endereco->cPais = '1058';
+            $endereco->xPais = 'Brasil';
+            $nfe->tagenderDest($endereco);
+        }
+    }
+
+
 
 protected function montarTotais(Make $nfe, Venda $venda): void
     {

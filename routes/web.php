@@ -96,7 +96,8 @@ Route::middleware('auth')->group(function () {
     // Endpoints JSON usados pelo modal "Adicionar consumidor" no caixa
     Route::get('/clientes/buscar', [ClienteController::class, 'buscar'])->name('clientes.buscar');
     Route::post('/clientes/criar-rapido', [ClienteController::class, 'criarRapido'])->name('clientes.criarRapido');
-
+    Route::get('/api/consulta-cnpj/{cnpj}', [ClienteController::class, 'consultarCnpj'])
+    ->name('clientes.consultarCnpj');
 
 
 
