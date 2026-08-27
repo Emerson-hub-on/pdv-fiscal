@@ -99,7 +99,7 @@ class VendaController extends Controller
         return response()->json(['sucesso' => true]);
     }
     
-    public function finalizar(Request $request)
+public function finalizar(Request $request)
     {
         $validado = $request->validate([
             'itens' => 'required|array|min:1',
@@ -111,6 +111,7 @@ class VendaController extends Controller
             'pagamentos.*.forma_pagamento' => 'required|in:dinheiro,pix,credito,debito',
             'pagamentos.*.valor' => 'required|numeric|min:0.01',
             'desconto_global' => 'nullable|numeric|min:0',
+            'cliente_id' => 'nullable|integer',
         ]);
 
         $caixa = Caixa::aberto(Auth::id());
@@ -189,6 +190,7 @@ class VendaController extends Controller
                 'uuid' => $uuid,
                 'caixa_id_central' => $caixa->id,
                 'operador_id_central' => Auth::id(),
+                'cliente_id' => $validado['cliente_id'] ?? null,
                 'total' => $totalComDesconto,
                 'troco' => $troco,
                 'desconto' => $descontoTotal,

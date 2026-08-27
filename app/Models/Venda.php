@@ -23,6 +23,11 @@ class Venda extends Model
         return $this->belongsTo(Caixa::class);
     }
 
+    public function cliente()
+    {
+        return $this->belongsTo(Cliente::class);
+    }
+
     public function operador()
     {
         return $this->belongsTo(User::class, 'operador_id');
