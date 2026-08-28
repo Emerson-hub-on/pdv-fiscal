@@ -1,12 +1,10 @@
 @extends('layouts.app')
 
 @section('titulo', 'PDV - Venda')
+@section('body-class', 'sidebar-oculta')
 
 @section('conteudo')
 <div class="pt-32 flex justify-between items-center mb-4">
-<style>
-    #nav-principal { display: none; }
-</style>
 
 <div class="fixed top-0 left-0 right-0 z-50
             bg-linear-to-r from-slate-800 via-slate-900 to-slate-900
@@ -314,8 +312,7 @@
     
 
 <!-- Container do Grid ajustado para ocupar a altura restante da tela -->
-<div class="fixed top-[120px] left-0 right-0 bottom-0 overflow-y-auto px-6 pb-4">
-<div class="grid grid-cols-3 gap-6 shadow-md h-full max-w-[1400px] mx-auto">
+<div class="grid grid-cols-3 gap-6 shadow-md flex-1 h-[calc(100vh-120px)] pb-4 max-w-6xl mx-auto px-6">
     
     <!-- Coluna da Esquerda (Carrinho) -->
     <div class="col-span-2 bg-white rounded-xl shadow-lg overflow-hidden flex flex-col h-full">
@@ -361,7 +358,6 @@
 
         <p id="erro-itens" class="text-red-600 text-sm mt-2 hidden"></p>
     </div>
-</div>
 </div>
 @endsection
 
