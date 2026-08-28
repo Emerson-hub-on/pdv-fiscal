@@ -94,19 +94,18 @@
             <button type="button" onclick="fecharModalCliente()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
         </div>
 
-        <div class="flex gap-2 mb-2">
+        <div class="flex gap-2 mb-3">
             <input type="text" id="cliente-busca" placeholder="Buscar por nome ou CPF/CNPJ..."
                    class="flex-1 border rounded px-3 py-2 text-sm" oninput="buscarCliente()">
             <button type="button" onclick="abrirFormNovoCliente()"
                     class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-2 rounded whitespace-nowrap">
                 + Novo
             </button>
+            <button type="button" onclick="abrirFormCpfNaNota()"
+                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm px-3 py-2 rounded whitespace-nowrap">
+                CPF na nota
+            </button>
         </div>
-
-        <button type="button" onclick="abrirFormCpfNaNota()"
-                class="text-xs text-blue-600 hover:underline mb-3">
-            Ou informar só o CPF na nota (sem cadastro)
-        </button>
 
         <div id="form-cpf-na-nota" class="hidden bg-gray-50 rounded-lg p-3 mb-3">
             <label class="block text-xs font-medium text-gray-600 mb-1">CPF do consumidor</label>
