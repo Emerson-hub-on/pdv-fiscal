@@ -663,58 +663,71 @@ if ($empresa->crt <= 2) {
     {
         $cliente = $venda->cliente;
 
-        if (!$cliente) {
+        if ($cliente) {
+            $std = new \stdClass();
+
+            if (strlen($cliente->cpf_cnpj) === 11) {
+                $std->CPF = $cliente->cpf_cnpj;
+            } else {
+                $std->CNPJ = $cliente->cpf_cnpj;
+            }
+
+            $std->xNome = $cliente->nome;
+
+            // indIEDest: 1=Contribuinte ICMS, 2=Contribuinte isento, 9=Nao Contribuinte
+            $indIEDestMap = [
+                'contribuinte' => 1,
+                'isento' => 2,
+                'nao_contribuinte' => 9,
+            ];
+            $std->indIEDest = $indIEDestMap[$cliente->indicador_ie] ?? 9;
+
+            if ($cliente->indicador_ie === 'contribuinte' && $cliente->ie) {
+                $std->IE = $cliente->ie;
+            }
+
+            if ($cliente->email) {
+                $std->email = $cliente->email;
+            }
+
+            $nfe->tagdest($std);
+
+            // Endereco do destinatario e opcional na NFC-e - so monta se os
+            // campos minimos estiverem completos (cadastro rapido do caixa
+            // normalmente NAO tem endereco preenchido, e tudo bem)
+            $enderecoCompleto = $cliente->logradouro && $cliente->numero && $cliente->bairro
+                && $cliente->municipio && $cliente->cod_municipio && $cliente->uf && $cliente->cep;
+
+            if ($enderecoCompleto) {
+                $endereco = new \stdClass();
+                $endereco->xLgr = $cliente->logradouro;
+                $endereco->nro = $cliente->numero;
+                $endereco->xCpl = $cliente->complemento;
+                $endereco->xBairro = $cliente->bairro;
+                $endereco->cMun = $cliente->cod_municipio;
+                $endereco->xMun = $cliente->municipio;
+                $endereco->UF = $cliente->uf;
+                $endereco->CEP = $cliente->cep;
+                $endereco->cPais = '1058';
+                $endereco->xPais = 'Brasil';
+                $nfe->tagenderDest($endereco);
+            }
+
             return;
         }
 
-        $std = new \stdClass();
-
-        if (strlen($cliente->cpf_cnpj) === 11) {
-            $std->CPF = $cliente->cpf_cnpj;
-        } else {
-            $std->CNPJ = $cliente->cpf_cnpj;
+        // CPF avulso ("informar CPF na nota") - sem cadastro completo, so o
+        // documento mesmo. xNome generico porque nao coletamos nome nesse fluxo.
+        if ($venda->cpf_na_nota) {
+            $std = new \stdClass();
+            $std->CPF = $venda->cpf_na_nota;
+            $std->xNome = 'CONSUMIDOR';
+            $std->indIEDest = 9; // pessoa fisica = sempre nao contribuinte
+            $nfe->tagdest($std);
         }
 
-        $std->xNome = $cliente->nome;
-
-        // indIEDest: 1=Contribuinte ICMS, 2=Contribuinte isento, 9=Nao Contribuinte
-        $indIEDestMap = [
-            'contribuinte' => 1,
-            'isento' => 2,
-            'nao_contribuinte' => 9,
-        ];
-        $std->indIEDest = $indIEDestMap[$cliente->indicador_ie] ?? 9;
-
-        if ($cliente->indicador_ie === 'contribuinte' && $cliente->ie) {
-            $std->IE = $cliente->ie;
-        }
-
-        if ($cliente->email) {
-            $std->email = $cliente->email;
-        }
-
-        $nfe->tagdest($std);
-
-        // Endereco do destinatario e opcional na NFC-e - so monta se os
-        // campos minimos estiverem completos (cadastro rapido do caixa
-        // normalmente NAO tem endereco preenchido, e tudo bem)
-        $enderecoCompleto = $cliente->logradouro && $cliente->numero && $cliente->bairro
-            && $cliente->municipio && $cliente->cod_municipio && $cliente->uf && $cliente->cep;
-
-        if ($enderecoCompleto) {
-            $endereco = new \stdClass();
-            $endereco->xLgr = $cliente->logradouro;
-            $endereco->nro = $cliente->numero;
-            $endereco->xCpl = $cliente->complemento;
-            $endereco->xBairro = $cliente->bairro;
-            $endereco->cMun = $cliente->cod_municipio;
-            $endereco->xMun = $cliente->municipio;
-            $endereco->UF = $cliente->uf;
-            $endereco->CEP = $cliente->cep;
-            $endereco->cPais = '1058';
-            $endereco->xPais = 'Brasil';
-            $nfe->tagenderDest($endereco);
-        }
+        // Sem cliente nem CPF avulso: nao monta <dest> nenhum - NFC-e permite
+        // emissao sem destinatario identificado (a maioria dos casos).
     }
 
 

@@ -112,6 +112,7 @@ public function finalizar(Request $request)
             'pagamentos.*.valor' => 'required|numeric|min:0.01',
             'desconto_global' => 'nullable|numeric|min:0',
             'cliente_id' => 'nullable|integer',
+            'cpf_na_nota' => 'nullable|digits:11',
         ]);
 
         $caixa = Caixa::aberto(Auth::id());
@@ -191,6 +192,7 @@ public function finalizar(Request $request)
                 'caixa_id_central' => $caixa->id,
                 'operador_id_central' => Auth::id(),
                 'cliente_id' => $validado['cliente_id'] ?? null,
+                'cpf_na_nota' => $validado['cpf_na_nota'] ?? null,
                 'total' => $totalComDesconto,
                 'troco' => $troco,
                 'desconto' => $descontoTotal,

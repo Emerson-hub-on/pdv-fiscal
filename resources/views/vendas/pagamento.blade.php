@@ -103,6 +103,23 @@
             </button>
         </div>
 
+        <button type="button" onclick="abrirFormCpfNaNota()"
+                class="text-xs text-blue-600 hover:underline mb-3">
+            Ou informar só o CPF na nota (sem cadastro)
+        </button>
+
+        <div id="form-cpf-na-nota" class="hidden bg-gray-50 rounded-lg p-3 mb-3">
+            <label class="block text-xs font-medium text-gray-600 mb-1">CPF do consumidor</label>
+            <input type="text" id="cpf-na-nota-valor" placeholder="000.000.000-00" maxlength="14"
+                   class="w-full border rounded px-3 py-2 text-sm mb-2">
+            <p class="text-xs text-gray-400 mb-2">Só o CPF vai na nota fiscal — não cria cadastro de cliente.</p>
+            <div class="flex gap-2 justify-end">
+                <button type="button" onclick="fecharFormCpfNaNota()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
+                <button type="button" onclick="confirmarCpfNaNota()"
+                        class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded">Confirmar</button>
+            </div>
+        </div>
+
         <div id="form-novo-cliente" class="hidden bg-gray-50 rounded-lg p-3 mb-3">
             <div class="flex gap-4 mb-2 text-sm">
                 <label class="flex items-center gap-1.5">
@@ -229,6 +246,7 @@ let tipoDescontoEscolhido = null;
 let _handlerTipoDesconto = null;
 let _handlerConfirmarVoltar = null;
 let clienteSelecionadoId = null;
+let cpfNaNotaValor = null;
 let timeoutCliente;
 
 
@@ -291,6 +309,7 @@ function buscarCliente() {
 
 function selecionarCliente(id, label) {
     clienteSelecionadoId = id;
+    cpfNaNotaValor = null; // mutuamente exclusivo
     document.getElementById('btn-cliente-label').innerText = 'Consumidor identificado';
     document.getElementById('resumo-cliente').classList.remove('hidden');
     document.getElementById('resumo-cliente-label').innerText = label;
@@ -299,8 +318,41 @@ function selecionarCliente(id, label) {
 
 function removerClienteSelecionado() {
     clienteSelecionadoId = null;
+    cpfNaNotaValor = null;
     document.getElementById('btn-cliente-label').innerText = 'Adicionar consumidor';
     document.getElementById('resumo-cliente').classList.add('hidden');
+}
+
+function abrirFormCpfNaNota() {
+    document.getElementById('form-cpf-na-nota').classList.remove('hidden');
+    document.getElementById('cpf-na-nota-valor').value = '';
+    document.getElementById('cpf-na-nota-valor').focus();
+}
+
+function fecharFormCpfNaNota() {
+    document.getElementById('form-cpf-na-nota').classList.add('hidden');
+}
+
+function confirmarCpfNaNota() {
+    const cpfDigitado = document.getElementById('cpf-na-nota-valor').value.trim();
+    const cpfLimpo = cpfDigitado.replace(/\D/g, '');
+
+    if (cpfLimpo.length !== 11) {
+        alert('CPF inválido — deve ter 11 dígitos.');
+        return;
+    }
+
+    cpfNaNotaValor = cpfLimpo;
+    clienteSelecionadoId = null; // mutuamente exclusivo
+
+    const cpfFormatado = cpfLimpo.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+
+    document.getElementById('btn-cliente-label').innerText = 'CPF na nota informado';
+    document.getElementById('resumo-cliente').classList.remove('hidden');
+    document.getElementById('resumo-cliente-label').innerText = `CPF na nota: ${cpfFormatado}`;
+
+    fecharFormCpfNaNota();
+    fecharModalCliente();
 }
 
 function abrirFormNovoCliente() {
@@ -703,6 +755,7 @@ async function finalizarVenda() {
         pagamentos: pagamentos,
         desconto_global: descontoGlobal,
         cliente_id: clienteSelecionadoId,
+        cpf_na_nota: cpfNaNotaValor,
     };
 
     try {

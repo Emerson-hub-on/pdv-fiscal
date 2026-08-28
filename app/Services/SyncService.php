@@ -146,6 +146,7 @@ class SyncService
                             'caixa_id' => $vendaLocal->caixa_id_central,
                             'operador_id' => $vendaLocal->operador_id_central,
                             'cliente_id' => $vendaLocal->cliente_id,
+                            'cpf_na_nota' => $vendaLocal->cpf_na_nota,
                             'total' => $vendaLocal->total,
                             'troco' => $vendaLocal->troco,
                             'desconto' => $vendaLocal->desconto,
