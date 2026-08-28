@@ -1,11 +1,9 @@
 @extends('layouts.app')
 
 @section('titulo', 'Pagamento')
+@section('body-class', 'sidebar-oculta')
 
 @section('conteudo')
-<style>
-    #nav-principal { display: none; }
-</style>
 <div class="max-w-4xl mx-auto pt-32">
     <div class="fixed top-0 left-0 right-0 z-50
             bg-linear-to-r from-slate-800 via-slate-900 to-slate-900
@@ -44,24 +42,25 @@
             <label class="block text-sm font-medium mb-1">Pagamentos</label>
             <div id="lista-pagamentos" class="space-y-2 mb-2"></div>
 
-            <div class="flex gap-2 mb-2">
-                <input type="number" step="0.01" id="novo-valor-pagamento" placeholder="Valor" autofocus class="w-24 border rounded px-2 py-1 text-sm">
+            <div class="flex gap-2 mb-3">
+                <input type="number" step="0.01" id="novo-valor-pagamento" placeholder="R$ 0,00" autofocus
+                       class="w-28 border border-gray-300 rounded-lg px-3 py-2.5 text-base font-semibold text-slate-800 focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition">
 
                 <div class="relative flex-1">
                     <button type="button" id="btn-forma-pagamento" onclick="toggleDropdownFormaPagamento()"
-                            class="w-full border rounded px-2 py-1 text-sm text-left bg-white">
+                            class="w-full h-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-left bg-white hover:border-gray-400 transition">
                         Dinheiro
                     </button>
-                    <div id="dropdown-forma-pagamento" class="absolute bg-white border rounded shadow w-full mt-1 hidden z-10">
-                        <div class="p-2 cursor-pointer text-sm" data-forma="dinheiro" data-index="0" onclick="selecionarFormaPagamento('dinheiro')">Dinheiro</div>
-                        <div class="p-2 cursor-pointer text-sm" data-forma="pix" data-index="1" onclick="selecionarFormaPagamento('pix')">PIX</div>
-                        <div class="p-2 cursor-pointer text-sm" data-forma="credito" data-index="2" onclick="selecionarFormaPagamento('credito')">Cartão de Crédito</div>
-                        <div class="p-2 cursor-pointer text-sm" data-forma="debito" data-index="3" onclick="selecionarFormaPagamento('debito')">Cartão de Débito</div>
+                    <div id="dropdown-forma-pagamento" class="absolute bg-white border border-gray-200 rounded-lg shadow-lg w-full mt-1 hidden z-10 overflow-hidden">
+                        <div class="p-2.5 cursor-pointer text-sm hover:bg-gray-50" data-forma="dinheiro" data-index="0" onclick="selecionarFormaPagamento('dinheiro')">Dinheiro</div>
+                        <div class="p-2.5 cursor-pointer text-sm hover:bg-gray-50" data-forma="pix" data-index="1" onclick="selecionarFormaPagamento('pix')">PIX</div>
+                        <div class="p-2.5 cursor-pointer text-sm hover:bg-gray-50" data-forma="credito" data-index="2" onclick="selecionarFormaPagamento('credito')">Cartão de Crédito</div>
+                        <div class="p-2.5 cursor-pointer text-sm hover:bg-gray-50" data-forma="debito" data-index="3" onclick="selecionarFormaPagamento('debito')">Cartão de Débito</div>
                     </div>
                 </div>
             </div>
 
-            <p class="text-sm mb-4">
+            <p class="text-lg mb-4">
                 Restante a pagar: <strong id="restante-pagamento">R$ 0,00</strong>
             </p>
 
