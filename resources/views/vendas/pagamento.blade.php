@@ -6,7 +6,7 @@
 <style>
     #nav-principal { display: none; }
 </style>
-<div class="max-w-md mx-auto pt-32">
+<div class="max-w-4xl mx-auto pt-32">
     <div class="fixed top-0 left-0 right-0 z-50
             bg-linear-to-r from-slate-800 via-slate-900 to-slate-900
             shadow-lg">
@@ -31,58 +31,67 @@
             </div>
         </div>
     </div>
-    <div class="bg-white rounded shadow p-4">
-        <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Total a pagar</p>
-        <p id="total-pagamento-exibido" class="text-4xl font-bold text-slate-900 mb-5">
-            R$ {{ number_format($total, 2, ',', '.') }}
-        </p>
 
-        <div class="bg-gray-50 rounded-lg p-3 text-sm mb-5 space-y-1.5">
-            <p class="flex justify-between">Desconto por item
-                <strong class="text-green-600">R$ {{ number_format($desconto_item, 2, ',', '.') }}</strong>
-            </p>
-            <p class="flex justify-between">Desconto global
-                <strong id="desconto-global-exibido" class="text-green-600">R$ 0,00</strong>
-            </p>
-            <p class="flex justify-between border-t border-gray-200 pt-1.5 mt-1.5">Total de desconto
-                <strong id="desconto-total-exibido" class="text-green-700">R$ {{ number_format($desconto_item, 2, ',', '.') }}</strong>
-            </p>
-        </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
 
-        <div id="resumo-cliente" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm mb-4 flex justify-between items-center">
-            <span id="resumo-cliente-label" class="text-blue-800"></span>
-            <button type="button" onclick="removerClienteSelecionado()" class="text-xs text-blue-600 hover:underline">Remover</button>
-        </div>
+        <!-- Card esquerdo: pagamentos + finalizar -->
+        <div class="bg-white rounded shadow p-4">
+            <div id="resumo-cliente" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm mb-4 flex justify-between items-center">
+                <span id="resumo-cliente-label" class="text-blue-800"></span>
+                <button type="button" onclick="removerClienteSelecionado()" class="text-xs text-blue-600 hover:underline">Remover</button>
+            </div>
 
-        <label class="block text-sm font-medium mb-1">Pagamentos</label>
-        <div id="lista-pagamentos" class="space-y-2 mb-2"></div>
+            <label class="block text-sm font-medium mb-1">Pagamentos</label>
+            <div id="lista-pagamentos" class="space-y-2 mb-2"></div>
 
-        <div class="flex gap-2 mb-2">
-            <input type="number" step="0.01" id="novo-valor-pagamento" placeholder="Valor" autofocus class="w-24 border rounded px-2 py-1 text-sm">
+            <div class="flex gap-2 mb-2">
+                <input type="number" step="0.01" id="novo-valor-pagamento" placeholder="Valor" autofocus class="w-24 border rounded px-2 py-1 text-sm">
 
-            <div class="relative flex-1">
-                <button type="button" id="btn-forma-pagamento" onclick="toggleDropdownFormaPagamento()"
-                        class="w-full border rounded px-2 py-1 text-sm text-left bg-white">
-                    Dinheiro
-                </button>
-                <div id="dropdown-forma-pagamento" class="absolute bg-white border rounded shadow w-full mt-1 hidden z-10">
-                    <div class="p-2 cursor-pointer text-sm" data-forma="dinheiro" data-index="0" onclick="selecionarFormaPagamento('dinheiro')">Dinheiro</div>
-                    <div class="p-2 cursor-pointer text-sm" data-forma="pix" data-index="1" onclick="selecionarFormaPagamento('pix')">PIX</div>
-                    <div class="p-2 cursor-pointer text-sm" data-forma="credito" data-index="2" onclick="selecionarFormaPagamento('credito')">Cartão de Crédito</div>
-                    <div class="p-2 cursor-pointer text-sm" data-forma="debito" data-index="3" onclick="selecionarFormaPagamento('debito')">Cartão de Débito</div>
+                <div class="relative flex-1">
+                    <button type="button" id="btn-forma-pagamento" onclick="toggleDropdownFormaPagamento()"
+                            class="w-full border rounded px-2 py-1 text-sm text-left bg-white">
+                        Dinheiro
+                    </button>
+                    <div id="dropdown-forma-pagamento" class="absolute bg-white border rounded shadow w-full mt-1 hidden z-10">
+                        <div class="p-2 cursor-pointer text-sm" data-forma="dinheiro" data-index="0" onclick="selecionarFormaPagamento('dinheiro')">Dinheiro</div>
+                        <div class="p-2 cursor-pointer text-sm" data-forma="pix" data-index="1" onclick="selecionarFormaPagamento('pix')">PIX</div>
+                        <div class="p-2 cursor-pointer text-sm" data-forma="credito" data-index="2" onclick="selecionarFormaPagamento('credito')">Cartão de Crédito</div>
+                        <div class="p-2 cursor-pointer text-sm" data-forma="debito" data-index="3" onclick="selecionarFormaPagamento('debito')">Cartão de Débito</div>
+                    </div>
                 </div>
+            </div>
+
+            <p class="text-sm mb-4">
+                Restante a pagar: <strong id="restante-pagamento">R$ 0,00</strong>
+            </p>
+
+            <button id="btn-finalizar" onclick="finalizarVenda()"
+                    class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded font-bold text-lg disabled:opacity-50">
+                Aperte F2 Para Finalizar
+            </button>
+            <p id="erro-venda" class="text-red-600 text-sm mt-2 hidden"></p>
+        </div>
+
+        <!-- Card direito: total e descontos -->
+        <div class="bg-white rounded shadow p-4">
+            <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Total a pagar</p>
+            <p id="total-pagamento-exibido" class="text-4xl font-bold text-slate-900 mb-5">
+                R$ {{ number_format($total, 2, ',', '.') }}
+            </p>
+
+            <div class="bg-gray-50 rounded-lg p-3 text-sm space-y-1.5">
+                <p class="flex justify-between">Desconto por item
+                    <strong class="text-green-600">R$ {{ number_format($desconto_item, 2, ',', '.') }}</strong>
+                </p>
+                <p class="flex justify-between">Desconto global
+                    <strong id="desconto-global-exibido" class="text-green-600">R$ 0,00</strong>
+                </p>
+                <p class="flex justify-between border-t border-gray-200 pt-1.5 mt-1.5">Total de desconto
+                    <strong id="desconto-total-exibido" class="text-green-700">R$ {{ number_format($desconto_item, 2, ',', '.') }}</strong>
+                </p>
             </div>
         </div>
 
-        <p class="text-sm mb-4">
-            Restante a pagar: <strong id="restante-pagamento">R$ 0,00</strong>
-        </p>
-
-        <button id="btn-finalizar" onclick="finalizarVenda()"
-                class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded font-bold text-lg disabled:opacity-50">
-            Aperte F2 Para Finalizar
-        </button>
-        <p id="erro-venda" class="text-red-600 text-sm mt-2 hidden"></p>
     </div>
 
 
