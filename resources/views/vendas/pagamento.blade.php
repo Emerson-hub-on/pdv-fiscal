@@ -261,6 +261,7 @@ const formasPagamento = [
 function abrirModalCliente() {
     document.getElementById('cliente-busca').value = '';
     document.getElementById('form-novo-cliente').classList.add('hidden');
+    document.getElementById('form-cpf-na-nota').classList.add('hidden');
     document.getElementById('modal-cliente').classList.remove('hidden');
     document.getElementById('modal-cliente').classList.add('flex');
 
@@ -323,6 +324,7 @@ function removerClienteSelecionado() {
 }
 
 function abrirFormCpfNaNota() {
+    fecharFormNovoCliente();
     document.getElementById('form-cpf-na-nota').classList.remove('hidden');
     document.getElementById('cpf-na-nota-valor').value = '';
     document.getElementById('cpf-na-nota-valor').focus();
@@ -355,6 +357,7 @@ function confirmarCpfNaNota() {
 }
 
 function abrirFormNovoCliente() {
+    fecharFormCpfNaNota();
     document.getElementById('form-novo-cliente').classList.remove('hidden');
     document.getElementById('novo-cliente-nome').value = '';
     document.getElementById('novo-cliente-documento').value = '';
