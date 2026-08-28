@@ -314,7 +314,8 @@
     
 
 <!-- Container do Grid ajustado para ocupar a altura restante da tela -->
-<div class="grid grid-cols-3 gap-6 shadow-md flex-1 h-[calc(100vh-120px)] pb-4">
+<div class="fixed top-[120px] left-0 right-0 bottom-0 overflow-y-auto px-6 pb-4">
+<div class="grid grid-cols-3 gap-6 shadow-md h-full max-w-[1400px] mx-auto">
     
     <!-- Coluna da Esquerda (Carrinho) -->
     <div class="col-span-2 bg-white rounded-xl shadow-lg overflow-hidden flex flex-col h-full">
@@ -360,6 +361,7 @@
 
         <p id="erro-itens" class="text-red-600 text-sm mt-2 hidden"></p>
     </div>
+</div>
 </div>
 @endsection
 

@@ -6,10 +6,10 @@
     <title>@yield('titulo', 'PDV Fiscal')</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-100 text-gray-800 @yield('body-class')">
 
 <!-- Sidebar corrigido para altura total fixa com h-screen -->
-<aside id="nav-principal" class="bg-gray-800 fixed top-0 left-0 h-screen w-50 flex flex-col z-40 overflow-y-auto">
+<aside id="nav-principal" class="bg-gray-800 fixed top-0 left-0 h-screen w-50 flex flex-col z-40 overflow-y-auto [.sidebar-oculta_&]:hidden">
     <div class="px-6 py-5 border-b border-white/10 shrink-0">
         <p class="text-white font-bold text-lg tracking-tight">PDV Fiscal</p>
         <p class="text-slate-400 text-xs mt-0.5">Painel administrativo</p>
@@ -58,8 +58,8 @@
 </aside>
 
     <!-- Conteúdo principal -->
-    <div id="conteudo-principal" class="ml-56 min-h-screen">
-        <main class="max-w-5xl mx-auto p-8">
+    <div id="conteudo-principal" class="ml-56 min-h-screen [.sidebar-oculta_&]:ml-0">
+        <main class="max-w-5xl mx-auto p-8 [.sidebar-oculta_&]:max-w-none [.sidebar-oculta_&]:mx-0 [.sidebar-oculta_&]:p-0">
             @if (session('sucesso'))
                 <div class="bg-green-100 text-green-800 border border-green-300 rounded px-4 py-3 mb-6">
                     {{ session('sucesso') }}

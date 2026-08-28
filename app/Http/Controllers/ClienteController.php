@@ -71,28 +71,28 @@ class ClienteController extends Controller
             ->with('sucesso', $cliente->ativo ? 'Cliente reativado.' : 'Cliente inativado.');
     }
 
-    /**
+
+/**
      * GET /clientes/buscar?q=termo
      * Usado pelo modal "Adicionar consumidor" na tela de pagamento do caixa.
+     * Sem termo, devolve os primeiros em ordem alfabetica. Com termo, filtra
+     * por nomes que COMECAM com o texto digitado (nao "contem").
      */
     public function buscar(Request $request): JsonResponse
     {
         $termo = trim((string) $request->query('q', ''));
 
-        if (strlen($termo) < 2) {
-            return response()->json([]);
-        }
-
-        $termoNumerico = preg_replace('/\D/', '', $termo);
-
         $query = Cliente::ativos();
 
-        $query->where(function ($q) use ($termo, $termoNumerico) {
-            $q->where('nome', 'like', "%{$termo}%");
-            if ($termoNumerico !== '') {
-                $q->orWhere('cpf_cnpj', 'like', "{$termoNumerico}%");
-            }
-        });
+        if ($termo !== '') {
+            $termoNumerico = preg_replace('/\D/', '', $termo);
+            $query->where(function ($q) use ($termo, $termoNumerico) {
+                $q->where('nome', 'like', "{$termo}%");
+                if ($termoNumerico !== '') {
+                    $q->orWhere('cpf_cnpj', 'like', "{$termoNumerico}%");
+                }
+            });
+        }
 
         $resultados = $query->orderBy('nome')->limit(20)
             ->get(['id', 'nome', 'cpf_cnpj', 'tipo_pessoa'])

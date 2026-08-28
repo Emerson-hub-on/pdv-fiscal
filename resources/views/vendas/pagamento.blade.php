@@ -279,12 +279,6 @@ function buscarCliente() {
     timeoutCliente = setTimeout(async () => {
         const termo = document.getElementById('cliente-busca').value;
 
-        if (termo.length < 2) {
-            document.getElementById('cliente-lista').innerHTML = '';
-            document.getElementById('cliente-vazio').classList.add('hidden');
-            return;
-        }
-
         const resp = await fetch(`{{ route('clientes.buscar') }}?q=${encodeURIComponent(termo)}`);
         const items = await resp.json();
 
@@ -329,6 +323,13 @@ function abrirFormCpfNaNota() {
     document.getElementById('cpf-na-nota-valor').value = '';
     document.getElementById('cpf-na-nota-valor').focus();
 }
+
+document.getElementById('cpf-na-nota-valor').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        confirmarCpfNaNota();
+    }
+});
 
 function fecharFormCpfNaNota() {
     document.getElementById('form-cpf-na-nota').classList.add('hidden');
