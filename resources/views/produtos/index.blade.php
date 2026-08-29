@@ -17,19 +17,67 @@
         </div>
     @endif
 
-    <div class="flex gap-2 mb-4">
-        <a href="{{ route('produtos.index', ['status' => 'ativos']) }}"
-           class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $filtro === 'ativos' ? 'bg-gray-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
-            Ativos
-        </a>
-        <a href="{{ route('produtos.index', ['status' => 'inativos']) }}"
-           class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $filtro === 'inativos' ? 'bg-gray-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
-            Inativos
-        </a>
-        <a href="{{ route('produtos.index', ['status' => 'todos']) }}"
-           class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $filtro === 'todos' ? 'bg-gray-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
-            Todos
-        </a>
+    <div class="flex items-center gap-2 mb-4">
+        <div class="relative">
+            <button type="button" onclick="toggleDropdownStatus()" id="btn-status"
+                    class="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-600 px-4 py-2 rounded-lg text-sm font-medium transition">
+                Status: <span class="font-semibold text-gray-800">{{ match($filtro) { 'ativos' => 'Ativos', 'inativos' => 'Inativos', default => 'Todos' } }}</span>
+                <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+
+            <div id="dropdown-status" class="absolute hidden left-0 bg-white rounded-lg shadow-lg mt-2 w-48 overflow-hidden z-20 border border-gray-200">
+                <a href="{{ route('produtos.index', ['status' => 'ativos', 'ordenar' => $ordenarPor]) }}"
+                   class="flex items-center justify-between px-4 py-2.5 text-sm transition {{ $filtro === 'ativos' ? 'bg-gray-50 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
+                    Ativos
+                    @if ($filtro === 'ativos')
+                        <span class="text-blue-600">✓</span>
+                    @endif
+                </a>
+                <a href="{{ route('produtos.index', ['status' => 'inativos', 'ordenar' => $ordenarPor]) }}"
+                   class="flex items-center justify-between px-4 py-2.5 text-sm transition border-t border-gray-100 {{ $filtro === 'inativos' ? 'bg-gray-50 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
+                    Inativos
+                    @if ($filtro === 'inativos')
+                        <span class="text-blue-600">✓</span>
+                    @endif
+                </a>
+                <a href="{{ route('produtos.index', ['status' => 'todos', 'ordenar' => $ordenarPor]) }}"
+                   class="flex items-center justify-between px-4 py-2.5 text-sm transition border-t border-gray-100 {{ $filtro === 'todos' ? 'bg-gray-50 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
+                    Todos
+                    @if ($filtro === 'todos')
+                        <span class="text-blue-600">✓</span>
+                    @endif
+                </a>
+            </div>
+        </div>
+
+        <div class="relative ml-auto">
+            <button type="button" onclick="toggleDropdownOrdenar()" id="btn-ordenar"
+                    class="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-600 px-4 py-2 rounded-lg text-sm font-medium transition">
+                Ordenar por: <span class="font-semibold text-gray-800">{{ $ordenarPor === 'codigo' ? 'Código' : 'Ordem alfabética' }}</span>
+                <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+
+            <div id="dropdown-ordenar" class="absolute hidden right-0 bg-white rounded-lg shadow-lg mt-2 w-52 overflow-hidden z-20 border border-gray-200">
+                <a href="{{ route('produtos.index', ['status' => $filtro, 'ordenar' => 'nome']) }}"
+                   class="flex items-center justify-between px-4 py-2.5 text-sm transition {{ $ordenarPor === 'nome' ? 'bg-gray-50 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
+                    Ordem alfabética
+                    @if ($ordenarPor === 'nome')
+                        <span class="text-blue-600">✓</span>
+                    @endif
+                </a>
+                <a href="{{ route('produtos.index', ['status' => $filtro, 'ordenar' => 'codigo']) }}"
+                   class="flex items-center justify-between px-4 py-2.5 text-sm transition border-t border-gray-100 {{ $ordenarPor === 'codigo' ? 'bg-gray-50 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
+                    Código
+                    @if ($ordenarPor === 'codigo')
+                        <span class="text-blue-600">✓</span>
+                    @endif
+                </a>
+            </div>
+        </div>
     </div>
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -37,7 +85,8 @@
             <thead class="bg-gray-600 rounded-lg font-medium  text-xs uppercase tracking-wide">
                 <tr>
                     <th class="px-4 py-3 text-left font-medium text-amber-50">Nome</th>
-                    <th class="px-4 py-3 text-left font-medium text-amber-50">Categoria</th>
+                    <th class="px-4 py-3 text-left font-medium text-amber-50">Código</th>
+                    <th class="px-4 py-3 text-left font-medium text-amber-50">Cód. Barras</th>
                     <th class="px-4 py-3 text-left font-medium text-amber-50">Preço</th>
                     <th class="px-4 py-3 text-left font-medium text-amber-50">Estoque</th>
                     <th class="px-4 py-3 text-left font-medium text-amber-50">Status</th>
@@ -48,7 +97,8 @@
                 @forelse ($produtos as $produto)
                     <tr class="hover:bg-gray-200 transition">
                         <td class="px-4 py-3 font-medium text-gray-800">{{ $produto->nome }}</td>
-                        <td class="px-4 py-3 text-gray-600">{{ $produto->categoria->nome ?? '-' }}</td>
+                        <td class="px-4 py-3 text-gray-600 font-mono text-xs">{{ $produto->codigo_interno }}</td>
+                        <td class="px-4 py-3 text-gray-600 font-mono text-xs">{{ $produto->codigo_barras ?: '—' }}</td>
                         <td class="px-4 py-3 text-gray-600">R$ {{ number_format($produto->preco_venda, 2, ',', '.') }}</td>
                         <td class="px-4 py-3 text-gray-600">{{ $produto->estoque_total }}</td>
                         <td class="px-4 py-3">
@@ -79,7 +129,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="px-4 py-10 text-center text-gray-400 text-sm">Nenhum produto encontrado.</td>
+                        <td colspan="7" class="px-4 py-10 text-center text-gray-400 text-sm">Nenhum produto encontrado.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -89,4 +139,28 @@
     <div class="mt-4">
         {{ $produtos->links() }}
     </div>
+
+    <script>
+        function toggleDropdownStatus() {
+            document.getElementById('dropdown-status').classList.toggle('hidden');
+        }
+
+        function toggleDropdownOrdenar() {
+            document.getElementById('dropdown-ordenar').classList.toggle('hidden');
+        }
+
+        document.addEventListener('click', (e) => {
+            const dropdowns = [
+                { el: document.getElementById('dropdown-status') },
+                { el: document.getElementById('dropdown-ordenar') },
+            ];
+
+            dropdowns.forEach(({ el }) => {
+                const container = el?.closest('.relative');
+                if (el && !el.classList.contains('hidden') && container && !container.contains(e.target)) {
+                    el.classList.add('hidden');
+                }
+            });
+        });
+    </script>
 @endsection

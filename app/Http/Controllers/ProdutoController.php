@@ -10,14 +10,17 @@ class ProdutoController extends Controller
     public function index(Request $request)
     {
         $filtro = $request->get('status', 'ativos'); // ativos | inativos | todos
+        $ordenarPor = $request->get('ordenar', 'nome'); // nome | codigo
 
         $produtos = Produto::query()
             ->when($filtro === 'ativos', fn($q) => $q->where('ativo', true))
             ->when($filtro === 'inativos', fn($q) => $q->where('ativo', false))
-            ->orderBy('nome')
-            ->paginate(20);
+            ->when($ordenarPor === 'codigo', fn($q) => $q->orderByRaw('CAST(codigo_interno AS UNSIGNED) ASC, codigo_interno ASC'))
+            ->when($ordenarPor !== 'codigo', fn($q) => $q->orderBy('nome'))
+            ->paginate(20)
+            ->appends($request->query());
 
-        return view('produtos.index', compact('produtos', 'filtro'));
+        return view('produtos.index', compact('produtos', 'filtro', 'ordenarPor'));
     }
 
     public function create()
