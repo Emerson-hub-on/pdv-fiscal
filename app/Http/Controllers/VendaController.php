@@ -99,7 +99,27 @@ class VendaController extends Controller
         return response()->json(['sucesso' => true]);
     }
     
-public function finalizar(Request $request)
+private function resolverPrecoUnitario($produto, $quantidade): float
+    {
+        $temAtacadoConfigurado = $produto->preco_atacado && $produto->quantidade_minima_atacado;
+ 
+        if (!$temAtacadoConfigurado || $quantidade < $produto->quantidade_minima_atacado) {
+            return (float) $produto->preco_venda;
+        }
+ 
+        if (!$produto->atacado_tem_prazo) {
+            return (float) $produto->preco_atacado;
+        }
+ 
+        $hoje = now()->toDateString();
+        $dentroDoPrazo = $produto->atacado_data_inicio && $produto->atacado_data_fim
+            && $hoje >= $produto->atacado_data_inicio
+            && $hoje <= $produto->atacado_data_fim;
+ 
+        return $dentroDoPrazo ? (float) $produto->preco_atacado : (float) $produto->preco_venda;
+    }
+ 
+    public function finalizar(Request $request)
     {
         $validado = $request->validate([
             'itens' => 'required|array|min:1',
@@ -114,79 +134,81 @@ public function finalizar(Request $request)
             'cliente_id' => 'nullable|integer',
             'cpf_na_nota' => 'nullable|digits:11',
         ]);
-
+ 
         $caixa = Caixa::aberto(Auth::id());
-
+ 
         if (!$caixa) {
             return response()->json(['erro' => 'Nenhum caixa aberto.'], 422);
         }
-
+ 
         try {
             $total = 0;
             $itensParaSalvar = [];
-
+ 
             DB::connection('sqlite_local')->transaction(function () use ($validado, &$total, &$itensParaSalvar) {
                 foreach ($validado['itens'] as $item) {
                     if (!empty($item['produto_variante_id'])) {
                         $variante = DB::connection('sqlite_local')->table('produto_variantes_cache')
                             ->where('id', $item['produto_variante_id'])->lockForUpdate()->first();
-
+ 
                         if (!$variante || $variante->estoque < $item['quantidade']) {
                             throw new \Exception('Estoque insuficiente (local) para o item selecionado.');
                         }
-
+ 
                         DB::connection('sqlite_local')->table('produto_variantes_cache')
                             ->where('id', $variante->id)
                             ->decrement('estoque', $item['quantidade']);
-
+ 
                         $produto = DB::connection('sqlite_local')->table('produtos_cache')
                             ->where('id', $item['produto_id'])->first();
                     } else {
                         $produto = DB::connection('sqlite_local')->table('produtos_cache')
                             ->where('id', $item['produto_id'])->lockForUpdate()->first();
-
+ 
                         if (!$produto || $produto->estoque < $item['quantidade']) {
                             throw new \Exception('Estoque insuficiente (local) para ' . ($produto->nome ?? 'produto'));
                         }
-
+ 
                         DB::connection('sqlite_local')->table('produtos_cache')
                             ->where('id', $produto->id)
                             ->decrement('estoque', $item['quantidade']);
                     }
-
-                    $desconto = min($item['desconto'] ?? 0, $produto->preco_venda * $item['quantidade']);
-                    $subtotal = ($produto->preco_venda * $item['quantidade']) - $desconto;
+ 
+                    $precoUnitario = $this->resolverPrecoUnitario($produto, $item['quantidade']);
+ 
+                    $desconto = min($item['desconto'] ?? 0, $precoUnitario * $item['quantidade']);
+                    $subtotal = ($precoUnitario * $item['quantidade']) - $desconto;
                     $total += $subtotal;
-
+ 
                     $itensParaSalvar[] = [
                         'produto_id' => $item['produto_id'],
                         'produto_variante_id' => $item['produto_variante_id'] ?? null,
                         'quantidade' => $item['quantidade'],
-                        'preco_unitario' => $produto->preco_venda,
+                        'preco_unitario' => $precoUnitario,
                         'desconto' => $desconto,
                     ];
                 }
             });
-
+ 
             $descontoGlobal = $validado['desconto_global'] ?? 0;
             $descontoTotal = collect($itensParaSalvar)->sum('desconto') + $descontoGlobal;
-
+ 
             // Abate o desconto global do total antes de conferir os pagamentos
             $totalComDesconto = $total - $descontoGlobal;
-
+ 
             if ($totalComDesconto < 0) {
                 return response()->json(['erro' => 'Desconto global maior que o total da venda.'], 422);
             }
-
+ 
             $totalPagamentos = collect($validado['pagamentos'])->sum('valor');
             $troco = round($totalPagamentos - $totalComDesconto, 2);
-
+ 
             if ($troco < -0.01) {
                 return response()->json(['erro' => 'A soma dos pagamentos é menor que o total da venda.'], 422);
             }
-
+ 
             $uuid = (string) Str::uuid();
-
+ 
             DB::connection('sqlite_local')->table('vendas_pendentes')->insert([
                 'uuid' => $uuid,
                 'caixa_id_central' => $caixa->id,
@@ -204,16 +226,16 @@ public function finalizar(Request $request)
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-
+ 
             session()->forget('venda_carrinho');
-
+ 
             $emissao = ['sucesso' => false, 'contingencia' => false, 'erro' => null];
-
+ 
             try {
                 (new SyncService())->enviarVendasPendentes();
-
+ 
                 $vendaCentral = \App\Models\Venda::where('uuid', $uuid)->first();
-
+ 
                 if ($vendaCentral) {
                     try {
                         $resultado = (new \App\Services\FiscalEmissorService())->emitir($vendaCentral);
@@ -230,7 +252,7 @@ public function finalizar(Request $request)
             } catch (\Exception $e) {
                 // Nem a sincronização rolou - venda fica local, o scheduler tenta depois
             }
-
+ 
             return response()->json([
                 'sucesso' => true,
                 'venda_uuid' => $uuid,

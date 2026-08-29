@@ -99,37 +99,54 @@ class ProdutoController extends Controller
     }
 
     private function validarProduto(Request $request, $idAtual = null): array
-        {
-            // CRT 3 = Regime Normal (Lucro Presumido/Real) - único regime em que
-            // PIS/COFINS por produto é obrigatório de verdade. Ajuste o acesso
-            // abaixo se você já carrega a empresa de outra forma no seu app.
-            $regimeExigePisCofins = \App\Models\Empresa::atual()->crt == 3;
-
-            return $request->validate([
-                'nome' => 'required|string|max:255',
-                'descricao' => 'nullable|string',
-                'categoria_id' => 'nullable|exists:categorias,id',
-                'marca_id' => 'nullable|exists:marcas,id',
-                'grupo_id' => 'nullable|exists:grupos,id',
-                'codigo_interno' => 'required|string|max:50|unique:produtos,codigo_interno,' . $idAtual,
-                'codigo_barras' => 'nullable|string|max:50',
-                'ncm_id' => 'required|exists:ncms,id',
-                'cest_id' => 'nullable|exists:cests,id',
-                'class_trib_ibs_cbs_id' => 'nullable|exists:classificacoes_tributarias,id',
-                'pis_cofins_id' => ($regimeExigePisCofins ? 'required' : 'nullable') . '|exists:classificacoes_pis_cofins,id',
-                'tributacao_id' => 'required|exists:tributacoes,id',
-                'unidade_comercial' => 'required|string|max:6',
-                'unidade_tributavel' => 'required|string|max:6',
-                'origem_mercadoria' => 'required|integer|between:0,8',
-                'preco_venda' => 'required|numeric|min:0',
-                'preco_custo' => 'nullable|numeric|min:0',
-                'tem_variacao' => 'boolean',
-                'produto_balanca' => 'boolean',
-                'estoque' => 'required_if:tem_variacao,false|integer|min:0',
-                'estoque_minimo' => 'nullable|integer|min:0',
-                'ipi_id' => 'nullable|exists:classificacoes_ipi,id',
-            
-            
-                ]);
+    {
+        $validado = $request->validate([
+            'nome' => 'required|string|max:255',
+            'descricao' => 'nullable|string',
+            'categoria_id' => 'nullable|exists:categorias,id',
+            'marca_id' => 'nullable|exists:marcas,id',
+            'grupo_id' => 'nullable|exists:grupos,id',
+            'codigo_interno' => 'required|string|max:50|unique:produtos,codigo_interno,' . $idAtual,
+            'codigo_barras' => 'nullable|string|max:50',
+            'ncm_id' => 'required|exists:ncms,id',
+            'cest_id' => 'nullable|exists:cests,id',
+            'class_trib_ibs_cbs_id' => 'nullable|exists:classificacoes_tributarias,id',
+            'pis_cofins_id' => 'nullable|exists:classificacoes_pis_cofins,id',
+            'ipi_id' => 'nullable|exists:classificacoes_ipi,id',
+            'tributacao_id' => 'required|exists:tributacoes,id',
+            'unidade_comercial' => 'required|string|max:6',
+            'unidade_tributavel' => 'required|string|max:6',
+            'origem_mercadoria' => 'required|integer|between:0,8',
+            'preco_venda' => 'required|numeric|min:0',
+            'preco_custo' => 'nullable|numeric|min:0',
+            'tem_variacao' => 'boolean',
+            'produto_balanca' => 'boolean',
+            'estoque' => 'required_if:tem_variacao,false|integer|min:0',
+            'estoque_minimo' => 'nullable|integer|min:0',
+ 
+            // Atacado
+            'preco_atacado' => 'nullable|numeric|min:0',
+            'quantidade_minima_atacado' => 'nullable|numeric|min:0',
+            'atacado_tem_prazo' => 'boolean',
+            'atacado_data_inicio' => 'required_if:atacado_tem_prazo,1|nullable|date',
+            'atacado_data_fim' => 'required_if:atacado_tem_prazo,1|nullable|date|after_or_equal:atacado_data_inicio',
+        ]);
+ 
+        // Se o operador desligou o toggle "tem preço de atacado", zera tudo -
+        // fica limpo em vez de guardar valores antigos escondidos
+        if (! $request->boolean('tem_preco_atacado')) {
+            $validado['preco_atacado'] = null;
+            $validado['quantidade_minima_atacado'] = null;
+            $validado['atacado_tem_prazo'] = false;
+            $validado['atacado_data_inicio'] = null;
+            $validado['atacado_data_fim'] = null;
+        } elseif (! $request->boolean('atacado_tem_prazo')) {
+            // Atacado ativo mas sem prazo - permanente, sem datas
+            $validado['atacado_tem_prazo'] = false;
+            $validado['atacado_data_inicio'] = null;
+            $validado['atacado_data_fim'] = null;
         }
+ 
+        return $validado;
+    }
 }

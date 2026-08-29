@@ -77,6 +77,10 @@
                 class="tab-btn px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">
             Preço e Estoque
         </button>
+        <button type="button" onclick="trocarTab('atacado')" id="tab-btn-atacado"
+                class="tab-btn px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">
+            Atacado
+        </button>
     </div>
 
     {{-- Tab: Dados Gerais --}}
@@ -330,6 +334,81 @@
     </div>
 </div>
 
+
+<div id="tab-atacado" class="tab-painel p-6 hidden">
+ 
+    <div class="flex items-center gap-3 py-1 mb-5">
+        <input type="hidden" name="tem_preco_atacado" value="0">
+        <input type="checkbox" id="tem_preco_atacado" name="tem_preco_atacado" value="1"
+               {{ old('tem_preco_atacado', $produto->preco_atacado ?? false) ? 'checked' : '' }}
+               onchange="toggleAtacado(this.checked)"
+               class="w-4 h-4 text-blue-600 rounded">
+        <label for="tem_preco_atacado" class="text-sm font-medium text-gray-700">Este produto tem preço de atacado</label>
+    </div>
+ 
+    <div id="bloco-atacado" class="grid grid-cols-2 gap-5 {{ old('tem_preco_atacado', $produto->preco_atacado ?? false) ? '' : 'hidden' }}">
+ 
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Valor original</label>
+            <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">R$</span>
+                <input type="text" readonly
+                       value="{{ number_format((float) old('preco_venda', $produto->preco_venda ?? 0), 2, ',', '.') }}"
+                       class="w-full border border-gray-200 rounded-lg pl-9 pr-3 py-2.5 text-sm bg-gray-50 text-gray-500 cursor-not-allowed">
+            </div>
+            <p class="text-xs text-gray-400 mt-1">Vem do preço de venda cadastrado em <em>Preço e Estoque</em>.</p>
+        </div>
+ 
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Valor de atacado</label>
+            <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">R$</span>
+                <input type="number" step="0.01" name="preco_atacado"
+                       value="{{ old('preco_atacado', $produto->preco_atacado ?? '') }}"
+                       class="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+            </div>
+        </div>
+ 
+        <div class="col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+                A partir de
+                <span id="unidade-atacado-label" class="text-gray-400 font-normal">({{ $produto->unidade_comercial ?? 'UN' }})</span>
+            </label>
+            <input type="number" step="0.001" name="quantidade_minima_atacado"
+                   value="{{ old('quantidade_minima_atacado', $produto->quantidade_minima_atacado ?? '') }}"
+                   placeholder="Ex: 10"
+                   class="w-full max-w-xs border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+        </div>
+ 
+        <div class="col-span-2 border-t pt-4 mt-1 flex items-center gap-3">
+            <input type="hidden" name="atacado_tem_prazo" value="0">
+            <input type="checkbox" id="atacado_tem_prazo" name="atacado_tem_prazo" value="1"
+                   {{ old('atacado_tem_prazo', $produto->atacado_tem_prazo ?? false) ? 'checked' : '' }}
+                   onchange="toggleAtacadoPrazo(this.checked)"
+                   class="w-4 h-4 text-blue-600 rounded">
+            <label for="atacado_tem_prazo" class="text-sm font-medium text-gray-700">Ativar prazo do atacado</label>
+        </div>
+        <p class="col-span-2 text-xs text-gray-400 -mt-3">
+            Desativado, o valor de atacado fica permanente até você removê-lo aqui e salvar de novo.
+        </p>
+ 
+        <div id="bloco-atacado-prazo" class="col-span-2 grid grid-cols-2 gap-5 {{ old('atacado_tem_prazo', $produto->atacado_tem_prazo ?? false) ? '' : 'hidden' }}">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Data inicial</label>
+                <input type="date" name="atacado_data_inicio"
+                       value="{{ old('atacado_data_inicio', optional($produto?->atacado_data_inicio)->format('Y-m-d')) }}"
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Data final</label>
+                <input type="date" name="atacado_data_fim"
+                       value="{{ old('atacado_data_fim', optional($produto?->atacado_data_fim)->format('Y-m-d')) }}"
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- Botões de ação --}}
 <div class="mt-6 flex gap-3">
     <button type="button" onclick="salvarProduto()"
@@ -521,5 +600,27 @@ document.addEventListener('DOMContentLoaded', () => {
     @elseif ($errors->has('preco_venda') || $errors->has('preco_custo') || $errors->has('estoque'))
         trocarTab('preco');
     @endif
+});
+
+
+
+function toggleAtacado(ativo) {
+    document.getElementById('bloco-atacado').classList.toggle('hidden', !ativo);
+}
+ 
+function toggleAtacadoPrazo(ativo) {
+    document.getElementById('bloco-atacado-prazo').classList.toggle('hidden', !ativo);
+}
+ 
+// Mantém o label "A partir de (UN)" sincronizado com a Unidade comercial da aba Dados Fiscais
+document.addEventListener('DOMContentLoaded', () => {
+    const unidadeInput = document.querySelector('input[name="unidade_comercial"]');
+    const labelUnidade = document.getElementById('unidade-atacado-label');
+ 
+    if (unidadeInput && labelUnidade) {
+        const atualizar = () => labelUnidade.innerText = `(${unidadeInput.value || 'UN'})`;
+        atualizar();
+        unidadeInput.addEventListener('input', atualizar);
+    }
 });
 </script>

@@ -45,6 +45,11 @@ class SyncService
                         'ativo' => $produto->ativo,
                         'atualizado_em_origem' => $produto->updated_at,
                         'produto_balanca' => $produto->produto_balanca,
+                        'preco_atacado' => $produto->preco_atacado,
+                        'quantidade_minima_atacado' => $produto->quantidade_minima_atacado,
+                        'atacado_tem_prazo' => $produto->atacado_tem_prazo,
+                        'atacado_data_inicio' => $produto->atacado_data_inicio?->format('Y-m-d'),
+                        'atacado_data_fim' => $produto->atacado_data_fim?->format('Y-m-d'),
                         'updated_at' => now(),
                     ]
                 );
