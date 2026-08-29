@@ -4,10 +4,9 @@
 
 
 @section('conteudo')
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-gray-800">Produtos</h1>
+    <div class="flex justify-end items-center mb-6">
         <a href="{{ route('produtos.create') }}"
-           class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition">
+           class=" bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition">
             + Novo Produto
         </a>
     </div>
