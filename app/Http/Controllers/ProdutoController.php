@@ -14,7 +14,20 @@ class ProdutoController extends Controller
         $busca = $request->get('busca');
         $tipoBusca = $request->get('tipo_busca', 'nome'); // nome | codigo_interno | codigo_barras
 
-        $produtos = Produto::query()
+        $produtos = $this->consultarProdutos($request, $filtro, $ordenarPor, $busca, $tipoBusca)
+            ->paginate(20)
+            ->appends($request->query());
+
+        if ($request->ajax()) {
+            return view('produtos._tabela', compact('produtos'))->render();
+        }
+
+        return view('produtos.index', compact('produtos', 'filtro', 'ordenarPor', 'busca', 'tipoBusca'));
+    }
+
+    private function consultarProdutos(Request $request, string $filtro, string $ordenarPor, ?string $busca, string $tipoBusca)
+    {
+        return Produto::query()
             ->when($filtro === 'ativos', fn($q) => $q->where('ativo', true))
             ->when($filtro === 'inativos', fn($q) => $q->where('ativo', false))
             ->when($busca, function ($q) use ($busca, $tipoBusca) {
@@ -26,11 +39,7 @@ class ProdutoController extends Controller
                 $q->where($coluna, 'like', "%{$busca}%");
             })
             ->when($ordenarPor === 'codigo', fn($q) => $q->orderByRaw('CAST(codigo_interno AS UNSIGNED) ASC, codigo_interno ASC'))
-            ->when($ordenarPor !== 'codigo', fn($q) => $q->orderBy('nome'))
-            ->paginate(20)
-            ->appends($request->query());
-
-        return view('produtos.index', compact('produtos', 'filtro', 'ordenarPor', 'busca', 'tipoBusca'));
+            ->when($ordenarPor !== 'codigo', fn($q) => $q->orderBy('nome'));
     }
 
     public function create()
