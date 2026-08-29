@@ -9,7 +9,7 @@
 <body class="bg-gray-100 text-gray-800 @yield('body-class')">
 
 <!-- Sidebar corrigido para altura total fixa com h-screen -->
-<aside id="nav-principal" class="bg-gray-800 fixed top-0 left-0 h-screen w-50 flex flex-col z-40 overflow-y-auto [.sidebar-oculta_&]:hidden">
+<aside id="nav-principal" class="bg-blue-950 fixed top-0 left-0 h-screen w-50 flex flex-col z-40 overflow-y-auto [.sidebar-oculta_&]:hidden">
     <div class="px-6 py-5 border-b border-white/10 shrink-0">
         <p class="text-white font-bold text-lg tracking-tight">PDV Fiscal</p>
         <p class="text-slate-400 text-xs mt-0.5">Painel administrativo</p>

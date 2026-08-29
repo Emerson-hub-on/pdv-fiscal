@@ -19,7 +19,7 @@
 
     <div class="flex gap-2 mb-4">
         <a href="{{ route('produtos.index', ['status' => 'ativos']) }}"
-           class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $filtro === 'ativos' ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
+           class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $filtro === 'ativos' ? 'bg-gray-500 hover:bg-blue-500 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
             Ativos
         </a>
         <a href="{{ route('produtos.index', ['status' => 'inativos']) }}"
@@ -34,7 +34,7 @@
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <table class="w-full text-sm">
-            <thead class="bg-blue-700 rounded-lg font-medium  text-xs uppercase tracking-wide">
+            <thead class="bg-gray-600 rounded-lg font-medium  text-xs uppercase tracking-wide">
                 <tr>
                     <th class="px-4 py-3 text-left font-medium text-amber-50">Nome</th>
                     <th class="px-4 py-3 text-left font-medium text-amber-50">Categoria</th>
