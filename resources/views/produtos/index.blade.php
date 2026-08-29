@@ -58,7 +58,7 @@
             </div>
 
             <input type="text" name="busca" id="busca-input" value="{{ $busca }}" placeholder="Buscar..." autocomplete="off"
-                   class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-64 focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition">
+                   class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm w-64 focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition">
 
             <button type="submit"
                     class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-600 px-4 py-2 rounded-lg text-sm font-medium transition">

@@ -12,8 +12,22 @@ class ClienteController extends Controller
     public function index(Request $request)
     {
         $filtro = $request->get('status', 'ativos');
+        $ordenarPor = $request->get('ordenar', 'nome'); // nome | cpf_cnpj
 
-        $clientes = Cliente::query()
+        $clientes = $this->consultarClientes($request, $filtro, $ordenarPor)
+            ->paginate(20)
+            ->withQueryString();
+
+        if ($request->ajax()) {
+            return view('clientes._tabela', compact('clientes'))->render();
+        }
+
+        return view('clientes.index', compact('clientes', 'filtro', 'ordenarPor'));
+    }
+
+    private function consultarClientes(Request $request, string $filtro, string $ordenarPor)
+    {
+        return Cliente::query()
             ->when($filtro === 'ativos', fn ($q) => $q->where('ativo', true))
             ->when($filtro === 'inativos', fn ($q) => $q->where('ativo', false))
             ->when($request->filled('busca'), function ($q) use ($request) {
@@ -26,11 +40,7 @@ class ClienteController extends Controller
                     }
                 });
             })
-            ->orderBy('nome')
-            ->paginate(20)
-            ->withQueryString();
-
-        return view('clientes.index', compact('clientes', 'filtro'));
+            ->orderBy($ordenarPor === 'cpf_cnpj' ? 'cpf_cnpj' : 'nome');
     }
 
     public function create()
