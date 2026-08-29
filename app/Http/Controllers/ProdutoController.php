@@ -11,16 +11,26 @@ class ProdutoController extends Controller
     {
         $filtro = $request->get('status', 'ativos'); // ativos | inativos | todos
         $ordenarPor = $request->get('ordenar', 'nome'); // nome | codigo
+        $busca = $request->get('busca');
+        $tipoBusca = $request->get('tipo_busca', 'nome'); // nome | codigo_interno | codigo_barras
 
         $produtos = Produto::query()
             ->when($filtro === 'ativos', fn($q) => $q->where('ativo', true))
             ->when($filtro === 'inativos', fn($q) => $q->where('ativo', false))
+            ->when($busca, function ($q) use ($busca, $tipoBusca) {
+                $coluna = match ($tipoBusca) {
+                    'codigo_interno' => 'codigo_interno',
+                    'codigo_barras' => 'codigo_barras',
+                    default => 'nome',
+                };
+                $q->where($coluna, 'like', "%{$busca}%");
+            })
             ->when($ordenarPor === 'codigo', fn($q) => $q->orderByRaw('CAST(codigo_interno AS UNSIGNED) ASC, codigo_interno ASC'))
             ->when($ordenarPor !== 'codigo', fn($q) => $q->orderBy('nome'))
             ->paginate(20)
             ->appends($request->query());
 
-        return view('produtos.index', compact('produtos', 'filtro', 'ordenarPor'));
+        return view('produtos.index', compact('produtos', 'filtro', 'ordenarPor', 'busca', 'tipoBusca'));
     }
 
     public function create()
