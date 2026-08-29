@@ -19,15 +19,15 @@
 
     <div class="flex gap-2 mb-4">
         <a href="{{ route('produtos.index', ['status' => 'ativos']) }}"
-           class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $filtro === 'ativos' ? 'bg-gray-500 hover:bg-blue-500 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
+           class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $filtro === 'ativos' ? 'bg-gray-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
             Ativos
         </a>
         <a href="{{ route('produtos.index', ['status' => 'inativos']) }}"
-           class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $filtro === 'inativos' ? 'bg-blue-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
+           class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $filtro === 'inativos' ? 'bg-gray-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
             Inativos
         </a>
         <a href="{{ route('produtos.index', ['status' => 'todos']) }}"
-           class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $filtro === 'todos' ? 'bg-blue-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
+           class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $filtro === 'todos' ? 'bg-gray-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
             Todos
         </a>
     </div>
