@@ -23,7 +23,7 @@
             <input type="hidden" name="ordenar" id="ordenar-valor" value="{{ $ordenarPor }}">
 
             <input type="text" name="busca" id="busca-input" value="{{ request('busca') }}" placeholder="Buscar por nome ou CPF/CNPJ..." autocomplete="off"
-                   class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-72 focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition">
+                   class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm w-72 focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition">
 
             <button type="submit" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-600 px-4 py-2 rounded-lg text-sm font-medium transition">
                 Buscar
