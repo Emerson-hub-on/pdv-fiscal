@@ -424,6 +424,38 @@
 let indiceVariante = 0;
 
 
+// ===================== ENTER = PRÓXIMO CAMPO (não salva) =====================
+
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.querySelector('form');
+    if (!form) return;
+
+    form.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+
+        const alvo = e.target;
+
+        // Textarea: deixa quebrar linha normalmente
+        if (alvo.tagName === 'TEXTAREA') return;
+
+        // Botões (Salvar produto, abrir modais, remover variante, etc.):
+        // deixa agir normalmente — inclusive o próprio Salvar produto
+        if (alvo.tagName === 'BUTTON') return;
+
+        e.preventDefault();
+
+        const focaveis = Array.from(
+            form.querySelectorAll('input:not([type=hidden]), select, textarea, button')
+        ).filter((el) => !el.disabled && !el.readOnly && el.offsetParent !== null);
+
+        const indiceAtual = focaveis.indexOf(alvo);
+        if (indiceAtual > -1 && indiceAtual < focaveis.length - 1) {
+            focaveis[indiceAtual + 1].focus();
+        }
+    });
+});
+
+
 // ===================== TABS =====================
 
 function trocarTab(tab) {
