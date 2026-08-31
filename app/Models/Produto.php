@@ -16,7 +16,7 @@ class Produto extends Model
         'produto_balanca', 'estoque', 'estoque_minimo','ativo',
         'tributacao_id', 'pis_cofins_id', 'ipi_id', 'preco_atacado', 'quantidade_minima_atacado',
         'atacado_tem_prazo', 'atacado_data_inicio', 
-        'atacado_data_fim',
+        'atacado_data_fim','codigo_barras_valido',
     ];
 
     public function categoria()
@@ -65,6 +65,7 @@ class Produto extends Model
         'preco_venda' => 'decimal:2',
         'preco_custo' => 'decimal:2',
         'produto_balanca' => 'boolean',
+        'codigo_barras_valido' => 'boolean',
     ];
 
     public function tributacao()

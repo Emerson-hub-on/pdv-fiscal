@@ -48,8 +48,25 @@ class ProdutoController extends Controller
         return view('produtos.create', compact('proximoCodigo'));
     }
 
-    public function store(Request $request)
+
+        private function resolverCodigoBarras(Request $request): void
     {
+        if (! $request->filled('codigo_barras')) {
+            $codigoInterno = preg_replace('/\D/', '', (string) $request->input('codigo_interno'));
+            $fallback = str_pad($codigoInterno, 13, '0', STR_PAD_LEFT);
+ 
+            $request->merge([
+                'codigo_barras' => $fallback,
+                'codigo_barras_valido' => false,
+            ]);
+        } else {
+            $request->merge(['codigo_barras_valido' => true]);
+        }
+    }
+
+    public function store(Request $request)
+    {   
+        $this->resolverCodigoBarras($request);
         $validado = $this->validarProduto($request);
 
         $produto = Produto::create($validado);
@@ -67,7 +84,8 @@ class ProdutoController extends Controller
     }
 
     public function update(Request $request, Produto $produto)
-    {
+    {   
+        $this->resolverCodigoBarras($request);
         $validado = $this->validarProduto($request, $produto->id);
 
         $produto->update($validado);
@@ -129,7 +147,8 @@ class ProdutoController extends Controller
             'marca_id' => 'nullable|exists:marcas,id',
             'grupo_id' => 'nullable|exists:grupos,id',
             'codigo_interno' => 'required|string|max:50|unique:produtos,codigo_interno,' . $idAtual,
-            'codigo_barras' => 'nullable|string|max:50',
+            'codigo_barras' => 'required|string|max:50|unique:produtos,codigo_barras,' . $idAtual,
+            'codigo_barras_valido' => 'boolean',
             'ncm_id' => 'required|exists:ncms,id',
             'cest_id' => 'nullable|exists:cests,id',
             'class_trib_ibs_cbs_id' => 'nullable|exists:classificacoes_tributarias,id',

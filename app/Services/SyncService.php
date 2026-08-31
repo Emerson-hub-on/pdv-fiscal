@@ -30,6 +30,7 @@ class SyncService
                         'nome' => $produto->nome,
                         'codigo_interno' => $produto->codigo_interno,
                         'codigo_barras' => $produto->codigo_barras,
+                        'codigo_barras_valido' => $produto->codigo_barras_valido,
                         'ncm' => $produto->ncm?->codigo,
                         'cest' => $produto->cest?->codigo,
                         'cfop_padrao' => $produto->tributacao?->cfop,

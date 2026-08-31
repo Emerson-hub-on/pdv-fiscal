@@ -1,6 +1,6 @@
 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
     <table class="w-full text-sm">
-        <thead class="bg-blue-700 rounded-lg font-medium text-xs uppercase tracking-wide">
+        <thead class="bg-gray-700 rounded-lg font-medium text-xs uppercase tracking-wide">
             <tr>
                 <th class="px-4 py-3 text-left font-medium text-amber-50">Nome</th>
                 <th class="px-4 py-3 text-left font-medium text-amber-50">CPF/CNPJ</th>

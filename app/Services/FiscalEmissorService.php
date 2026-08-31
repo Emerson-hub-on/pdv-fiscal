@@ -454,7 +454,7 @@ protected function montarItens(Make $nfe, Venda $venda): void
             $prod = new \stdClass();
             $prod->item = $n;
             $prod->cProd = $produto->codigo_interno;
-            $prod->cEAN = $produto->codigo_barras ?: 'SEM GTIN';
+            $prod->cEAN = ($produto->codigo_barras && $produto->codigo_barras_valido) ? $produto->codigo_barras : 'SEM GTIN';
             $prod->xProd = $produto->nome . ($item->variante ? " - {$item->variante->cor} {$item->variante->tamanho}" : '');
             $prod->NCM = $produto->ncm->codigo;
             if ($produto->cest) {
@@ -465,7 +465,7 @@ protected function montarItens(Make $nfe, Venda $venda): void
             $prod->qCom = $item->quantidade;
             $prod->vUnCom = number_format($item->preco_unitario, 10, '.', '');
             $prod->vProd = number_format($item->preco_unitario * $item->quantidade, 2, '.', '');
-            $prod->cEANTrib = $produto->codigo_barras ?: 'SEM GTIN';
+            $prod->cEANTrib = ($produto->codigo_barras && $produto->codigo_barras_valido) ? $produto->codigo_barras : 'SEM GTIN';
             $prod->uTrib = $produto->unidade_tributavel;
             $prod->qTrib = $item->quantidade;
             $prod->vUnTrib = number_format($item->preco_unitario, 10, '.', '');
@@ -481,12 +481,6 @@ protected function montarItens(Make $nfe, Venda $venda): void
             $imposto->item = $n;
             $imposto->vTotTrib = 0;
             $nfe->tagimposto($imposto);
-
-            // IPI: NFC-e (modelo 65) NAO aceita o grupo IPI de jeito nenhum -
-            // regra de negocio da SEFAZ, nao e questao de CST certo/errado.
-            // O cadastro (tabela classificacoes_ipi + modal) fica disponivel no
-            // produto pra uso futuro (ex: se um dia emitir NF-e modelo 55 pra
-            // operacao de atacado/industrial), mas NAO deve ser usado aqui.
 
 
 // ... dentro do tagICMSSN ou tagICMS, dependendo do CRT:
