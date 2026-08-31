@@ -26,13 +26,41 @@ class VendaController extends Controller
         return view('vendas.pdv', compact('caixa', 'itensIniciais', 'descontoGlobalInicial'));
     }
 
-    /**
+/**
      * Busca produtos no banco LOCAL (sqlite), nao mais no MySQL central.
      */
     public function buscarProduto(Request $request)
     {
         $termo = $request->get('termo', '');
 
+        // Se o termo e so digitos, tenta resolver por MATCH EXATO primeiro -
+        // codigo interno, codigo de barras real, ou o fallback zero-padded de
+        // 13 digitos (ex: termo "2" -> "0000000000002"). Isso e o que permite
+        // digitar o codigo curto + Enter e ir direto pro carrinho, sem passar
+        // pela lista de busca - igual um leitor de codigo de barras faria.
+        if (ctype_digit($termo) && $termo !== '') {
+            $codigoBarrasFallback = str_pad($termo, 13, '0', STR_PAD_LEFT);
+
+            $exato = DB::connection('sqlite_local')->table('produtos_cache')
+                ->where('ativo', true)
+                ->where(function ($q) use ($termo, $codigoBarrasFallback) {
+                    $q->where('codigo_interno', $termo)
+                      ->orWhere('codigo_barras', $termo)
+                      ->orWhere('codigo_barras', $codigoBarrasFallback);
+                })
+                ->first();
+
+            if ($exato) {
+                $exato->variantes = $exato->tem_variacao
+                    ? DB::connection('sqlite_local')->table('produto_variantes_cache')
+                        ->where('produto_id', $exato->id)->get()
+                    : [];
+
+                return response()->json([$exato]);
+            }
+        }
+
+        // Sem match exato (ou termo nao e so digitos) - busca ampla, como ja era
         $produtos = DB::connection('sqlite_local')->table('produtos_cache')
             ->where('ativo', true)
             ->where(function ($q) use ($termo) {
@@ -43,7 +71,6 @@ class VendaController extends Controller
             ->limit(10)
             ->get();
 
-        // Anexa variantes de cada produto que tem variacao
         $produtos = $produtos->map(function ($produto) {
             $produto->variantes = $produto->tem_variacao
                 ? DB::connection('sqlite_local')->table('produto_variantes_cache')
