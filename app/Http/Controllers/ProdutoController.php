@@ -48,15 +48,33 @@ class ProdutoController extends Controller
         return view('produtos.create', compact('proximoCodigo'));
     }
 
-
-        private function resolverCodigoBarras(Request $request): void
+    /**
+     * Normaliza o código de barras antes de validar/salvar.
+     *
+     * Regras:
+     * - Campo vazio: usa o código interno como base para o "código de controle".
+     * - Campo preenchido, mas só com dígitos e com menos de 8 caracteres
+     *   (menor que o menor padrão de EAN real, o EAN-8): não é um código de
+     *   barras de verdade — trata como se fosse um código interno digitado
+     *   ali por engano/teste, e também aplica o padding.
+     * - Nos dois casos acima, preenche com "0" à esquerda até 13 dígitos e
+     *   marca codigo_barras_valido = false (uso interno, não vai no XML).
+     * - Qualquer outro valor preenchido é tratado como código de barras real.
+     */
+    private function resolverCodigoBarras(Request $request): void
     {
-        if (! $request->filled('codigo_barras')) {
-            $codigoInterno = preg_replace('/\D/', '', (string) $request->input('codigo_interno'));
-            $fallback = str_pad($codigoInterno, 13, '0', STR_PAD_LEFT);
- 
+        $valorDigitado = trim((string) $request->input('codigo_barras'));
+
+        $ehCodigoDeControle = $valorDigitado === ''
+            || (ctype_digit($valorDigitado) && strlen($valorDigitado) < 8);
+
+        if ($ehCodigoDeControle) {
+            $base = $valorDigitado !== ''
+                ? $valorDigitado
+                : preg_replace('/\D/', '', (string) $request->input('codigo_interno'));
+
             $request->merge([
-                'codigo_barras' => $fallback,
+                'codigo_barras' => str_pad($base, 13, '0', STR_PAD_LEFT),
                 'codigo_barras_valido' => false,
             ]);
         } else {
