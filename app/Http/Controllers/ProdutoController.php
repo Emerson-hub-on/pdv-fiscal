@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Produto;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class ProdutoController extends Controller
 {
@@ -47,6 +48,29 @@ class ProdutoController extends Controller
         $proximoCodigo = Produto::proximoCodigoInterno();
         return view('produtos.create', compact('proximoCodigo'));
     }
+
+
+    public function verificarCodigoBarras(Request $request): JsonResponse
+    {
+        $codigo = trim((string) $request->query('codigo', ''));
+        $excluirId = $request->query('excluir');
+    
+        if ($codigo === '') {
+            return response()->json(['duplicado' => false]);
+        }
+    
+        $ehCodigoDeControle = ctype_digit($codigo) && strlen($codigo) < 8;
+        if ($ehCodigoDeControle) {
+            $codigo = str_pad($codigo, 13, '0', STR_PAD_LEFT);
+        }
+    
+        $existe = Produto::where('codigo_barras', $codigo)
+            ->when($excluirId, fn ($q) => $q->where('id', '!=', $excluirId))
+            ->exists();
+    
+        return response()->json(['duplicado' => $existe, 'codigo_normalizado' => $codigo]);
+    }
+    
 
     /**
      * Normaliza o código de barras antes de validar/salvar.

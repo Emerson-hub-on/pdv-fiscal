@@ -422,7 +422,62 @@
 
 <script>
 let indiceVariante = 0;
-
+let codigoBarrasDuplicado = false;
+ 
+document.addEventListener('DOMContentLoaded', () => {
+    const campoBarras = document.querySelector('input[name="codigo_barras"]');
+    const campoInterno = document.querySelector('input[name="codigo_interno"]');
+ 
+    if (!campoBarras) return;
+ 
+    campoBarras.addEventListener('blur', async function () {
+        const valor = this.value.trim();
+ 
+        // Mesma regra do backend: vazio, ou só dígitos com menos de 8 chars
+        // (menor que o menor EAN real, o EAN-8) = "código de controle" -> preenche
+        // com zeros à esquerda até 13 dígitos, usando o código interno como base
+        // se o campo estiver vazio.
+        const ehCodigoDeControle = valor === '' || (/^\d+$/.test(valor) && valor.length < 8);
+ 
+        if (ehCodigoDeControle) {
+            const base = valor !== ''
+                ? valor
+                : (campoInterno?.value || '').replace(/\D/g, '');
+            this.value = base.padStart(13, '0');
+        }
+ 
+        await verificarCodigoBarrasDuplicado(this.value);
+    });
+});
+ 
+async function verificarCodigoBarrasDuplicado(valor) {
+    if (!valor) {
+        codigoBarrasDuplicado = false;
+        return;
+    }
+ 
+    const idAtual = {{ $produto->id ?? 'null' }};
+    const url = `{{ route('produtos.verificarCodigoBarras') }}?codigo=${encodeURIComponent(valor)}` +
+                (idAtual ? `&excluir=${idAtual}` : '');
+ 
+    try {
+        const resp = await fetch(url);
+        const data = await resp.json();
+        codigoBarrasDuplicado = data.duplicado;
+ 
+        if (codigoBarrasDuplicado) {
+            abrirModalAviso(
+                'Já existe um produto cadastrado com esse <strong>código de barras</strong>. ' +
+                'Use outro código ou edite o produto existente.',
+                'geral'
+            );
+        }
+    } catch (e) {
+        // Falha de rede na checagem - nao bloqueia, mas tambem nao marca como duplicado.
+        // A validacao "unique" do backend ainda protege na hora de salvar de verdade.
+        codigoBarrasDuplicado = false;
+    }
+}
 
 // ===================== ENTER = PRÓXIMO CAMPO (não salva) =====================
 
@@ -504,6 +559,11 @@ const validacoes = [
         mensagem: 'O campo <strong>Nome</strong> é obrigatório.',
         tab: 'geral',
         checar: () => !document.querySelector('input[name="nome"]').value.trim(),
+    },
+    {
+    mensagem: 'Já existe um produto cadastrado com esse <strong>código de barras</strong>. Corrija antes de salvar.',
+    tab: 'geral',
+    checar: () => codigoBarrasDuplicado,
     },
     {
         mensagem: 'O campo <strong>NCM</strong> é obrigatório. Selecione o NCM do produto em <em>Dados Fiscais</em>.',

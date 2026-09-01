@@ -36,6 +36,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('produtos', ProdutoController::class)->except(['destroy', 'show']);
     Route::patch('produtos/{produto}/toggle-ativo', [ProdutoController::class, 'toggleAtivo'])
     ->name('produtos.toggle-ativo');
+    Route::get('/produtos/verificar-codigo-barras', [ProdutoController::class, 'verificarCodigoBarras'])
+    ->name('produtos.verificarCodigoBarras');
     Route::get('empresa', [EmpresaController::class, 'editar'])->name('empresa.editar');
     Route::post('empresa', [EmpresaController::class, 'salvar'])->name('empresa.salvar');
     Route::get('caixa/abrir', [CaixaController::class, 'abrirForm'])->name('caixa.abrir-form');
