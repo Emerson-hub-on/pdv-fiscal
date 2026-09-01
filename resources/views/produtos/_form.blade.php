@@ -561,9 +561,9 @@ const validacoes = [
         checar: () => !document.querySelector('input[name="nome"]').value.trim(),
     },
     {
-    mensagem: 'Já existe um produto cadastrado com esse <strong>código de barras</strong>. Corrija antes de salvar.',
-    tab: 'geral',
-    checar: () => codigoBarrasDuplicado,
+        mensagem: 'Já existe um produto cadastrado com esse <strong>código de barras</strong>. Corrija antes de salvar.',
+        tab: 'geral',
+        checar: () => codigoBarrasDuplicado,
     },
     {
         mensagem: 'O campo <strong>NCM</strong> é obrigatório. Selecione o NCM do produto em <em>Dados Fiscais</em>.',
