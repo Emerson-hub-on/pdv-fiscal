@@ -5,7 +5,7 @@
                 <th class="px-4 py-3 text-left font-medium text-amber-50">Código</th>
                 <th class="px-4 py-3 text-left font-medium text-amber-50">Cód. Barras</th>                
                 <th class="px-4 py-3 text-left font-medium text-amber-50">Nome</th>
-
+                <th class="px-4 py-3 text-left font-medium text-amber-50">Custo</th>
                 <th class="px-4 py-3 text-left font-medium text-amber-50">Preço</th>
                 <th class="px-4 py-3 text-left font-medium text-amber-50">Estoque</th>
                 <th class="px-4 py-3 text-left font-medium text-amber-50">Status</th>
@@ -18,7 +18,7 @@
                     <td class="px-4 py-3 text-gray-600 font-mono text-xs">{{ $produto->codigo_interno }}</td>
                     <td class="px-4 py-3 text-gray-600 font-mono text-xs">{{ $produto->codigo_barras ?: '—' }}</td>                    
                     <td class="px-4 py-3 font-medium text-gray-800">{{ $produto->nome }}</td>
-
+                    <td class="px-4 py-3 text-gray-600">R$ {{ number_format($produto->preco_custo, 2, ',', '.') }}</td>
                     <td class="px-4 py-3 text-gray-600">R$ {{ number_format($produto->preco_venda, 2, ',', '.') }}</td>
                     <td class="px-4 py-3 text-gray-600">{{ $produto->estoque_total }}</td>
                     <td class="px-4 py-3">
