@@ -466,11 +466,21 @@ async function verificarCodigoBarrasDuplicado(valor) {
         codigoBarrasDuplicado = data.duplicado;
  
         if (codigoBarrasDuplicado) {
+            const campoBarras = document.querySelector('input[name="codigo_barras"]');
+            campoBarras.value = '';
+ 
             abrirModalAviso(
                 'Já existe um produto cadastrado com esse <strong>código de barras</strong>. ' +
-                'Use outro código ou edite o produto existente.',
+                'O campo foi limpo — informe outro código ou deixe em branco.',
                 'geral'
             );
+ 
+            // Depois de fechar o aviso, foca de novo no campo pra já digitar o certo
+            document.getElementById('modal-aviso-ok').addEventListener('click', () => {
+                campoBarras.focus();
+            }, { once: true });
+ 
+            codigoBarrasDuplicado = false; // campo já foi limpo, não há mais duplicidade pendente
         }
     } catch (e) {
         // Falha de rede na checagem - nao bloqueia, mas tambem nao marca como duplicado.
