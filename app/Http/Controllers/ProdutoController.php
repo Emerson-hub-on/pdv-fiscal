@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Produto;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\Rule;
 
 class ProdutoController extends Controller
 {
@@ -88,17 +89,12 @@ class ProdutoController extends Controller
     private function resolverCodigoBarras(Request $request): void
     {
         $valorDigitado = trim((string) $request->input('codigo_barras'));
-
-        $ehCodigoDeControle = $valorDigitado === ''
-            || (ctype_digit($valorDigitado) && strlen($valorDigitado) < 8);
-
-        if ($ehCodigoDeControle) {
-            $base = $valorDigitado !== ''
-                ? $valorDigitado
-                : preg_replace('/\D/', '', (string) $request->input('codigo_interno'));
-
+ 
+        if ($valorDigitado === '') {
+            $codigoInterno = preg_replace('/\D/', '', (string) $request->input('codigo_interno'));
+ 
             $request->merge([
-                'codigo_barras' => str_pad($base, 13, '0', STR_PAD_LEFT),
+                'codigo_barras' => str_pad($codigoInterno, 13, '0', STR_PAD_LEFT),
                 'codigo_barras_valido' => false,
             ]);
         } else {
@@ -189,7 +185,18 @@ class ProdutoController extends Controller
             'marca_id' => 'nullable|exists:marcas,id',
             'grupo_id' => 'nullable|exists:grupos,id',
             'codigo_interno' => 'required|string|max:50|unique:produtos,codigo_interno,' . $idAtual,
-            'codigo_barras' => 'required|string|max:50|unique:produtos,codigo_barras,' . $idAtual,
+            'codigo_barras' => [
+                'required', 'string', 'max:50',
+                Rule::unique('produtos', 'codigo_barras')->ignore($idAtual),
+                function ($attribute, $value, $fail) {
+                    // O fallback automático (campo deixado em branco) já vem com 13
+                    // dígitos, todos numéricos, então nunca cai aqui. Isso só pega
+                    // quem digitou manualmente um número curto tentando usar de atalho.
+                    if (ctype_digit($value) && strlen($value) < 8) {
+                        $fail('Código de barras inválido. Use o EAN oficial (mínimo 8 dígitos) ou deixe o campo em branco para o sistema gerar automaticamente a partir do código interno.');
+                    }
+                },
+            ],
             'codigo_barras_valido' => 'boolean',
             'ncm_id' => 'required|exists:ncms,id',
             'cest_id' => 'nullable|exists:cests,id',
