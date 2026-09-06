@@ -423,71 +423,117 @@
 <script>
 let indiceVariante = 0;
 let codigoBarrasDuplicado = false;
- 
+
+// ===================== CÓDIGO DE BARRAS (Enter + blur, sem cascata) =====================
+//
+// Antes: o keydown do form (Enter = próximo campo) chamava .focus() no próximo
+// campo, o que disparava o blur do EAN de forma síncrona. O blur abria o modal
+// de aviso, mas o MESMO Enter ainda estava subindo (bubbling) até o document,
+// onde outro listener fechava qualquer modal visível ao apertar Enter.
+// Resultado: modal abria e fechava no mesmo evento, silenciosamente.
+//
+// Agora: o Enter é interceptado direto no campo de código de barras, antes de
+// subir para o form ou para o document (e.stopPropagation() garante isso).
+// Toda a validação (formato + duplicidade) roda de forma síncrona com o fluxo,
+// e só movemos o foco para o próximo campo depois que ela termina e passa.
+let ultimoCodigoBarrasVerificado = null;
+
 document.addEventListener('DOMContentLoaded', () => {
     const campoBarras = document.querySelector('input[name="codigo_barras"]');
- 
+
     if (!campoBarras) return;
- 
+
+    // Intercepta o Enter ANTES que ele suba para o form ou para o document.
+    campoBarras.addEventListener('keydown', async function (e) {
+        if (e.key !== 'Enter') return;
+
+        e.preventDefault();
+        e.stopPropagation(); // impede o handler genérico do form e o do document (fecha-modal) de reagir a este mesmo Enter
+
+        await processarCodigoBarras(this, { moverFoco: true });
+    });
+
+    // Blur continua existindo (clique fora, Tab, etc.) - mesma lógica, sem mover foco.
     campoBarras.addEventListener('blur', async function () {
-        const valor = this.value.trim();
- 
-        // Vazio: tudo bem, o backend gera automaticamente a partir do código interno
-        if (valor === '') return;
- 
-        // Número curto (menos de 8 dígitos) não é mais aceito como "atalho" -
-        // colide com o codigo_interno de produtos futuros. Limpa e avisa na hora,
-        // sem nem chegar a tentar salvar.
-        const pareceCodigoDeControle = /^\d+$/.test(valor) && valor.length < 8;
- 
-        if (pareceCodigoDeControle) {
-            this.value = '';
-            abrirModalAviso(
-                'Código de barras inválido. Use o <strong>EAN oficial</strong> (mínimo 8 dígitos) ' +
-                'ou deixe o campo em branco para o sistema gerar automaticamente a partir do código interno.',
-                'geral'
-            );
-            document.getElementById('modal-aviso-ok').addEventListener('click', () => {
-                this.focus();
-            }, { once: true });
-            return;
-        }
- 
-        await verificarCodigoBarrasDuplicado(valor);
+        await processarCodigoBarras(this, { moverFoco: false });
     });
 });
- 
+
+async function processarCodigoBarras(input, { moverFoco = false } = {}) {
+    const valor = input.value.trim();
+
+    // Vazio: tudo bem, o backend gera automaticamente a partir do código interno
+    if (valor === '') {
+        ultimoCodigoBarrasVerificado = null;
+        codigoBarrasDuplicado = false;
+        if (moverFoco) moverParaProximoCampo(input);
+        return;
+    }
+
+    // Número curto (menos de 8 dígitos) não é mais aceito como "atalho" -
+    // colide com o codigo_interno de produtos futuros. Limpa e avisa na hora,
+    // sem nem chegar a tentar salvar. Não move o foco: o modal cuida de
+    // devolver o foco pro campo quando for fechado.
+    const pareceCodigoDeControle = /^\d+$/.test(valor) && valor.length < 8;
+
+    if (pareceCodigoDeControle) {
+        input.value = '';
+        ultimoCodigoBarrasVerificado = null;
+        abrirModalAviso(
+            'Código de barras inválido. Use o <strong>EAN oficial</strong> (mínimo 8 dígitos) ' +
+            'ou deixe o campo em branco para o sistema gerar automaticamente a partir do código interno.',
+            'geral'
+        );
+        document.getElementById('modal-aviso-ok').addEventListener('click', () => {
+            input.focus();
+        }, { once: true });
+        return;
+    }
+
+    // Evita bater duas vezes na mesma verificação (ex: Enter dispara isso, e o
+    // blur causado pelo .focus() logo em seguida chamaria de novo com o mesmo valor).
+    if (valor === ultimoCodigoBarrasVerificado) {
+        if (moverFoco) moverParaProximoCampo(input);
+        return;
+    }
+
+    await verificarCodigoBarrasDuplicado(valor);
+    ultimoCodigoBarrasVerificado = codigoBarrasDuplicado ? null : valor;
+
+    if (moverFoco && !codigoBarrasDuplicado) {
+        moverParaProximoCampo(input);
+    }
+}
+
 async function verificarCodigoBarrasDuplicado(valor) {
     if (!valor) {
         codigoBarrasDuplicado = false;
         return;
     }
- 
+
     const idAtual = {{ $produto->id ?? 'null' }};
     const url = `{{ route('produtos.verificarCodigoBarras') }}?codigo=${encodeURIComponent(valor)}` +
                 (idAtual ? `&excluir=${idAtual}` : '');
- 
+
     try {
         const resp = await fetch(url);
         const data = await resp.json();
         codigoBarrasDuplicado = data.duplicado;
- 
+
         if (codigoBarrasDuplicado) {
             const campoBarras = document.querySelector('input[name="codigo_barras"]');
             campoBarras.value = '';
- 
+
             abrirModalAviso(
                 'Já existe um produto cadastrado com esse <strong>código de barras</strong>. ' +
                 'O campo foi limpo — informe outro código ou deixe em branco.',
                 'geral'
             );
- 
+
             // Depois de fechar o aviso, foca de novo no campo pra já digitar o certo
             document.getElementById('modal-aviso-ok').addEventListener('click', () => {
                 campoBarras.focus();
             }, { once: true });
- 
-            codigoBarrasDuplicado = false; // campo já foi limpo, não há mais duplicidade pendente
         }
     } catch (e) {
         // Falha de rede na checagem - nao bloqueia, mas tambem nao marca como duplicado.
@@ -496,7 +542,24 @@ async function verificarCodigoBarrasDuplicado(valor) {
     }
 }
 
+function moverParaProximoCampo(atual) {
+    const form = atual.closest('form');
+    if (!form) return;
+
+    const focaveis = Array.from(
+        form.querySelectorAll('input:not([type=hidden]), select, textarea, button')
+    ).filter((el) => !el.disabled && !el.readOnly && el.offsetParent !== null);
+
+    const indiceAtual = focaveis.indexOf(atual);
+    if (indiceAtual > -1 && indiceAtual < focaveis.length - 1) {
+        focaveis[indiceAtual + 1].focus();
+    }
+}
+
 // ===================== ENTER = PRÓXIMO CAMPO (não salva) =====================
+// Continua valendo para todos os outros campos. O campo de código de barras
+// tem seu próprio handler acima e já chama e.stopPropagation(), então este
+// listener nunca chega a rodar para ele.
 
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.querySelector('form');
@@ -516,14 +579,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         e.preventDefault();
 
-        const focaveis = Array.from(
-            form.querySelectorAll('input:not([type=hidden]), select, textarea, button')
-        ).filter((el) => !el.disabled && !el.readOnly && el.offsetParent !== null);
-
-        const indiceAtual = focaveis.indexOf(alvo);
-        if (indiceAtual > -1 && indiceAtual < focaveis.length - 1) {
-            focaveis[indiceAtual + 1].focus();
-        }
+        moverParaProximoCampo(alvo);
     });
 });
 
