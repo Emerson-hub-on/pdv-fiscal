@@ -431,6 +431,45 @@ protected function salvarXmlEmDisco(string $xmlAssinado, bool $contingencia, Ven
         $nfe->tagenderEmit($endereco);
     }
 
+    /**
+     * Confirma que o código de barras é um GTIN de verdade (dígito verificador
+     * bate) antes de deixar ele ir pro XML como cEAN/cEANTrib.
+     *
+     * A flag codigo_barras_valido (setada no cadastro do produto) só garante
+     * que o campo não ficou em branco nem foi preenchido com um código curto
+     * de controle/código interno - ela NUNCA validou o dígito verificador.
+     * Um número com 8 a 14 dígitos "aleatórios" passa liso pela validação de
+     * cadastro (que só checa tamanho e duplicidade) e é rejeitado pela SEFAZ
+     * na hora de emitir, com "cEAN inválido". Essa checagem aqui é a última
+     * linha de defesa, direto na emissão - protege inclusive produtos
+     * cadastrados antes dessa validação existir, ou importados direto no banco.
+     */
+    protected function gtinValido(?string $codigo, bool $marcadoComoValido): bool
+    {
+        if (!$marcadoComoValido || !$codigo || !ctype_digit($codigo)) {
+            return false;
+        }
+
+        if (!in_array(strlen($codigo), [8, 12, 13, 14], true)) {
+            return false;
+        }
+
+        $digitos = str_split($codigo);
+        $digitoVerificador = (int) array_pop($digitos);
+        $digitos = array_reverse($digitos);
+
+        $soma = 0;
+        foreach ($digitos as $posicao => $digito) {
+            // dígito mais à direita do restante (posição 0 após o reverse) pesa 3, depois alterna
+            $peso = ($posicao % 2 === 0) ? 3 : 1;
+            $soma += ((int) $digito) * $peso;
+        }
+
+        $dvCalculado = (10 - ($soma % 10)) % 10;
+
+        return $dvCalculado === $digitoVerificador;
+    }
+
 protected function montarItens(Make $nfe, Venda $venda): void
     {
         // zera acumuladores desta emissao - a funcao pode ser chamada 2x na mesma
@@ -451,10 +490,12 @@ protected function montarItens(Make $nfe, Venda $venda): void
             $n = $index + 1;
             $trib = $produto->tributacao;
 
+            $temEanValido = $this->gtinValido($produto->codigo_barras, (bool) $produto->codigo_barras_valido);
+
             $prod = new \stdClass();
             $prod->item = $n;
             $prod->cProd = $produto->codigo_interno;
-            $prod->cEAN = ($produto->codigo_barras && $produto->codigo_barras_valido) ? $produto->codigo_barras : 'SEM GTIN';
+            $prod->cEAN = $temEanValido ? $produto->codigo_barras : 'SEM GTIN';
             $prod->xProd = $produto->nome . ($item->variante ? " - {$item->variante->cor} {$item->variante->tamanho}" : '');
             $prod->NCM = $produto->ncm->codigo;
             if ($produto->cest) {
@@ -465,7 +506,7 @@ protected function montarItens(Make $nfe, Venda $venda): void
             $prod->qCom = $item->quantidade;
             $prod->vUnCom = number_format($item->preco_unitario, 10, '.', '');
             $prod->vProd = number_format($item->preco_unitario * $item->quantidade, 2, '.', '');
-            $prod->cEANTrib = ($produto->codigo_barras && $produto->codigo_barras_valido) ? $produto->codigo_barras : 'SEM GTIN';
+            $prod->cEANTrib = $temEanValido ? $produto->codigo_barras : 'SEM GTIN';
             $prod->uTrib = $produto->unidade_tributavel;
             $prod->qTrib = $item->quantidade;
             $prod->vUnTrib = number_format($item->preco_unitario, 10, '.', '');
@@ -607,9 +648,8 @@ if ($empresa->crt <= 2) {
                 // IMPORTANTE: a lib (TraitTagDetIBSCBS::tagIBSCBS) espera propriedades
                 // ACHATADAS com underscore (gIBSUF_pIBSUF, gCBS_vCBS, etc.), nao objetos
                 // aninhados. Ela mesma monta a estrutura <gIBSCBS><gIBSUF>... internamente,
-                // e tambem acumula os totais sozinha em $this->stdIBSCBSTot a cada chamada -
-                // por isso nao precisamos mais somar manualmente (soh o flag houveIBSCBS,
-                // pra saber se chama tagIBSCBSTot() depois).
+                // e tambem acumula os totais sozinha em $this->stdIBSCBSTot a cada
+                // chamada (soh o flag houveIBSCBS, pra saber se chama tagIBSCBSTot() depois).
                 //
                 // gIBSUF_pRedAliq/gIBSUF_pAliqEfet (e equivalentes pra Mun/CBS) so sao
                 // adicionados quando ha reducao de verdade - a lib monta o <gRed> dentro

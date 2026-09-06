@@ -84,22 +84,44 @@ class ProdutoController extends Controller
      *   ali por engano/teste, e também aplica o padding.
      * - Nos dois casos acima, preenche com "0" à esquerda até 13 dígitos e
      *   marca codigo_barras_valido = false (uso interno, não vai no XML).
-     * - Qualquer outro valor preenchido é tratado como código de barras real.
+     * - Qualquer outro valor preenchido é tratado como código de barras real
+     *   e vai para a validação de dígito verificador em validarProduto().
+     *
+     * ATENÇÃO (edição): o formulário de edição pré-preenche o campo com o
+     * valor JÁ SALVO — inclusive quando esse valor é o fallback automático
+     * (zero-padded). Se o operador editar qualquer outro campo sem tocar no
+     * código de barras, o valor "vazio" nunca chega aqui - chega o fallback
+     * de volta, como se fosse um valor digitado. Por isso comparamos com o
+     * que já estava salvo: se não mudou E já era fallback, continua sendo
+     * fallback. Sem isso, toda edição de um produto sem EAN próprio
+     * reclassificaria o fallback como "EAN real" e ele cairia na validação
+     * de dígito verificador (que ele nunca vai passar, por definição).
      */
-    private function resolverCodigoBarras(Request $request): void
+    private function resolverCodigoBarras(Request $request, ?Produto $produtoAtual = null): void
     {
         $valorDigitado = trim((string) $request->input('codigo_barras'));
- 
+
         if ($valorDigitado === '') {
             $codigoInterno = preg_replace('/\D/', '', (string) $request->input('codigo_interno'));
- 
+
             $request->merge([
                 'codigo_barras' => str_pad($codigoInterno, 13, '0', STR_PAD_LEFT),
                 'codigo_barras_valido' => false,
             ]);
-        } else {
-            $request->merge(['codigo_barras_valido' => true]);
+
+            return;
         }
+
+        if ($produtoAtual
+            && $valorDigitado === $produtoAtual->codigo_barras
+            && ! $produtoAtual->codigo_barras_valido) {
+            // Resubmissão do próprio fallback automático, sem mudança real -
+            // mantém como fallback, não promove a "EAN real digitado".
+            $request->merge(['codigo_barras_valido' => false]);
+            return;
+        }
+
+        $request->merge(['codigo_barras_valido' => true]);
     }
 
     public function store(Request $request)
@@ -123,7 +145,7 @@ class ProdutoController extends Controller
 
     public function update(Request $request, Produto $produto)
     {   
-        $this->resolverCodigoBarras($request);
+        $this->resolverCodigoBarras($request, $produto);
         $validado = $this->validarProduto($request, $produto->id);
 
         $produto->update($validado);
@@ -188,12 +210,35 @@ class ProdutoController extends Controller
             'codigo_barras' => [
                 'required', 'string', 'max:50',
                 Rule::unique('produtos', 'codigo_barras')->ignore($idAtual),
-                function ($attribute, $value, $fail) {
-                    // O fallback automático (campo deixado em branco) já vem com 13
-                    // dígitos, todos numéricos, então nunca cai aqui. Isso só pega
-                    // quem digitou manualmente um número curto tentando usar de atalho.
+                function ($attribute, $value, $fail) use ($request) {
+                    // O fallback automático (campo deixado em branco, ou reenviado sem
+                    // mudança - ver resolverCodigoBarras()) sempre chega aqui com
+                    // codigo_barras_valido=false. Ele não é um GTIN de verdade por
+                    // definição, então pulamos toda a checagem de formato/checksum.
+                    if (! $request->boolean('codigo_barras_valido')) {
+                        return;
+                    }
+
+                    // Daqui pra baixo só valores digitados manualmente pelo operador.
+
+                    // Número curto (menos de 8 dígitos) não é aceito como "atalho" -
+                    // colide com o codigo_interno de produtos futuros.
                     if (ctype_digit($value) && strlen($value) < 8) {
                         $fail('Código de barras inválido. Use o EAN oficial (mínimo 8 dígitos) ou deixe o campo em branco para o sistema gerar automaticamente a partir do código interno.');
+                        return;
+                    }
+
+                    // Só dígitos, mas comprimento que nenhum GTIN real tem (ex: 9, 10, 11 dígitos)
+                    if (ctype_digit($value) && ! in_array(strlen($value), [8, 12, 13, 14], true)) {
+                        $fail('Código de barras inválido. Um EAN/GTIN real tem 8, 12, 13 ou 14 dígitos.');
+                        return;
+                    }
+
+                    // Tamanho correto, mas dígito verificador não confere - é o caso que
+                    // antes só era pego na hora de emitir a NFC-e (rejeição "cEAN inválido"
+                    // da SEFAZ). Agora pega no cadastro, antes de virar problema na venda.
+                    if (ctype_digit($value) && ! self::gtinChecksumValido($value)) {
+                        $fail('Código de barras inválido: o dígito verificador não confere com um EAN/GTIN real. Confira o número impresso na embalagem ou deixe o campo em branco.');
                     }
                 },
             ],
@@ -238,5 +283,30 @@ class ProdutoController extends Controller
         }
  
         return $validado;
+    }
+
+    /**
+     * Confirma que uma string numérica é um GTIN de verdade (dígito verificador
+     * bate), pelo algoritmo padrão de checksum (pesos alternados 3/1, mod 10).
+     * Mesma lógica usada em FiscalEmissorService::gtinValido() - se mudar aqui,
+     * mude lá também (ou extraia os dois pra um Helper/Trait compartilhado).
+     *
+     * Assume que o chamador já garantiu ctype_digit($codigo) === true.
+     */
+    private static function gtinChecksumValido(string $codigo): bool
+    {
+        $digitos = str_split($codigo);
+        $digitoVerificador = (int) array_pop($digitos);
+        $digitos = array_reverse($digitos);
+
+        $soma = 0;
+        foreach ($digitos as $posicao => $digito) {
+            $peso = ($posicao % 2 === 0) ? 3 : 1;
+            $soma += ((int) $digito) * $peso;
+        }
+
+        $dvCalculado = (10 - ($soma % 10)) % 10;
+
+        return $dvCalculado === $digitoVerificador;
     }
 }
