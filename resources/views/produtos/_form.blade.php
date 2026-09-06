@@ -426,27 +426,34 @@ let codigoBarrasDuplicado = false;
  
 document.addEventListener('DOMContentLoaded', () => {
     const campoBarras = document.querySelector('input[name="codigo_barras"]');
-    const campoInterno = document.querySelector('input[name="codigo_interno"]');
  
     if (!campoBarras) return;
  
     campoBarras.addEventListener('blur', async function () {
         const valor = this.value.trim();
  
-        // Mesma regra do backend: vazio, ou só dígitos com menos de 8 chars
-        // (menor que o menor EAN real, o EAN-8) = "código de controle" -> preenche
-        // com zeros à esquerda até 13 dígitos, usando o código interno como base
-        // se o campo estiver vazio.
-        const ehCodigoDeControle = valor === '' || (/^\d+$/.test(valor) && valor.length < 8);
+        // Vazio: tudo bem, o backend gera automaticamente a partir do código interno
+        if (valor === '') return;
  
-        if (ehCodigoDeControle) {
-            const base = valor !== ''
-                ? valor
-                : (campoInterno?.value || '').replace(/\D/g, '');
-            this.value = base.padStart(13, '0');
+        // Número curto (menos de 8 dígitos) não é mais aceito como "atalho" -
+        // colide com o codigo_interno de produtos futuros. Limpa e avisa na hora,
+        // sem nem chegar a tentar salvar.
+        const pareceCodigoDeControle = /^\d+$/.test(valor) && valor.length < 8;
+ 
+        if (pareceCodigoDeControle) {
+            this.value = '';
+            abrirModalAviso(
+                'Código de barras inválido. Use o <strong>EAN oficial</strong> (mínimo 8 dígitos) ' +
+                'ou deixe o campo em branco para o sistema gerar automaticamente a partir do código interno.',
+                'geral'
+            );
+            document.getElementById('modal-aviso-ok').addEventListener('click', () => {
+                this.focus();
+            }, { once: true });
+            return;
         }
  
-        await verificarCodigoBarrasDuplicado(this.value);
+        await verificarCodigoBarrasDuplicado(valor);
     });
 });
  
