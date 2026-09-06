@@ -12,7 +12,7 @@ class SyncService
 {
     /**
      * Direcao 1: puxa do MySQL central pro SQLite local (catalogo de produtos).
-     * So traz o que mudou desde a ultima sincronizacao.
+     * So traz o que mudou desde a ultima sincronizacao - e reconcilia exclusoes.
      */
     public function puxarCatalogo(): array
     {
@@ -71,6 +71,29 @@ class SyncService
                     }
                 }
             }
+
+            // Reconciliação de exclusões: o diff por updated_at acima NUNCA pega uma
+            // linha apagada no central - ela simplesmente não existe mais pra cair em
+            // nenhum "where updated_at > X". Sem isso, um produto excluído no MySQL
+            // (ex: via DELETE direto) fica pra sempre no cache do caixa, disponível
+            // pra venda mesmo não existindo mais na origem.
+            //
+            // Nota: o app não expõe destroy() de produto de propósito (só inativar) -
+            // se isso está removendo algo, o mais provável é que o produto tenha sido
+            // apagado direto no banco central, fora do fluxo normal. Idealmente
+            // produtos nunca são hard-deleted (podem existir venda_itens referenciando
+            // o id), então vale checar se não há histórico de venda vinculado antes de
+            // confiar cegamente nessa exclusão.
+            $idsAtuaisCentral = Produto::pluck('id');
+
+            DB::connection('sqlite_local')->table('produtos_cache')
+                ->whereNotIn('id', $idsAtuaisCentral)
+                ->delete();
+
+            // Variantes órfãs (produto pai já não existe mais no central) também saem
+            DB::connection('sqlite_local')->table('produto_variantes_cache')
+                ->whereNotIn('produto_id', $idsAtuaisCentral)
+                ->delete();
 
             $this->salvarMeta('ultima_sincronizacao_produtos', now()->toDateTimeString());
 
