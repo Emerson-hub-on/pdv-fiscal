@@ -102,6 +102,24 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/consulta-cnpj/{cnpj}', [ClienteController::class, 'consultarCnpj'])
     ->name('clientes.consultarCnpj');
 
+    // Montagem da nota (itens adicionados via AJAX, igual o carrinho do PDV)
+    Route::post('notasfiscais/{notaFiscal}/itens', [NotaFiscalController::class, 'adicionarItem'])
+        ->name('notasfiscais.itens.adicionar');
+    Route::delete('notasfiscais/{notaFiscal}/itens/{item}', [NotaFiscalController::class, 'removerItem'])
+        ->name('notasfiscais.itens.remover');
+
+    // Emissão / cancelamento / documentos
+    Route::post('notasfiscais/{notaFiscal}/emitir', [NotaFiscalController::class, 'emitir'])
+        ->name('notasfiscais.emitir');
+    Route::get('notasfiscais/{notaFiscal}/cancelar', [NotaFiscalController::class, 'formCancelar'])
+        ->name('notasfiscais.cancelar-form');
+    Route::post('notasfiscais/{notaFiscal}/cancelar', [NotaFiscalController::class, 'cancelar'])
+        ->name('notasfiscais.cancelar');
+    Route::get('notasfiscais/{notaFiscal}/danfe', [NotaFiscalController::class, 'danfe'])
+        ->name('notasfiscais.danfe');
+    Route::get('notasfiscais/{notaFiscal}/xml', [NotaFiscalController::class, 'xml'])
+        ->name('notasfiscais.xml');
+
 
 
 
