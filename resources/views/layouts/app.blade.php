@@ -47,6 +47,38 @@
                 </a>
             </div>
         </div>
+        <!-- Menu Dropdown: Faturamento -->
+        <div class="flex flex-col">
+            <button onclick="toggleFaturamento()"
+                    class="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-slate-300 hover:bg-white/10 hover:text-white text-sm font-medium transition cursor-pointer">
+                <span class="flex items-center gap-3">Faturamento</span>
+                <svg id="seta-faturamento" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+
+            <div id="sub-faturamento" class="hidden flex flex-col gap-1 pl-4 mt-1 border-l border-white/10 ml-3">
+                <!-- Nota Fiscal (nível 2, abre lateral) -->
+                <div class="relative">
+                    <button onclick="toggleNotaFiscal()"
+                            class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white text-sm transition">
+                        <span>Nota Fiscal</span>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+
+                    <!-- Flyout lateral -->
+                    <div id="sub-notafiscal" class="hidden absolute left-full top-0 ml-1 bg-gray-800 border border-white/10 rounded-lg py-1 min-w-40 z-50">
+                        <a href="{{ route('notasfiscais.index') }}"
+                        class="block px-3 py-2 text-sm text-slate-400 hover:bg-white/10 hover:text-white transition">
+                            Saída
+                        </a>
+                        {{-- futuramente: <a href="{{ route('notasfiscais.entrada') }}">Entrada</a> --}}
+                    </div>
+                </div>
+            </div>
+        </div>
     </nav>
 
     <div class="px-3 py-4 border-t border-white/10 shrink-0">
