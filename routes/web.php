@@ -34,6 +34,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
 
 Route::middleware('auth')->group(function () {
     Route::resource('produtos', ProdutoController::class)->except(['destroy', 'show']);
+    Route::resource('notasfiscais', NotaFiscalController::class);
     Route::patch('produtos/{produto}/toggle-ativo', [ProdutoController::class, 'toggleAtivo'])
     ->name('produtos.toggle-ativo');
     Route::get('/produtos/verificar-codigo-barras', [ProdutoController::class, 'verificarCodigoBarras'])
