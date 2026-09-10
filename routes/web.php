@@ -22,7 +22,7 @@ use App\Http\Controllers\ClassificacaoTributariaController;
 use App\Http\Controllers\ClassificacaoPisCofinsController;
 use App\Http\Controllers\ClassificacaoIpiController;
 use App\Http\Controllers\ClienteController;
-
+use App\Http\Controllers\NotaFiscalController;
 
 
 
