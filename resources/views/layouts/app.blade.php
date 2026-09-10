@@ -101,6 +101,7 @@
                     'clientes' => ['Cadastros', 'Clientes'],
                     'empresa'  => ['Cadastros', 'Empresa'],
                     'pdvs'     => ['Cadastros', 'PDVs'],
+                    'notasfiscais' => ['Faturamento', 'Nota Fiscal - Saída'],
                 ];
 
                 $rotaAtual = \Illuminate\Support\Facades\Route::currentRouteName();
