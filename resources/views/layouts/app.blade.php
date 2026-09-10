@@ -144,6 +144,14 @@
     // Gira a setinha para indicar aberto/fechado
     seta.classList.toggle('rotate-180');
     }   
+
+    function toggleFaturamento() {
+    document.getElementById('sub-faturamento').classList.toggle('hidden');
+    document.getElementById('seta-faturamento').classList.toggle('rotate-180');
+    }
+    function toggleNotaFiscal() {
+        document.getElementById('sub-notafiscal').classList.toggle('hidden');
+    }
     
     async function sincronizarAgora() {
         const btn = document.getElementById('btn-sincronizar');
