@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class NotaFiscal extends Model
 {
+    protected $table = 'notas_fiscais';
     protected $fillable = [
         'cliente_id',
         'operador_id',
