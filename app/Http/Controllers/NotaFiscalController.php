@@ -76,7 +76,7 @@ class NotaFiscalController extends Controller
             ->where(function ($q) use ($termo) {
                 $q->where('codigo_barras', $termo)
                     ->orWhere('codigo_interno', $termo)
-                    ->orWhere('nome', 'like', "%{$termo}%");
+                    ->orWhere('nome', 'like', "{$termo}%"); // começa com, não "contém"
             })
             ->limit(10)
             ->get(['id', 'nome', 'codigo_interno', 'codigo_barras', 'preco_venda', 'ncm_id', 'cest_id', 'class_trib_ibs_cbs_id', 'tributacao_id', 'pis_cofins_id', 'ipi_id']);
