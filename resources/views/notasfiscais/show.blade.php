@@ -15,13 +15,19 @@
         </div>
 
         @if ($notaFiscal->status === 'rascunho')
-            <form method="POST" action="{{ route('notasfiscais.emitir', $notaFiscal) }}">
-                @csrf
-                <button type="submit"
-                        class="bg-green-700 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-green-800">
-                    Emitir NF-e
-                </button>
-            </form>
+            <div class="flex gap-2">
+                <a href="{{ route('notasfiscais.previsualizar', $notaFiscal) }}" target="_blank"
+                class="border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium hover:bg-gray-50">
+                    Pré-visualizar PDF
+                </a>
+                <form method="POST" action="{{ route('notasfiscais.emitir', $notaFiscal) }}">
+                    @csrf
+                    <button type="submit"
+                            class="bg-green-700 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-green-800">
+                        Emitir NF-e
+                    </button>
+                </form>
+            </div>
         @elseif ($notaFiscal->status === 'emitida')
             <div class="flex gap-2">
                 <a href="{{ route('notasfiscais.xml', $notaFiscal) }}"
