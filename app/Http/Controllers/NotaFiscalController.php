@@ -28,28 +28,70 @@ class NotaFiscalController extends Controller
 
     public function create()
     {
-        return view('notasfiscais.create');
+        $clientes = Cliente::ativos()->orderBy('nome')->get();
+
+        return view('notasfiscais.create', compact('clientes'));
     }
 
     public function store(Request $request)
     {
         $dados = $request->validate([
-            'cliente_id'         => ['required', 'exists:clientes,id'],
-            'natureza_operacao'  => ['required', 'string', 'max:255'],
-            'finalidade'         => ['required', 'in:1,2,3,4'],
+            'cliente_id'        => ['required', 'exists:clientes,id'],
+            'natureza_operacao' => ['required', 'string', 'max:255'],
+            'finalidade'        => ['required', 'in:1,2,3,4'],
+            'itens_json'        => ['required', 'string'],
         ]);
 
-        $notaFiscal = NotaFiscal::create([
-            ...$dados,
-            'operador_id'   => auth()->id(),
-            'tipo_operacao' => 'saida',
-            'origem_tipo'   => 'manual',
-            'status'        => 'rascunho',
-        ]);
+        $itens = json_decode($dados['itens_json'], true);
+
+        if (!is_array($itens) || count($itens) === 0) {
+            return back()->withErrors(['itens' => 'Adicione ao menos um item à nota.'])->withInput();
+        }
+
+        $notaFiscal = DB::transaction(function () use ($dados, $itens) {
+            $notaFiscal = NotaFiscal::create([
+                'cliente_id'        => $dados['cliente_id'],
+                'natureza_operacao' => $dados['natureza_operacao'],
+                'finalidade'        => $dados['finalidade'],
+                'operador_id'       => auth()->id(),
+                'tipo_operacao'     => 'saida',
+                'origem_tipo'       => 'manual',
+                'status'            => 'rascunho',
+            ]);
+
+            foreach ($itens as $itemDados) {
+                $produto = Produto::findOrFail($itemDados['produto_id']);
+
+                $quantidade    = (float) $itemDados['quantidade'];
+                $valorUnitario = (float) $itemDados['valor_unitario'];
+                $valorDesconto = (float) ($itemDados['valor_desconto'] ?? 0);
+                $valorTotal    = ($quantidade * $valorUnitario) - $valorDesconto;
+
+                $notaFiscal->itens()->create([
+                    'produto_id'            => $produto->id,
+                    'cfop'                  => $itemDados['cfop'],
+                    // snapshot da tributação do produto no momento do cadastro
+                    'ncm_id'                => $produto->ncm_id,
+                    'cest_id'               => $produto->cest_id,
+                    'class_trib_ibs_cbs_id' => $produto->class_trib_ibs_cbs_id,
+                    'tributacao_id'         => $produto->tributacao_id,
+                    'pis_cofins_id'         => $produto->pis_cofins_id,
+                    'ipi_id'                => $produto->ipi_id,
+                    'quantidade'            => $quantidade,
+                    'valor_unitario'        => $valorUnitario,
+                    'valor_desconto'        => $valorDesconto,
+                    'valor_total'           => $valorTotal,
+                ]);
+            }
+
+            $notaFiscal->recalcularTotais();
+
+            return $notaFiscal;
+        });
 
         return redirect()
             ->route('notasfiscais.show', $notaFiscal)
-            ->with('sucesso', 'Nota fiscal criada. Adicione os itens abaixo.');
+            ->with('sucesso', 'Nota fiscal criada com sucesso.');
     }
 
     public function show(NotaFiscal $notaFiscal)
