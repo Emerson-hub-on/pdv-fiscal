@@ -140,31 +140,30 @@ class NotaFiscalController extends Controller
 
         try {
             DB::transaction(function () use ($notaFiscal) {
-                // Reserva série/número com lock, igual o fluxo de NFC-e faz com o pdv
                 $serie = SerieNfe::ativas()->lockForUpdate()->firstOrFail();
                 $proximoNumero = $serie->numero_atual + 1;
 
-                $notaFiscal->update([
-                    'serie_nfe_id' => $serie->id,
-                    'serie'        => $serie->serie,
-                    'numero'       => $proximoNumero,
-                ]);
+                // Atribuição direta (não update()) — esses campos ficam de propósito
+                // fora do $fillable, então mass assignment não gravaria nada aqui.
+                $notaFiscal->serie_nfe_id = $serie->id;
+                $notaFiscal->serie = $serie->serie;
+                $notaFiscal->numero = $proximoNumero;
+                $notaFiscal->save();
 
                 $serie->update(['numero_atual' => $proximoNumero]);
 
-                // Monta XML, assina e transmite à SEFAZ
                 $resultado = (new NotaFiscalService())->emitir($notaFiscal);
 
-                $notaFiscal->update([
-                    'status'       => 'emitida',
-                    'chave_acesso' => $resultado['chave_acesso'],
-                    'protocolo'    => $resultado['protocolo'],
-                    'xml'          => $resultado['xml'],
-                    'emitida_em'   => now(),
-                ]);
+                $notaFiscal->status = 'emitida';
+                $notaFiscal->chave_acesso = $resultado['chave_acesso'];
+                $notaFiscal->protocolo = $resultado['protocolo'];
+                $notaFiscal->xml = $resultado['xml'];
+                $notaFiscal->emitida_em = now();
+                $notaFiscal->save();
             });
         } catch (\Throwable $e) {
-            $notaFiscal->update(['motivo_rejeicao' => $e->getMessage()]);
+            $notaFiscal->motivo_rejeicao = $e->getMessage();
+            $notaFiscal->save();
 
             return back()->withErrors(['emissao' => 'Falha ao emitir: ' . $e->getMessage()]);
         }
@@ -189,12 +188,9 @@ class NotaFiscalController extends Controller
             'motivo_cancelamento' => ['required', 'string', 'min:15', 'max:255'],
         ]);
 
-        // (new NotaFiscalService())->cancelar($notaFiscal, $dados['motivo_cancelamento']);
-
-        $notaFiscal->update([
-            'status'              => 'cancelada',
-            'motivo_cancelamento' => $dados['motivo_cancelamento'],
-        ]);
+        $notaFiscal->status = 'cancelada';
+        $notaFiscal->motivo_cancelamento = $dados['motivo_cancelamento'];
+        $notaFiscal->save();
 
         return redirect()->route('notasfiscais.index')->with('sucesso', 'Nota fiscal cancelada.');
     }

@@ -188,6 +188,12 @@ class NotaFiscalService
         $std->finNFe = $notaFiscal->finalidade;
         $std->indFinal = $indFinal;
         $std->indPres = 9; // operação não presencial (montada no admin, não no balcão)
+
+        // Obrigatório desde NT 2020.006 quando indPres != 1 (presencial):
+        // 0 = Operação sem intermediador (venda direta, sem marketplace)
+        // 1 = Operação em site/plataforma de terceiro (marketplace)
+        $std->indIntermed = 0;
+
         $std->procEmi = 0;
         $std->verProc = '1.0.0';
 
