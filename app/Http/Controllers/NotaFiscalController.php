@@ -10,6 +10,7 @@ use App\Models\SerieNfe;
 use App\Services\NotaFiscalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class NotaFiscalController extends Controller
 {
@@ -211,5 +212,16 @@ class NotaFiscalController extends Controller
             'Content-Type'        => 'application/xml',
             'Content-Disposition' => "attachment; filename=nfe-{$notaFiscal->numero}.xml",
         ]);
+    }
+
+    public function previsualizar(NotaFiscal $notaFiscal)
+    {
+        $notaFiscal->load(['itens.produto', 'cliente']);
+
+        $pdf = Pdf::loadView('notasfiscais.pdf.previsualizacao', compact('notaFiscal'))
+            ->setPaper('a4', 'portrait');
+
+        // stream() abre inline no navegador (nova aba); download() forçaria o download
+        return $pdf->stream("previsualizacao-nf-{$notaFiscal->id}.pdf");
     }
 }

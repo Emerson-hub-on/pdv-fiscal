@@ -126,4 +126,19 @@ Route::middleware('auth')->group(function () {
         ->name('notasfiscais.danfe');
     Route::get('notasfiscais/{notaFiscal}/xml', [NotaFiscalController::class, 'xml'])
         ->name('notasfiscais.xml');
+    Route::get('notasfiscais/{notaFiscal}/previsualizar', [NotaFiscalController::class, 'previsualizar'])
+    ->name('notasfiscais.previsualizar');
+
+
+
+
+    
+
+
+
+
+
+
+
+
     });
