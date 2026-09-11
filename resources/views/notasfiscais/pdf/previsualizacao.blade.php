@@ -3,133 +3,221 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #1f2937; }
-        .watermark {
-            position: fixed;
-            top: 300px;
-            left: 60px;
-            font-size: 60px;
-            color: #f87171;
-            opacity: 0.15;
-            transform: rotate(-30deg);
-            z-index: -1;
-        }
+        body { font-family: Helvetica, Arial, sans-serif; font-size: 9px; color: #000; }
         table { width: 100%; border-collapse: collapse; }
-        .box { border: 1px solid #9ca3af; padding: 8px; margin-bottom: 10px; }
-        .label { font-size: 9px; color: #6b7280; text-transform: uppercase; }
-        .valor { font-size: 12px; font-weight: bold; }
-        .titulo { font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 4px; }
-        .subtitulo { font-size: 10px; text-align: center; color: #dc2626; font-weight: bold; margin-bottom: 15px; }
-        .tabela-itens th { background: #f3f4f6; font-size: 9px; text-transform: uppercase; padding: 6px; border: 1px solid #d1d5db; text-align: left; }
-        .tabela-itens td { padding: 6px; border: 1px solid #d1d5db; font-size: 10px; }
-        .text-right { text-align: right; }
-        .totais { margin-top: 10px; }
-        .totais td { padding: 4px 8px; }
+        td { padding: 3px 5px; vertical-align: top; }
+        .caixa { border: 1px solid #000; }
+        .label { font-size: 7px; color: #444; }
+        .valor { font-size: 10px; font-weight: bold; }
+        .valor-sm { font-size: 9px; font-weight: bold; }
+        .centro { text-align: center; }
+        .direita { text-align: right; }
+        .titulo-secao {
+            background: #e5e5e5;
+            font-size: 8px;
+            font-weight: bold;
+            padding: 2px 5px;
+            border-top: 1px solid #000;
+            border-bottom: 1px solid #000;
+        }
+        .semvalor { color: #c00; font-weight: bold; font-size: 9px; }
+        .itens th {
+            background: #e5e5e5;
+            font-size: 7px;
+            text-transform: uppercase;
+            border: 1px solid #000;
+            padding: 3px;
+        }
+        .itens td { border: 1px solid #000; font-size: 8px; padding: 3px; }
     </style>
 </head>
 <body>
-    <div class="watermark">PRÉ-VISUALIZAÇÃO</div>
 
-    <div class="titulo">NOTA FISCAL ELETRÔNICA — MODELO 55</div>
-    <div class="subtitulo">
-        @if ($notaFiscal->status === 'rascunho')
-            PRÉ-VISUALIZAÇÃO — SEM VALOR FISCAL — NOTA AINDA NÃO EMITIDA
-        @else
-            {{ strtoupper($notaFiscal->status) }}
-        @endif
-    </div>
-
-    <table class="box">
+    <!-- Canhoto de recebimento -->
+    <table class="caixa">
         <tr>
-            <td width="60%">
-                <div class="label">Emitente</div>
-                <div class="valor">{{ $notaFiscal->empresa_razao_social ?? \App\Models\Empresa::first()->razao_social }}</div>
-                <div>CNPJ: {{ \App\Models\Empresa::first()->cnpj }}</div>
+            <td width="75%" style="border-right:1px solid #000;">
+                RECEBEMOS DE {{ $dados['emitente']['razao_social'] }} OS PRODUTOS CONSTANTES DA NOTA FISCAL INDICADA AO LADO
+                <table style="margin-top:14px;">
+                    <tr>
+                        <td width="50%" style="border-top:1px solid #000;">
+                            <span class="label">DATA DE RECEBIMENTO</span>
+                        </td>
+                        <td width="50%" style="border-top:1px solid #000; border-left:1px solid #000;">
+                            <span class="label">IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR</span>
+                        </td>
+                    </tr>
+                </table>
             </td>
-            <td width="40%">
-                <div class="label">Nº / Série</div>
-                <div class="valor">
-                    {{ $notaFiscal->numero ?? '(a definir na emissão)' }}
-                    @if ($notaFiscal->serie) / Série {{ $notaFiscal->serie }} @endif
-                </div>
-                <div class="label" style="margin-top:6px;">Natureza da operação</div>
-                <div>{{ $notaFiscal->natureza_operacao }}</div>
+            <td width="25%" class="centro">
+                <span class="label">Nº</span> <span class="valor">{{ $dados['numero'] }}</span><br>
+                <span class="label">Série</span> <span class="valor-sm">{{ $dados['serie'] }}</span>
             </td>
         </tr>
     </table>
 
-    <table class="box">
+    <div style="height:6px;"></div>
+
+    <!-- Bloco principal DANFE -->
+    <table class="caixa">
         <tr>
-            <td width="60%">
-                <div class="label">Destinatário</div>
-                <div class="valor">{{ $notaFiscal->cliente->nome }}</div>
-                <div>{{ $notaFiscal->cliente->cpf_cnpj_formatado }}</div>
+            <td width="30%" style="border-right:1px solid #000;">
+                <div class="valor" style="font-size:13px;">{{ $dados['emitente']['nome_fantasia'] ?? $dados['emitente']['razao_social'] }}</div>
+                <div>{{ $dados['emitente']['endereco'] }}</div>
+                <div>{{ $dados['emitente']['bairro'] }} — {{ $dados['emitente']['municipio'] }}/{{ $dados['emitente']['uf'] }}</div>
+                <div>CEP: {{ $dados['emitente']['cep'] }}</div>
             </td>
-            <td width="40%">
-                <div class="label">Endereço</div>
-                <div>
-                    {{ $notaFiscal->cliente->logradouro }}, {{ $notaFiscal->cliente->numero }}
-                    @if ($notaFiscal->cliente->complemento) - {{ $notaFiscal->cliente->complemento }} @endif
-                    <br>
-                    {{ $notaFiscal->cliente->bairro }} — {{ $notaFiscal->cliente->municipio }}/{{ $notaFiscal->cliente->uf }}
-                    <br>
-                    CEP: {{ $notaFiscal->cliente->cep }}
+            <td width="45%" class="centro" style="border-right:1px solid #000;">
+                <div class="valor" style="font-size:14px;">DANFE</div>
+                <div style="font-size:8px;">Documento Auxiliar da Nota Fiscal Eletrônica</div>
+                <div style="font-size:8px; margin-top:4px;">0-Entrada &nbsp;&nbsp; 1-Saída</div>
+                <div class="valor" style="border:1px solid #000; display:inline-block; padding:2px 8px; margin-top:2px;">
+                    {{ substr($dados['tipo_operacao'], 0, 1) }}
                 </div>
+                <div style="margin-top:6px;">Nº {{ $dados['numero'] }}</div>
+                <div>SÉRIE: {{ $dados['serie'] }} &nbsp; Página 1 de 1</div>
+            </td>
+            <td width="25%" class="centro">
+                <span class="label">CONTROLE DO FISCO</span><br>
+                @if ($dados['chave_acesso'])
+                    <div style="font-size:7px; word-break:break-all; margin-top:20px;">{{ $dados['chave_acesso'] }}</div>
+                @else
+                    <div style="margin-top:20px; font-size:8px; color:#666;">(código de barras gerado<br>somente após a emissão)</div>
+                @endif
             </td>
         </tr>
     </table>
 
-    <table class="tabela-itens">
+    <table class="caixa" style="border-top:none;">
+        <tr>
+            <td style="border-right:1px solid #000;">
+                <span class="label">NATUREZA DA OPERAÇÃO</span><br>
+                <span class="valor-sm">{{ $dados['natureza_operacao'] }}</span>
+            </td>
+            <td width="35%">
+                <span class="label">INSCRIÇÃO ESTADUAL</span><br>
+                <span class="valor-sm">{{ $dados['emitente']['ie'] ?? '—' }}</span>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" style="border-top:1px solid #000;">
+                <span class="label">CHAVE DE ACESSO</span><br>
+                @if ($dados['chave_acesso'])
+                    <span class="valor-sm">{{ $dados['chave_acesso'] }}</span>
+                @else
+                    <span style="font-size:8px; color:#666;">Chave gerada somente após a emissão</span>
+                @endif
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" style="border-top:1px solid #000;">
+                @if ($dados['emitida'])
+                    <span class="label">NÚMERO DE PROTOCOLO DE AUTORIZAÇÃO DE USO DA NF-E</span><br>
+                    <span class="valor-sm">{{ $dados['protocolo'] }}</span>
+                @else
+                    <span class="semvalor">PRÉ-VISUALIZAÇÃO — DOCUMENTO SEM VALOR FISCAL — NOTA AINDA NÃO EMITIDA</span>
+                @endif
+            </td>
+        </tr>
+    </table>
+
+    <div style="height:6px;"></div>
+
+    <!-- Destinatário -->
+    <table class="caixa">
+        <tr><td colspan="4" class="titulo-secao">DESTINATÁRIO / REMETENTE</td></tr>
+        <tr>
+            <td width="45%"><span class="label">NOME/RAZÃO SOCIAL</span><br><span class="valor-sm">{{ $dados['destinatario']['nome'] }}</span></td>
+            <td width="25%" style="border-left:1px solid #000;"><span class="label">CNPJ/CPF</span><br><span class="valor-sm">{{ $dados['destinatario']['documento'] }}</span></td>
+            <td width="30%" style="border-left:1px solid #000;"><span class="label">DATA DE EMISSÃO</span><br><span class="valor-sm">{{ $dados['data_emissao'] }}</span></td>
+        </tr>
+        <tr style="border-top:1px solid #000;">
+            <td width="45%"><span class="label">ENDEREÇO</span><br>{{ $dados['destinatario']['endereco'] }}</td>
+            <td width="25%" style="border-left:1px solid #000;"><span class="label">BAIRRO</span><br>{{ $dados['destinatario']['bairro'] }}</td>
+            <td width="30%" style="border-left:1px solid #000;"><span class="label">CEP</span><br>{{ $dados['destinatario']['cep'] }}</td>
+        </tr>
+        <tr style="border-top:1px solid #000;">
+            <td width="45%"><span class="label">MUNICÍPIO</span><br>{{ $dados['destinatario']['municipio'] }}</td>
+            <td width="25%" style="border-left:1px solid #000;"><span class="label">FONE/FAX</span><br>{{ $dados['destinatario']['telefone'] ?? '—' }}</td>
+            <td width="30%" style="border-left:1px solid #000;"><span class="label">UF</span> {{ $dados['destinatario']['uf'] }} &nbsp; <span class="label">INSC. ESTADUAL</span> {{ $dados['destinatario']['ie'] }}</td>
+        </tr>
+    </table>
+
+    <div style="height:6px;"></div>
+
+    <!-- Cálculo do imposto -->
+    <table class="caixa">
+        <tr><td colspan="4" class="titulo-secao">CÁLCULO DO IMPOSTO</td></tr>
+        <tr>
+            <td width="25%"><span class="label">BASE DE CÁLCULO DO ICMS</span><br><span class="valor-sm">R$ {{ $dados['totais']['base_calculo_icms'] }}</span></td>
+            <td width="25%" style="border-left:1px solid #000;"><span class="label">VALOR DO ICMS</span><br><span class="valor-sm">R$ {{ $dados['totais']['valor_icms'] }}</span></td>
+            <td width="25%" style="border-left:1px solid #000;"><span class="label">VALOR DO FRETE</span><br><span class="valor-sm">R$ {{ $dados['totais']['valor_frete'] }}</span></td>
+            <td width="25%" style="border-left:1px solid #000;"><span class="label">DESCONTO</span><br><span class="valor-sm">R$ {{ $dados['totais']['valor_desconto'] }}</span></td>
+        </tr>
+        <tr style="border-top:1px solid #000;">
+            <td colspan="3"><span class="label">VALOR TOTAL DOS PRODUTOS</span><br><span class="valor-sm">R$ {{ $dados['totais']['valor_produtos'] }}</span></td>
+            <td style="border-left:1px solid #000;"><span class="label">VALOR TOTAL DA NOTA</span><br><span class="valor" style="font-size:12px;">R$ {{ $dados['totais']['valor_total_nota'] }}</span></td>
+        </tr>
+    </table>
+
+    <div style="height:6px;"></div>
+
+    <!-- Itens -->
+    <table class="itens">
         <thead>
             <tr>
-                <th>Cód.</th>
-                <th>Produto</th>
+                <th>Código</th>
+                <th>Descrição do produto/serviço</th>
+                <th>NCM/SH</th>
+                <th>CST/CSOSN</th>
                 <th>CFOP</th>
-                <th class="text-right">Qtd.</th>
-                <th class="text-right">Vl. Unit.</th>
-                <th class="text-right">Desconto</th>
-                <th class="text-right">Vl. Total</th>
+                <th>Un</th>
+                <th>Qtde</th>
+                <th>Valor unit.</th>
+                <th>Valor total</th>
+                <th>BC ICMS</th>
+                <th>Vlr. ICMS</th>
+                <th>% ICMS</th>
             </tr>
         </thead>
         <tbody>
-            @foreach ($notaFiscal->itens as $item)
+            @foreach ($dados['itens'] as $item)
                 <tr>
-                    <td>{{ $item->produto->codigo_interno }}</td>
-                    <td>{{ $item->produto->nome }}</td>
-                    <td>{{ $item->cfop }}</td>
-                    <td class="text-right">{{ rtrim(rtrim(number_format($item->quantidade, 3, ',', '.'), '0'), ',') }}</td>
-                    <td class="text-right">R$ {{ number_format($item->valor_unitario, 2, ',', '.') }}</td>
-                    <td class="text-right">R$ {{ number_format($item->valor_desconto, 2, ',', '.') }}</td>
-                    <td class="text-right">R$ {{ number_format($item->valor_total, 2, ',', '.') }}</td>
+                    <td>{{ $item['codigo'] }}</td>
+                    <td>{{ $item['descricao'] }}</td>
+                    <td>{{ $item['ncm'] }}</td>
+                    <td>{{ $item['cst'] }}</td>
+                    <td>{{ $item['cfop'] }}</td>
+                    <td>{{ $item['unidade'] }}</td>
+                    <td class="direita">{{ $item['quantidade'] }}</td>
+                    <td class="direita">{{ $item['valor_unitario'] }}</td>
+                    <td class="direita">{{ $item['valor_total'] }}</td>
+                    <td class="direita">{{ $item['bc_icms'] }}</td>
+                    <td class="direita">{{ $item['valor_icms'] }}</td>
+                    <td class="direita">{{ $item['aliquota_icms'] }}</td>
                 </tr>
             @endforeach
         </tbody>
     </table>
 
-    <table class="totais box">
+    <div style="height:6px;"></div>
+
+    <!-- Dados adicionais -->
+    <table class="caixa">
+        <tr><td colspan="2" class="titulo-secao">DADOS ADICIONAIS</td></tr>
         <tr>
-            <td>Total dos produtos</td>
-            <td class="text-right">R$ {{ number_format($notaFiscal->valor_produtos, 2, ',', '.') }}</td>
-        </tr>
-        <tr>
-            <td>Desconto</td>
-            <td class="text-right">R$ {{ number_format($notaFiscal->valor_desconto, 2, ',', '.') }}</td>
-        </tr>
-        <tr>
-            <td>Frete</td>
-            <td class="text-right">R$ {{ number_format($notaFiscal->valor_frete, 2, ',', '.') }}</td>
-        </tr>
-        <tr style="font-weight:bold; font-size:13px;">
-            <td>Valor total da nota</td>
-            <td class="text-right">R$ {{ number_format($notaFiscal->valor_total, 2, ',', '.') }}</td>
+            <td width="70%" style="height:50px;"><span class="label">OBSERVAÇÕES</span></td>
+            <td width="30%" style="border-left:1px solid #000;"><span class="label">RESERVADO AO FISCO</span></td>
         </tr>
     </table>
 
-    @if ($notaFiscal->status === 'rascunho')
-        <p style="margin-top:20px; font-size:9px; color:#6b7280;">
-            Este documento é apenas uma pré-visualização gerada localmente e não possui chave de acesso, protocolo de autorização
-            ou QR Code — não substitui o DANFE oficial, que só é gerado após a emissão e autorização pela SEFAZ.
-        </p>
-    @endif
+    <div style="margin-top:10px; font-size:7px; text-align:center; color:#666;">
+        @if (!$dados['emitida'])
+            Este documento é apenas uma pré-visualização gerada localmente e não possui chave de acesso, protocolo de
+            autorização ou código de barras — não substitui o DANFE oficial, gerado somente após a emissão e autorização pela SEFAZ.
+        @endif
+        &nbsp;Ambiente de {{ $dados['ambiente'] }} — {{ now()->format('d/m/Y H:i') }}
+    </div>
+
 </body>
 </html>

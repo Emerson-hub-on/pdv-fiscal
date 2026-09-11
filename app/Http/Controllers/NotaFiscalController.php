@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
+use App\Models\Empresa;
 use App\Models\NotaFiscal;
 use App\Models\NotaFiscalItem;
 use App\Models\Produto;
@@ -11,6 +12,7 @@ use App\Services\NotaFiscalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Storage;
 
 class NotaFiscalController extends Controller
 {
@@ -216,12 +218,111 @@ class NotaFiscalController extends Controller
 
     public function previsualizar(NotaFiscal $notaFiscal)
     {
-        $notaFiscal->load(['itens.produto', 'cliente']);
+        $notaFiscal->load(['itens.produto', 'itens.ncm', 'itens.tributacao', 'cliente']);
+        $empresa = Empresa::first();
 
-        $pdf = Pdf::loadView('notasfiscais.pdf.previsualizacao', compact('notaFiscal'))
+        $totalBaseIcms = 0;
+        $totalValorIcms = 0;
+
+        $itens = $notaFiscal->itens->values()->map(function ($item, $index) use (&$totalBaseIcms, &$totalValorIcms) {
+            $trib = $item->tributacao;
+            $baseIcms = 0;
+            $valorIcms = 0;
+            $aliquotaIcms = 0;
+            $cstOuCsosn = $trib?->csosn ?? $trib?->cst_icms ?? '—';
+
+            if ($trib && $trib->cst_icms && in_array($trib->cst_icms, ['00', '10', '20', '70', '90'], true)) {
+                $baseIcms = $item->valor_unitario * $item->quantidade;
+                $aliquotaIcms = (float) $trib->aliquota_icms;
+                $valorIcms = $baseIcms * $aliquotaIcms / 100;
+            }
+
+            $totalBaseIcms += $baseIcms;
+            $totalValorIcms += $valorIcms;
+
+            return [
+                'numero'         => $index + 1,
+                'codigo'         => $item->produto->codigo_interno,
+                'descricao'      => $item->produto->nome,
+                'ncm'            => $item->ncm->codigo ?? '—',
+                'cst'            => $cstOuCsosn,
+                'cfop'           => $item->cfop,
+                'unidade'        => $item->produto->unidade_comercial,
+                'quantidade'     => number_format($item->quantidade, 3, ',', '.'),
+                'valor_unitario' => number_format($item->valor_unitario, 2, ',', '.'),
+                'valor_total'    => number_format($item->valor_total, 2, ',', '.'),
+                'bc_icms'        => number_format($baseIcms, 2, ',', '.'),
+                'valor_icms'     => number_format($valorIcms, 2, ',', '.'),
+                'aliquota_icms'  => number_format($aliquotaIcms, 2, ',', '.'),
+            ];
+        });
+
+        $dados = [
+            'emitida'           => $notaFiscal->status !== 'rascunho',
+            'status'            => $notaFiscal->status,
+            'numero'            => $notaFiscal->numero ?? '(a definir)',
+            'serie'             => $notaFiscal->serie ?? '(a definir)',
+            'natureza_operacao' => $notaFiscal->natureza_operacao,
+            'tipo_operacao'     => $notaFiscal->tipo_operacao === 'entrada' ? '0-Entrada' : '1-Saída',
+            'chave_acesso'      => $notaFiscal->chave_acesso ? $this->formatarChave($notaFiscal->chave_acesso) : null,
+            'protocolo'         => $notaFiscal->protocolo,
+            'data_emissao'      => $notaFiscal->emitida_em?->format('d/m/Y H:i') ?? '—',
+            'ambiente'          => (int) $empresa->ambiente === 2 ? 'HOMOLOGAÇÃO' : 'PRODUÇÃO',
+
+            'emitente' => [
+                'razao_social'  => $empresa->razao_social,
+                'nome_fantasia' => $empresa->nome_fantasia,
+                'cnpj'          => $this->formatarCnpj($empresa->cnpj),
+                'ie'            => $empresa->ie,
+                'endereco'      => $empresa->logradouro . ', ' . $empresa->numero . ($empresa->complemento ? ' - ' . $empresa->complemento : ''),
+                'bairro'        => $empresa->bairro,
+                'municipio'     => $empresa->municipio,
+                'uf'            => $empresa->uf,
+                'cep'           => $this->formatarCep($empresa->cep),
+            ],
+
+            'destinatario' => [
+                'nome'      => $notaFiscal->cliente->nome,
+                'documento' => $notaFiscal->cliente->cpf_cnpj_formatado,
+                'ie'        => $notaFiscal->cliente->ie ?? 'ISENTO',
+                'endereco'  => $notaFiscal->cliente->logradouro . ', ' . $notaFiscal->cliente->numero . ($notaFiscal->cliente->complemento ? ' - ' . $notaFiscal->cliente->complemento : ''),
+                'bairro'    => $notaFiscal->cliente->bairro,
+                'municipio' => $notaFiscal->cliente->municipio,
+                'uf'        => $notaFiscal->cliente->uf,
+                'cep'       => $this->formatarCep($notaFiscal->cliente->cep),
+                'telefone'  => $notaFiscal->cliente->telefone,
+            ],
+
+            'totais' => [
+                'base_calculo_icms' => number_format($totalBaseIcms, 2, ',', '.'),
+                'valor_icms'        => number_format($totalValorIcms, 2, ',', '.'),
+                'valor_produtos'    => number_format($notaFiscal->valor_produtos, 2, ',', '.'),
+                'valor_frete'       => number_format($notaFiscal->valor_frete, 2, ',', '.'),
+                'valor_desconto'    => number_format($notaFiscal->valor_desconto, 2, ',', '.'),
+                'valor_total_nota'  => number_format($notaFiscal->valor_total, 2, ',', '.'),
+            ],
+
+            'itens' => $itens,
+        ];
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('notasfiscais.pdf.previsualizacao', compact('dados'))
             ->setPaper('a4', 'portrait');
 
-        // stream() abre inline no navegador (nova aba); download() forçaria o download
         return $pdf->stream("previsualizacao-nf-{$notaFiscal->id}.pdf");
+    }
+
+    private function formatarCnpj(string $cnpj): string
+    {
+        return substr($cnpj, 0, 2) . '.' . substr($cnpj, 2, 3) . '.' . substr($cnpj, 5, 3) . '/' . substr($cnpj, 8, 4) . '-' . substr($cnpj, 12, 2);
+    }
+
+    private function formatarCep(?string $cep): string
+    {
+        return $cep ? substr($cep, 0, 5) . '-' . substr($cep, 5, 3) : '—';
+    }
+
+    private function formatarChave(string $chave): string
+    {
+        return implode(' ', str_split($chave, 4));
     }
 }
