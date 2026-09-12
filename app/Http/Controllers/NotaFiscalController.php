@@ -153,33 +153,65 @@ class NotaFiscalController extends Controller
 
         $notaFiscal->recalcularTotais();
     }
-    
+
     public function recalcular(NotaFiscal $notaFiscal)
     {
         abort_if($notaFiscal->status !== 'rascunho', 403, 'Só é possível recalcular notas em rascunho.');
 
-        $notaFiscal->load('itens.produto');
+        $notaFiscal->load([
+            'itens.ncm', 'itens.cest', 'itens.classificacaoTributaria', 'itens.tributacao', 'itens.pisCofins', 'itens.ipi',
+            'itens.produto.ncm', 'itens.produto.cest', 'itens.produto.classificacaoTributaria',
+            'itens.produto.tributacao', 'itens.produto.pisCofins', 'itens.produto.ipi',
+        ]);
+
+        // Mapa: campo no item => [relação no item, relação no produto, campo de exibição, rótulo]
+        $camposFiscais = [
+            'ncm_id'                => ['itemRel' => 'ncm', 'produtoRel' => 'ncm', 'campo' => 'codigo', 'label' => 'NCM'],
+            'cest_id'               => ['itemRel' => 'cest', 'produtoRel' => 'cest', 'campo' => 'codigo', 'label' => 'CEST'],
+            'class_trib_ibs_cbs_id' => ['itemRel' => 'classificacaoTributaria', 'produtoRel' => 'classificacaoTributaria', 'campo' => 'codigo', 'label' => 'Classificação IBS/CBS'],
+            'tributacao_id'         => ['itemRel' => 'tributacao', 'produtoRel' => 'tributacao', 'campo' => 'descricao', 'label' => 'Tributação'],
+            'pis_cofins_id'         => ['itemRel' => 'pisCofins', 'produtoRel' => 'pisCofins', 'campo' => 'codigo', 'label' => 'PIS/COFINS'],
+            'ipi_id'                => ['itemRel' => 'ipi', 'produtoRel' => 'ipi', 'campo' => 'codigo', 'label' => 'IPI'],
+        ];
+
+        $alteracoes = [];
 
         foreach ($notaFiscal->itens as $item) {
             $produto = $item->produto;
+            $camposParaAtualizar = [];
+            $mudancasDoItem = [];
 
-            // Resincroniza apenas os dados FISCAIS do produto (o que pode ter
-            // sido corrigido no cadastro após o item já estar na nota).
-            // Quantidade, valor unitário e desconto NÃO são tocados aqui — são
-            // condições da venda que o operador definiu, não dados do produto.
-            $item->update([
-                'ncm_id'                => $produto->ncm_id,
-                'cest_id'               => $produto->cest_id,
-                'class_trib_ibs_cbs_id' => $produto->class_trib_ibs_cbs_id,
-                'tributacao_id'         => $produto->tributacao_id,
-                'pis_cofins_id'         => $produto->pis_cofins_id,
-                'ipi_id'                => $produto->ipi_id,
-            ]);
+            foreach ($camposFiscais as $campoId => $info) {
+                $idAntigo = $item->{$campoId};
+                $idNovo = $produto->{$campoId};
+
+                if ($idAntigo == $idNovo) {
+                    continue; // nada mudou nesse campo — não entra no relatório nem no update
+                }
+
+                $labelAntigo = $item->{$info['itemRel']}?->{$info['campo']} ?? '—';
+                $labelNovo = $produto->{$info['produtoRel']}?->{$info['campo']} ?? '—';
+
+                $camposParaAtualizar[$campoId] = $idNovo;
+                $mudancasDoItem[] = "{$info['label']}: {$labelAntigo} → {$labelNovo}";
+            }
+
+            if (!empty($camposParaAtualizar)) {
+                $item->update($camposParaAtualizar);
+                $alteracoes[] = [
+                    'produto' => $produto->nome,
+                    'mudancas' => $mudancasDoItem,
+                ];
+            }
         }
 
         $notaFiscal->recalcularTotais();
 
-        return back()->with('sucesso', 'Dados fiscais dos itens recalculados a partir do cadastro atual dos produtos.');
+        if (empty($alteracoes)) {
+            return back()->with('sucesso', 'Nenhuma alteração encontrada — os dados fiscais dos itens já estavam atualizados.');
+        }
+
+        return back()->with('recalculo_alteracoes', $alteracoes);
     }
 
     public function show(NotaFiscal $notaFiscal)

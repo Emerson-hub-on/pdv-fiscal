@@ -3,6 +3,7 @@
 @section('titulo', 'Notas Fiscais')
 
 @section('conteudo')
+@include('notasfiscais._recalculo_flash')
 <div class="bg-white rounded-lg shadow overflow-hidden">
     <div class="flex justify-between items-center p-4 border-b border-gray-100">
         <h1 class="text-lg font-semibold">Notas Fiscais</h1>

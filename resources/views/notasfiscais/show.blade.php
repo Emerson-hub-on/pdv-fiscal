@@ -3,6 +3,7 @@
 @section('titulo', 'Nota Fiscal #' . $notaFiscal->id)
 
 @section('conteudo')
+@include('notasfiscais._recalculo_flash')
 <div class="flex flex-col gap-6 max-w-4xl">
 
     <div class="bg-white rounded-lg shadow p-6 flex justify-between items-start">
