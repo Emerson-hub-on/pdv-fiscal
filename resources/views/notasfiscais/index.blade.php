@@ -18,16 +18,35 @@
                 <th class="text-left px-4 py-2">Status</th>
                 <th class="text-right px-4 py-2">Total</th>
                 <th class="text-left px-4 py-2">Data</th>
+                <th class="text-right px-4 py-2">Ações</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
             @foreach ($notas as $nota)
-                <tr class="hover:bg-gray-50 cursor-pointer" onclick="location.href='{{ route('notasfiscais.show', $nota) }}'">
-                    <td class="px-4 py-2">{{ $nota->numero ?? '—' }}</td>
-                    <td class="px-4 py-2">{{ $nota->cliente->nome }}</td>
-                    <td class="px-4 py-2">{{ ucfirst($nota->status) }}</td>
-                    <td class="px-4 py-2 text-right">R$ {{ number_format($nota->valor_total, 2, ',', '.') }}</td>
-                    <td class="px-4 py-2">{{ $nota->created_at->format('d/m/Y H:i') }}</td>
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 cursor-pointer" onclick="location.href='{{ route('notasfiscais.show', $nota) }}'">{{ $nota->numero ?? '—' }}</td>
+                    <td class="px-4 py-2 cursor-pointer" onclick="location.href='{{ route('notasfiscais.show', $nota) }}'">{{ $nota->cliente->nome }}</td>
+                    <td class="px-4 py-2 cursor-pointer" onclick="location.href='{{ route('notasfiscais.show', $nota) }}'">{{ ucfirst($nota->status) }}</td>
+                    <td class="px-4 py-2 text-right cursor-pointer" onclick="location.href='{{ route('notasfiscais.show', $nota) }}'">R$ {{ number_format($nota->valor_total, 2, ',', '.') }}</td>
+                    <td class="px-4 py-2 cursor-pointer" onclick="location.href='{{ route('notasfiscais.show', $nota) }}'">{{ $nota->created_at->format('d/m/Y H:i') }}</td>
+                    <td class="px-4 py-2">
+                        <div class="flex justify-end gap-3 text-xs">
+                            <a href="{{ route('notasfiscais.previsualizar', $nota) }}" target="_blank"
+                               class="text-gray-600 hover:underline">Pré-visualizar</a>
+
+                            @if ($nota->status === 'rascunho')
+                                <a href="{{ route('notasfiscais.edit', $nota) }}" class="text-blue-600 hover:underline">Editar</a>
+
+                                <form method="POST" action="{{ route('notasfiscais.emitir', $nota) }}" onsubmit="return confirm('Confirma a emissão desta NF-e?')">
+                                    @csrf
+                                    <button type="submit" class="text-green-700 hover:underline">Emitir</button>
+                                </form>
+                            @elseif ($nota->status === 'emitida')
+                                <a href="{{ route('notasfiscais.xml', $nota) }}" class="text-gray-600 hover:underline">XML</a>
+                                <a href="{{ route('notasfiscais.cancelar-form', $nota) }}" class="text-red-600 hover:underline">Cancelar</a>
+                            @endif
+                        </div>
+                    </td>
                 </tr>
             @endforeach
         </tbody>
