@@ -108,10 +108,8 @@ Route::middleware('auth')->group(function () {
     // do resource (show), que tenta interpretar "buscar-produto" como um ID.
     Route::get('notasfiscais/buscar-produto', [NotaFiscalController::class, 'buscarProduto'])
         ->name('notasfiscais.buscar-produto');
-
     Route::resource('notasfiscais', NotaFiscalController::class)
         ->parameters(['notasfiscais' => 'notaFiscal']);
-
     Route::post('notasfiscais/{notaFiscal}/itens', [NotaFiscalController::class, 'adicionarItem'])
         ->name('notasfiscais.itens.adicionar');
     Route::delete('notasfiscais/{notaFiscal}/itens/{item}', [NotaFiscalController::class, 'removerItem'])
@@ -127,12 +125,13 @@ Route::middleware('auth')->group(function () {
     Route::get('notasfiscais/{notaFiscal}/xml', [NotaFiscalController::class, 'xml'])
         ->name('notasfiscais.xml');
     Route::get('notasfiscais/{notaFiscal}/previsualizar', [NotaFiscalController::class, 'previsualizar'])
-    ->name('notasfiscais.previsualizar');
+        ->name('notasfiscais.previsualizar');
+    Route::post('notasfiscais/{notaFiscal}/recalcular', [NotaFiscalController::class, 'recalcular'])
+        ->name('notasfiscais.recalcular');
 
 
 
 
-    
 
 
 

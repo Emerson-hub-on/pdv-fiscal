@@ -16,6 +16,14 @@
 
         @if ($notaFiscal->status === 'rascunho')
             <div class="flex gap-2">
+                <form method="POST" action="{{ route('notasfiscais.recalcular', $notaFiscal) }}"
+                    onsubmit="return confirm('Isso vai atualizar NCM, CEST, tributação, PIS/COFINS e IPI de cada item com base no cadastro atual dos produtos. Quantidade, valor e desconto não serão alterados. Confirma?')">
+                    @csrf
+                    <button type="submit"
+                            class="border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium hover:bg-gray-50">
+                        Recalcular
+                    </button>
+                </form>
                 <a href="{{ route('notasfiscais.previsualizar', $notaFiscal) }}" target="_blank"
                 class="border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium hover:bg-gray-50">
                     Pré-visualizar PDF

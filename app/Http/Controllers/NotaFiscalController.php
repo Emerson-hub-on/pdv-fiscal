@@ -153,6 +153,34 @@ class NotaFiscalController extends Controller
 
         $notaFiscal->recalcularTotais();
     }
+    
+    public function recalcular(NotaFiscal $notaFiscal)
+    {
+        abort_if($notaFiscal->status !== 'rascunho', 403, 'Só é possível recalcular notas em rascunho.');
+
+        $notaFiscal->load('itens.produto');
+
+        foreach ($notaFiscal->itens as $item) {
+            $produto = $item->produto;
+
+            // Resincroniza apenas os dados FISCAIS do produto (o que pode ter
+            // sido corrigido no cadastro após o item já estar na nota).
+            // Quantidade, valor unitário e desconto NÃO são tocados aqui — são
+            // condições da venda que o operador definiu, não dados do produto.
+            $item->update([
+                'ncm_id'                => $produto->ncm_id,
+                'cest_id'               => $produto->cest_id,
+                'class_trib_ibs_cbs_id' => $produto->class_trib_ibs_cbs_id,
+                'tributacao_id'         => $produto->tributacao_id,
+                'pis_cofins_id'         => $produto->pis_cofins_id,
+                'ipi_id'                => $produto->ipi_id,
+            ]);
+        }
+
+        $notaFiscal->recalcularTotais();
+
+        return back()->with('sucesso', 'Dados fiscais dos itens recalculados a partir do cadastro atual dos produtos.');
+    }
 
     public function show(NotaFiscal $notaFiscal)
     {
