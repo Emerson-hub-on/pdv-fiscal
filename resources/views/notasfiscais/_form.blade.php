@@ -34,6 +34,24 @@
 
         <div class="grid grid-cols-4 gap-4">
             <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Nota</label>
+                <input type="hidden" name="cfop_saida_id" id="campo-cfop"
+                    value="{{ old('cfop_saida_id', $ehEdicao ? $notaFiscal->cfop_saida_id : '') }}">
+                <button type="button" onclick="abrirModalCfop()"
+                        class="w-full text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
+                    <span id="texto-cfop-selecionado">
+                        @if ($ehEdicao && $notaFiscal->cfopSaida)
+                            {{ $notaFiscal->cfopSaida->codigo }} - {{ $notaFiscal->cfopSaida->descricao }}
+                        @else
+                            Selecionar tipo de nota...
+                        @endif
+                    </span>
+                </button>
+                @error('cfop_saida_id') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+            </div>
+
+
+            <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
                 <select name="cliente_id" id="campo-cliente" required
                         class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
@@ -66,23 +84,6 @@
                         </option>
                     @endforeach
                 </select>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">CFOP</label>
-                <input type="hidden" name="cfop_saida_id" id="campo-cfop"
-                    value="{{ old('cfop_saida_id', $ehEdicao ? $notaFiscal->cfop_saida_id : '') }}">
-                <button type="button" onclick="abrirModalCfop()"
-                        class="w-full text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
-                    <span id="texto-cfop-selecionado">
-                        @if ($ehEdicao && $notaFiscal->cfopSaida)
-                            {{ $notaFiscal->cfopSaida->codigo }} - {{ $notaFiscal->cfopSaida->descricao }}
-                        @else
-                            Selecionar CFOP...
-                        @endif
-                    </span>
-                </button>
-                @error('cfop_saida_id') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
         </div>
     </div>
@@ -181,6 +182,19 @@
                 <input type="text" id="cfop-form-descricao" placeholder="Descrição"
                        class="border rounded px-3 py-2 text-sm">
             </div>
+
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <input type="text" id="cfop-form-natureza" placeholder="Natureza da operação padrão"
+                    class="border rounded px-3 py-2 text-sm">
+                <select id="cfop-form-finalidade" class="border rounded px-3 py-2 text-sm">
+                    <option value="1">Normal</option>
+                    <option value="2">Complementar</option>
+                    <option value="3">Ajuste</option>
+                    <option value="4">Devolução</option>
+                </select>
+            </div>
+
+
             <label class="flex items-center gap-2 text-sm text-gray-700 mb-2">
                 <input type="checkbox" id="cfop-form-movimenta" checked>
                 Movimenta estoque (diminui o estoque do produto na quantidade vendida)
@@ -305,19 +319,30 @@ function renderizarListaCfop() {
     `).join('');
 }
 
+
+// Aqui está o auto-preenchimento pedido: escolher o CFOP já preenche natureza e finalidade
 function selecionarCfop(id) {
     const cfop = cfopsCache.find(c => c.id === id);
     campoCfop.value = cfop.id;
     document.getElementById('texto-cfop-selecionado').innerText = `${cfop.codigo} - ${cfop.descricao}`;
+
+    if (cfop.natureza_operacao_padrao) {
+        campoNatureza.value = cfop.natureza_operacao_padrao;
+    }
+    campoFinalidade.value = cfop.finalidade_padrao ?? 1;
+
     atualizarTravaCabecalho();
     fecharModalCfop();
 }
+
 
 function abrirFormNovoCfop() {
     document.getElementById('cfop-form-id').value = '';
     document.getElementById('cfop-form-codigo').value = '';
     document.getElementById('cfop-form-descricao').value = '';
     document.getElementById('cfop-form-movimenta').checked = true;
+    document.getElementById('cfop-form-natureza').value = '';
+    document.getElementById('cfop-form-finalidade').value = '1';
     document.getElementById('form-cfop').classList.remove('hidden');
 }
 
@@ -327,6 +352,8 @@ function abrirFormEdicaoCfop(id) {
     document.getElementById('cfop-form-codigo').value = cfop.codigo;
     document.getElementById('cfop-form-descricao').value = cfop.descricao;
     document.getElementById('cfop-form-movimenta').checked = cfop.movimenta_estoque;
+    document.getElementById('cfop-form-natureza').value = cfop.natureza_operacao_padrao ?? '';
+    document.getElementById('cfop-form-finalidade').value = cfop.finalidade_padrao ?? 1;
     document.getElementById('form-cfop').classList.remove('hidden');
 }
 
@@ -339,6 +366,8 @@ async function salvarFormCfop() {
     const codigo = document.getElementById('cfop-form-codigo').value.trim();
     const descricao = document.getElementById('cfop-form-descricao').value.trim();
     const movimentaEstoque = document.getElementById('cfop-form-movimenta').checked;
+    const naturezaPadrao = document.getElementById('cfop-form-natureza').value.trim();
+    const finalidadePadrao = document.getElementById('cfop-form-finalidade').value;
 
     if (codigo.length !== 4 || descricao.length < 3) {
         alert('Informe um código de 4 dígitos e uma descrição válida.');
@@ -346,7 +375,12 @@ async function salvarFormCfop() {
     }
 
     const rota = id ? `{{ route('cfop-saida.editar') }}` : `{{ route('cfop-saida.criar') }}`;
-    const payload = { codigo, descricao, movimenta_estoque: movimentaEstoque };
+    const payload = {
+        codigo, descricao,
+        movimenta_estoque: movimentaEstoque,
+        natureza_operacao_padrao: naturezaPadrao,
+        finalidade_padrao: finalidadePadrao,
+    };
     if (id) payload.id = id;
 
     const resp = await fetch(rota, {
