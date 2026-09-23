@@ -61,7 +61,7 @@ class NotaFiscalService
 
     public function emitir(NotaFiscal $notaFiscal): array
     {
-        $notaFiscal->load('itens.produto', 'itens.ncm', 'itens.cest', 'itens.tributacao', 'itens.pisCofins', 'itens.classificacaoTributaria', 'cliente');
+        $notaFiscal->load('itens.produto', 'itens.ncm', 'itens.cest', 'itens.tributacao', 'itens.pisCofins', 'itens.classificacaoTributaria', 'cliente', 'cfopSaida');
 
         $idLote = str_pad($notaFiscal->numero, 15, '0', STR_PAD_LEFT);
 
@@ -336,7 +336,7 @@ class NotaFiscalService
             if ($item->cest) {
                 $prod->CEST = $item->cest->codigo;
             }
-            $prod->CFOP = $item->cfop;
+            $prod->CFOP = $notaFiscal->cfopSaida->codigo;
             $prod->uCom = $produto->unidade_comercial;
             $prod->qCom = $item->quantidade;
             $prod->vUnCom = number_format($item->valor_unitario, 10, '.', '');

@@ -19,6 +19,7 @@ class NotaFiscal extends Model
         'venda_id',
         'valor_desconto',
         'valor_frete',
+        'cfop_saida_id',
     ];
 
     protected $casts = [
@@ -42,6 +43,11 @@ class NotaFiscal extends Model
     public function serieNfe(): BelongsTo
     {
         return $this->belongsTo(SerieNfe::class, 'serie_nfe_id');
+    }
+
+    public function cfopSaida(): BelongsTo
+    {
+        return $this->belongsTo(CfopSaida::class);
     }
 
     public function venda(): BelongsTo

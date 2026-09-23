@@ -45,6 +45,7 @@ class NotaFiscalController extends Controller
                 'cliente_id'        => $dados['cliente_id'],
                 'natureza_operacao' => $dados['natureza_operacao'],
                 'finalidade'        => $dados['finalidade'],
+                'cfop_saida_id'      => $dados['cfop_saida_id'],
                 'operador_id'       => auth()->id(),
                 'tipo_operacao'     => 'saida',
                 'origem_tipo'       => 'manual',
@@ -81,6 +82,7 @@ class NotaFiscalController extends Controller
             $notaFiscal->cliente_id = $dados['cliente_id'];
             $notaFiscal->natureza_operacao = $dados['natureza_operacao'];
             $notaFiscal->finalidade = $dados['finalidade'];
+            $notaFiscal->cfop_saida_id = $dados['cfop_saida_id'];
             $notaFiscal->save();
 
             // Substitui todos os itens — mais simples e seguro que tentar
@@ -95,15 +97,13 @@ class NotaFiscalController extends Controller
     }
 
 
-    /**
-     * Validação compartilhada entre store() e update() — mesmo formulário, mesma regra.
-     */
     private function validarCabecalhoEItens(Request $request): array
     {
         $dados = $request->validate([
             'cliente_id'        => ['required', 'exists:clientes,id'],
             'natureza_operacao' => ['required', 'string', 'max:255'],
             'finalidade'        => ['required', 'in:1,2,3,4'],
+            'cfop_saida_id'      => ['required', 'exists:cfop_saida,id'],
             'itens_json'        => ['required', 'string'],
         ]);
 
@@ -137,7 +137,7 @@ class NotaFiscalController extends Controller
 
             $notaFiscal->itens()->create([
                 'produto_id'            => $produto->id,
-                'cfop'                  => $itemDados['cfop'],
+                // 'cfop' removido — agora vem do cabeçalho da nota ($notaFiscal->cfopSaida)
                 'ncm_id'                => $produto->ncm_id,
                 'cest_id'               => $produto->cest_id,
                 'class_trib_ibs_cbs_id' => $produto->class_trib_ibs_cbs_id,
@@ -299,6 +299,7 @@ class NotaFiscalController extends Controller
 
     public function emitir(NotaFiscal $notaFiscal)
     {
+        $notaFiscal->load('itens.produto', 'cfopSaida');
         abort_if($notaFiscal->status !== 'rascunho', 403, 'Nota já foi emitida ou cancelada.');
         abort_if(!$notaFiscal->cliente_id, 422, 'Selecione o cliente antes de emitir.');
         abort_if($notaFiscal->itens()->count() === 0, 422, 'Adicione ao menos um item antes de emitir.');
@@ -308,8 +309,6 @@ class NotaFiscalController extends Controller
                 $serie = SerieNfe::ativas()->lockForUpdate()->firstOrFail();
                 $proximoNumero = $serie->numero_atual + 1;
 
-                // Atribuição direta (não update()) — esses campos ficam de propósito
-                // fora do $fillable, então mass assignment não gravaria nada aqui.
                 $notaFiscal->serie_nfe_id = $serie->id;
                 $notaFiscal->serie = $serie->serie;
                 $notaFiscal->numero = $proximoNumero;
@@ -325,6 +324,15 @@ class NotaFiscalController extends Controller
                 $notaFiscal->xml = $resultado['xml'];
                 $notaFiscal->emitida_em = now();
                 $notaFiscal->save();
+
+                // Débito de estoque — só quando o CFOP da nota está marcado como "movimenta estoque"
+                if ($notaFiscal->cfopSaida->movimenta_estoque) {
+                    foreach ($notaFiscal->itens as $item) {
+                        Produto::where('id', $item->produto_id)
+                            ->lockForUpdate()
+                            ->decrement('estoque', $item->quantidade);
+                    }
+                }
             });
         } catch (\Throwable $e) {
             $notaFiscal->motivo_rejeicao = $e->getMessage();
@@ -338,6 +346,7 @@ class NotaFiscalController extends Controller
             ->with('sucesso', 'Nota fiscal emitida com sucesso!');
     }
 
+    
     public function formCancelar(NotaFiscal $notaFiscal)
     {
         abort_if($notaFiscal->status !== 'emitida', 403, 'Só é possível cancelar notas emitidas.');
@@ -353,9 +362,21 @@ class NotaFiscalController extends Controller
             'motivo_cancelamento' => ['required', 'string', 'min:15', 'max:255'],
         ]);
 
-        $notaFiscal->status = 'cancelada';
-        $notaFiscal->motivo_cancelamento = $dados['motivo_cancelamento'];
-        $notaFiscal->save();
+        $notaFiscal->load('itens', 'cfopSaida');
+
+        DB::transaction(function () use ($notaFiscal, $dados) {
+            if ($notaFiscal->cfopSaida->movimenta_estoque) {
+                foreach ($notaFiscal->itens as $item) {
+                    Produto::where('id', $item->produto_id)
+                        ->lockForUpdate()
+                        ->increment('estoque', $item->quantidade);
+                }
+            }
+
+            $notaFiscal->status = 'cancelada';
+            $notaFiscal->motivo_cancelamento = $dados['motivo_cancelamento'];
+            $notaFiscal->save();
+        });
 
         return redirect()->route('notasfiscais.index')->with('sucesso', 'Nota fiscal cancelada.');
     }
@@ -408,7 +429,7 @@ class NotaFiscalController extends Controller
                 'descricao'      => $item->produto->nome,
                 'ncm'            => $item->ncm->codigo ?? '—',
                 'cst'            => $cstOuCsosn,
-                'cfop'           => $item->cfop,
+                'cfop' => $notaFiscal->cfopSaida->codigo,
                 'unidade'        => $item->produto->unidade_comercial,
                 'quantidade'     => number_format($item->quantidade, 3, ',', '.'),
                 'valor_unitario' => number_format($item->valor_unitario, 2, ',', '.'),

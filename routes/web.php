@@ -23,6 +23,9 @@ use App\Http\Controllers\ClassificacaoPisCofinsController;
 use App\Http\Controllers\ClassificacaoIpiController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\NotaFiscalController;
+use App\Http\Controllers\CfopSaidaController;
+
+
 
 
 
@@ -128,6 +131,10 @@ Route::middleware('auth')->group(function () {
         ->name('notasfiscais.previsualizar');
     Route::post('notasfiscais/{notaFiscal}/recalcular', [NotaFiscalController::class, 'recalcular'])
         ->name('notasfiscais.recalcular');
+    Route::get('cfop-saida/listar', [CfopSaidaController::class, 'listar'])->name('cfop-saida.listar');
+    Route::post('cfop-saida/criar', [CfopSaidaController::class, 'criar'])->name('cfop-saida.criar');
+    Route::post('cfop-saida/editar', [CfopSaidaController::class, 'editar'])->name('cfop-saida.editar');
+
 
 
 

@@ -4,7 +4,7 @@
         ? $notaFiscal->itens->map(fn ($i) => [
             'produto_id'     => $i->produto_id,
             'nome'           => $i->produto->nome,
-            'cfop'           => $i->cfop,
+            
             'quantidade'     => (float) $i->quantidade,
             'valor_unitario' => (float) $i->valor_unitario,
             'valor_desconto' => (float) $i->valor_desconto,
@@ -20,9 +20,19 @@
     <input type="hidden" name="itens_json" id="itens_json">
 
     <div class="bg-white rounded-lg shadow p-6">
-        <h1 class="text-lg font-semibold mb-4">{{ $ehEdicao ? 'Editar Nota Fiscal (rascunho)' : 'Nova Nota Fiscal (Saída)' }}</h1>
+        <div class="flex items-center gap-2 mb-4">
+            @if ($ehEdicao)
+                <a href="{{ route('notasfiscais.index') }}" title="Voltar para Notas Fiscais"
+                class="text-gray-500 hover:text-gray-800 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </a>
+            @endif
+            <h1 class="text-lg font-semibold">{{ $ehEdicao ? 'Editar Nota Fiscal (rascunho)' : 'Nova Nota Fiscal (Saída)' }}</h1>
+        </div>
 
-        <div class="grid grid-cols-3 gap-4">
+        <div class="grid grid-cols-4 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
                 <select name="cliente_id" id="campo-cliente" required
@@ -57,6 +67,23 @@
                     @endforeach
                 </select>
             </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">CFOP</label>
+                <input type="hidden" name="cfop_saida_id" id="campo-cfop"
+                    value="{{ old('cfop_saida_id', $ehEdicao ? $notaFiscal->cfop_saida_id : '') }}">
+                <button type="button" onclick="abrirModalCfop()"
+                        class="w-full text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
+                    <span id="texto-cfop-selecionado">
+                        @if ($ehEdicao && $notaFiscal->cfopSaida)
+                            {{ $notaFiscal->cfopSaida->codigo }} - {{ $notaFiscal->cfopSaida->descricao }}
+                        @else
+                            Selecionar CFOP...
+                        @endif
+                    </span>
+                </button>
+                @error('cfop_saida_id') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+            </div>
         </div>
     </div>
 
@@ -88,11 +115,6 @@
                 <input type="number" step="0.01" id="editor-desconto" value="0"
                        class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
             </div>
-            <div>
-                <label class="block text-xs text-gray-500 mb-1">CFOP</label>
-                <input type="text" id="editor-cfop" maxlength="4" placeholder="5102"
-                       class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
-            </div>
             <button type="button" onclick="adicionarLinhaNaGrid()"
                     class="bg-gray-800 text-white rounded-lg px-3 py-1.5 text-sm h-fit hover:bg-gray-700">
                 Adicionar à nota
@@ -105,7 +127,7 @@
             <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
                 <tr>
                     <th class="text-left px-3 py-2">Produto</th>
-                    <th class="text-left px-3 py-2">CFOP</th>
+                    
                     <th class="text-right px-3 py-2">Qtd</th>
                     <th class="text-right px-3 py-2">Unit.</th>
                     <th class="text-right px-3 py-2">Desconto</th>
@@ -132,6 +154,60 @@
         </button>
     </div>
 </form>
+
+
+<!-- Modal CFOP -->
+<div id="modal-cfop" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6 max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold">Selecionar CFOP</h2>
+            <button type="button" onclick="fecharModalCfop()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        <div class="flex gap-2 mb-4">
+            <input type="text" id="cfop-busca" placeholder="Buscar por código ou descrição..."
+                   class="flex-1 border rounded px-3 py-2 text-sm" oninput="buscarCfop()">
+            <button type="button" onclick="abrirFormNovoCfop()"
+                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-2 rounded whitespace-nowrap">
+                + Novo CFOP
+            </button>
+        </div>
+
+        <div id="form-cfop" class="hidden bg-gray-50 rounded-lg p-3 mb-3">
+            <input type="hidden" id="cfop-form-id">
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <input type="text" id="cfop-form-codigo" placeholder="Código (4 dígitos)"
+                       maxlength="4" class="border rounded px-3 py-2 text-sm">
+                <input type="text" id="cfop-form-descricao" placeholder="Descrição"
+                       class="border rounded px-3 py-2 text-sm">
+            </div>
+            <label class="flex items-center gap-2 text-sm text-gray-700 mb-2">
+                <input type="checkbox" id="cfop-form-movimenta" checked>
+                Movimenta estoque (diminui o estoque do produto na quantidade vendida)
+            </label>
+            <div class="flex gap-2 justify-end">
+                <button type="button" onclick="fecharFormCfop()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
+                <button type="button" onclick="salvarFormCfop()"
+                        class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded">Salvar</button>
+            </div>
+        </div>
+
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs text-gray-500 border-b">
+                    <th class="py-2 w-20">Código</th>
+                    <th class="py-2">Descrição</th>
+                    <th class="py-2 w-32 text-center">Mov. estoque</th>
+                    <th class="py-2 w-16"></th>
+                </tr>
+            </thead>
+            <tbody id="cfop-lista"></tbody>
+        </table>
+        <p id="cfop-vazio" class="text-sm text-gray-400 text-center py-4 hidden">Nenhum CFOP encontrado. Use "+ Novo CFOP" para cadastrar.</p>
+    </div>
+</div>
+
+
 
 <!-- Modal de busca de produto -->
 <div id="modal-busca-produto-nf" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
@@ -164,6 +240,8 @@ let resultadosAtuaisNf = [];
 let indiceSelecionadoNf = -1;
 let timeoutBuscaNf;
 let produtoSelecionadoParaEditor = null;
+let cfopsCache = [];
+const campoCfop = document.getElementById('campo-cfop');
 
 const inputBuscaNf = document.getElementById('input-busca-item-nf');
 const inputBuscaModalNf = document.getElementById('busca-produto-modal-nf');
@@ -179,8 +257,120 @@ const campoFinalidade = document.getElementById('campo-finalidade');
  * válido ANTES de ele conseguir sequer buscar o primeiro produto.
  */
 function cabecalhoValido() {
-    return campoCliente.value !== '' && campoNatureza.value.trim() !== '' && campoFinalidade.value !== '';
+    return campoCliente.value !== '' && campoNatureza.value.trim() !== '' && campoFinalidade.value !== '' && campoCfop.value !== '';
 }
+campoCfop.addEventListener('change', atualizarTravaCabecalho);
+
+
+function abrirModalCfop() {
+    document.getElementById('modal-cfop').classList.remove('hidden');
+    document.getElementById('modal-cfop').classList.add('flex');
+    document.getElementById('cfop-busca').value = '';
+    buscarCfop();
+}
+
+function fecharModalCfop() {
+    document.getElementById('modal-cfop').classList.add('hidden');
+    document.getElementById('modal-cfop').classList.remove('flex');
+    fecharFormCfop();
+}
+
+async function buscarCfop() {
+    const termo = document.getElementById('cfop-busca').value.trim();
+    const resp = await fetch(`{{ route('cfop-saida.listar') }}?termo=${encodeURIComponent(termo)}`);
+    cfopsCache = await resp.json();
+    renderizarListaCfop();
+}
+
+function renderizarListaCfop() {
+    const tbody = document.getElementById('cfop-lista');
+    const vazio = document.getElementById('cfop-vazio');
+
+    if (cfopsCache.length === 0) {
+        tbody.innerHTML = '';
+        vazio.classList.remove('hidden');
+        return;
+    }
+    vazio.classList.add('hidden');
+
+    tbody.innerHTML = cfopsCache.map(c => `
+        <tr class="border-b border-gray-100 hover:bg-gray-50">
+            <td class="py-2 font-mono cursor-pointer" onclick="selecionarCfop(${c.id})">${c.codigo}</td>
+            <td class="py-2 cursor-pointer" onclick="selecionarCfop(${c.id})">${c.descricao}</td>
+            <td class="py-2 text-center cursor-pointer" onclick="selecionarCfop(${c.id})">${c.movimenta_estoque ? 'Sim' : 'Não'}</td>
+            <td class="py-2 text-right">
+                <button type="button" onclick="abrirFormEdicaoCfop(${c.id})" class="text-blue-600 text-xs hover:underline">editar</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function selecionarCfop(id) {
+    const cfop = cfopsCache.find(c => c.id === id);
+    campoCfop.value = cfop.id;
+    document.getElementById('texto-cfop-selecionado').innerText = `${cfop.codigo} - ${cfop.descricao}`;
+    atualizarTravaCabecalho();
+    fecharModalCfop();
+}
+
+function abrirFormNovoCfop() {
+    document.getElementById('cfop-form-id').value = '';
+    document.getElementById('cfop-form-codigo').value = '';
+    document.getElementById('cfop-form-descricao').value = '';
+    document.getElementById('cfop-form-movimenta').checked = true;
+    document.getElementById('form-cfop').classList.remove('hidden');
+}
+
+function abrirFormEdicaoCfop(id) {
+    const cfop = cfopsCache.find(c => c.id === id);
+    document.getElementById('cfop-form-id').value = cfop.id;
+    document.getElementById('cfop-form-codigo').value = cfop.codigo;
+    document.getElementById('cfop-form-descricao').value = cfop.descricao;
+    document.getElementById('cfop-form-movimenta').checked = cfop.movimenta_estoque;
+    document.getElementById('form-cfop').classList.remove('hidden');
+}
+
+function fecharFormCfop() {
+    document.getElementById('form-cfop').classList.add('hidden');
+}
+
+async function salvarFormCfop() {
+    const id = document.getElementById('cfop-form-id').value;
+    const codigo = document.getElementById('cfop-form-codigo').value.trim();
+    const descricao = document.getElementById('cfop-form-descricao').value.trim();
+    const movimentaEstoque = document.getElementById('cfop-form-movimenta').checked;
+
+    if (codigo.length !== 4 || descricao.length < 3) {
+        alert('Informe um código de 4 dígitos e uma descrição válida.');
+        return;
+    }
+
+    const rota = id ? `{{ route('cfop-saida.editar') }}` : `{{ route('cfop-saida.criar') }}`;
+    const payload = { codigo, descricao, movimenta_estoque: movimentaEstoque };
+    if (id) payload.id = id;
+
+    const resp = await fetch(rota, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body: JSON.stringify(payload),
+    });
+
+    if (!resp.ok) {
+        const erro = await resp.json();
+        alert('Erro ao salvar CFOP: ' + (erro.message || 'verifique os dados.'));
+        return;
+    }
+
+    const cfopSalvo = await resp.json();
+    fecharFormCfop();
+    await buscarCfop();
+
+    if (campoCfop.value == cfopSalvo.id) {
+        document.getElementById('texto-cfop-selecionado').innerText = `${cfopSalvo.codigo} - ${cfopSalvo.descricao}`;
+    }
+}
+
+
 
 function atualizarTravaCabecalho() {
     const valido = cabecalhoValido();
@@ -188,7 +378,7 @@ function atualizarTravaCabecalho() {
     document.getElementById('aviso-cabecalho').classList.toggle('hidden', valido);
 }
 
-[campoCliente, campoNatureza, campoFinalidade].forEach(campo => {
+[campoCliente, campoNatureza, campoFinalidade, campoCfop].forEach(campo => {
     campo.addEventListener('input', atualizarTravaCabecalho);
     campo.addEventListener('change', atualizarTravaCabecalho);
 });
@@ -305,17 +495,15 @@ function adicionarLinhaNaGrid() {
     const quantidade = parseFloat(document.getElementById('editor-quantidade').value) || 0;
     const valorUnitario = parseFloat(document.getElementById('editor-valor-unitario').value) || 0;
     const valorDesconto = parseFloat(document.getElementById('editor-desconto').value) || 0;
-    const cfop = document.getElementById('editor-cfop').value.trim();
 
-    if (quantidade <= 0 || valorUnitario < 0 || cfop.length !== 4) {
-        alert('Preencha quantidade, valor unitário e um CFOP válido (4 dígitos).');
+    if (quantidade <= 0 || valorUnitario < 0) {
+        alert('Preencha quantidade e valor unitário corretamente.');
         return;
     }
 
     itensNota.push({
         produto_id: produtoSelecionadoParaEditor.id,
         nome: produtoSelecionadoParaEditor.nome,
-        cfop,
         quantidade,
         valor_unitario: valorUnitario,
         valor_desconto: valorDesconto,
@@ -352,7 +540,7 @@ function renderizarGridItens() {
         return `
             <tr>
                 <td class="px-3 py-2">${item.nome}</td>
-                <td class="px-3 py-2">${item.cfop}</td>
+                
                 <td class="px-3 py-2 text-right">${item.quantidade}</td>
                 <td class="px-3 py-2 text-right">R$ ${item.valor_unitario.toFixed(2)}</td>
                 <td class="px-3 py-2 text-right">R$ ${item.valor_desconto.toFixed(2)}</td>

@@ -15,6 +15,7 @@
             <p class="text-sm text-gray-500">Status:
                 <span class="font-medium">{{ ucfirst($notaFiscal->status) }}</span>
             </p>
+            <p class="text-sm text-gray-500">CFOP: {{ $notaFiscal->cfopSaida->codigo }} - {{ $notaFiscal->cfopSaida->descricao }}</p>
         </div>
 
         <div class="relative">
@@ -68,7 +69,7 @@
             <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
                 <tr>
                     <th class="text-left px-4 py-2">Produto</th>
-                    <th class="text-left px-4 py-2">CFOP</th>
+                    
                     <th class="text-right px-4 py-2">Qtd</th>
                     <th class="text-right px-4 py-2">Unit.</th>
                     <th class="text-right px-4 py-2">Desconto</th>
@@ -79,7 +80,7 @@
                 @foreach ($notaFiscal->itens as $item)
                     <tr>
                         <td class="px-4 py-2">{{ $item->produto->nome }}</td>
-                        <td class="px-4 py-2">{{ $item->cfop }}</td>
+                        
                         <td class="px-4 py-2 text-right">{{ $item->quantidade }}</td>
                         <td class="px-4 py-2 text-right">R$ {{ number_format($item->valor_unitario, 2, ',', '.') }}</td>
                         <td class="px-4 py-2 text-right">R$ {{ number_format($item->valor_desconto, 2, ',', '.') }}</td>
