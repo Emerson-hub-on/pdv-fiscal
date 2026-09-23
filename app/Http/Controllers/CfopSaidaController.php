@@ -23,15 +23,19 @@ class CfopSaidaController extends Controller
     public function criar(Request $request)
     {
         $dados = $request->validate([
-            'codigo'            => ['required', 'string', 'size:4', 'unique:cfop_saida,codigo'],
-            'descricao'         => ['required', 'string', 'max:255'],
-            'movimenta_estoque' => ['sometimes', 'boolean'],
+            'codigo'                    => ['required', 'string', 'size:4', 'unique:cfop_saida,codigo'],
+            'descricao'                 => ['required', 'string', 'max:255'],
+            'movimenta_estoque'         => ['sometimes', 'boolean'],
+            'natureza_operacao_padrao'  => ['nullable', 'string', 'max:255'],
+            'finalidade_padrao'         => ['nullable', 'in:1,2,3,4'],
         ]);
 
         $cfop = CfopSaida::create([
-            'codigo'            => $dados['codigo'],
-            'descricao'         => $dados['descricao'],
-            'movimenta_estoque' => $dados['movimenta_estoque'] ?? true,
+            'codigo'                   => $dados['codigo'],
+            'descricao'                => $dados['descricao'],
+            'movimenta_estoque'        => $dados['movimenta_estoque'] ?? true,
+            'natureza_operacao_padrao' => $dados['natureza_operacao_padrao'] ?? null,
+            'finalidade_padrao'        => $dados['finalidade_padrao'] ?? 1,
         ]);
 
         return response()->json($cfop);
@@ -40,17 +44,21 @@ class CfopSaidaController extends Controller
     public function editar(Request $request)
     {
         $dados = $request->validate([
-            'id'                => ['required', 'exists:cfop_saida,id'],
-            'codigo'            => ['required', 'string', 'size:4', 'unique:cfop_saida,codigo,' . $request->id],
-            'descricao'         => ['required', 'string', 'max:255'],
-            'movimenta_estoque' => ['sometimes', 'boolean'],
+            'id'                        => ['required', 'exists:cfop_saida,id'],
+            'codigo'                    => ['required', 'string', 'size:4', 'unique:cfop_saida,codigo,' . $request->id],
+            'descricao'                 => ['required', 'string', 'max:255'],
+            'movimenta_estoque'         => ['sometimes', 'boolean'],
+            'natureza_operacao_padrao'  => ['nullable', 'string', 'max:255'],
+            'finalidade_padrao'         => ['nullable', 'in:1,2,3,4'],
         ]);
 
         $cfop = CfopSaida::findOrFail($dados['id']);
         $cfop->update([
-            'codigo'            => $dados['codigo'],
-            'descricao'         => $dados['descricao'],
-            'movimenta_estoque' => $dados['movimenta_estoque'] ?? false,
+            'codigo'                   => $dados['codigo'],
+            'descricao'                => $dados['descricao'],
+            'movimenta_estoque'        => $dados['movimenta_estoque'] ?? false,
+            'natureza_operacao_padrao' => $dados['natureza_operacao_padrao'] ?? null,
+            'finalidade_padrao'        => $dados['finalidade_padrao'] ?? 1,
         ]);
 
         return response()->json($cfop);
