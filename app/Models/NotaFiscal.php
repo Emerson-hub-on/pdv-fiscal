@@ -20,6 +20,7 @@ class NotaFiscal extends Model
         'valor_desconto',
         'valor_frete',
         'cfop_saida_id',
+        'forma_pagamento_id',
     ];
 
     protected $casts = [
@@ -76,5 +77,10 @@ class NotaFiscal extends Model
             'valor_produtos' => $produtos,
             'valor_total' => $produtos - $this->valor_desconto + $this->valor_frete,
         ]);
+    }
+
+    public function formaPagamento(): BelongsTo
+    {
+        return $this->belongsTo(FormaPagamento::class);
     }
 }

@@ -29,9 +29,11 @@ class NotaFiscalController extends Controller
     public function create()
     {
         $clientes = Cliente::ativos()->orderBy('nome')->get();
+        $usuarios = \App\Models\User::orderBy('name')->get();
 
         return view('notasfiscais.create', [
             'clientes'   => $clientes,
+            'usuarios'   => $usuarios,
             'notaFiscal' => null,
         ]);
     }
@@ -42,14 +44,15 @@ class NotaFiscalController extends Controller
 
         $notaFiscal = DB::transaction(function () use ($dados) {
             $notaFiscal = NotaFiscal::create([
-                'cliente_id'        => $dados['cliente_id'],
-                'natureza_operacao' => $dados['natureza_operacao'],
-                'finalidade'        => $dados['finalidade'],
+                'cliente_id'         => $dados['cliente_id'],
+                'natureza_operacao'  => $dados['natureza_operacao'],
+                'finalidade'         => $dados['finalidade'],
                 'cfop_saida_id'      => $dados['cfop_saida_id'],
-                'operador_id'       => auth()->id(),
-                'tipo_operacao'     => 'saida',
-                'origem_tipo'       => 'manual',
-                'status'            => 'rascunho',
+                'forma_pagamento_id' => $dados['forma_pagamento_id'],
+                'operador_id'        => $dados['operador_id'],
+                'tipo_operacao'      => 'saida',
+                'origem_tipo'        => 'manual',
+                'status'             => 'rascunho',
             ]);
 
             $this->substituirItens($notaFiscal, $dados['itens']);
@@ -68,8 +71,9 @@ class NotaFiscalController extends Controller
 
         $notaFiscal->load('itens.produto');
         $clientes = Cliente::ativos()->orderBy('nome')->get();
+        $usuarios = \App\Models\User::orderBy('name')->get();
 
-        return view('notasfiscais.edit', compact('notaFiscal', 'clientes'));
+        return view('notasfiscais.edit', compact('notaFiscal', 'clientes', 'usuarios'));
     }
 
     public function update(Request $request, NotaFiscal $notaFiscal)
@@ -83,6 +87,8 @@ class NotaFiscalController extends Controller
             $notaFiscal->natureza_operacao = $dados['natureza_operacao'];
             $notaFiscal->finalidade = $dados['finalidade'];
             $notaFiscal->cfop_saida_id = $dados['cfop_saida_id'];
+            $notaFiscal->forma_pagamento_id = $dados['forma_pagamento_id'];
+            $notaFiscal->operador_id = $dados['operador_id'];
             $notaFiscal->save();
 
             // Substitui todos os itens — mais simples e seguro que tentar
@@ -100,11 +106,13 @@ class NotaFiscalController extends Controller
     private function validarCabecalhoEItens(Request $request): array
     {
         $dados = $request->validate([
-            'cliente_id'        => ['required', 'exists:clientes,id'],
-            'natureza_operacao' => ['required', 'string', 'max:255'],
-            'finalidade'        => ['required', 'in:1,2,3,4'],
-            'cfop_saida_id'      => ['required', 'exists:cfop_saida,id'],
-            'itens_json'        => ['required', 'string'],
+            'cliente_id'          => ['required', 'exists:clientes,id'],
+            'natureza_operacao'   => ['required', 'string', 'max:255'],
+            'finalidade'          => ['required', 'in:1,2,3,4'],
+            'cfop_saida_id'       => ['required', 'exists:cfop_saida,id'],
+            'forma_pagamento_id'  => ['required', 'exists:formas_pagamento,id'],
+            'operador_id'         => ['required', 'exists:users,id'],
+            'itens_json'          => ['required', 'string'],
         ]);
 
         $itens = json_decode($dados['itens_json'], true);

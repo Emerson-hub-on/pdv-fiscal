@@ -24,6 +24,7 @@ use App\Http\Controllers\ClassificacaoIpiController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\NotaFiscalController;
 use App\Http\Controllers\CfopSaidaController;
+use App\Http\Controllers\FormaPagamentoController;
 
 
 
@@ -134,7 +135,8 @@ Route::middleware('auth')->group(function () {
     Route::get('cfop-saida/listar', [CfopSaidaController::class, 'listar'])->name('cfop-saida.listar');
     Route::post('cfop-saida/criar', [CfopSaidaController::class, 'criar'])->name('cfop-saida.criar');
     Route::post('cfop-saida/editar', [CfopSaidaController::class, 'editar'])->name('cfop-saida.editar');
-
+    Route::get('formas-pagamento/listar', [FormaPagamentoController::class, 'listar'])->name('formas-pagamento.listar');
+    Route::post('formas-pagamento/criar', [FormaPagamentoController::class, 'criar'])->name('formas-pagamento.criar');
 
 
 

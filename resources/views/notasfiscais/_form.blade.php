@@ -71,6 +71,38 @@
 
             <input type="hidden" name="natureza_operacao" id="campo-natureza" value="{{ $naturezaAtual }}">
             <input type="hidden" name="finalidade" id="campo-finalidade" value="{{ $finalidadeAtual }}">
+            
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Pagamento</label>
+                <input type="hidden" name="forma_pagamento_id" id="campo-pagamento"
+                    value="{{ old('forma_pagamento_id', $ehEdicao ? $notaFiscal->forma_pagamento_id : '') }}">
+                <button type="button" onclick="abrirModalPagamento()"
+                        class="w-full text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
+                    <span id="texto-pagamento-selecionado">
+                        @if ($ehEdicao && $notaFiscal->formaPagamento)
+                            {{ $notaFiscal->formaPagamento->descricao }}
+                        @else
+                            Selecionar tipo de pagamento...
+                        @endif
+                    </span>
+                </button>
+                @error('forma_pagamento_id') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Operador</label>
+                <select name="operador_id" id="campo-operador" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                    @foreach ($usuarios as $usuario)
+                        <option value="{{ $usuario->id }}"
+                            @selected(old('operador_id', $ehEdicao ? $notaFiscal->operador_id : auth()->id()) == $usuario->id)>
+                            {{ $usuario->name }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('operador_id') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+            </div>
+
 
         </div>
     </div>
@@ -210,6 +242,42 @@
 
 
 
+<!-- Modal Forma de Pagamento -->
+<div id="modal-pagamento" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-lg p-6 max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold">Selecionar Tipo de Pagamento</h2>
+            <button type="button" onclick="fecharModalPagamento()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        <div class="flex gap-2 mb-4">
+            <input type="text" id="pagamento-busca" placeholder="Buscar..."
+                   class="flex-1 border rounded px-3 py-2 text-sm" oninput="buscarFormaPagamento()">
+            <button type="button" onclick="abrirFormNovaFormaPagamento()"
+                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-2 rounded whitespace-nowrap">
+                + Nova forma
+            </button>
+        </div>
+
+        <div id="form-pagamento" class="hidden bg-gray-50 rounded-lg p-3 mb-3">
+            <input type="text" id="pagamento-form-descricao" placeholder="Descrição (ex: A prazo 45 dias)"
+                   class="w-full border rounded px-3 py-2 text-sm mb-2">
+            <div class="flex gap-2 justify-end">
+                <button type="button" onclick="fecharFormPagamento()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
+                <button type="button" onclick="salvarFormaPagamento()"
+                        class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded">Salvar</button>
+            </div>
+        </div>
+
+        <table class="w-full text-sm">
+            <tbody id="pagamento-lista"></tbody>
+        </table>
+        <p id="pagamento-vazio" class="text-sm text-gray-400 text-center py-4 hidden">Nenhuma forma encontrada.</p>
+    </div>
+</div>
+
+
+
 <!-- Modal de busca de produto -->
 <div id="modal-busca-produto-nf" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
@@ -242,6 +310,7 @@ let indiceSelecionadoNf = -1;
 let timeoutBuscaNf;
 let produtoSelecionadoParaEditor = null;
 let cfopsCache = [];
+let formasPagamentoCache = [];
 const campoCfop = document.getElementById('campo-cfop');
 
 const inputBuscaNf = document.getElementById('input-busca-item-nf');
@@ -251,6 +320,97 @@ const campoCliente = document.getElementById('campo-cliente');
 const campoNatureza = document.getElementById('campo-natureza');
 const campoFinalidade = document.getElementById('campo-finalidade');
 
+const campoPagamento = document.getElementById('campo-pagamento');
+const campoOperador = document.getElementById('campo-operador');
+
+function cabecalhoValido() {
+    return campoCliente.value !== '' && campoNatureza.value.trim() !== '' && campoFinalidade.value !== ''
+        && campoCfop.value !== '' && campoPagamento.value !== '' && campoOperador.value !== '';
+}
+
+[campoCliente, campoCfop, campoPagamento, campoOperador].forEach(campo => {
+    campo.addEventListener('input', atualizarTravaCabecalho);
+    campo.addEventListener('change', atualizarTravaCabecalho);
+});
+
+function abrirModalPagamento() {
+    document.getElementById('modal-pagamento').classList.remove('hidden');
+    document.getElementById('modal-pagamento').classList.add('flex');
+    document.getElementById('pagamento-busca').value = '';
+    buscarFormaPagamento();
+}
+
+function fecharModalPagamento() {
+    document.getElementById('modal-pagamento').classList.add('hidden');
+    document.getElementById('modal-pagamento').classList.remove('flex');
+    fecharFormPagamento();
+}
+
+async function buscarFormaPagamento() {
+    const termo = document.getElementById('pagamento-busca').value.trim();
+    const resp = await fetch(`{{ route('formas-pagamento.listar') }}?termo=${encodeURIComponent(termo)}`);
+    formasPagamentoCache = await resp.json();
+    renderizarListaPagamento();
+}
+
+function renderizarListaPagamento() {
+    const tbody = document.getElementById('pagamento-lista');
+    const vazio = document.getElementById('pagamento-vazio');
+
+    if (formasPagamentoCache.length === 0) {
+        tbody.innerHTML = '';
+        vazio.classList.remove('hidden');
+        return;
+    }
+    vazio.classList.add('hidden');
+
+    tbody.innerHTML = formasPagamentoCache.map(f => `
+        <tr class="border-b border-gray-100 hover:bg-gray-50 cursor-pointer" onclick="selecionarFormaPagamento(${f.id})">
+            <td class="py-2 px-2">${f.descricao}</td>
+        </tr>
+    `).join('');
+}
+
+function selecionarFormaPagamento(id) {
+    const forma = formasPagamentoCache.find(f => f.id === id);
+    campoPagamento.value = forma.id;
+    document.getElementById('texto-pagamento-selecionado').innerText = forma.descricao;
+    atualizarTravaCabecalho();
+    fecharModalPagamento();
+}
+
+function abrirFormNovaFormaPagamento() {
+    document.getElementById('pagamento-form-descricao').value = '';
+    document.getElementById('form-pagamento').classList.remove('hidden');
+}
+
+function fecharFormPagamento() {
+    document.getElementById('form-pagamento').classList.add('hidden');
+}
+
+async function salvarFormaPagamento() {
+    const descricao = document.getElementById('pagamento-form-descricao').value.trim();
+
+    if (descricao.length < 2) {
+        alert('Informe uma descrição válida.');
+        return;
+    }
+
+    const resp = await fetch(`{{ route('formas-pagamento.criar') }}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body: JSON.stringify({ descricao }),
+    });
+
+    if (!resp.ok) {
+        const erro = await resp.json();
+        alert('Erro ao salvar: ' + (erro.message || 'verifique os dados.'));
+        return;
+    }
+
+    fecharFormPagamento();
+    await buscarFormaPagamento();
+}
 /**
  * Trava a área de itens até cliente + natureza + finalidade estarem preenchidos.
  * Evita o cenário de o operador montar a nota inteira e perder tudo por causa
