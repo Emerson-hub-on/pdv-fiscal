@@ -10,6 +10,9 @@
             'valor_desconto' => (float) $i->valor_desconto,
         ])->values()
         : collect();
+    $labelsFinalidade = [1 => 'Normal', 2 => 'Complementar', 3 => 'Ajuste', 4 => 'Devolução'];
+    $naturezaAtual = old('natureza_operacao', $ehEdicao ? $notaFiscal->natureza_operacao : null);
+    $finalidadeAtual = old('finalidade', $ehEdicao ? $notaFiscal->finalidade : null);
 @endphp
 
 <form id="form-nota" method="POST"
@@ -32,7 +35,7 @@
             <h1 class="text-lg font-semibold">{{ $ehEdicao ? 'Editar Nota Fiscal (rascunho)' : 'Nova Nota Fiscal (Saída)' }}</h1>
         </div>
 
-        <div class="grid grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Nota</label>
                 <input type="hidden" name="cfop_saida_id" id="campo-cfop"
@@ -66,25 +69,9 @@
                 @error('cliente_id') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Natureza da operação</label>
-                <input type="text" name="natureza_operacao" id="campo-natureza" required
-                       value="{{ old('natureza_operacao', $ehEdicao ? $notaFiscal->natureza_operacao : 'Venda de mercadoria') }}"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-            </div>
+            <input type="hidden" name="natureza_operacao" id="campo-natureza" value="{{ $naturezaAtual }}">
+            <input type="hidden" name="finalidade" id="campo-finalidade" value="{{ $finalidadeAtual }}">
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Finalidade</label>
-                <select name="finalidade" id="campo-finalidade" required
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                    @foreach ([1 => 'Normal', 2 => 'Complementar', 3 => 'Ajuste', 4 => 'Devolução'] as $valor => $texto)
-                        <option value="{{ $valor }}"
-                            @selected(old('finalidade', $ehEdicao ? $notaFiscal->finalidade : 1) == $valor)>
-                            {{ $texto }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
         </div>
     </div>
 
@@ -326,9 +313,7 @@ function selecionarCfop(id) {
     campoCfop.value = cfop.id;
     document.getElementById('texto-cfop-selecionado').innerText = `${cfop.codigo} - ${cfop.descricao}`;
 
-    if (cfop.natureza_operacao_padrao) {
-        campoNatureza.value = cfop.natureza_operacao_padrao;
-    }
+    campoNatureza.value = cfop.natureza_operacao_padrao ?? '';
     campoFinalidade.value = cfop.finalidade_padrao ?? 1;
 
     atualizarTravaCabecalho();
@@ -401,6 +386,8 @@ async function salvarFormCfop() {
 
     if (campoCfop.value == cfopSalvo.id) {
         document.getElementById('texto-cfop-selecionado').innerText = `${cfopSalvo.codigo} - ${cfopSalvo.descricao}`;
+        campoNatureza.value = cfopSalvo.natureza_operacao_padrao ?? '';
+        campoFinalidade.value = cfopSalvo.finalidade_padrao ?? 1;
     }
 }
 
@@ -412,7 +399,7 @@ function atualizarTravaCabecalho() {
     document.getElementById('aviso-cabecalho').classList.toggle('hidden', valido);
 }
 
-[campoCliente, campoNatureza, campoFinalidade, campoCfop].forEach(campo => {
+[campoCliente, campoCfop].forEach(campo => {
     campo.addEventListener('input', atualizarTravaCabecalho);
     campo.addEventListener('change', atualizarTravaCabecalho);
 });

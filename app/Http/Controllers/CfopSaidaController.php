@@ -14,7 +14,7 @@ class CfopSaidaController extends Controller
         $cfops = CfopSaida::ativos()
             ->when($termo, fn ($q) => $q->where('codigo', 'like', "{$termo}%")
                 ->orWhere('descricao', 'like', "%{$termo}%"))
-            ->orderBy('codigo')
+            ->orderByRaw('ordem IS NULL, ordem ASC, codigo ASC')
             ->get();
 
         return response()->json($cfops);
@@ -30,12 +30,15 @@ class CfopSaidaController extends Controller
             'finalidade_padrao'         => ['nullable', 'in:1,2,3,4'],
         ]);
 
+        $proximaOrdem = (CfopSaida::max('ordem') ?? 0) + 1;
+
         $cfop = CfopSaida::create([
             'codigo'                   => $dados['codigo'],
             'descricao'                => $dados['descricao'],
             'movimenta_estoque'        => $dados['movimenta_estoque'] ?? true,
             'natureza_operacao_padrao' => $dados['natureza_operacao_padrao'] ?? null,
             'finalidade_padrao'        => $dados['finalidade_padrao'] ?? 1,
+            'ordem'                    => $proximaOrdem,
         ]);
 
         return response()->json($cfop);

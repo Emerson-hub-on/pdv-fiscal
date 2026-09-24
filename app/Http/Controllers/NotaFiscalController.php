@@ -407,7 +407,7 @@ class NotaFiscalController extends Controller
         $totalBaseIcms = 0;
         $totalValorIcms = 0;
 
-        $itens = $notaFiscal->itens->values()->map(function ($item, $index) use (&$totalBaseIcms, &$totalValorIcms) {
+        $itens = $notaFiscal->itens->values()->map(function ($item, $index) use ($notaFiscal, &$totalBaseIcms, &$totalValorIcms) {
             $trib = $item->tributacao;
             $baseIcms = 0;
             $valorIcms = 0;
