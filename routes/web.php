@@ -26,6 +26,7 @@ use App\Http\Controllers\NotaFiscalController;
 use App\Http\Controllers\CfopSaidaController;
 use App\Http\Controllers\FormaPagamentoController;
 use App\Http\Controllers\SerieNfeController;
+use App\Http\Controllers\InutilizacaoNfeController;
 
 
 
@@ -142,7 +143,8 @@ Route::middleware('auth')->group(function () {
     Route::get('series-nfe', [SerieNfeController::class, 'index'])->name('series-nfe.index');
     Route::get('series-nfe/{serieNfe}/editar', [SerieNfeController::class, 'edit'])->name('series-nfe.edit');
     Route::put('series-nfe/{serieNfe}', [SerieNfeController::class, 'update'])->name('series-nfe.update');
-
+    Route::post('inutilizacao-nfe/executar', [InutilizacaoNfeController::class, 'executar'])
+    ->name('inutilizacao-nfe.executar');
 
 
 

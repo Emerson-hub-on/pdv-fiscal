@@ -23,7 +23,9 @@ class NotaFiscalController extends Controller
             ->orderByDesc('id')
             ->paginate(20);
 
-        return view('notasfiscais.index', compact('notas'));
+        $series = \App\Models\SerieNfe::ativas()->orderBy('serie')->get();
+
+        return view('notasfiscais.index', compact('notas', 'series'));
     }
 
     public function create()
@@ -368,7 +370,15 @@ class NotaFiscalController extends Controller
 
         $notaFiscal->load('itens', 'cfopSaida');
 
-        DB::transaction(function () use ($notaFiscal, $dados) {
+        try {
+            $resultado = (new NotaFiscalService())->cancelar($notaFiscal, $dados['motivo_cancelamento']);
+        } catch (\Throwable $e) {
+            return back()->withErrors(['cancelamento' => 'Falha ao cancelar: ' . $e->getMessage()]);
+        }
+
+        // Só mexe em estoque e status local DEPOIS de confirmado pela SEFAZ —
+        // se a chamada acima lançar exceção, nada abaixo é executado.
+        DB::transaction(function () use ($notaFiscal, $dados, $resultado) {
             if ($notaFiscal->cfopSaida->movimenta_estoque) {
                 foreach ($notaFiscal->itens as $item) {
                     Produto::where('id', $item->produto_id)
@@ -379,10 +389,12 @@ class NotaFiscalController extends Controller
 
             $notaFiscal->status = 'cancelada';
             $notaFiscal->motivo_cancelamento = $dados['motivo_cancelamento'];
+            $notaFiscal->protocolo_cancelamento = $resultado['protocolo'];
+            $notaFiscal->cancelado_em = now();
             $notaFiscal->save();
         });
 
-        return redirect()->route('notasfiscais.index')->with('sucesso', 'Nota fiscal cancelada.');
+        return redirect()->route('notasfiscais.index')->with('sucesso', 'Nota fiscal cancelada com sucesso. Protocolo: ' . $resultado['protocolo']);
     }
 
     public function danfe(NotaFiscal $notaFiscal)
@@ -402,6 +414,8 @@ class NotaFiscalController extends Controller
             'Content-Disposition' => "attachment; filename=nfe-{$notaFiscal->numero}.xml",
         ]);
     }
+
+    
 
     public function previsualizar(NotaFiscal $notaFiscal)
     {

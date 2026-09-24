@@ -1,0 +1,27 @@
+Na pasta do projeto rode via CMD:
+
+Passo 1 - php artisan tinker
+
+$notaFiscal = App\Models\NotaFiscal::find(ID_DA_NOTA); // troque pelo ID certo
+$pasta = storage_path('app/XML_nfe/' . now()->format('y/m/d'));
+$arquivo = "{$pasta}/{$notaFiscal->chave_acesso}-cancelamento.xml";
+file_exists($arquivo) ? 'existe' : 'não achou — confere a data da pasta';
+
+
+Se file_exists der falso, o motivo mais provável é que o cancelamento foi feito num dia anterior (a pasta é organizada por y/m/d da data em que rodou) — ajusta a data manualmente:
+
+$pasta = storage_path('app/XML_nfe/25/09/24'); // ano/mês/dia de quando você tentou cancelar
+
+
+Passo 2 - Com o arquivo encontrado, extrai o protocolo:
+
+$xml = file_get_contents($arquivo);
+$dom = new DOMDocument();
+$dom->loadXML($xml);
+$protocolo = $dom->getElementsByTagName('nProt')->item(0)?->nodeValue;
+$protocolo; // confirma que veio um valor
+
+
+Passo 3 - grava manualmente o que a transaction não conseguiu
+
+Ainda no tinker, reproduzindo exatamente o que o controller faria (estorno de estoque + status):

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\NotaFiscal;
+use App\Models\SerieNfe; 
 use NFePHP\NFe\Make;
 use NFePHP\Common\Certificate;
 use NFePHP\Common\Keys;
@@ -657,5 +658,83 @@ class NotaFiscalService
         }
 
         file_put_contents("{$pasta}/{$this->chaveGerada}.xml", $xml);
+    }
+
+    public function cancelar(NotaFiscal $notaFiscal, string $justificativa): array
+    {
+        if (!$notaFiscal->chave_acesso || !$notaFiscal->protocolo) {
+            throw new Exception('Nota sem chave de acesso ou protocolo de autorização — não é possível cancelar.');
+        }
+
+        $resposta = $this->tools->sefazCancela($notaFiscal->chave_acesso, $justificativa, $notaFiscal->protocolo);
+
+        $dom = new \DOMDocument();
+        $dom->loadXML($resposta);
+
+        $infEvento = $dom->getElementsByTagName('infEvento')->item(0);
+        $cStat = $infEvento?->getElementsByTagName('cStat')->item(0)?->nodeValue;
+        $xMotivo = $infEvento?->getElementsByTagName('xMotivo')->item(0)?->nodeValue;
+        $nProt = $infEvento?->getElementsByTagName('nProt')->item(0)?->nodeValue;
+
+        // 135 = Evento registrado e vinculado à NF-e (cancelamento homologado)
+        if ($cStat !== '135') {
+            throw new Exception('Falha no cancelamento: ' . ($xMotivo ?? 'SEFAZ não retornou motivo.'));
+        }
+
+        $this->salvarXmlCancelamentoEmDisco($resposta, $notaFiscal);
+
+        return ['protocolo' => $nProt, 'motivo' => $xMotivo];
+    }
+
+    protected function salvarXmlCancelamentoEmDisco(string $resposta, NotaFiscal $notaFiscal): void
+    {
+        $agora = new \DateTime('now', new \DateTimeZone('America/Sao_Paulo'));
+        $pasta = storage_path("app/XML_nfe/{$agora->format('y')}/{$agora->format('m')}/{$agora->format('d')}");
+
+        if (!is_dir($pasta)) {
+            mkdir($pasta, 0755, true);
+        }
+
+        file_put_contents("{$pasta}/{$notaFiscal->chave_acesso}-cancelamento.xml", $resposta);
+    }
+
+
+    public function inutilizar(SerieNfe $serieNfe, int $numeroInicial, int $numeroFinal, string $justificativa): array
+    {
+        $resposta = $this->tools->sefazInutiliza($serieNfe->serie, $numeroInicial, $numeroFinal, $justificativa);
+
+        $dom = new \DOMDocument();
+        $dom->loadXML($resposta);
+
+        $infInut = $dom->getElementsByTagName('infInut')->item(0);
+        $cStat = $infInut?->getElementsByTagName('cStat')->item(0)?->nodeValue;
+        $xMotivo = $infInut?->getElementsByTagName('xMotivo')->item(0)?->nodeValue;
+        $nProt = $infInut?->getElementsByTagName('nProt')->item(0)?->nodeValue;
+        $idEvento = $infInut?->getAttribute('Id');
+
+        // 102 = Inutilização de número homologada
+        if ($cStat !== '102') {
+            throw new Exception('Falha na inutilização: ' . ($xMotivo ?? 'SEFAZ não retornou motivo.'));
+        }
+
+        $this->salvarXmlInutilizacaoEmDisco($resposta, $idEvento);
+
+        return ['protocolo' => $nProt, 'motivo' => $xMotivo];
+    }
+
+    protected function salvarXmlInutilizacaoEmDisco(string $resposta, ?string $idEvento): void
+    {
+        if (!$idEvento) {
+            $idEvento = 'inutilizacao_nfe_' . now()->format('YmdHis');
+        }
+
+        $agora = new \DateTime('now', new \DateTimeZone('America/Sao_Paulo'));
+        $pasta = storage_path("app/XML_nfe/{$agora->format('y')}/{$agora->format('m')}/{$agora->format('d')}");
+
+        if (!is_dir($pasta)) {
+            mkdir($pasta, 0755, true);
+        }
+
+        file_put_contents("{$pasta}/{$idEvento}-inutilizado.xml", $resposta);
     }
 }

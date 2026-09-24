@@ -75,10 +75,11 @@
                             Saída
                         </a>
                         {{-- futuramente: <a href="{{ route('notasfiscais.entrada') }}">Entrada</a> --}}
-                            <a href="{{ route('series-nfe.index') }}"
-                            class="block px-3 py-2 text-sm text-slate-400 hover:bg-white/10 hover:text-white transition border-t border-white/10">
-                                Última numeração de NF-e
-                            </a>
+                        
+                        <a href="{{ route('series-nfe.index') }}"
+                        class="block px-3 py-2 text-sm text-slate-400 hover:bg-white/10 hover:text-white transition border-t border-white/10">
+                            Última numeração de NF-e
+                        </a>   
                     
                     </div>
 

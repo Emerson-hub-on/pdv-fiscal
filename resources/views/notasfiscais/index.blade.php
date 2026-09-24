@@ -8,8 +8,14 @@
 <div class="bg-white rounded-lg shadow overflow-visible">
     <div class="flex justify-between items-center p-4 border-b border-gray-100">
         <h1 class="text-lg font-semibold">Notas Fiscais</h1>
-        <a href="{{ route('notasfiscais.create') }}"
-           class="bg-gray-800 text-white rounded-lg px-4 py-2 text-sm hover:bg-gray-700">Nova nota</a>
+        <div class="flex gap-2">
+            <button type="button" onclick="abrirModalInutilizacaoNfe()"
+                    class="border border-red-300 text-red-700 rounded-lg px-4 py-2 text-sm font-medium hover:bg-red-50">
+                Inutilizar
+            </button>
+            <a href="{{ route('notasfiscais.create') }}"
+               class="bg-gray-800 text-white rounded-lg px-4 py-2 text-sm hover:bg-gray-700">Nova nota</a>
+        </div>
     </div>
 
     <table class="w-full text-sm">
@@ -82,6 +88,46 @@
 
     <div class="p-4">{{ $notas->links() }}</div>
 </div>
+
+<!-- Modal de Inutilização de Numeração -->
+<div id="modal-inutilizacao-nfe" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold">Inutilizar Numeração de NF-e</h2>
+            <button type="button" onclick="fecharModalInutilizacaoNfe()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        <div class="bg-yellow-100 text-yellow-800 border border-yellow-300 rounded px-3 py-2 mb-4 text-xs">
+            Atenção: esta ação é irreversível perante a SEFAZ. Use apenas para números pulados ou com falha
+            técnica que nunca chegaram a ser autorizados.
+        </div>
+
+        <label class="block text-sm font-medium mb-1">Série</label>
+        <select id="inut-nfe-serie" class="w-full border rounded px-3 py-2 mb-3 text-sm">
+            @foreach ($series as $serie)
+                <option value="{{ $serie->id }}">
+                    Série {{ $serie->serie }} (último número: {{ $serie->numero_atual }}){{ $serie->descricao ? ' — ' . $serie->descricao : '' }}
+                </option>
+            @endforeach
+        </select>
+
+        <label class="block text-sm font-medium mb-1">Número inicial</label>
+        <input type="number" id="inut-nfe-numero-inicial" class="w-full border rounded px-3 py-2 mb-3 text-sm">
+
+        <label class="block text-sm font-medium mb-1">Número final</label>
+        <input type="number" id="inut-nfe-numero-final" class="w-full border rounded px-3 py-2 mb-3 text-sm">
+
+        <label class="block text-sm font-medium mb-1">Justificativa (mín. 15 caracteres)</label>
+        <textarea id="inut-nfe-justificativa" rows="3" class="w-full border rounded px-3 py-2 mb-4 text-sm"></textarea>
+
+        <p id="inut-nfe-erro" class="text-red-600 text-sm mb-3 hidden"></p>
+
+        <button type="button" onclick="confirmarInutilizacaoNfe()"
+                class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded font-semibold">
+            Inutilizar
+        </button>
+    </div>
+</div>
 @endsection
 
 @section('scripts')
@@ -101,5 +147,63 @@ document.addEventListener('click', (e) => {
         }
     });
 });
+
+function abrirModalInutilizacaoNfe() {
+    document.getElementById('inut-nfe-numero-inicial').value = '';
+    document.getElementById('inut-nfe-numero-final').value = '';
+    document.getElementById('inut-nfe-justificativa').value = '';
+    document.getElementById('inut-nfe-erro').classList.add('hidden');
+    document.getElementById('modal-inutilizacao-nfe').classList.remove('hidden');
+    document.getElementById('modal-inutilizacao-nfe').classList.add('flex');
+}
+
+function fecharModalInutilizacaoNfe() {
+    document.getElementById('modal-inutilizacao-nfe').classList.add('hidden');
+    document.getElementById('modal-inutilizacao-nfe').classList.remove('flex');
+}
+
+async function confirmarInutilizacaoNfe() {
+    const serieId = document.getElementById('inut-nfe-serie').value;
+    const numeroInicial = document.getElementById('inut-nfe-numero-inicial').value;
+    const numeroFinal = document.getElementById('inut-nfe-numero-final').value;
+    const justificativa = document.getElementById('inut-nfe-justificativa').value;
+    const erroP = document.getElementById('inut-nfe-erro');
+
+    erroP.classList.add('hidden');
+
+    if (!numeroInicial || !numeroFinal || justificativa.length < 15) {
+        erroP.innerText = 'Preencha os números e uma justificativa com pelo menos 15 caracteres.';
+        erroP.classList.remove('hidden');
+        return;
+    }
+
+    if (!confirm(`Confirma a inutilização da numeração ${numeroInicial} a ${numeroFinal}? Esta ação não pode ser desfeita.`)) {
+        return;
+    }
+
+    const resp = await fetch('{{ route("inutilizacao-nfe.executar") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+        },
+        body: JSON.stringify({
+            serie_nfe_id: serieId,
+            numero_inicial: numeroInicial,
+            numero_final: numeroFinal,
+            justificativa,
+        }),
+    });
+
+    const resultado = await resp.json();
+
+    if (resultado.sucesso) {
+        alert('Numeração inutilizada com sucesso. Protocolo: ' + resultado.protocolo);
+        location.reload();
+    } else {
+        erroP.innerText = resultado.erro;
+        erroP.classList.remove('hidden');
+    }
+}
 </script>
 @endsection
