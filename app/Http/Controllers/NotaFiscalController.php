@@ -307,7 +307,6 @@ class NotaFiscalController extends Controller
 
     public function emitir(NotaFiscal $notaFiscal)
     {
-        $notaFiscal->load('itens.produto', 'cfopSaida');
         abort_if($notaFiscal->status !== 'rascunho', 403, 'Nota já foi emitida ou cancelada.');
         abort_if(!$notaFiscal->cliente_id, 422, 'Selecione o cliente antes de emitir.');
         abort_if($notaFiscal->itens()->count() === 0, 422, 'Adicione ao menos um item antes de emitir.');
@@ -332,17 +331,14 @@ class NotaFiscalController extends Controller
                 $notaFiscal->xml = $resultado['xml'];
                 $notaFiscal->emitida_em = now();
                 $notaFiscal->save();
-
-                // Débito de estoque — só quando o CFOP da nota está marcado como "movimenta estoque"
-                if ($notaFiscal->cfopSaida->movimenta_estoque) {
-                    foreach ($notaFiscal->itens as $item) {
-                        Produto::where('id', $item->produto_id)
-                            ->lockForUpdate()
-                            ->decrement('estoque', $item->quantidade);
-                    }
-                }
             });
         } catch (\Throwable $e) {
+            // Se a transação foi revertida, numero/serie/serie_nfe_id NÃO estão
+            // mais persistidos no banco — mas continuam em memória no objeto.
+            // Limpamos aqui para não "vazar" um número que a SerieNfe já não
+            // reconhece como usado (senão a próxima tentativa reutiliza o
+            // mesmo número com uma chave diferente e a SEFAZ rejeita por duplicidade).
+            $notaFiscal->refresh();
             $notaFiscal->motivo_rejeicao = $e->getMessage();
             $notaFiscal->save();
 

@@ -73,10 +73,12 @@ class NotaFiscal extends Model
     {
         $produtos = $this->itens()->sum('valor_total');
 
-        $this->update([
-            'valor_produtos' => $produtos,
-            'valor_total' => $produtos - $this->valor_desconto + $this->valor_frete,
-        ]);
+        // Atribuição direta (não update()) — 'valor_produtos' e 'valor_total'
+        // ficam de propósito fora do $fillable, então mass assignment não
+        // gravaria nada aqui (mesmo padrão usado em NotaFiscalController::emitir()).
+        $this->valor_produtos = $produtos;
+        $this->valor_total = $produtos - $this->valor_desconto + $this->valor_frete;
+        $this->save();
     }
 
     public function formaPagamento(): BelongsTo

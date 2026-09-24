@@ -60,7 +60,7 @@
             <div id="sub-faturamento" class="hidden flex flex-col gap-1 pl-4 mt-1 border-l border-white/10 ml-3">
                 <!-- Nota Fiscal (nível 2, abre lateral) -->
                 <div class="relative">
-                    <button onclick="toggleNotaFiscal()"
+                    <button id="btn-notafiscal" onclick="toggleNotaFiscal()"
                             class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white text-sm transition">
                         <span>Nota Fiscal</span>
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,14 +68,20 @@
                         </svg>
                     </button>
 
-                    <!-- Flyout lateral -->
-                    <div id="sub-notafiscal" class="hidden absolute left-full top-0 ml-1 bg-gray-800 border border-white/10 rounded-lg py-1 min-w-40 z-50">
+                    <!-- Flyout lateral: 'fixed' + posição calculada via JS, para escapar do overflow-y-auto do menu -->
+                    <div id="sub-notafiscal" class="hidden fixed bg-gray-800 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
                         <a href="{{ route('notasfiscais.index') }}"
                         class="block px-3 py-2 text-sm text-slate-400 hover:bg-white/10 hover:text-white transition">
                             Saída
                         </a>
                         {{-- futuramente: <a href="{{ route('notasfiscais.entrada') }}">Entrada</a> --}}
+                            <a href="{{ route('series-nfe.index') }}"
+                            class="block px-3 py-2 text-sm text-slate-400 hover:bg-white/10 hover:text-white transition border-t border-white/10">
+                                Última numeração de NF-e
+                            </a>
+                    
                     </div>
+
                 </div>
             </div>
         </div>
@@ -102,6 +108,7 @@
                     'empresa'  => ['Cadastros', 'Empresa'],
                     'pdvs'     => ['Cadastros', 'PDVs'],
                     'notasfiscais' => ['Faturamento', 'Nota Fiscal - Saída'],
+                    'series-nfe' => ['Faturamento', 'Séries de NF-e'],
                 ];
 
                 $rotaAtual = \Illuminate\Support\Facades\Route::currentRouteName();
@@ -150,10 +157,36 @@
     document.getElementById('sub-faturamento').classList.toggle('hidden');
     document.getElementById('seta-faturamento').classList.toggle('rotate-180');
     }
+
     function toggleNotaFiscal() {
-        document.getElementById('sub-notafiscal').classList.toggle('hidden');
+        const flyout = document.getElementById('sub-notafiscal');
+        const botao = document.getElementById('btn-notafiscal');
+        const estaAbrindo = flyout.classList.contains('hidden');
+
+        if (estaAbrindo) {
+            // Como o flyout agora é 'fixed', calculamos a posição em relação
+            // ao botão para ele "escapar" do overflow-y-auto do menu e ficar
+            // sempre sobreposto ao restante do conteúdo.
+            const rect = botao.getBoundingClientRect();
+            flyout.style.top = rect.top + 'px';
+            flyout.style.left = (rect.right + 4) + 'px';
+        }
+
+        flyout.classList.toggle('hidden');
     }
-    
+
+    // Fecha o flyout ao clicar fora dele
+    document.addEventListener('click', function (evento) {
+        const flyout = document.getElementById('sub-notafiscal');
+        const botao = document.getElementById('btn-notafiscal');
+
+        if (!flyout.classList.contains('hidden')
+            && !flyout.contains(evento.target)
+            && !botao.contains(evento.target)) {
+            flyout.classList.add('hidden');
+        }
+    });
+
     async function sincronizarAgora() {
         const btn = document.getElementById('btn-sincronizar');
         const textoOriginal = btn.innerText;

@@ -25,6 +25,7 @@ use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\NotaFiscalController;
 use App\Http\Controllers\CfopSaidaController;
 use App\Http\Controllers\FormaPagamentoController;
+use App\Http\Controllers\SerieNfeController;
 
 
 
@@ -138,7 +139,9 @@ Route::middleware('auth')->group(function () {
     Route::get('formas-pagamento/listar', [FormaPagamentoController::class, 'listar'])->name('formas-pagamento.listar');
     Route::post('formas-pagamento/criar', [FormaPagamentoController::class, 'criar'])->name('formas-pagamento.criar');
     Route::post('formas-pagamento/editar', [FormaPagamentoController::class, 'editar'])->name('formas-pagamento.editar');
-
+    Route::get('series-nfe', [SerieNfeController::class, 'index'])->name('series-nfe.index');
+    Route::get('series-nfe/{serieNfe}/editar', [SerieNfeController::class, 'edit'])->name('series-nfe.edit');
+    Route::put('series-nfe/{serieNfe}', [SerieNfeController::class, 'update'])->name('series-nfe.update');
 
 
 
