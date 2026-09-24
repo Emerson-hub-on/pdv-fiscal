@@ -260,8 +260,9 @@
         </div>
 
         <div id="form-pagamento" class="hidden bg-gray-50 rounded-lg p-3 mb-3">
+            <input type="hidden" id="pagamento-form-id">
             <input type="text" id="pagamento-form-descricao" placeholder="Descrição (ex: A prazo 45 dias)"
-                   class="w-full border rounded px-3 py-2 text-sm mb-2">
+                class="w-full border rounded px-3 py-2 text-sm mb-2">
             <div class="flex gap-2 justify-end">
                 <button type="button" onclick="fecharFormPagamento()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
                 <button type="button" onclick="salvarFormaPagamento()"
@@ -365,11 +366,15 @@ function renderizarListaPagamento() {
     vazio.classList.add('hidden');
 
     tbody.innerHTML = formasPagamentoCache.map(f => `
-        <tr class="border-b border-gray-100 hover:bg-gray-50 cursor-pointer" onclick="selecionarFormaPagamento(${f.id})">
-            <td class="py-2 px-2">${f.descricao}</td>
+        <tr class="border-b border-gray-100 hover:bg-gray-50">
+            <td class="py-2 px-2 cursor-pointer" onclick="selecionarFormaPagamento(${f.id})">${f.descricao}</td>
+            <td class="py-2 px-2 text-right">
+                <button type="button" onclick="abrirFormEdicaoPagamento(${f.id})" class="text-blue-600 text-xs hover:underline">editar</button>
+            </td>
         </tr>
     `).join('');
 }
+
 
 function selecionarFormaPagamento(id) {
     const forma = formasPagamentoCache.find(f => f.id === id);
@@ -380,15 +385,26 @@ function selecionarFormaPagamento(id) {
 }
 
 function abrirFormNovaFormaPagamento() {
+    document.getElementById('pagamento-form-id').value = '';
     document.getElementById('pagamento-form-descricao').value = '';
     document.getElementById('form-pagamento').classList.remove('hidden');
 }
+
+
+function abrirFormEdicaoPagamento(id) {
+    const forma = formasPagamentoCache.find(f => f.id === id);
+    document.getElementById('pagamento-form-id').value = forma.id;
+    document.getElementById('pagamento-form-descricao').value = forma.descricao;
+    document.getElementById('form-pagamento').classList.remove('hidden');
+}
+
 
 function fecharFormPagamento() {
     document.getElementById('form-pagamento').classList.add('hidden');
 }
 
 async function salvarFormaPagamento() {
+    const id = document.getElementById('pagamento-form-id').value;
     const descricao = document.getElementById('pagamento-form-descricao').value.trim();
 
     if (descricao.length < 2) {
@@ -396,10 +412,13 @@ async function salvarFormaPagamento() {
         return;
     }
 
-    const resp = await fetch(`{{ route('formas-pagamento.criar') }}`, {
+    const rota = id ? `{{ route('formas-pagamento.editar') }}` : `{{ route('formas-pagamento.criar') }}`;
+    const payload = id ? { id, descricao } : { descricao };
+
+    const resp = await fetch(rota, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-        body: JSON.stringify({ descricao }),
+        body: JSON.stringify(payload),
     });
 
     if (!resp.ok) {
@@ -408,8 +427,14 @@ async function salvarFormaPagamento() {
         return;
     }
 
+    const formaSalva = await resp.json();
     fecharFormPagamento();
     await buscarFormaPagamento();
+
+    // Se a forma editada é a que já estava selecionada no cabeçalho, atualiza o texto exibido
+    if (campoPagamento.value == formaSalva.id) {
+        document.getElementById('texto-pagamento-selecionado').innerText = formaSalva.descricao;
+    }
 }
 /**
  * Trava a área de itens até cliente + natureza + finalidade estarem preenchidos.

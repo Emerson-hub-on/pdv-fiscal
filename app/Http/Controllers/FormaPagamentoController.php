@@ -19,6 +19,19 @@ class FormaPagamentoController extends Controller
         return response()->json($formas);
     }
 
+    public function editar(Request $request)
+    {
+        $dados = $request->validate([
+            'id'        => ['required', 'exists:formas_pagamento,id'],
+            'descricao' => ['required', 'string', 'max:255', 'unique:formas_pagamento,descricao,' . $request->id],
+        ]);
+
+        $forma = FormaPagamento::findOrFail($dados['id']);
+        $forma->update(['descricao' => $dados['descricao']]);
+
+        return response()->json($forma);
+    }
+
     public function criar(Request $request)
     {
         $dados = $request->validate([

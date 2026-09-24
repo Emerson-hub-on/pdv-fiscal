@@ -137,7 +137,7 @@ Route::middleware('auth')->group(function () {
     Route::post('cfop-saida/editar', [CfopSaidaController::class, 'editar'])->name('cfop-saida.editar');
     Route::get('formas-pagamento/listar', [FormaPagamentoController::class, 'listar'])->name('formas-pagamento.listar');
     Route::post('formas-pagamento/criar', [FormaPagamentoController::class, 'criar'])->name('formas-pagamento.criar');
-
+    Route::post('formas-pagamento/editar', [FormaPagamentoController::class, 'editar'])->name('formas-pagamento.editar');
 
 
 
