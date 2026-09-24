@@ -11,7 +11,7 @@ class CfopSaida extends Model
 
     protected $fillable = [
         'codigo', 'descricao', 'movimenta_estoque', 'ativo',
-        'natureza_operacao_padrao', 'finalidade_padrao',
+        'natureza_operacao_padrao', 'finalidade_padrao', 'ordem',
     ];
 
     protected $casts = [
