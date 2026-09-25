@@ -31,23 +31,31 @@
                 <a href="{{ route('notasfiscais.previsualizar', $notaFiscal) }}" target="_blank"
                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Pré-visualizar PDF</a>
 
-                @if ($notaFiscal->status === 'rascunho')
-                    <a href="{{ route('notasfiscais.edit', $notaFiscal) }}"
-                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Editar</a>
+                    @if ($notaFiscal->status === 'rascunho')
+                        <a href="{{ route('notasfiscais.edit', $notaFiscal) }}"
+                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Editar</a>
 
-                    <form method="POST" action="{{ route('notasfiscais.recalcular', $notaFiscal) }}"
-                          onsubmit="return confirm('Isso vai atualizar NCM, CEST, tributação, PIS/COFINS e IPI de cada item com base no cadastro atual dos produtos. Quantidade, valor e desconto não serão alterados. Confirma?')">
-                        @csrf
-                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Recalcular</button>
-                    </form>
+                        <form method="POST" action="{{ route('notasfiscais.recalcular', $notaFiscal) }}"
+                            onsubmit="return confirm('Isso vai atualizar NCM, CEST, tributação, PIS/COFINS e IPI de cada item com base no cadastro atual dos produtos. Quantidade, valor e desconto não serão alterados. Confirma?')">
+                            @csrf
+                            <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Recalcular</button>
+                        </form>
 
-                    <div class="border-t border-gray-100 my-1"></div>
+                        <div class="border-t border-gray-100 my-1"></div>
 
-                    <form method="POST" action="{{ route('notasfiscais.emitir', $notaFiscal) }}">
-                        @csrf
-                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-green-700 font-medium hover:bg-green-50">Emitir NF-e</button>
-                    </form>
-                @elseif ($notaFiscal->status === 'emitida')
+                        <form method="POST" action="{{ route('notasfiscais.emitir', $notaFiscal) }}">
+                            @csrf
+                            <button type="submit" class="w-full text-left px-4 py-2 text-sm text-green-700 font-medium hover:bg-green-50">Emitir NF-e</button>
+                        </form>
+
+                        <div class="border-t border-gray-100 my-1"></div>
+
+                        <form method="POST" action="{{ route('notasfiscais.destroy', $notaFiscal) }}"
+                            onsubmit="return confirm('Excluir esta nota em rascunho? Esta ação não pode ser desfeita.')">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Excluir rascunho</button>
+                        </form>
+                    @elseif ($notaFiscal->status === 'emitida')
                     <a href="{{ route('notasfiscais.xml', $notaFiscal) }}"
                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Baixar XML</a>
 

@@ -35,7 +35,7 @@
             <h1 class="text-lg font-semibold">{{ $ehEdicao ? 'Editar Nota Fiscal (rascunho)' : 'Nova Nota Fiscal (Saída)' }}</h1>
         </div>
 
-        <div class="grid grid-cols-1 gap-4">
+        <div class="grid grid-cols-2 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Nota</label>
                 <input type="hidden" name="cfop_saida_id" id="campo-cfop"
@@ -52,26 +52,6 @@
                 </button>
                 @error('cfop_saida_id') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
-
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
-                <select name="cliente_id" id="campo-cliente" required
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                    <option value="">Selecione...</option>
-                    @foreach ($clientes as $cliente)
-                        <option value="{{ $cliente->id }}"
-                            @selected(old('cliente_id', $ehEdicao ? $notaFiscal->cliente_id : null) == $cliente->id)>
-                            {{ $cliente->nome }} — {{ $cliente->cpf_cnpj_formatado }}
-                        </option>
-                    @endforeach
-                </select>
-                @error('cliente_id') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
-            </div>
-
-            <input type="hidden" name="natureza_operacao" id="campo-natureza" value="{{ $naturezaAtual }}">
-            <input type="hidden" name="finalidade" id="campo-finalidade" value="{{ $finalidadeAtual }}">
-            
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Pagamento</label>
@@ -91,6 +71,21 @@
             </div>
 
             <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+                <select name="cliente_id" id="campo-cliente" required
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                    <option value="">Selecione...</option>
+                    @foreach ($clientes as $cliente)
+                        <option value="{{ $cliente->id }}"
+                            @selected(old('cliente_id', $ehEdicao ? $notaFiscal->cliente_id : null) == $cliente->id)>
+                            {{ $cliente->nome }} — {{ $cliente->cpf_cnpj_formatado }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('cliente_id') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Operador</label>
                 <select name="operador_id" id="campo-operador" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                     @foreach ($usuarios as $usuario)
@@ -103,7 +98,8 @@
                 @error('operador_id') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
-
+            <input type="hidden" name="natureza_operacao" id="campo-natureza" value="{{ $naturezaAtual }}">
+            <input type="hidden" name="finalidade" id="campo-finalidade" value="{{ $finalidadeAtual }}">
         </div>
     </div>
 

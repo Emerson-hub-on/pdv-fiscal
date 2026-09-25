@@ -8,24 +8,70 @@ use App\Models\NotaFiscal;
 use App\Models\NotaFiscalItem;
 use App\Models\Produto;
 use App\Models\SerieNfe;
+use App\Models\InutilizacaoNfe;
 use App\Services\NotaFiscalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 
+
+
 class NotaFiscalController extends Controller
 {
     public function index(Request $request)
     {
-        $notas = NotaFiscal::with('cliente')
-            ->when($request->status, fn ($q) => $q->where('status', $request->status))
-            ->orderByDesc('id')
-            ->paginate(20);
+        $statusFiltro = $request->get('status');
+        $tipoFiltro = $request->get('tipo_filtro', 'data');
 
-        $series = \App\Models\SerieNfe::ativas()->orderBy('serie')->get();
+        $notas = null;
+        $inutilizacoes = null;
 
-        return view('notasfiscais.index', compact('notas', 'series'));
+        if ($statusFiltro === 'inutilizada') {
+            $inutilizacoes = InutilizacaoNfe::where('status', 'sucesso')
+                ->orderByDesc('id')
+                ->paginate(20);
+        } else {
+            $query = NotaFiscal::with('cliente', 'cfopSaida') // ← troca aqui
+                ->when($statusFiltro, fn ($q) => $q->where('status', $statusFiltro));
+
+            switch ($tipoFiltro) {
+                case 'numero':
+                    if ($request->filled('numero')) {
+                        $query->where('numero', $request->get('numero'));
+                    }
+                    break;
+
+                case 'cliente':
+                    if ($request->filled('cliente')) {
+                        $termo = $request->get('cliente');
+                        $query->whereHas('cliente', fn ($q) => $q->where('nome', 'like', "%{$termo}%"));
+                    }
+                    break;
+
+                case 'documento':
+                    if ($request->filled('documento')) {
+                        $documento = preg_replace('/\D/', '', $request->get('documento'));
+                        $query->whereHas('cliente', fn ($q) => $q->where('cpf_cnpj', 'like', "%{$documento}%"));
+                    }
+                    break;
+
+                case 'data':
+                default:
+                    $dataInicio = $request->filled('data_inicio') ? $request->get('data_inicio') : now()->toDateString();
+                    $dataFim = $request->filled('data_fim') ? $request->get('data_fim') : now()->toDateString();
+
+                    $query->whereDate('created_at', '>=', $dataInicio)
+                        ->whereDate('created_at', '<=', $dataFim);
+                    break;
+            }
+
+            $notas = $query->orderByDesc('id')->paginate(20)->withQueryString();
+        }
+
+        $series = SerieNfe::ativas()->orderBy('serie')->get();
+
+        return view('notasfiscais.index', compact('notas', 'inutilizacoes', 'series', 'statusFiltro', 'tipoFiltro'));
     }
 
     public function create()
