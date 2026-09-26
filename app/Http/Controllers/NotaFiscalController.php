@@ -78,11 +78,13 @@ class NotaFiscalController extends Controller
     {
         $clientes = Cliente::ativos()->orderBy('nome')->get();
         $usuarios = \App\Models\User::orderBy('name')->get();
+        $crtEmpresa = Empresa::first()->crt;
 
         return view('notasfiscais.create', [
-            'clientes'   => $clientes,
-            'usuarios'   => $usuarios,
-            'notaFiscal' => null,
+            'clientes'    => $clientes,
+            'usuarios'    => $usuarios,
+            'crtEmpresa'  => $crtEmpresa,
+            'notaFiscal'  => null,
         ]);
     }
 
@@ -117,11 +119,12 @@ class NotaFiscalController extends Controller
     {
         abort_if($notaFiscal->status !== 'rascunho', 403, 'Só é possível editar notas em rascunho.');
 
-        $notaFiscal->load('itens.produto');
+        $notaFiscal->load('itens.produto', 'itens.tributacao', 'itens.ipi');
         $clientes = Cliente::ativos()->orderBy('nome')->get();
         $usuarios = \App\Models\User::orderBy('name')->get();
+        $crtEmpresa = Empresa::first()->crt;
 
-        return view('notasfiscais.edit', compact('notaFiscal', 'clientes', 'usuarios'));
+        return view('notasfiscais.edit', compact('notaFiscal', 'clientes', 'usuarios', 'crtEmpresa'));
     }
 
     public function update(Request $request, NotaFiscal $notaFiscal)
@@ -190,10 +193,11 @@ class NotaFiscalController extends Controller
             $valorUnitario = (float) $itemDados['valor_unitario'];
             $valorDesconto = (float) ($itemDados['valor_desconto'] ?? 0);
             $valorTotal    = ($quantidade * $valorUnitario) - $valorDesconto;
+            $descricao     = trim($itemDados['descricao'] ?? '') ?: null;
 
             $notaFiscal->itens()->create([
                 'produto_id'            => $produto->id,
-                // 'cfop' removido — agora vem do cabeçalho da nota ($notaFiscal->cfopSaida)
+                'descricao'             => $descricao,
                 'ncm_id'                => $produto->ncm_id,
                 'cest_id'               => $produto->cest_id,
                 'class_trib_ibs_cbs_id' => $produto->class_trib_ibs_cbs_id,
@@ -294,10 +298,11 @@ class NotaFiscalController extends Controller
         $termo = $request->get('termo');
 
         $produtos = Produto::ativos()
+            ->with(['tributacao:id,cst_icms,csosn,aliquota_icms', 'ipi:id,codigo,aliquota'])
             ->where(function ($q) use ($termo) {
                 $q->where('codigo_barras', $termo)
                     ->orWhere('codigo_interno', $termo)
-                    ->orWhere('nome', 'like', "{$termo}%"); // começa com, não "contém"
+                    ->orWhere('nome', 'like', "{$termo}%");
             })
             ->limit(10)
             ->get(['id', 'nome', 'codigo_interno', 'codigo_barras', 'preco_venda', 'ncm_id', 'cest_id', 'class_trib_ibs_cbs_id', 'tributacao_id', 'pis_cofins_id', 'ipi_id']);
@@ -465,7 +470,7 @@ class NotaFiscalController extends Controller
 
     public function previsualizar(NotaFiscal $notaFiscal)
     {
-        $notaFiscal->load(['itens.produto', 'itens.ncm', 'itens.tributacao', 'cliente']);
+        $notaFiscal->load(['itens.produto', 'itens.ncm', 'itens.tributacao', 'itens.ipi', 'cliente']);
         $empresa = Empresa::first();
 
         $totalBaseIcms = 0;
@@ -487,10 +492,19 @@ class NotaFiscalController extends Controller
             $totalBaseIcms += $baseIcms;
             $totalValorIcms += $valorIcms;
 
+            $ipi = $item->ipi;
+            $valorIpi = 0;
+            $aliquotaIpi = 0;
+
+            if ($ipi && $ipi->codigo === '50' && $ipi->aliquota) {
+                $aliquotaIpi = (float) $ipi->aliquota;
+                $valorIpi = $baseIcms > 0 ? $baseIcms * $aliquotaIpi / 100 : ($item->valor_unitario * $item->quantidade) * $aliquotaIpi / 100;
+            }
+
             return [
                 'numero'         => $index + 1,
                 'codigo'         => $item->produto->codigo_interno,
-                'descricao'      => $item->produto->nome,
+                'descricao'      => $item->descricao ?? $item->produto->nome,
                 'ncm'            => $item->ncm->codigo ?? '—',
                 'cst'            => $cstOuCsosn,
                 'cfop' => $notaFiscal->cfopSaida->codigo,
@@ -501,6 +515,8 @@ class NotaFiscalController extends Controller
                 'bc_icms'        => number_format($baseIcms, 2, ',', '.'),
                 'valor_icms'     => number_format($valorIcms, 2, ',', '.'),
                 'aliquota_icms'  => number_format($aliquotaIcms, 2, ',', '.'),
+                'valor_ipi'      => number_format($valorIpi, 2, ',', '.'),
+                'aliquota_ipi'   => number_format($aliquotaIpi, 2, ',', '.'),
             ];
         });
 

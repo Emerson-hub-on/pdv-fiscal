@@ -178,6 +178,8 @@
                 <th>BC ICMS</th>
                 <th>Vlr. ICMS</th>
                 <th>% ICMS</th>
+                <th>Vlr. IPI</th>
+                <th>% IPI</th>
             </tr>
         </thead>
         <tbody>
@@ -195,6 +197,8 @@
                     <td class="direita">{{ $item['bc_icms'] }}</td>
                     <td class="direita">{{ $item['valor_icms'] }}</td>
                     <td class="direita">{{ $item['aliquota_icms'] }}</td>
+                    <td class="direita">{{ $item['valor_ipi'] }}</td>
+                    <td class="direita">{{ $item['aliquota_ipi'] }}</td>
                 </tr>
             @endforeach
         </tbody>

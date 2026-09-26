@@ -332,7 +332,7 @@ class NotaFiscalService
             $prod->item = $n;
             $prod->cProd = $produto->codigo_interno;
             $prod->cEAN = $temEanValido ? $produto->codigo_barras : 'SEM GTIN';
-            $prod->xProd = $produto->nome;
+            $prod->xProd = $item->descricao ?: $produto->nome;
             $prod->NCM = $item->ncm?->codigo;
             if ($item->cest) {
                 $prod->CEST = $item->cest->codigo;

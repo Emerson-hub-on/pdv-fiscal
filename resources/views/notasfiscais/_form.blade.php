@@ -1,15 +1,48 @@
 @php
     $ehEdicao = isset($notaFiscal) && $notaFiscal !== null;
+
     $itensIniciais = $ehEdicao
-        ? $notaFiscal->itens->map(fn ($i) => [
-            'produto_id'     => $i->produto_id,
-            'nome'           => $i->produto->nome,
-            
-            'quantidade'     => (float) $i->quantidade,
-            'valor_unitario' => (float) $i->valor_unitario,
-            'valor_desconto' => (float) $i->valor_desconto,
-        ])->values()
+        ? $notaFiscal->itens->map(function ($i) {
+            $subtotalBruto = (float) $i->valor_unitario * (float) $i->quantidade;
+            $trib = $i->tributacao;
+            $bcIcms = 0; $valorIcms = 0; $aliquotaIcms = 0;
+            $cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
+
+            if ($trib && in_array($trib->cst_icms, $cstsComBaseCalculo, true)) {
+                $bcIcms = $subtotalBruto;
+                $aliquotaIcms = (float) $trib->aliquota_icms;
+                $valorIcms = $bcIcms * $aliquotaIcms / 100;
+            }
+
+            // IPI — só CST 50 (Saída Tributada) tem valor de fato; os demais (isenção,
+            // alíquota zero, suspensão etc.) ficam zerados mesmo com classificação vinculada.
+            $ipi = $i->ipi;
+            $valorIpi = 0; $aliquotaIpi = 0;
+
+            if ($ipi && $ipi->codigo === '50' && $ipi->aliquota) {
+                $aliquotaIpi = (float) $ipi->aliquota;
+                $valorIpi = $subtotalBruto * $aliquotaIpi / 100;
+            }
+
+            return [
+                'produto_id'          => $i->produto_id,
+                'codigo'              => $i->produto->codigo_interno,
+                'codigo_barras'       => $i->produto->codigo_barras,
+                'descricao'           => $i->descricao ?? $i->produto->nome,
+                'quantidade'          => (float) $i->quantidade,
+                'valor_unitario'      => (float) $i->valor_unitario,
+                'valor_total'         => (float) $i->valor_total,
+                'valor_desconto'      => (float) $i->valor_desconto,
+                'desconto_percentual' => $subtotalBruto > 0 ? round(((float) $i->valor_desconto / $subtotalBruto) * 100, 2) : 0,
+                'bc_icms'             => $bcIcms,
+                'valor_icms'          => $valorIcms,
+                'aliquota_icms'       => $aliquotaIcms,
+                'valor_ipi'           => $valorIpi,
+                'aliquota_ipi'        => $aliquotaIpi,
+            ];
+        })->values()
         : collect();
+
     $labelsFinalidade = [1 => 'Normal', 2 => 'Complementar', 3 => 'Ajuste', 4 => 'Devolução'];
     $naturezaAtual = old('natureza_operacao', $ehEdicao ? $notaFiscal->natureza_operacao : null);
     $finalidadeAtual = old('finalidade', $ehEdicao ? $notaFiscal->finalidade : null);
@@ -114,54 +147,121 @@
                autocomplete="off" disabled
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed">
 
-        <div id="editor-item" class="hidden grid grid-cols-5 gap-3 items-end mb-4 bg-gray-50 rounded-lg p-3">
-            <div class="col-span-5 text-sm font-medium" id="editor-produto-nome"></div>
-            <div>
-                <label class="block text-xs text-gray-500 mb-1">Quantidade</label>
-                <input type="number" step="0.001" id="editor-quantidade" value="1"
-                       class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+        <div id="editor-item" class="hidden flex flex-col gap-3 mb-4 bg-gray-50 rounded-lg p-4">
+            <div class="text-sm font-semibold text-gray-800" id="editor-produto-nome"></div>
+
+            <div class="grid grid-cols-4 gap-3">
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Código</label>
+                    <input type="text" id="editor-codigo" readonly
+                        class="w-full border border-gray-200 bg-gray-100 rounded-lg px-2 py-1.5 text-sm text-gray-600">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Cód. Barras</label>
+                    <input type="text" id="editor-codigo-barras" readonly
+                        class="w-full border border-gray-200 bg-gray-100 rounded-lg px-2 py-1.5 text-sm text-gray-600">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-xs text-gray-500 mb-1">Descrição</label>
+                    <input type="text" id="editor-descricao"
+                        class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+                </div>
             </div>
-            <div>
-                <label class="block text-xs text-gray-500 mb-1">Valor unitário</label>
-                <input type="number" step="0.0001" id="editor-valor-unitario"
-                       class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+
+            <div class="grid grid-cols-4 gap-3">
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Qtd</label>
+                    <input type="number" step="0.001" id="editor-quantidade" value="1"
+                        class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Vl Unit</label>
+                    <input type="number" step="0.0001" id="editor-valor-unitario"
+                        class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Vl Total</label>
+                    <input type="text" id="editor-valor-total" readonly
+                        class="w-full border border-gray-200 bg-gray-100 rounded-lg px-2 py-1.5 text-sm text-gray-600">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Desconto (R$)</label>
+                    <input type="number" step="0.01" id="editor-desconto" value="0"
+                        class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+                </div>
             </div>
-            <div>
-                <label class="block text-xs text-gray-500 mb-1">Desconto</label>
-                <input type="number" step="0.01" id="editor-desconto" value="0"
-                       class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+
+            <div class="grid grid-cols-6 gap-3">
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Desconto %</label>
+                    <input type="number" step="0.01" id="editor-desconto-percentual" value="0"
+                        class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">BC ICMS</label>
+                    <input type="text" id="editor-bc-icms" readonly
+                        class="w-full border border-gray-200 bg-gray-100 rounded-lg px-2 py-1.5 text-sm text-gray-600">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Vlr. ICMS</label>
+                    <input type="text" id="editor-valor-icms" readonly
+                        class="w-full border border-gray-200 bg-gray-100 rounded-lg px-2 py-1.5 text-sm text-gray-600">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">% ICMS</label>
+                    <input type="text" id="editor-aliquota-icms" readonly
+                        class="w-full border border-gray-200 bg-gray-100 rounded-lg px-2 py-1.5 text-sm text-gray-600">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Vlr. IPI</label>
+                    <input type="text" id="editor-valor-ipi" readonly
+                        class="w-full border border-gray-200 bg-gray-100 rounded-lg px-2 py-1.5 text-sm text-gray-600">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">% IPI</label>
+                    <input type="text" id="editor-aliquota-ipi" readonly
+                        class="w-full border border-gray-200 bg-gray-100 rounded-lg px-2 py-1.5 text-sm text-gray-600">
+                </div>
             </div>
+
             <button type="button" onclick="adicionarLinhaNaGrid()"
-                    class="bg-gray-800 text-white rounded-lg px-3 py-1.5 text-sm h-fit hover:bg-gray-700">
+                    class="bg-gray-800 text-white rounded-lg px-3 py-1.5 text-sm h-fit hover:bg-gray-700 w-fit">
                 Adicionar à nota
             </button>
         </div>
 
         @error('itens') <p class="text-red-600 text-sm mb-3">{{ $message }}</p> @enderror
 
-        <table class="w-full text-sm">
-            <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
-                <tr>
-                    <th class="text-left px-3 py-2">Produto</th>
-                    
-                    <th class="text-right px-3 py-2">Qtd</th>
-                    <th class="text-right px-3 py-2">Unit.</th>
-                    <th class="text-right px-3 py-2">Desconto</th>
-                    <th class="text-right px-3 py-2">Total</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody id="linhas-grid-itens" class="divide-y divide-gray-100"></tbody>
-            <tfoot class="bg-gray-50 font-medium">
-                <tr>
-                    <td colspan="5" class="px-3 py-2 text-right">Total da nota</td>
-                    <td class="px-3 py-2 text-right" id="total-grid-itens">R$ 0,00</td>
-                    <td></td>
-                </tr>
-            </tfoot>
-        </table>
-        <p id="grid-vazia" class="text-center text-gray-400 py-8">Nenhum item adicionado ainda.</p>
-    </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                    <tr>
+                        <th class="text-left px-3 py-2">Código</th>
+                        <th class="text-left px-3 py-2">Cód. Barras</th>
+                        <th class="text-left px-3 py-2">Descrição</th>
+                        <th class="text-right px-3 py-2">Qtd</th>
+                        <th class="text-right px-3 py-2">Vl Unit</th>
+                        <th class="text-right px-3 py-2">Vl Total</th>
+                        <th class="text-right px-3 py-2">Desconto</th>
+                        <th class="text-right px-3 py-2">Desconto %</th>
+                        <th class="text-right px-3 py-2">BC ICMS</th>
+                        <th class="text-right px-3 py-2">Vlr. ICMS</th>
+                        <th class="text-right px-3 py-2">% ICMS</th>
+                        <th class="text-right px-3 py-2">Vlr. IPI</th>
+                        <th class="text-right px-3 py-2">% IPI</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="linhas-grid-itens" class="divide-y divide-gray-100"></tbody>
+                <tfoot class="bg-gray-50 font-medium">
+                    <tr>
+                        <td colspan="13" class="px-3 py-2 text-right">Total da nota</td>
+                        <td class="px-3 py-2 text-right" id="total-grid-itens">R$ 0,00</td>
+                    </tr>
+                </tfoot>
+            </table>
+            <p id="grid-vazia" class="text-center text-gray-400 py-8">Nenhum item adicionado ainda.</p>
+        </div>
 
     <div>
         <button type="submit"
@@ -301,6 +401,7 @@
 </div>
 
 <script>
+window.crtEmpresa = {{ (int) $crtEmpresa }};
 let itensNota = @json($itensIniciais);
 let resultadosAtuaisNf = [];
 let indiceSelecionadoNf = -1;
@@ -685,30 +786,124 @@ function selecionarResultadoNf(index) {
 function abrirEditorItem(produto) {
     produtoSelecionadoParaEditor = produto;
     document.getElementById('editor-produto-nome').innerText = produto.nome;
+    document.getElementById('editor-codigo').value = produto.codigo_interno ?? '';
+    document.getElementById('editor-codigo-barras').value = produto.codigo_barras ?? '';
+    document.getElementById('editor-descricao').value = produto.nome;
     document.getElementById('editor-quantidade').value = 1;
     document.getElementById('editor-valor-unitario').value = produto.preco_venda;
     document.getElementById('editor-desconto').value = 0;
-    document.getElementById('editor-cfop').value = '';
+    document.getElementById('editor-desconto-percentual').value = 0;
     document.getElementById('editor-item').classList.remove('hidden');
-    document.getElementById('editor-cfop').focus();
+    atualizarCalculosEditor('valor');
+    document.getElementById('editor-quantidade').focus();
 }
+
+/**
+ * Recalcula Vl Total, BC ICMS, Vlr. ICMS e % ICMS em tempo real, além de manter
+ * Desconto (R$) e Desconto % sincronizados entre si. origem indica qual dos dois
+ * campos de desconto foi editado por último, pra saber qual recalcular a partir do outro.
+ */
+function atualizarCalculosEditor(origemDesconto) {
+    const quantidade = parseFloat(document.getElementById('editor-quantidade').value) || 0;
+    const valorUnitario = parseFloat(document.getElementById('editor-valor-unitario').value) || 0;
+    const subtotalBruto = quantidade * valorUnitario;
+
+    let desconto = parseFloat(document.getElementById('editor-desconto').value) || 0;
+    let descontoPercentual = parseFloat(document.getElementById('editor-desconto-percentual').value) || 0;
+
+    if (origemDesconto === 'percentual') {
+        desconto = subtotalBruto > 0 ? Math.round((subtotalBruto * descontoPercentual / 100) * 100) / 100 : 0;
+        document.getElementById('editor-desconto').value = desconto.toFixed(2);
+    } else {
+        descontoPercentual = subtotalBruto > 0 ? Math.round((desconto / subtotalBruto) * 10000) / 100 : 0;
+        document.getElementById('editor-desconto-percentual').value = descontoPercentual.toFixed(2);
+    }
+
+    const valorTotal = Math.max(subtotalBruto - desconto, 0);
+    document.getElementById('editor-valor-total').value = 'R$ ' + valorTotal.toFixed(2);
+
+    // ICMS — mesma regra usada no NotaFiscalService::montarItens() na emissão real
+    const trib = produtoSelecionadoParaEditor?.tributacao;
+    const cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
+    let bcIcms = 0, valorIcms = 0, aliquotaIcms = 0;
+
+    if (window.crtEmpresa > 2 && trib && cstsComBaseCalculo.includes(trib.cst_icms)) {
+        bcIcms = subtotalBruto;
+        aliquotaIcms = parseFloat(trib.aliquota_icms) || 0;
+        valorIcms = bcIcms * aliquotaIcms / 100;
+    }
+
+    // IPI — só CST 50 (Saída Tributada) gera valor
+    const ipi = produtoSelecionadoParaEditor?.ipi;
+    let valorIpi = 0, aliquotaIpi = 0;
+
+    if (ipi && ipi.codigo === '50' && ipi.aliquota) {
+        aliquotaIpi = parseFloat(ipi.aliquota) || 0;
+        valorIpi = subtotalBruto * aliquotaIpi / 100;
+    }
+
+    document.getElementById('editor-valor-ipi').value = 'R$ ' + valorIpi.toFixed(2);
+    document.getElementById('editor-aliquota-ipi').value = aliquotaIpi.toFixed(2) + '%';
+
+    document.getElementById('editor-bc-icms').value = 'R$ ' + bcIcms.toFixed(2);
+    document.getElementById('editor-valor-icms').value = 'R$ ' + valorIcms.toFixed(2);
+    document.getElementById('editor-aliquota-icms').value = aliquotaIcms.toFixed(2) + '%';
+}
+
+document.getElementById('editor-quantidade').addEventListener('input', () => atualizarCalculosEditor('valor'));
+document.getElementById('editor-valor-unitario').addEventListener('input', () => atualizarCalculosEditor('valor'));
+document.getElementById('editor-desconto').addEventListener('input', () => atualizarCalculosEditor('valor'));
+document.getElementById('editor-desconto-percentual').addEventListener('input', () => atualizarCalculosEditor('percentual'));
+
 
 function adicionarLinhaNaGrid() {
     const quantidade = parseFloat(document.getElementById('editor-quantidade').value) || 0;
     const valorUnitario = parseFloat(document.getElementById('editor-valor-unitario').value) || 0;
     const valorDesconto = parseFloat(document.getElementById('editor-desconto').value) || 0;
+    const descontoPercentual = parseFloat(document.getElementById('editor-desconto-percentual').value) || 0;
+    const descricao = document.getElementById('editor-descricao').value.trim();
 
-    if (quantidade <= 0 || valorUnitario < 0) {
-        alert('Preencha quantidade e valor unitário corretamente.');
+    if (quantidade <= 0 || valorUnitario < 0 || descricao.length < 1) {
+        alert('Preencha quantidade, valor unitário e descrição corretamente.');
         return;
+    }
+
+    const subtotalBruto = quantidade * valorUnitario;
+    const valorTotal = Math.max(subtotalBruto - valorDesconto, 0);
+
+    const trib = produtoSelecionadoParaEditor?.tributacao;
+    const cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
+    let bcIcms = 0, valorIcms = 0, aliquotaIcms = 0;
+
+    if (window.crtEmpresa > 2 && trib && cstsComBaseCalculo.includes(trib.cst_icms)) {
+        bcIcms = subtotalBruto;
+        aliquotaIcms = parseFloat(trib.aliquota_icms) || 0;
+        valorIcms = bcIcms * aliquotaIcms / 100;
+    }
+
+    const ipi = produtoSelecionadoParaEditor?.ipi;
+    let valorIpi = 0, aliquotaIpi = 0;
+
+    if (ipi && ipi.codigo === '50' && ipi.aliquota) {
+        aliquotaIpi = parseFloat(ipi.aliquota) || 0;
+        valorIpi = subtotalBruto * aliquotaIpi / 100;
     }
 
     itensNota.push({
         produto_id: produtoSelecionadoParaEditor.id,
-        nome: produtoSelecionadoParaEditor.nome,
+        codigo: produtoSelecionadoParaEditor.codigo_interno,
+        codigo_barras: produtoSelecionadoParaEditor.codigo_barras,
+        descricao,
         quantidade,
         valor_unitario: valorUnitario,
+        valor_total: valorTotal,
         valor_desconto: valorDesconto,
+        desconto_percentual: descontoPercentual,
+        bc_icms: bcIcms,
+        valor_icms: valorIcms,
+        aliquota_icms: aliquotaIcms,
+        valor_ipi: valorIpi,
+        aliquota_ipi: aliquotaIpi,
     });
 
     document.getElementById('editor-item').classList.add('hidden');
@@ -737,16 +932,22 @@ function renderizarGridItens() {
     let totalNota = 0;
 
     tbody.innerHTML = itensNota.map((item, index) => {
-        const total = (item.quantidade * item.valor_unitario) - item.valor_desconto;
-        totalNota += total;
+        totalNota += item.valor_total;
         return `
             <tr>
-                <td class="px-3 py-2">${item.nome}</td>
-                
+                <td class="px-3 py-2">${item.codigo ?? '—'}</td>
+                <td class="px-3 py-2">${item.codigo_barras ?? '—'}</td>
+                <td class="px-3 py-2">${item.descricao}</td>
                 <td class="px-3 py-2 text-right">${item.quantidade}</td>
                 <td class="px-3 py-2 text-right">R$ ${item.valor_unitario.toFixed(2)}</td>
+                <td class="px-3 py-2 text-right font-medium">R$ ${item.valor_total.toFixed(2)}</td>
                 <td class="px-3 py-2 text-right">R$ ${item.valor_desconto.toFixed(2)}</td>
-                <td class="px-3 py-2 text-right font-medium">R$ ${total.toFixed(2)}</td>
+                <td class="px-3 py-2 text-right">${item.desconto_percentual.toFixed(2)}%</td>
+                <td class="px-3 py-2 text-right">R$ ${item.bc_icms.toFixed(2)}</td>
+                <td class="px-3 py-2 text-right">R$ ${item.valor_icms.toFixed(2)}</td>
+                <td class="px-3 py-2 text-right">${item.aliquota_icms.toFixed(2)}%</td>
+                <td class="px-3 py-2 text-right">R$ ${item.valor_ipi.toFixed(2)}</td>
+                <td class="px-3 py-2 text-right">${item.aliquota_ipi.toFixed(2)}%</td>
                 <td class="px-3 py-2 text-right">
                     <button type="button" onclick="removerLinhaDaGrid(${index})" class="text-red-600 text-xs hover:underline">remover</button>
                 </td>
