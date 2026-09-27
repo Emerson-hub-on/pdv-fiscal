@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "3bc72728753f14a0874d392c251b5a08",
+    "content-hash": "dd78b5790b2e89139b09dea5f99d91e2",
     "packages": [
         {
             "name": "barryvdh/laravel-dompdf",
@@ -3078,16 +3078,16 @@
         },
         {
             "name": "nfephp-org/sped-nfe",
-            "version": "v5.2.8",
+            "version": "dev-master",
             "source": {
                 "type": "git",
                 "url": "https://github.com/nfephp-org/sped-nfe.git",
-                "reference": "759fb2365e3c20141e9e445592893a01afa638a5"
+                "reference": "908d518453c9c19c10a6f8f5b9746d9dcaaa726e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/nfephp-org/sped-nfe/zipball/759fb2365e3c20141e9e445592893a01afa638a5",
-                "reference": "759fb2365e3c20141e9e445592893a01afa638a5",
+                "url": "https://api.github.com/repos/nfephp-org/sped-nfe/zipball/908d518453c9c19c10a6f8f5b9746d9dcaaa726e",
+                "reference": "908d518453c9c19c10a6f8f5b9746d9dcaaa726e",
                 "shasum": ""
             },
             "require": {
@@ -3098,7 +3098,7 @@
                 "ext-simplexml": "*",
                 "ext-soap": "*",
                 "ext-zlib": "*",
-                "justinrainbow/json-schema": "^5.2",
+                "justinrainbow/json-schema": "^5.2 || ^6.5",
                 "nfephp-org/sped-common": "^5.1.0",
                 "nfephp-org/sped-gtin": "^1.1.0",
                 "php": ">= 7.4"
@@ -3109,6 +3109,7 @@
                 "phpunit/phpunit": "^9.3",
                 "squizlabs/php_codesniffer": "^3.6"
             },
+            "default-branch": true,
             "type": "library",
             "extra": {
                 "branch-alias": {
@@ -3154,9 +3155,9 @@
             ],
             "support": {
                 "issues": "https://github.com/nfephp-org/sped-nfe/issues",
-                "source": "https://github.com/nfephp-org/sped-nfe/tree/v5.2.8"
+                "source": "https://github.com/nfephp-org/sped-nfe/tree/master"
             },
-            "time": "2026-07-27T19:27:25+00:00"
+            "time": "2026-09-11T19:49:20+00:00"
         },
         {
             "name": "nikic/php-parser",
@@ -9429,8 +9430,10 @@
         }
     ],
     "aliases": [],
-    "minimum-stability": "stable",
-    "stability-flags": {},
+    "minimum-stability": "dev",
+    "stability-flags": {
+        "nfephp-org/sped-nfe": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {

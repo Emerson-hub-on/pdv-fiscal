@@ -74,7 +74,7 @@
 
     <div class="bg-white rounded-lg shadow overflow-hidden">
         <table class="w-full text-sm">
-            <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+            <thead class="bg-gray-700 text-amber-50 text-xs uppercase">
                 <tr>
                     <th class="text-left px-4 py-2">Produto</th>
                     
@@ -96,7 +96,7 @@
                     </tr>
                 @endforeach
             </tbody>
-            <tfoot class="bg-gray-50 font-medium">
+            <tfoot class="bg-gray-700 text-amber-50 font-medium">
                 <tr>
                     <td colspan="5" class="px-4 py-2 text-right">Total</td>
                     <td class="px-4 py-2 text-right">R$ {{ number_format($notaFiscal->valor_total, 2, ',', '.') }}</td>

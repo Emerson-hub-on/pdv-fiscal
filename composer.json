@@ -11,7 +11,7 @@
         "doctrine/dbal": "^4.4",
         "laravel/framework": "^13.8",
         "laravel/tinker": "^3.0",
-        "nfephp-org/sped-nfe": "^5.2"
+        "nfephp-org/sped-nfe": "dev-master"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -84,6 +84,6 @@
             "php-http/discovery": true
         }
     },
-    "minimum-stability": "stable",
+    "minimum-stability": "dev",
     "prefer-stable": true
 }
