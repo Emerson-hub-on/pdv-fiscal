@@ -294,7 +294,7 @@ class NotaFiscalController extends Controller
 
     public function show(NotaFiscal $notaFiscal)
     {
-        $notaFiscal->load(['itens.produto', 'cliente']);
+        $notaFiscal->load(['itens.produto', 'itens.tributacao', 'itens.ipi', 'cliente']);
 
         return view('notasfiscais.show', compact('notaFiscal'));
     }

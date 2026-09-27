@@ -6,6 +6,7 @@
 
 @include('notasfiscais._recalculo_flash')
 
+
 <div class="flex flex-col gap-6 max-w-4xl">
 
     <div class="bg-white rounded-lg shadow p-6 flex justify-between items-start">
@@ -72,37 +73,102 @@
         <div class="bg-red-100 text-red-800 border border-red-300 rounded px-4 py-3">{{ $message }}</div>
     @enderror
 
+    @php
+        // Mesma lógica de cálculo usada no _form (itensIniciais) e no
+        // previsualizar — aqui aplicada em cima dos dados já persistidos
+        // no item (snapshot de tributação/IPI no momento da nota).
+        $cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
+
+        $linhasItens = $notaFiscal->itens->map(function ($item) use ($cstsComBaseCalculo) {
+            $subtotalBruto = (float) $item->valor_unitario * (float) $item->quantidade;
+
+            $trib = $item->tributacao;
+            $bcIcms = 0; $valorIcms = 0; $aliquotaIcms = 0;
+
+            if ($trib && in_array($trib->cst_icms, $cstsComBaseCalculo, true)) {
+                $bcIcms = $subtotalBruto;
+                $aliquotaIcms = (float) $trib->aliquota_icms;
+                $valorIcms = $bcIcms * $aliquotaIcms / 100;
+            }
+
+            // IPI — só CST 50 (Saída Tributada) tem valor de fato.
+            $ipi = $item->ipi;
+            $valorIpi = 0; $aliquotaIpi = 0;
+
+            if ($ipi && $ipi->codigo === '50' && $ipi->aliquota) {
+                $aliquotaIpi = (float) $ipi->aliquota;
+                $valorIpi = $subtotalBruto * $aliquotaIpi / 100;
+            }
+
+            $descontoPercentual = $subtotalBruto > 0
+                ? round(((float) $item->valor_desconto / $subtotalBruto) * 100, 2)
+                : 0;
+
+            return [
+                'codigo'              => $item->produto->codigo_interno,
+                'codigo_barras'       => $item->produto->codigo_barras,
+                'descricao'           => $item->descricao ?? $item->produto->nome,
+                'quantidade'          => $item->quantidade_formatada,
+                'valor_unitario'      => $item->valor_unitario,
+                'valor_total'         => $item->valor_total,
+                'valor_desconto'      => $item->valor_desconto,
+                'desconto_percentual' => $descontoPercentual,
+                'bc_icms'             => $bcIcms,
+                'valor_icms'          => $valorIcms,
+                'aliquota_icms'       => $aliquotaIcms,
+                'valor_ipi'           => $valorIpi,
+                'aliquota_ipi'        => $aliquotaIpi,
+            ];
+        });
+    @endphp
+
     <div class="bg-white rounded-lg shadow overflow-hidden">
-        <table class="w-full text-sm">
-            <thead class="bg-gray-700 text-amber-50 text-xs uppercase">
-                <tr>
-                    <th class="text-left px-4 py-2">Produto</th>
-                    
-                    <th class="text-right px-4 py-2">Qtd</th>
-                    <th class="text-right px-4 py-2">Unit.</th>
-                    <th class="text-right px-4 py-2">Desconto</th>
-                    <th class="text-right px-4 py-2">Total</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-                @foreach ($notaFiscal->itens as $item)
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-700 text-amber-50 text-xs uppercase">
                     <tr>
-                        <td class="px-4 py-2">{{ $item->produto->nome }}</td>
-                        
-                        <td class="px-4 py-2 text-right">{{ $item->quantidade }}</td>
-                        <td class="px-4 py-2 text-right">R$ {{ number_format($item->valor_unitario, 2, ',', '.') }}</td>
-                        <td class="px-4 py-2 text-right">R$ {{ number_format($item->valor_desconto, 2, ',', '.') }}</td>
-                        <td class="px-4 py-2 text-right">R$ {{ number_format($item->valor_total, 2, ',', '.') }}</td>
+                        <th class="text-left px-3 py-2">Código</th>
+                        <th class="text-left px-3 py-2">Cód. Barras</th>
+                        <th class="text-left px-3 py-2">Descrição</th>
+                        <th class="text-right px-3 py-2">Qtd</th>
+                        <th class="text-right px-3 py-2">Vl Unit</th>
+                        <th class="text-right px-3 py-2">Vl Total</th>
+                        <th class="text-right px-3 py-2">Desconto</th>
+                        <th class="text-right px-3 py-2">Desconto %</th>
+                        <th class="text-right px-3 py-2">BC ICMS</th>
+                        <th class="text-right px-3 py-2">Vlr. ICMS</th>
+                        <th class="text-right px-3 py-2">% ICMS</th>
+                        <th class="text-right px-3 py-2">Vlr. IPI</th>
+                        <th class="text-right px-3 py-2">% IPI</th>
                     </tr>
-                @endforeach
-            </tbody>
-            <tfoot class="bg-gray-700 text-amber-50 font-medium">
-                <tr>
-                    <td colspan="5" class="px-4 py-2 text-right">Total</td>
-                    <td class="px-4 py-2 text-right">R$ {{ number_format($notaFiscal->valor_total, 2, ',', '.') }}</td>
-                </tr>
-            </tfoot>
-        </table>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @foreach ($linhasItens as $linha)
+                        <tr>
+                            <td class="px-3 py-2">{{ $linha['codigo'] ?? '—' }}</td>
+                            <td class="px-3 py-2">{{ $linha['codigo_barras'] ?? '—' }}</td>
+                            <td class="px-3 py-2">{{ $linha['descricao'] }}</td>
+                            <td class="px-3 py-2 text-right">{{ $linha['quantidade'] }}</td>
+                            <td class="px-3 py-2 text-right">R$ {{ number_format($linha['valor_unitario'], 2, ',', '.') }}</td>
+                            <td class="px-3 py-2 text-right font-medium">R$ {{ number_format($linha['valor_total'], 2, ',', '.') }}</td>
+                            <td class="px-3 py-2 text-right">R$ {{ number_format($linha['valor_desconto'], 2, ',', '.') }}</td>
+                            <td class="px-3 py-2 text-right">{{ number_format($linha['desconto_percentual'], 2, ',', '.') }}%</td>
+                            <td class="px-3 py-2 text-right">R$ {{ number_format($linha['bc_icms'], 2, ',', '.') }}</td>
+                            <td class="px-3 py-2 text-right">R$ {{ number_format($linha['valor_icms'], 2, ',', '.') }}</td>
+                            <td class="px-3 py-2 text-right">{{ number_format($linha['aliquota_icms'], 2, ',', '.') }}%</td>
+                            <td class="px-3 py-2 text-right">R$ {{ number_format($linha['valor_ipi'], 2, ',', '.') }}</td>
+                            <td class="px-3 py-2 text-right">{{ number_format($linha['aliquota_ipi'], 2, ',', '.') }}%</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+                <tfoot class="bg-gray-700 text-amber-50 font-medium">
+                    <tr>
+                        <td colspan="12" class="px-3 py-2 text-right">Total</td>
+                        <td class="px-3 py-2 text-right">R$ {{ number_format($notaFiscal->valor_total, 2, ',', '.') }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
     </div>
 </div>
 @endsection

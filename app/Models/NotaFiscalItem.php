@@ -61,4 +61,9 @@ class NotaFiscalItem extends Model
     {
         return $this->belongsTo(ClassificacaoIpi::class, 'ipi_id');
     }
+
+    public function getQuantidadeFormatadaAttribute(): string
+    {
+        return rtrim(rtrim(number_format($this->quantidade, 3, ',', '.'), '0'), ',');
+    }
 }
