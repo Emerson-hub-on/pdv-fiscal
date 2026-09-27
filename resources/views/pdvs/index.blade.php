@@ -9,13 +9,13 @@
     </div>
 
     <table class="w-full bg-white rounded shadow overflow-hidden">
-        <thead class="bg-gray-800 text-white text-left">
-            <tr>
-                <th class="p-3">Nome</th>
-                <th class="p-3">Série</th>
-                <th class="p-3">Número atual</th>
-                <th class="p-3">Status</th>
-                <th class="p-3">Ações</th>
+        <thead class="bg-gray-700 text-amber-50 text-left h-10 rounded-lg font-medium text-xs uppercase tracking-wide">
+            <tr>  
+                <th class="px-2 py-3 text-left font-medium text-amber-50">Nome</th>
+                <th class="px-2 py-3 text-left font-medium text-amber-50">Série</th>
+                <th class="px-2 py-3 text-left font-medium text-amber-50">Número atual</th>
+                <th class="px-2 py-3 text-left font-medium text-amber-50">Status</th>
+                <th class="px-2 py-3 text-left font-medium text-amber-50">Ações</th>
             </tr>
         </thead>
         <tbody>

@@ -72,13 +72,13 @@
                 Inutilizar
             </button>
             <a href="{{ route('notasfiscais.create') }}"
-            class="bg-gray-800 text-white rounded-lg px-4 py-2 text-sm hover:bg-gray-700">Nova nota</a>
+            class="bg-gray-700 text-amber-50 rounded-lg px-4 py-2 text-sm hover:bg-gray-500">+Nova nota</a>
         </div>
     </form>
 
     @if ($statusFiltro === 'inutilizada')
             <table class="w-full text-sm">
-                <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                <thead class="bg-gray-700 text-amber-50 text-xs uppercase">
                     <tr>
                         <th class="text-left px-4 py-2">Número</th>
                         <th class="text-left px-4 py-2">Motivo</th>
@@ -109,7 +109,7 @@
             <div class="p-4">{{ $inutilizacoes->links() }}</div>
         @else
             <table class="w-full text-sm">
-        <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+        <thead class="bg-gray-700 text-amber-50 text-xs uppercase">
             <tr>
                 <th class="text-left px-4 py-2">Número</th>
                 <th class="text-left px-4 py-2">Série</th>
