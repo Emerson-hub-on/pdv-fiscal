@@ -183,9 +183,7 @@ class NotaFiscalController extends Controller
         $notasReferenciadas = json_decode($dados['notas_referenciadas_json'] ?? '[]', true) ?: [];
         $notasReferenciadas = array_values(array_filter($notasReferenciadas, fn ($c) => preg_match('/^\d{44}$/', $c)));
 
-        // Devolução (4) e Complementar (2) exigem referência à nota original —
-        // sem isso, a SEFAZ rejeita ou o crédito fiscal fica sem vínculo comprovado.
-        if (in_array((int) $dados['finalidade'], [2, 4], true) && count($notasReferenciadas) === 0) {
+        if ((int) $dados['finalidade'] === 2 && count($notasReferenciadas) === 0) {
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'notas_referenciadas' => 'Esta finalidade exige ao menos uma nota fiscal referenciada.',
             ]);
@@ -212,10 +210,14 @@ class NotaFiscalController extends Controller
             $valorDesconto = (float) ($itemDados['valor_desconto'] ?? 0);
             $valorTotal    = ($quantidade * $valorUnitario) - $valorDesconto;
             $descricao     = trim($itemDados['descricao'] ?? '') ?: null;
+            $refChave      = trim($itemDados['ref_chave_acesso'] ?? '') ?: null;
+            $refNitem      = $itemDados['ref_nitem'] ?? null;
 
             $notaFiscal->itens()->create([
                 'produto_id'            => $produto->id,
                 'descricao'             => $descricao,
+                'ref_chave_acesso'      => $refChave,
+                'ref_nitem'             => $refNitem ?: null,
                 'ncm_id'                => $produto->ncm_id,
                 'cest_id'               => $produto->cest_id,
                 'class_trib_ibs_cbs_id' => $produto->class_trib_ibs_cbs_id,

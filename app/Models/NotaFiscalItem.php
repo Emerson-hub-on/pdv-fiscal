@@ -13,6 +13,7 @@ class NotaFiscalItem extends Model
         'nota_fiscal_id', 'produto_id', 'descricao', 'ncm_id', 'cest_id',
         'class_trib_ibs_cbs_id', 'tributacao_id', 'pis_cofins_id', 'ipi_id',
         'quantidade', 'valor_unitario', 'valor_desconto', 'valor_total',
+        'ref_chave_acesso', 'ref_nitem',
     ];
 
     protected $casts = [

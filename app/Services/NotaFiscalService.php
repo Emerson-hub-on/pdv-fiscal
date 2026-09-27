@@ -358,6 +358,19 @@ class NotaFiscalService
 
             $prod->indTot = 1;
             $nfe->tagprod($prod);
+            // Referenciamento por item — obrigatório em devolução desde a mudança de
+            // regra de 01/09/2026 (rejeição 321). chaveAcesso é obrigatória; nItem é
+            // opcional, mas recomendado quando você sabe qual item da nota original
+            // corresponde a este.
+            if ($item->ref_chave_acesso) {
+                $dfeStd = new \stdClass();
+                $dfeStd->item = $n;
+                $dfeStd->chaveAcesso = $item->ref_chave_acesso;
+                if ($item->ref_nitem) {
+                    $dfeStd->nItem = $item->ref_nitem;
+                }
+                $nfe->tagDFeReferenciado($dfeStd);
+            }
 
             $imposto = new \stdClass();
             $imposto->item = $n;
@@ -685,6 +698,13 @@ class NotaFiscalService
      */
     protected function montarNFref(Make $nfe, NotaFiscal $notaFiscal): void
     {
+        // Devolução (finalidade 4) passou a exigir referência por ITEM
+        // (DFeReferenciado, desde a mudança de regra de 01/09/2026) — não usa
+        // mais NFref de cabeçalho, e ter os dois juntos gera rejeição 1010.
+        if ((int) $notaFiscal->finalidade === 4) {
+            return;
+        }
+
         foreach (($notaFiscal->notas_referenciadas ?? []) as $chave) {
             $std = new \stdClass();
             $std->refNFe = $chave;

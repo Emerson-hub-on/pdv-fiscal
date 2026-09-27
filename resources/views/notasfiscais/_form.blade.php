@@ -39,6 +39,8 @@
                 'aliquota_icms'       => $aliquotaIcms,
                 'valor_ipi'           => $valorIpi,
                 'aliquota_ipi'        => $aliquotaIpi,
+                'ref_chave_acesso'    => $i->ref_chave_acesso,
+                'ref_nitem'           => $i->ref_nitem,
             ];
         })->values()
         : collect();
@@ -193,6 +195,19 @@
                     <label class="block text-xs text-gray-500 mb-1">Desconto (R$)</label>
                     <input type="number" step="0.01" id="editor-desconto" value="0"
                         class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+                </div>
+
+                <div id="editor-referencia-devolucao" class="hidden grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Chave da NF-e original (devolução)</label>
+                        <input type="text" id="editor-ref-chave" maxlength="44"
+                            class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Nº do item na nota original (opcional)</label>
+                        <input type="number" id="editor-ref-nitem" min="1"
+                            class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+                    </div>
                 </div>
             </div>
 
@@ -848,6 +863,9 @@ function abrirEditorItem(produto) {
     document.getElementById('editor-item').classList.remove('hidden');
     atualizarCalculosEditor('valor');
     document.getElementById('editor-quantidade').focus();
+    document.getElementById('editor-referencia-devolucao').classList.toggle('hidden', campoFinalidade.value !== '4');
+    document.getElementById('editor-ref-chave').value = '';
+    document.getElementById('editor-ref-nitem').value = '';
 }
 
 /**
@@ -914,6 +932,13 @@ function adicionarLinhaNaGrid() {
     const valorDesconto = parseFloat(document.getElementById('editor-desconto').value) || 0;
     const descontoPercentual = parseFloat(document.getElementById('editor-desconto-percentual').value) || 0;
     const descricao = document.getElementById('editor-descricao').value.trim();
+    const refChave = document.getElementById('editor-ref-chave').value.replace(/\D/g, '');
+    const refNitem = document.getElementById('editor-ref-nitem').value || null;
+
+    if (campoFinalidade.value === '4' && refChave.length !== 44) {
+        alert('Para devolução, informe a chave de acesso (44 dígitos) da nota original deste item.');
+        return;
+    }
 
     if (quantidade <= 0 || valorUnitario < 0 || descricao.length < 1) {
         alert('Preencha quantidade, valor unitário e descrição corretamente.');
@@ -956,6 +981,10 @@ function adicionarLinhaNaGrid() {
         aliquota_icms: aliquotaIcms,
         valor_ipi: valorIpi,
         aliquota_ipi: aliquotaIpi,
+        ref_chave_acesso: refChave || null,
+        ref_nitem: refNitem,
+
+
     });
 
     document.getElementById('editor-item').classList.add('hidden');
@@ -1003,6 +1032,7 @@ function renderizarGridItens() {
                 <td class="px-3 py-2 text-right">
                     <button type="button" onclick="removerLinhaDaGrid(${index})" class="text-red-600 text-xs hover:underline">remover</button>
                 </td>
+                <td class="px-3 py-2 text-xs font-mono">${item.ref_chave_acesso ? item.ref_chave_acesso.slice(-8) + (item.ref_nitem ? ' (item ' + item.ref_nitem + ')' : '') : '—'}</td>
             </tr>
         `;
     }).join('');
@@ -1025,8 +1055,7 @@ function abrirModalReferencia() {
     document.getElementById('modal-informacoes-complementares').value =
         document.getElementById('campo-informacoes-complementares').value;
 
-    const finalidadesComReferenciaObrigatoria = ['2', '4'];
-    const obrigatorio = finalidadesComReferenciaObrigatoria.includes(String(campoFinalidade.value));
+    const obrigatorio = String(campoFinalidade.value) === '2';
     document.getElementById('aviso-referencia-obrigatoria').classList.toggle('hidden', !obrigatorio);
 
     document.getElementById('modal-referencia-nota').classList.remove('hidden');
@@ -1081,12 +1110,17 @@ function renderizarChavesReferenciadas() {
 }
 
 function confirmarESalvarNota() {
-    const finalidadesComReferenciaObrigatoria = ['2', '4'];
-    const obrigatorio = finalidadesComReferenciaObrigatoria.includes(String(campoFinalidade.value));
-
-    if (obrigatorio && chavesReferenciadas.length === 0) {
+    if (String(campoFinalidade.value) === '2' && chavesReferenciadas.length === 0) {
         alert('Esta finalidade exige ao menos uma nota fiscal referenciada.');
         return;
+    }
+
+    if (String(campoFinalidade.value) === '4') {
+        const itemSemReferencia = itensNota.find(i => !i.ref_chave_acesso);
+        if (itemSemReferencia) {
+            alert(`O item "${itemSemReferencia.descricao}" está sem a chave da nota original — obrigatório em devolução.`);
+            return;
+        }
     }
 
     document.getElementById('campo-notas-referenciadas').value = JSON.stringify(chavesReferenciadas);
