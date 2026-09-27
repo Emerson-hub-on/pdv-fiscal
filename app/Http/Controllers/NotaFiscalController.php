@@ -94,15 +94,17 @@ class NotaFiscalController extends Controller
 
         $notaFiscal = DB::transaction(function () use ($dados) {
             $notaFiscal = NotaFiscal::create([
-                'cliente_id'         => $dados['cliente_id'],
-                'natureza_operacao'  => $dados['natureza_operacao'],
-                'finalidade'         => $dados['finalidade'],
-                'cfop_saida_id'      => $dados['cfop_saida_id'],
-                'forma_pagamento_id' => $dados['forma_pagamento_id'],
-                'operador_id'        => $dados['operador_id'],
-                'tipo_operacao'      => 'saida',
-                'origem_tipo'        => 'manual',
-                'status'             => 'rascunho',
+                'cliente_id'                 => $dados['cliente_id'],
+                'natureza_operacao'          => $dados['natureza_operacao'],
+                'finalidade'                 => $dados['finalidade'],
+                'cfop_saida_id'              => $dados['cfop_saida_id'],
+                'forma_pagamento_id'         => $dados['forma_pagamento_id'],
+                'operador_id'                => $dados['operador_id'],
+                'informacoes_complementares' => $dados['informacoes_complementares'] ?? null,
+                'notas_referenciadas'        => $dados['notas_referenciadas'],
+                'tipo_operacao'              => 'saida',
+                'origem_tipo'                => 'manual',
+                'status'                     => 'rascunho',
             ]);
 
             $this->substituirItens($notaFiscal, $dados['itens']);
@@ -140,6 +142,8 @@ class NotaFiscalController extends Controller
             $notaFiscal->cfop_saida_id = $dados['cfop_saida_id'];
             $notaFiscal->forma_pagamento_id = $dados['forma_pagamento_id'];
             $notaFiscal->operador_id = $dados['operador_id'];
+            $notaFiscal->informacoes_complementares = $dados['informacoes_complementares'] ?? null;
+            $notaFiscal->notas_referenciadas = $dados['notas_referenciadas'];
             $notaFiscal->save();
 
             // Substitui todos os itens — mais simples e seguro que tentar
@@ -157,13 +161,15 @@ class NotaFiscalController extends Controller
     private function validarCabecalhoEItens(Request $request): array
     {
         $dados = $request->validate([
-            'cliente_id'          => ['required', 'exists:clientes,id'],
-            'natureza_operacao'   => ['required', 'string', 'max:255'],
-            'finalidade'          => ['required', 'in:1,2,3,4'],
-            'cfop_saida_id'       => ['required', 'exists:cfop_saida,id'],
-            'forma_pagamento_id'  => ['required', 'exists:formas_pagamento,id'],
-            'operador_id'         => ['required', 'exists:users,id'],
-            'itens_json'          => ['required', 'string'],
+            'cliente_id'                 => ['required', 'exists:clientes,id'],
+            'natureza_operacao'          => ['required', 'string', 'max:255'],
+            'finalidade'                 => ['required', 'in:1,2,3,4'],
+            'cfop_saida_id'              => ['required', 'exists:cfop_saida,id'],
+            'forma_pagamento_id'         => ['required', 'exists:formas_pagamento,id'],
+            'operador_id'                => ['required', 'exists:users,id'],
+            'informacoes_complementares' => ['nullable', 'string', 'max:2000'],
+            'notas_referenciadas_json'   => ['nullable', 'string'],
+            'itens_json'                 => ['required', 'string'],
         ]);
 
         $itens = json_decode($dados['itens_json'], true);
@@ -174,8 +180,20 @@ class NotaFiscalController extends Controller
             ]);
         }
 
+        $notasReferenciadas = json_decode($dados['notas_referenciadas_json'] ?? '[]', true) ?: [];
+        $notasReferenciadas = array_values(array_filter($notasReferenciadas, fn ($c) => preg_match('/^\d{44}$/', $c)));
+
+        // Devolução (4) e Complementar (2) exigem referência à nota original —
+        // sem isso, a SEFAZ rejeita ou o crédito fiscal fica sem vínculo comprovado.
+        if (in_array((int) $dados['finalidade'], [2, 4], true) && count($notasReferenciadas) === 0) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'notas_referenciadas' => 'Esta finalidade exige ao menos uma nota fiscal referenciada.',
+            ]);
+        }
+
         $dados['itens'] = $itens;
-        unset($dados['itens_json']);
+        $dados['notas_referenciadas'] = $notasReferenciadas;
+        unset($dados['itens_json'], $dados['notas_referenciadas_json']);
 
         return $dados;
     }
@@ -566,6 +584,7 @@ class NotaFiscalController extends Controller
             ],
 
             'itens' => $itens,
+            'informacoes_complementares' => $notaFiscal->informacoes_complementares,
         ];
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('notasfiscais.pdf.previsualizacao', compact('dados'))

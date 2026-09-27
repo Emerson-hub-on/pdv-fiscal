@@ -210,7 +210,7 @@
     <table class="caixa">
         <tr><td colspan="2" class="titulo-secao">DADOS ADICIONAIS</td></tr>
         <tr>
-            <td width="70%" style="height:50px;"><span class="label">OBSERVAÇÕES</span></td>
+            <td width="70%"><span class="label">OBSERVAÇÕES</span><br>{{ $dados['informacoes_complementares'] ?? '—' }}</td>
             <td width="30%" style="border-left:1px solid #000;"><span class="label">RESERVADO AO FISCO</span></td>
         </tr>
     </table>

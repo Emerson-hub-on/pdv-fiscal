@@ -20,6 +20,7 @@ class NotaFiscalService
     protected float $totalICMS = 0.0;
     protected float $totalPIS = 0.0;
     protected float $totalCOFINS = 0.0;
+    protected float $totalIPI = 0.0;
     protected bool $houveIBSCBS = false;
 
     public function __construct()
@@ -62,7 +63,7 @@ class NotaFiscalService
 
     public function emitir(NotaFiscal $notaFiscal): array
     {
-        $notaFiscal->load('itens.produto', 'itens.ncm', 'itens.cest', 'itens.tributacao', 'itens.pisCofins', 'itens.classificacaoTributaria', 'cliente', 'cfopSaida');
+        $notaFiscal->load('itens.produto', 'itens.ncm', 'itens.cest', 'itens.tributacao', 'itens.pisCofins', 'itens.ipi', 'itens.classificacaoTributaria', 'cliente', 'cfopSaida');
 
         $idLote = str_pad($notaFiscal->numero, 15, '0', STR_PAD_LEFT);
 
@@ -75,12 +76,14 @@ class NotaFiscalService
 
             $this->montarInfNFe($nfe);
             $this->montarIde($nfe, $notaFiscal);
+            $this->montarNFref($nfe, $notaFiscal);
             $this->montarEmit($nfe);
             $this->montarDest($nfe, $notaFiscal);
             $this->montarItens($nfe, $notaFiscal);
             $this->montarTotais($nfe, $notaFiscal);
             $this->montarTransporte($nfe);
             $this->montarPagamento($nfe);
+            $this->montarInfAdicional($nfe, $notaFiscal);
             $this->montarResponsavelTecnico($nfe);
 
             $xmlBruto = $nfe->getXML();
@@ -115,6 +118,7 @@ class NotaFiscalService
         $protocolo = $this->extrairProtocolo($resposta);
 
         if (!$protocolo['autorizada']) {
+            \Illuminate\Support\Facades\Log::info('SEFAZ - resposta bruta rejeitada', ['resposta' => $resposta]);
             $this->salvarXmlEmDisco($xmlAssinado, $notaFiscal);
             throw new Exception('Rejeitada pela SEFAZ: ' . $protocolo['motivo']);
         }
@@ -316,6 +320,7 @@ class NotaFiscalService
         $this->totalCOFINS = 0.0;
         $this->totalICMSBC = 0.0;
         $this->totalICMS = 0.0;
+        $this->totalIPI = 0.0;
         $this->houveIBSCBS = false;
 
         $itensComDesconto = $this->ratearDescontoGlobal($notaFiscal);
@@ -366,8 +371,29 @@ class NotaFiscalService
                 $icms->item = $n;
                 $icms->orig = $produto->origem_mercadoria;
                 $icms->CSOSN = $trib?->csosn;
+
+                // CSOSN 101 é o único caso do Simples Nacional em que a lei permite
+                // conceder crédito de ICMS ao destinatário — reaproveita o mesmo campo
+                // aliquota_icms do cadastro (nunca usado para SN em outro lugar) como
+                // percentual de crédito.
+                if ($trib?->csosn === '101' && $trib->aliquota_icms) {
+                    $baseCalculoItem = $item->valor_unitario * $item->quantidade;
+                    $percCredito = (float) $trib->aliquota_icms;
+                    $valorCredito = $baseCalculoItem * $percCredito / 100;
+
+                    $icms->pCredSN = number_format($percCredito, 4, '.', '');
+                    $icms->vCredICMSSN = number_format($valorCredito, 2, '.', '');
+
+                    // Reaproveita os mesmos acumuladores do Regime Normal — assim o
+                    // destaque automático em devolução (montarInfAdicional) funciona
+                    // igual pros dois regimes, sem duplicar lógica nenhuma.
+                    $this->totalICMSBC += $baseCalculoItem;
+                    $this->totalICMS += $valorCredito;
+                }
+
                 $nfe->tagICMSSN($icms);
-            } else {
+            }
+            else {
                 $cstIcms = str_pad((string) (int) ($trib?->cst_icms ?? 0), 2, '0', STR_PAD_LEFT);
 
                 $icms = new \stdClass();
@@ -433,9 +459,37 @@ class NotaFiscalService
                 $this->totalCOFINS += (float) $cofins->vCOFINS;
             }
 
+
+            // IPI — a lib decide sozinha a estrutura interna (IPITrib com base/alíquota/valor,
+            // ou IPINT sem esses campos) conforme a presença de vBC/pIPI/vIPI no std.
+            // Só CST 50 (Saída Tributada) tem valor de fato; os demais (isenção, alíquota
+            // zero, suspensão, imune, outras) entram só com CST, sem base de cálculo.
+            $ipiClass = $item->ipi;
+
+            if ($ipiClass) {
+                $ipiStd = new \stdClass();
+                $ipiStd->item = $n;
+                $ipiStd->cEnq = $ipiClass->cenq ?? '999';
+                $ipiStd->CST = $ipiClass->codigo;
+
+                if ($ipiClass->codigo === '50') {
+                    $baseCalculoItem = $item->valor_unitario * $item->quantidade;
+                    $aliquotaIpi = (float) ($ipiClass->aliquota ?? 0);
+                    $valorIpi = $baseCalculoItem * $aliquotaIpi / 100;
+
+                    $ipiStd->vBC = number_format($baseCalculoItem, 2, '.', '');
+                    $ipiStd->pIPI = number_format($aliquotaIpi, 4, '.', '');
+                    $ipiStd->vIPI = number_format($valorIpi, 2, '.', '');
+
+                    $this->totalIPI += $valorIpi;
+                }
+
+                $nfe->tagIPI($ipiStd);
+            }
+
             // IBS/CBS — mesma lógica do cupom
             $classTrib = $item->classificacaoTributaria;
-            $obrigaIBSCBS = $this->empresa->crt == 3 || config('fiscal.emitir_ibscbs', false);
+            $obrigaIBSCBS = config('fiscal.emitir_ibscbs', true);
 
             if ($classTrib && $obrigaIBSCBS) {
                 $baseCalculoItem = $item->valor_unitario * $item->quantidade;
@@ -554,7 +608,7 @@ class NotaFiscalService
             $std->vDesc = number_format($notaFiscal->valor_desconto, 2, '.', '');
         }
         $std->vII = 0;
-        $std->vIPI = 0;
+        $std->vIPI = number_format($this->totalIPI, 2, '.', '');
         $std->vIPIDevol = 0;
         $std->vPIS = number_format($this->totalPIS, 2, '.', '');
         $std->vCOFINS = number_format($this->totalCOFINS, 2, '.', '');
@@ -589,6 +643,53 @@ class NotaFiscalService
         $det->tPag = '90';
         $det->vPag = 0;
         $nfe->tagDetPag($det);
+    }
+
+
+    protected function montarInfAdicional(Make $nfe, NotaFiscal $notaFiscal): void
+    {
+        $partes = [];
+
+        // Destaque automático de ICMS/IPI — relevante principalmente em devolução,
+        // pra quem recebe a nota conseguir tomar o crédito fiscal correspondente.
+        if ($notaFiscal->finalidade == 4) { // 4 = Devolução
+            if ($this->totalICMSBC > 0 || $this->totalICMS > 0) {
+                $partes[] = sprintf(
+                    'ICMS destacado: base de cálculo R$ %s, valor R$ %s',
+                    number_format($this->totalICMSBC, 2, ',', '.'),
+                    number_format($this->totalICMS, 2, ',', '.')
+                );
+            }
+
+            if ($this->totalIPI > 0) {
+                $partes[] = sprintf('IPI destacado: valor R$ %s', number_format($this->totalIPI, 2, ',', '.'));
+            }
+        }
+
+        if ($notaFiscal->informacoes_complementares) {
+            $partes[] = $notaFiscal->informacoes_complementares;
+        }
+
+        if (empty($partes)) {
+            return;
+        }
+
+        $std = new \stdClass();
+        $std->infCpl = implode(' | ', $partes);
+        $nfe->taginfAdic($std);
+    }
+
+    /**
+     * NFref precisa vir logo após <ide>, antes de <emit> — é assim que o
+     * schema da NF-e espera. Uma tag <NFref> por chave referenciada.
+     */
+    protected function montarNFref(Make $nfe, NotaFiscal $notaFiscal): void
+    {
+        foreach (($notaFiscal->notas_referenciadas ?? []) as $chave) {
+            $std = new \stdClass();
+            $std->refNFe = $chave;
+            $nfe->tagrefNFe($std);
+        }
     }
 
     protected function montarResponsavelTecnico(Make $nfe): void

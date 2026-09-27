@@ -46,6 +46,8 @@
     $labelsFinalidade = [1 => 'Normal', 2 => 'Complementar', 3 => 'Ajuste', 4 => 'Devolução'];
     $naturezaAtual = old('natureza_operacao', $ehEdicao ? $notaFiscal->natureza_operacao : null);
     $finalidadeAtual = old('finalidade', $ehEdicao ? $notaFiscal->finalidade : null);
+    $notasReferenciadasIniciais = $ehEdicao ? ($notaFiscal->notas_referenciadas ?? []) : [];
+
 @endphp
 
 <form id="form-nota" method="POST"
@@ -54,6 +56,9 @@
     @csrf
     @if ($ehEdicao) @method('PUT') @endif
     <input type="hidden" name="itens_json" id="itens_json">
+    <input type="hidden" name="notas_referenciadas_json" id="campo-notas-referenciadas">
+    <input type="hidden" name="informacoes_complementares" id="campo-informacoes-complementares"
+        value="{{ old('informacoes_complementares', $ehEdicao ? $notaFiscal->informacoes_complementares : '') }}">
 
     <div class="bg-white rounded-lg shadow p-6">
         <div class="flex items-center gap-2 mb-4">
@@ -263,13 +268,14 @@
             <p id="grid-vazia" class="text-center text-gray-400 py-8">Nenhum item adicionado ainda.</p>
         </div>
 
-    <div>
-        <button type="submit"
-                class="bg-green-700 text-white rounded-lg px-6 py-2.5 text-sm font-medium hover:bg-green-800">
-            {{ $ehEdicao ? 'Salvar Alterações' : 'Salvar Nota' }}
-        </button>
-    </div>
+        <div>
+            <button type="button" onclick="abrirModalReferencia()"
+                    class="bg-green-700 text-white rounded-lg px-6 py-2.5 text-sm font-medium hover:bg-green-800">
+                {{ $ehEdicao ? 'Salvar Alterações' : 'Salvar Nota' }}
+            </button>
+        </div>
 </form>
+
 
 
 <!-- Modal CFOP -->
@@ -400,9 +406,55 @@
     </div>
 </div>
 
+
+<!-- Modal de Confirmação — Notas Referenciadas + Informações Complementares -->
+<div id="modal-referencia-nota" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-lg p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold">Confirmar Nota Fiscal</h2>
+            <button type="button" onclick="fecharModalReferencia()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        <div id="aviso-referencia-obrigatoria" class="hidden bg-amber-50 text-amber-800 border border-amber-200 rounded-lg px-3 py-2 text-sm mb-4">
+            Esta finalidade exige a referência de ao menos uma nota fiscal.
+        </div>
+
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+            Nota(s) fiscal(is) referenciada(s)
+            <span class="text-gray-400 font-normal">(chave de acesso, 44 dígitos)</span>
+        </label>
+        <div class="flex gap-2 mb-2">
+            <input type="text" id="input-chave-referenciada" maxlength="44" placeholder="Chave de acesso da NF-e"
+                   class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono">
+            <button type="button" onclick="adicionarChaveReferenciada()"
+                    class="bg-gray-800 text-white rounded-lg px-3 py-1.5 text-sm hover:bg-gray-700">Adicionar</button>
+        </div>
+        <ul id="lista-chaves-referenciadas" class="text-sm mb-1 space-y-1"></ul>
+        <p id="chaves-vazio" class="text-xs text-gray-400 mb-4">Nenhuma nota referenciada ainda.</p>
+
+        <label class="block text-sm font-medium text-gray-700 mb-1">Informações complementares (opcional)</label>
+        <textarea id="modal-informacoes-complementares" rows="3" maxlength="2000"
+                  placeholder="Observações adicionais que devem aparecer no DANFE..."
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-1"></textarea>
+        <p class="text-xs text-gray-500 mb-4">
+            Em notas de devolução, o sistema já destaca automaticamente o ICMS/IPI aqui — use este campo só para observações extras.
+        </p>
+
+        <div class="flex gap-2 justify-end">
+            <button type="button" onclick="fecharModalReferencia()"
+                    class="border border-gray-300 rounded-lg px-4 py-2 text-sm hover:bg-gray-50">Cancelar</button>
+            <button type="button" onclick="confirmarESalvarNota()"
+                    class="bg-green-700 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-green-800">Confirmar e Salvar</button>
+        </div>
+    </div>
+</div>
+
+
+
 <script>
 window.crtEmpresa = {{ (int) $crtEmpresa }};
 let itensNota = @json($itensIniciais);
+let chavesReferenciadas = @json($notasReferenciadasIniciais);
 let resultadosAtuaisNf = [];
 let indiceSelecionadoNf = -1;
 let timeoutBuscaNf;
@@ -966,6 +1018,85 @@ document.getElementById('form-nota').addEventListener('submit', function (e) {
     }
     document.getElementById('itens_json').value = JSON.stringify(itensNota);
 });
+
+
+function abrirModalReferencia() {
+    renderizarChavesReferenciadas();
+    document.getElementById('modal-informacoes-complementares').value =
+        document.getElementById('campo-informacoes-complementares').value;
+
+    const finalidadesComReferenciaObrigatoria = ['2', '4'];
+    const obrigatorio = finalidadesComReferenciaObrigatoria.includes(String(campoFinalidade.value));
+    document.getElementById('aviso-referencia-obrigatoria').classList.toggle('hidden', !obrigatorio);
+
+    document.getElementById('modal-referencia-nota').classList.remove('hidden');
+    document.getElementById('modal-referencia-nota').classList.add('flex');
+}
+
+function fecharModalReferencia() {
+    document.getElementById('modal-referencia-nota').classList.add('hidden');
+    document.getElementById('modal-referencia-nota').classList.remove('flex');
+}
+
+function adicionarChaveReferenciada() {
+    const input = document.getElementById('input-chave-referenciada');
+    const chave = input.value.replace(/\D/g, '');
+
+    if (chave.length !== 44) {
+        alert('A chave de acesso deve ter 44 dígitos numéricos.');
+        return;
+    }
+    if (chavesReferenciadas.includes(chave)) {
+        alert('Essa chave já foi adicionada.');
+        return;
+    }
+
+    chavesReferenciadas.push(chave);
+    input.value = '';
+    renderizarChavesReferenciadas();
+}
+
+function removerChaveReferenciada(index) {
+    chavesReferenciadas.splice(index, 1);
+    renderizarChavesReferenciadas();
+}
+
+function renderizarChavesReferenciadas() {
+    const lista = document.getElementById('lista-chaves-referenciadas');
+    const vazio = document.getElementById('chaves-vazio');
+
+    if (chavesReferenciadas.length === 0) {
+        lista.innerHTML = '';
+        vazio.classList.remove('hidden');
+        return;
+    }
+    vazio.classList.add('hidden');
+
+    lista.innerHTML = chavesReferenciadas.map((chave, index) => `
+        <li class="flex justify-between items-center bg-gray-50 rounded px-2 py-1">
+            <span class="font-mono text-xs">${chave}</span>
+            <button type="button" onclick="removerChaveReferenciada(${index})" class="text-red-600 text-xs hover:underline">remover</button>
+        </li>
+    `).join('');
+}
+
+function confirmarESalvarNota() {
+    const finalidadesComReferenciaObrigatoria = ['2', '4'];
+    const obrigatorio = finalidadesComReferenciaObrigatoria.includes(String(campoFinalidade.value));
+
+    if (obrigatorio && chavesReferenciadas.length === 0) {
+        alert('Esta finalidade exige ao menos uma nota fiscal referenciada.');
+        return;
+    }
+
+    document.getElementById('campo-notas-referenciadas').value = JSON.stringify(chavesReferenciadas);
+    document.getElementById('campo-informacoes-complementares').value =
+        document.getElementById('modal-informacoes-complementares').value;
+
+    fecharModalReferencia();
+    document.getElementById('form-nota').requestSubmit();
+}
+
 
 // Inicialização: se vier preenchido (edição) ou old() de uma tentativa anterior (criação), já libera e renderiza
 atualizarTravaCabecalho();

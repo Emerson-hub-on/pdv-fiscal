@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class NotaFiscal extends Model
 {
     protected $table = 'notas_fiscais';
+
     protected $fillable = [
         'cliente_id',
         'operador_id',
@@ -21,6 +22,8 @@ class NotaFiscal extends Model
         'valor_frete',
         'cfop_saida_id',
         'forma_pagamento_id',
+        'informacoes_complementares',
+        'notas_referenciadas',
     ];
 
     protected $casts = [
@@ -29,6 +32,7 @@ class NotaFiscal extends Model
         'valor_frete' => 'decimal:2',
         'valor_total' => 'decimal:2',
         'emitida_em' => 'datetime',
+        'notas_referenciadas' => 'array',
     ];
 
     public function cliente(): BelongsTo
