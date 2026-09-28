@@ -55,7 +55,7 @@
 
 <form id="form-nota" method="POST"
       action="{{ $ehEdicao ? route('notasfiscais.update', $notaFiscal) : route('notasfiscais.store') }}"
-      class="flex flex-col gap-6 w-full">
+      class="flex flex-col gap-6 w-full max-w-5xl mx-auto mb-6">
     @csrf
     @if ($ehEdicao) @method('PUT') @endif
     <input type="hidden" name="itens_json" id="itens_json">
