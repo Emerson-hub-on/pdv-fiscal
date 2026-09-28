@@ -45,7 +45,8 @@
         })->values()
         : collect();
 
-    $labelsFinalidade = [1 => 'Normal', 2 => 'Complementar', 3 => 'Ajuste', 4 => 'Devolução'];
+    $motivoAtual = old('motivo_ajuste', $ehEdicao ? $notaFiscal->motivo_ajuste : null);
+    $labelsFinalidade = [1 => 'Normal', 2 => 'Complementar', 3 => 'Ajuste', 4 => 'Devolução', 5 => 'Nota de Crédito', 6 => 'Nota de Débito'];
     $naturezaAtual = old('natureza_operacao', $ehEdicao ? $notaFiscal->natureza_operacao : null);
     $finalidadeAtual = old('finalidade', $ehEdicao ? $notaFiscal->finalidade : null);
     $notasReferenciadasIniciais = $ehEdicao ? ($notaFiscal->notas_referenciadas ?? []) : [];
@@ -140,6 +141,7 @@
 
             <input type="hidden" name="natureza_operacao" id="campo-natureza" value="{{ $naturezaAtual }}">
             <input type="hidden" name="finalidade" id="campo-finalidade" value="{{ $finalidadeAtual }}">
+            <input type="hidden" name="motivo_ajuste" id="campo-motivo-ajuste" value="{{ $motivoAtual }}">
         </div>
     </div>
 
@@ -327,6 +329,8 @@
                     <option value="2">Complementar</option>
                     <option value="3">Ajuste</option>
                     <option value="4">Devolução</option>
+                    <option value="5">Nota de Crédito (IBS/CBS)</option>
+                    <option value="6">Nota de Débito (IBS/CBS)</option>
                 </select>
             </div>
 
@@ -442,6 +446,11 @@
             Esta finalidade exige a referência de ao menos uma nota fiscal.
         </div>
 
+        <div id="bloco-motivo-ajuste" class="hidden mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Motivo do ajuste</label>
+            <select id="modal-motivo-ajuste" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></select>
+        </div>
+
         <label class="block text-sm font-medium text-gray-700 mb-1">
             Nota(s) fiscal(is) referenciada(s)
             <span class="text-gray-400 font-normal">(chave de acesso, 44 dígitos)</span>
@@ -477,6 +486,8 @@
 <script>
 window.crtEmpresa = {{ (int) $crtEmpresa }};
 let itensNota = @json($itensIniciais);
+const finalidadesRefPorItem = @json(array_map('strval', config('fiscal.finalidades_referencia_por_item', [])));
+const motivosAjuste = @json(config('fiscal.motivos_ajuste', []));
 let chavesReferenciadas = @json($notasReferenciadasIniciais);
 let resultadosAtuaisNf = [];
 let indiceSelecionadoNf = -1;
@@ -884,7 +895,8 @@ function abrirEditorItem(produto) {
     document.getElementById('editor-item').classList.remove('hidden');
     atualizarCalculosEditor('valor');
     document.getElementById('editor-quantidade').focus();
-    document.getElementById('editor-referencia-devolucao').classList.toggle('hidden', campoFinalidade.value !== '4');
+    document.getElementById('editor-referencia-devolucao').classList
+    .toggle('hidden', !finalidadesRefPorItem.includes(String(campoFinalidade.value)));
     document.getElementById('editor-ref-chave').value = '';
     document.getElementById('editor-ref-nitem').value = '';
 }
@@ -956,8 +968,8 @@ function adicionarLinhaNaGrid() {
     const refChave = document.getElementById('editor-ref-chave').value.replace(/\D/g, '');
     const refNitem = document.getElementById('editor-ref-nitem').value || null;
 
-    if (campoFinalidade.value === '4' && refChave.length !== 44) {
-        alert('Para devolução, informe a chave de acesso (44 dígitos) da nota original deste item.');
+    if (finalidadesRefPorItem.includes(String(campoFinalidade.value)) && refChave.length !== 44) {
+        alert('Informe a chave de acesso (44 dígitos) da nota de origem deste item.');
         return;
     }
 
@@ -1013,6 +1025,25 @@ function adicionarLinhaNaGrid() {
     renderizarGridItens();
     inputBuscaNf.focus();
 }
+
+
+function prepararBlocoMotivoAjuste() {
+    const bloco = document.getElementById('bloco-motivo-ajuste');
+    const select = document.getElementById('modal-motivo-ajuste');
+    const opcoes = motivosAjuste[String(campoFinalidade.value)];
+
+    if (!opcoes) {
+        bloco.classList.add('hidden');
+        select.innerHTML = '';
+        return;
+    }
+
+    select.innerHTML = '<option value="">Selecione...</option>' +
+        Object.entries(opcoes).map(([codigo, texto]) => `<option value="${codigo}">${codigo} - ${texto}</option>`).join('');
+    select.value = document.getElementById('campo-motivo-ajuste').value;
+    bloco.classList.remove('hidden');
+}
+
 
 function removerLinhaDaGrid(index) {
     itensNota.splice(index, 1);
@@ -1076,6 +1107,8 @@ function abrirModalReferencia() {
     document.getElementById('modal-informacoes-complementares').value =
         document.getElementById('campo-informacoes-complementares').value;
 
+    prepararBlocoMotivoAjuste();
+
     const obrigatorio = String(campoFinalidade.value) === '2';
     document.getElementById('aviso-referencia-obrigatoria').classList.toggle('hidden', !obrigatorio);
 
@@ -1131,19 +1164,29 @@ function renderizarChavesReferenciadas() {
 }
 
 function confirmarESalvarNota() {
-    if (String(campoFinalidade.value) === '2' && chavesReferenciadas.length === 0) {
+    const finalidade = String(campoFinalidade.value);
+    const ehAjuste = ['5', '6'].includes(finalidade);
+    const motivo = document.getElementById('modal-motivo-ajuste').value;
+
+    if (finalidade === '2' && chavesReferenciadas.length === 0) {
         alert('Esta finalidade exige ao menos uma nota fiscal referenciada.');
         return;
     }
 
-    if (String(campoFinalidade.value) === '4') {
+    if (ehAjuste && !motivo) {
+        alert('Selecione o motivo do ajuste.');
+        return;
+    }
+
+    if (finalidadesRefPorItem.includes(finalidade)) {
         const itemSemReferencia = itensNota.find(i => !i.ref_chave_acesso);
         if (itemSemReferencia) {
-            alert(`O item "${itemSemReferencia.descricao}" está sem a chave da nota original — obrigatório em devolução.`);
+            alert(`O item "${itemSemReferencia.descricao}" está sem a chave da nota de origem.`);
             return;
         }
     }
 
+    document.getElementById('campo-motivo-ajuste').value = ehAjuste ? motivo : '';
     document.getElementById('campo-notas-referenciadas').value = JSON.stringify(chavesReferenciadas);
     document.getElementById('campo-informacoes-complementares').value =
         document.getElementById('modal-informacoes-complementares').value;

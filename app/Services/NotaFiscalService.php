@@ -191,6 +191,14 @@ class NotaFiscalService
         $std->cDV = $cDV;
         $std->tpAmb = (int) $this->empresa->ambiente;
         $std->finNFe = $notaFiscal->finalidade;
+
+        if ((int) $notaFiscal->finalidade === 5) {
+            $std->tpNFCredito = $notaFiscal->motivo_ajuste;
+        }
+        if ((int) $notaFiscal->finalidade === 6) {
+            $std->tpNFDebito = $notaFiscal->motivo_ajuste;
+        }
+
         $std->indFinal = $indFinal;
         $std->indPres = 9; // operação não presencial (montada no admin, não no balcão)
 
@@ -324,6 +332,7 @@ class NotaFiscalService
         $this->houveIBSCBS = false;
 
         $itensComDesconto = $this->ratearDescontoGlobal($notaFiscal);
+        $soIbsCbs = $this->apenasIbsCbs($notaFiscal);
 
         foreach ($itensComDesconto as $index => $dado) {
             $item = $dado['item'];
@@ -377,132 +386,140 @@ class NotaFiscalService
             $imposto->vTotTrib = 0;
             $nfe->tagimposto($imposto);
 
-            $trib = $item->tributacao;
+            if (!$soIbsCbs) {
 
-            if ($this->empresa->crt <= 2) {
-                $icms = new \stdClass();
-                $icms->item = $n;
-                $icms->orig = $produto->origem_mercadoria;
-                $icms->CSOSN = $trib?->csosn;
+                $trib = $item->tributacao;
 
-                // CSOSN 101 é o único caso do Simples Nacional em que a lei permite
-                // conceder crédito de ICMS ao destinatário — reaproveita o mesmo campo
-                // aliquota_icms do cadastro (nunca usado para SN em outro lugar) como
-                // percentual de crédito.
-                if ($trib?->csosn === '101' && $trib->aliquota_icms) {
+                if ($this->empresa->crt <= 2) {
+                    $icms = new \stdClass();
+                    $icms->item = $n;
+                    $icms->orig = $produto->origem_mercadoria;
+                    $icms->CSOSN = $trib?->csosn;
+
+                    // CSOSN 101 é o único caso do Simples Nacional em que a lei permite
+                    // conceder crédito de ICMS ao destinatário — reaproveita o mesmo campo
+                    // aliquota_icms do cadastro (nunca usado para SN em outro lugar) como
+                    // percentual de crédito.
+                    if ($trib?->csosn === '101' && $trib->aliquota_icms) {
+                        $baseCalculoItem = $item->valor_unitario * $item->quantidade;
+                        $percCredito = (float) $trib->aliquota_icms;
+                        $valorCredito = $baseCalculoItem * $percCredito / 100;
+
+                        $icms->pCredSN = number_format($percCredito, 4, '.', '');
+                        $icms->vCredICMSSN = number_format($valorCredito, 2, '.', '');
+
+                        // Reaproveita os mesmos acumuladores do Regime Normal — assim o
+                        // destaque automático em devolução (montarInfAdicional) funciona
+                        // igual pros dois regimes, sem duplicar lógica nenhuma.
+                        $this->totalICMSBC += $baseCalculoItem;
+                        $this->totalICMS += $valorCredito;
+                    }
+
+                    $nfe->tagICMSSN($icms);
+                }
+                else {
+                    $cstIcms = str_pad((string) (int) ($trib?->cst_icms ?? 0), 2, '0', STR_PAD_LEFT);
+
+                    $icms = new \stdClass();
+                    $icms->item = $n;
+                    $icms->orig = $produto->origem_mercadoria;
+                    $icms->CST = $cstIcms;
+
+                    $cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
+
+                    if (in_array($cstIcms, $cstsComBaseCalculo, true)) {
+                        $icms->modBC = 3;
+                        $icms->vBC = number_format($item->valor_unitario * $item->quantidade, 2, '.', '');
+                        $icms->pICMS = number_format($trib->aliquota_icms, 2, '.', '');
+                        $icms->vICMS = number_format(($item->valor_unitario * $item->quantidade * $trib->aliquota_icms / 100), 2, '.', '');
+
+                        $this->totalICMSBC += (float) $icms->vBC;
+                        $this->totalICMS += (float) $icms->vICMS;
+                    }
+
+                    $nfe->tagICMS($icms);
+                }
+
+                // PIS/COFINS — mesma regra do cupom: Simples Nacional zera (embutido no DAS)
+                if ($this->empresa->crt <= 2 || !$item->pisCofins) {
+                    $pis = new \stdClass();
+                    $pis->item = $n;
+                    $pis->CST = '99';
+                    $pis->vBC = 0;
+                    $pis->pPIS = 0;
+                    $pis->vPIS = 0;
+                    $nfe->tagPIS($pis);
+
+                    $cofins = new \stdClass();
+                    $cofins->item = $n;
+                    $cofins->CST = '99';
+                    $cofins->vBC = 0;
+                    $cofins->pCOFINS = 0;
+                    $cofins->vCOFINS = 0;
+                    $nfe->tagCOFINS($cofins);
+                } else {
+                    $classPisCofins = $item->pisCofins;
                     $baseCalculoItem = $item->valor_unitario * $item->quantidade;
-                    $percCredito = (float) $trib->aliquota_icms;
-                    $valorCredito = $baseCalculoItem * $percCredito / 100;
+                    $pAliquotaPis = (float) ($classPisCofins->aliquota_pis ?? 0);
+                    $pAliquotaCofins = (float) ($classPisCofins->aliquota_cofins ?? 0);
 
-                    $icms->pCredSN = number_format($percCredito, 4, '.', '');
-                    $icms->vCredICMSSN = number_format($valorCredito, 2, '.', '');
+                    $pis = new \stdClass();
+                    $pis->item = $n;
+                    $pis->CST = $classPisCofins->codigo;
+                    $pis->vBC = number_format($baseCalculoItem, 2, '.', '');
+                    $pis->pPIS = number_format($pAliquotaPis, 4, '.', '');
+                    $pis->vPIS = number_format($baseCalculoItem * $pAliquotaPis / 100, 2, '.', '');
+                    $nfe->tagPIS($pis);
 
-                    // Reaproveita os mesmos acumuladores do Regime Normal — assim o
-                    // destaque automático em devolução (montarInfAdicional) funciona
-                    // igual pros dois regimes, sem duplicar lógica nenhuma.
-                    $this->totalICMSBC += $baseCalculoItem;
-                    $this->totalICMS += $valorCredito;
+                    $cofins = new \stdClass();
+                    $cofins->item = $n;
+                    $cofins->CST = $classPisCofins->codigo;
+                    $cofins->vBC = number_format($baseCalculoItem, 2, '.', '');
+                    $cofins->pCOFINS = number_format($pAliquotaCofins, 4, '.', '');
+                    $cofins->vCOFINS = number_format($baseCalculoItem * $pAliquotaCofins / 100, 2, '.', '');
+                    $nfe->tagCOFINS($cofins);
+
+                    $this->totalPIS += (float) $pis->vPIS;
+                    $this->totalCOFINS += (float) $cofins->vCOFINS;
                 }
 
-                $nfe->tagICMSSN($icms);
-            }
-            else {
-                $cstIcms = str_pad((string) (int) ($trib?->cst_icms ?? 0), 2, '0', STR_PAD_LEFT);
 
-                $icms = new \stdClass();
-                $icms->item = $n;
-                $icms->orig = $produto->origem_mercadoria;
-                $icms->CST = $cstIcms;
+                // IPI — a lib decide sozinha a estrutura interna (IPITrib com base/alíquota/valor,
+                // ou IPINT sem esses campos) conforme a presença de vBC/pIPI/vIPI no std.
+                // Só CST 50 (Saída Tributada) tem valor de fato; os demais (isenção, alíquota
+                // zero, suspensão, imune, outras) entram só com CST, sem base de cálculo.
+                $ipiClass = $item->ipi;
 
-                $cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
+                if ($ipiClass) {
+                    $ipiStd = new \stdClass();
+                    $ipiStd->item = $n;
+                    $ipiStd->cEnq = $ipiClass->cenq ?? '999';
+                    $ipiStd->CST = $ipiClass->codigo;
 
-                if (in_array($cstIcms, $cstsComBaseCalculo, true)) {
-                    $icms->modBC = 3;
-                    $icms->vBC = number_format($item->valor_unitario * $item->quantidade, 2, '.', '');
-                    $icms->pICMS = number_format($trib->aliquota_icms, 2, '.', '');
-                    $icms->vICMS = number_format(($item->valor_unitario * $item->quantidade * $trib->aliquota_icms / 100), 2, '.', '');
+                    if ($ipiClass->codigo === '50') {
+                        $baseCalculoItem = $item->valor_unitario * $item->quantidade;
+                        $aliquotaIpi = (float) ($ipiClass->aliquota ?? 0);
+                        $valorIpi = $baseCalculoItem * $aliquotaIpi / 100;
 
-                    $this->totalICMSBC += (float) $icms->vBC;
-                    $this->totalICMS += (float) $icms->vICMS;
+                        $ipiStd->vBC = number_format($baseCalculoItem, 2, '.', '');
+                        $ipiStd->pIPI = number_format($aliquotaIpi, 4, '.', '');
+                        $ipiStd->vIPI = number_format($valorIpi, 2, '.', '');
+
+                        $this->totalIPI += $valorIpi;
+                    }
+
+                    $nfe->tagIPI($ipiStd);
                 }
-
-                $nfe->tagICMS($icms);
-            }
-
-            // PIS/COFINS — mesma regra do cupom: Simples Nacional zera (embutido no DAS)
-            if ($this->empresa->crt <= 2 || !$item->pisCofins) {
-                $pis = new \stdClass();
-                $pis->item = $n;
-                $pis->CST = '99';
-                $pis->vBC = 0;
-                $pis->pPIS = 0;
-                $pis->vPIS = 0;
-                $nfe->tagPIS($pis);
-
-                $cofins = new \stdClass();
-                $cofins->item = $n;
-                $cofins->CST = '99';
-                $cofins->vBC = 0;
-                $cofins->pCOFINS = 0;
-                $cofins->vCOFINS = 0;
-                $nfe->tagCOFINS($cofins);
-            } else {
-                $classPisCofins = $item->pisCofins;
-                $baseCalculoItem = $item->valor_unitario * $item->quantidade;
-                $pAliquotaPis = (float) ($classPisCofins->aliquota_pis ?? 0);
-                $pAliquotaCofins = (float) ($classPisCofins->aliquota_cofins ?? 0);
-
-                $pis = new \stdClass();
-                $pis->item = $n;
-                $pis->CST = $classPisCofins->codigo;
-                $pis->vBC = number_format($baseCalculoItem, 2, '.', '');
-                $pis->pPIS = number_format($pAliquotaPis, 4, '.', '');
-                $pis->vPIS = number_format($baseCalculoItem * $pAliquotaPis / 100, 2, '.', '');
-                $nfe->tagPIS($pis);
-
-                $cofins = new \stdClass();
-                $cofins->item = $n;
-                $cofins->CST = $classPisCofins->codigo;
-                $cofins->vBC = number_format($baseCalculoItem, 2, '.', '');
-                $cofins->pCOFINS = number_format($pAliquotaCofins, 4, '.', '');
-                $cofins->vCOFINS = number_format($baseCalculoItem * $pAliquotaCofins / 100, 2, '.', '');
-                $nfe->tagCOFINS($cofins);
-
-                $this->totalPIS += (float) $pis->vPIS;
-                $this->totalCOFINS += (float) $cofins->vCOFINS;
-            }
-
-
-            // IPI — a lib decide sozinha a estrutura interna (IPITrib com base/alíquota/valor,
-            // ou IPINT sem esses campos) conforme a presença de vBC/pIPI/vIPI no std.
-            // Só CST 50 (Saída Tributada) tem valor de fato; os demais (isenção, alíquota
-            // zero, suspensão, imune, outras) entram só com CST, sem base de cálculo.
-            $ipiClass = $item->ipi;
-
-            if ($ipiClass) {
-                $ipiStd = new \stdClass();
-                $ipiStd->item = $n;
-                $ipiStd->cEnq = $ipiClass->cenq ?? '999';
-                $ipiStd->CST = $ipiClass->codigo;
-
-                if ($ipiClass->codigo === '50') {
-                    $baseCalculoItem = $item->valor_unitario * $item->quantidade;
-                    $aliquotaIpi = (float) ($ipiClass->aliquota ?? 0);
-                    $valorIpi = $baseCalculoItem * $aliquotaIpi / 100;
-
-                    $ipiStd->vBC = number_format($baseCalculoItem, 2, '.', '');
-                    $ipiStd->pIPI = number_format($aliquotaIpi, 4, '.', '');
-                    $ipiStd->vIPI = number_format($valorIpi, 2, '.', '');
-
-                    $this->totalIPI += $valorIpi;
-                }
-
-                $nfe->tagIPI($ipiStd);
             }
 
             // IBS/CBS — mesma lógica do cupom
             $classTrib = $item->classificacaoTributaria;
-            $obrigaIBSCBS = config('fiscal.emitir_ibscbs', true);
+
+            if ($soIbsCbs && !$classTrib) {
+                throw new Exception("Produto '{$produto->nome}' está sem classificação tributária IBS/CBS, obrigatória em nota de crédito/débito.");
+            }
+
+            $obrigaIBSCBS = $soIbsCbs || config('fiscal.emitir_ibscbs', true);
 
             if ($classTrib && $obrigaIBSCBS) {
                 $baseCalculoItem = $item->valor_unitario * $item->quantidade;
@@ -554,6 +571,21 @@ class NotaFiscalService
                 $this->houveIBSCBS = true;
             }
         }
+    }
+
+    /**
+     * Nota de crédito/débito (finNFe 5/6) só pode destacar IBS/CBS.
+     * Exceção prevista na NT: crédito tipo 03 (retorno por recusa).
+     */
+    protected function apenasIbsCbs(NotaFiscal $notaFiscal): bool
+    {
+        $finalidade = (int) $notaFiscal->finalidade;
+
+        if (!in_array($finalidade, [5, 6], true)) {
+            return false;
+        }
+
+        return !($finalidade === 5 && $notaFiscal->motivo_ajuste === '03');
     }
 
     /**
@@ -701,7 +733,7 @@ class NotaFiscalService
         // Devolução (finalidade 4) passou a exigir referência por ITEM
         // (DFeReferenciado, desde a mudança de regra de 01/09/2026) — não usa
         // mais NFref de cabeçalho, e ter os dois juntos gera rejeição 1010.
-        if ((int) $notaFiscal->finalidade === 4) {
+        if (in_array((int) $notaFiscal->finalidade, config('fiscal.finalidades_referencia_por_item', []), true)) {
             return;
         }
 
@@ -709,8 +741,8 @@ class NotaFiscalService
             $std = new \stdClass();
             $std->refNFe = $chave;
             $nfe->tagrefNFe($std);
+            }
         }
-    }
 
     protected function montarResponsavelTecnico(Make $nfe): void
     {

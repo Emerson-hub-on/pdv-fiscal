@@ -28,7 +28,7 @@ class CfopSaidaController extends Controller
             'tipo_operacao'            => ['required', 'in:entrada,saida'],
             'movimenta_estoque'        => ['sometimes', 'boolean'],
             'natureza_operacao_padrao' => ['nullable', 'string', 'max:255'],
-            'finalidade_padrao'        => ['nullable', 'in:1,2,3,4'],
+            'finalidade_padrao'        => ['nullable', 'in:1,2,3,4,5,6'],
         ]);
 
         $this->validarCoerenciaTipo($dados['codigo'], $dados['tipo_operacao']);
@@ -55,7 +55,7 @@ class CfopSaidaController extends Controller
             'tipo_operacao'            => ['required', 'in:entrada,saida'],
             'movimenta_estoque'        => ['sometimes', 'boolean'],
             'natureza_operacao_padrao' => ['nullable', 'string', 'max:255'],
-            'finalidade_padrao'        => ['nullable', 'in:1,2,3,4'],
+            'finalidade_padrao'        => ['nullable', 'in:1,2,3,4,5,6'],
         ]);
 
         $this->validarCoerenciaTipo($dados['codigo'], $dados['tipo_operacao']);

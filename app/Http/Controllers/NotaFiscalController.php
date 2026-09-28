@@ -103,6 +103,7 @@ class NotaFiscalController extends Controller
                 'informacoes_complementares' => $dados['informacoes_complementares'] ?? null,
                 'notas_referenciadas'        => $dados['notas_referenciadas'],
                 'tipo_operacao'              => CfopSaida::findOrFail($dados['cfop_saida_id'])->tipo_operacao,
+                'motivo_ajuste'              => $dados['motivo_ajuste'],
                 'origem_tipo'                => 'manual',
                 'status'                     => 'rascunho',
             ]);
@@ -145,6 +146,7 @@ class NotaFiscalController extends Controller
             $notaFiscal->informacoes_complementares = $dados['informacoes_complementares'] ?? null;
             $notaFiscal->notas_referenciadas = $dados['notas_referenciadas'];
             $notaFiscal->tipo_operacao = CfopSaida::findOrFail($dados['cfop_saida_id'])->tipo_operacao;
+            $notaFiscal->motivo_ajuste = $dados['motivo_ajuste'];
             $notaFiscal->save();
 
             // Substitui todos os itens — mais simples e seguro que tentar
@@ -164,7 +166,8 @@ class NotaFiscalController extends Controller
         $dados = $request->validate([
             'cliente_id'                 => ['required', 'exists:clientes,id'],
             'natureza_operacao'          => ['required', 'string', 'max:255'],
-            'finalidade'                 => ['required', 'in:1,2,3,4'],
+            'finalidade'                 => ['required', 'in:1,2,3,4,5,6'],
+            'motivo_ajuste'              => ['nullable', 'string', 'max:2'],
             'cfop_saida_id'              => ['required', 'exists:cfop_saida,id'],
             'forma_pagamento_id'         => ['required', 'exists:formas_pagamento,id'],
             'operador_id'                => ['required', 'exists:users,id'],
@@ -172,6 +175,8 @@ class NotaFiscalController extends Controller
             'notas_referenciadas_json'   => ['nullable', 'string'],
             'itens_json'                 => ['required', 'string'],
         ]);
+
+        $finalidade = (int) $dados['finalidade'];
 
         $itens = json_decode($dados['itens_json'], true);
 
@@ -184,14 +189,39 @@ class NotaFiscalController extends Controller
         $notasReferenciadas = json_decode($dados['notas_referenciadas_json'] ?? '[]', true) ?: [];
         $notasReferenciadas = array_values(array_filter($notasReferenciadas, fn ($c) => preg_match('/^\d{44}$/', $c)));
 
-        if ((int) $dados['finalidade'] === 2 && count($notasReferenciadas) === 0) {
+        if ($finalidade === 2 && count($notasReferenciadas) === 0) {
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'notas_referenciadas' => 'Esta finalidade exige ao menos uma nota fiscal referenciada.',
             ]);
         }
 
+        // Finalidades com vínculo por item: todo item precisa da chave da nota de origem
+        if (in_array($finalidade, config('fiscal.finalidades_referencia_por_item', []), true)) {
+            foreach ($itens as $item) {
+                if (!preg_match('/^\d{44}$/', (string) ($item['ref_chave_acesso'] ?? ''))) {
+                    $nome = $item['descricao'] ?? 'sem descrição';
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'itens' => "O item \"{$nome}\" precisa da chave de acesso (44 dígitos) da nota de origem.",
+                    ]);
+                }
+            }
+        }
+
+        // Crédito/Débito exigem o código do motivo
+        $motivo = null;
+        if (in_array($finalidade, [5, 6], true)) {
+            $motivo = $dados['motivo_ajuste'] ?? null;
+
+            if (!$motivo || !array_key_exists($motivo, config("fiscal.motivos_ajuste.{$finalidade}", []))) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'motivo_ajuste' => 'Selecione o motivo do ajuste (obrigatório em nota de crédito/débito).',
+                ]);
+            }
+        }
+
         $dados['itens'] = $itens;
         $dados['notas_referenciadas'] = $notasReferenciadas;
+        $dados['motivo_ajuste'] = $motivo;
         unset($dados['itens_json'], $dados['notas_referenciadas_json']);
 
         return $dados;
@@ -229,6 +259,7 @@ class NotaFiscalController extends Controller
                 'valor_unitario'        => $valorUnitario,
                 'valor_desconto'        => $valorDesconto,
                 'valor_total'           => $valorTotal,
+                
             ]);
         }
 

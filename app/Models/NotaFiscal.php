@@ -24,6 +24,7 @@ class NotaFiscal extends Model
         'forma_pagamento_id',
         'informacoes_complementares',
         'notas_referenciadas',
+        'motivo_ajuste',
     ];
 
     protected $casts = [

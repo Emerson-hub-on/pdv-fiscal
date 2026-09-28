@@ -9,6 +9,37 @@ return [
         'ibs_uf'  => 0.10,
         'ibs_mun' => 0.00,
         'cbs'     => 0.90,
+
+    // Finalidades com vínculo à nota original feito por ITEM (DFeReferenciado):
+    // 4 = Devolução, 5 = Nota de Crédito. Se a 6 também exigir, inclua aqui.
+    'finalidades_referencia_por_item' => [4, 5],
+
+    // Código do motivo do ajuste: tpNFCredito (finalidade 5) e tpNFDebito (6)
+    'motivos_ajuste' => [
+        5 => [
+            '01' => 'Multa e juros',
+            '02' => 'Apropriação de crédito presumido de IBS sobre saldo devedor na ZFM',
+            '03' => 'Retorno por recusa na entrega ou não localização do destinatário',
+            '04' => 'Redução de valores',
+            '05' => 'Transferência de crédito na sucessão',
+            '06' => 'Retorno por recusa parcial',
+        ],
+        6 => [
+            '01' => 'Transferência de créditos para cooperativas',
+            '02' => 'Anulação de crédito por saídas imunes/isentas',
+            '03' => 'Débitos de notas fiscais não processadas na apuração',
+            '04' => 'Multa e juros',
+            '05' => 'Transferência de crédito de sucessão',
+            '06' => 'Pagamento antecipado',
+            '07' => 'Perda em estoque (perecimento, perda, furto, roubo)',
+            '08' => 'Desenquadramento do Simples Nacional',
+        ],
+    ],
+
+
+
+
+    
     ],
 
 ];
