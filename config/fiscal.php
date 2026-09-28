@@ -25,7 +25,7 @@ return [
 
     // Finalidades com vínculo à nota original feito por ITEM (DFeReferenciado):
     // 4 = Devolução, 5 = Nota de Crédito. Se a 6 também exigir, inclua aqui.
-    'finalidades_referencia_por_item' => [4, 5],
+    'finalidades_referencia_por_item' => [4],
 
     // Código do motivo do ajuste: tpNFCredito (finalidade 5) e tpNFDebito (6)
     'motivos_ajuste' => [

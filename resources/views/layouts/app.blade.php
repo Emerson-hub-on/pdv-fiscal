@@ -8,27 +8,44 @@
 </head>
 <body class="bg-gray-100 text-gray-800 @yield('body-class')">
 
-<!-- Sidebar corrigido para altura total fixa com h-screen -->
-<aside id="nav-principal" class="bg-gray-800 fixed top-0 left-0 h-screen w-50 flex flex-col z-40 overflow-y-auto [.sidebar-oculta_&]:hidden">
-    <div class="px-6 py-5 border-b border-white/10 shrink-0">
-        <p class="text-white font-bold text-lg tracking-tight">PDV Fiscal</p>
-        <p class="text-slate-400 text-xs mt-0.5">Painel administrativo</p>
+<!-- Sidebar: alterna entre expandida (w-50, com texto) e recolhida (w-16, só
+     ícones) através da classe 'sidebar-oculta' no <body> — a mesma classe que
+     já é definida via @section('body-class', 'sidebar-oculta') nas telas de
+     criar/editar nota, e que também pode ser alternada pelo botão do topo. -->
+<aside id="nav-principal" class="bg-gray-800 fixed top-0 left-0 h-screen w-50 flex flex-col z-40 overflow-y-auto transition-[width] duration-200 [.sidebar-oculta_&]:w-16">
+    <div class="px-3 py-4 border-b border-white/10 shrink-0 flex items-center justify-between [.sidebar-oculta_&]:justify-center">
+        <div class="px-2 overflow-hidden [.sidebar-oculta_&]:hidden">
+            <p class="text-white font-bold text-lg tracking-tight whitespace-nowrap">PDV Fiscal</p>
+            <p class="text-slate-400 text-xs mt-0.5 whitespace-nowrap">Painel administrativo</p>
+        </div>
+        <button type="button" onclick="toggleSidebar()" title="Recolher/expandir menu"
+                class="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg text-slate-300 hover:bg-white/10 hover:text-white transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect x="3" y="4" width="18" height="16" rx="2" stroke-width="2"></rect>
+                <line x1="9" y1="4" x2="9" y2="20" stroke-width="2"></line>
+            </svg>
+        </button>
     </div>
 
-    <nav class="flex flex-col gap-1 px-3 py-4 flex-1 overflow-y-auto">
+    <nav class="flex flex-col gap-1 px-3 py-4 flex-1 overflow-y-auto [.sidebar-oculta_&]:px-2">
         <!-- Menu Dropdown: Cadastros -->
         <div class="flex flex-col">
             <button onclick="toggleCadastros()" 
-                    class="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-slate-300 hover:bg-white/10 hover:text-white text-sm font-medium transition cursor-pointer">
-                <span class="flex items-center gap-3">Cadastros</span>
+                    class="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-slate-300 hover:bg-white/10 hover:text-white text-sm font-medium transition cursor-pointer [.sidebar-oculta_&]:justify-center [.sidebar-oculta_&]:px-0">
+                <span class="flex items-center gap-3">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"></path>
+                    </svg>
+                    <span class="whitespace-nowrap [.sidebar-oculta_&]:hidden">Cadastros</span>
+                </span>
                 <!-- Seta indicativa -->
-                <svg id="seta-cadastros" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg id="seta-cadastros" class="w-4 h-4 transition-transform duration-200 [.sidebar-oculta_&]:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                 </svg>
             </button>
 
-            <!-- Subopções (inicialmente ocultas com 'hidden') -->
-            <div id="sub-cadastros" class="hidden flex flex-col gap-1 pl-4 mt-1 border-l border-white/10 ml-3">
+            <!-- Subopções (inicialmente ocultas com 'hidden'; também ocultas com a sidebar recolhida) -->
+            <div id="sub-cadastros" class="hidden [.sidebar-oculta_&]:hidden flex flex-col gap-1 pl-4 mt-1 border-l border-white/10 ml-3">
                 <a href="{{ route('produtos.index') }}"
                 class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white text-sm transition">
                     Produtos
@@ -50,14 +67,19 @@
         <!-- Menu Dropdown: Faturamento -->
         <div class="flex flex-col">
             <button onclick="toggleFaturamento()"
-                    class="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-slate-300 hover:bg-white/10 hover:text-white text-sm font-medium transition cursor-pointer">
-                <span class="flex items-center gap-3">Faturamento</span>
-                <svg id="seta-faturamento" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    class="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-slate-300 hover:bg-white/10 hover:text-white text-sm font-medium transition cursor-pointer [.sidebar-oculta_&]:justify-center [.sidebar-oculta_&]:px-0">
+                <span class="flex items-center gap-3">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m-6 4h6m-6 4h4M5 3h14a1 1 0 011 1v16l-3-2-3 2-3-2-3 2-3-2-3 2V4a1 1 0 011-1z"></path>
+                    </svg>
+                    <span class="whitespace-nowrap [.sidebar-oculta_&]:hidden">Faturamento</span>
+                </span>
+                <svg id="seta-faturamento" class="w-4 h-4 transition-transform duration-200 [.sidebar-oculta_&]:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                 </svg>
             </button>
 
-            <div id="sub-faturamento" class="hidden flex flex-col gap-1 pl-4 mt-1 border-l border-white/10 ml-3">
+            <div id="sub-faturamento" class="hidden [.sidebar-oculta_&]:hidden flex flex-col gap-1 pl-4 mt-1 border-l border-white/10 ml-3">
                 <!-- Nota Fiscal (nível 2, abre lateral) -->
                 <div class="relative">
                     <button id="btn-notafiscal" onclick="toggleNotaFiscal()"
@@ -88,16 +110,19 @@
         </div>
     </nav>
 
-    <div class="px-3 py-4 border-t border-white/10 shrink-0">
+    <div class="px-3 py-4 border-t border-white/10 shrink-0 [.sidebar-oculta_&]:px-2">
         <button onclick="sincronizarAgora()" id="btn-sincronizar"
-                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-white/10 hover:text-white text-sm font-medium transition cursor-pointer">
-            Atualizar Caixa
+                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-white/10 hover:text-white text-sm font-medium transition cursor-pointer [.sidebar-oculta_&]:justify-center [.sidebar-oculta_&]:px-0">
+            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            <span class="whitespace-nowrap [.sidebar-oculta_&]:hidden">Atualizar Caixa</span>
         </button>
     </div>
 </aside>
 
     <!-- Conteúdo principal -->
-    <div id="conteudo-principal" class="ml-56 min-h-screen [.sidebar-oculta_&]:ml-0">
+    <div id="conteudo-principal" class="ml-56 min-h-screen transition-[margin] duration-200 [.sidebar-oculta_&]:ml-16">
         <main class="max-w-5xl mx-auto p-8 [.sidebar-oculta_&]:max-w-none [.sidebar-oculta_&]:mx-0 [.sidebar-oculta_&]:p-0">
 
             @php
@@ -143,20 +168,34 @@
 
     <script>
 
+    function toggleSidebar() {
+        document.body.classList.toggle('sidebar-oculta');
+    }
+
     function toggleCadastros() {
-    const subMenu = document.getElementById('sub-cadastros');
-    const seta = document.getElementById('seta-cadastros');
+        // Se a sidebar estiver recolhida, expande primeiro — não tem espaço
+        // pra mostrar o submenu com a largura de ícones.
+        if (document.body.classList.contains('sidebar-oculta')) {
+            document.body.classList.remove('sidebar-oculta');
+        }
+
+        const subMenu = document.getElementById('sub-cadastros');
+        const seta = document.getElementById('seta-cadastros');
     
-    // Alterna a classe 'hidden' do Tailwind para mostrar/esconder
-    subMenu.classList.toggle('hidden');
+        // Alterna a classe 'hidden' do Tailwind para mostrar/esconder
+        subMenu.classList.toggle('hidden');
     
-    // Gira a setinha para indicar aberto/fechado
-    seta.classList.toggle('rotate-180');
+        // Gira a setinha para indicar aberto/fechado
+        seta.classList.toggle('rotate-180');
     }   
 
     function toggleFaturamento() {
-    document.getElementById('sub-faturamento').classList.toggle('hidden');
-    document.getElementById('seta-faturamento').classList.toggle('rotate-180');
+        if (document.body.classList.contains('sidebar-oculta')) {
+            document.body.classList.remove('sidebar-oculta');
+        }
+
+        document.getElementById('sub-faturamento').classList.toggle('hidden');
+        document.getElementById('seta-faturamento').classList.toggle('rotate-180');
     }
 
     function toggleNotaFiscal() {

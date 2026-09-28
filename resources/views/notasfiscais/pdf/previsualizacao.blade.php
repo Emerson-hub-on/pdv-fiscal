@@ -37,8 +37,9 @@
     <table class="caixa">
         <tr>
             <td width="75%" style="border-right:1px solid #000;">
-                RECEBEMOS DE {{ $dados['emitente']['razao_social'] }} OS PRODUTOS CONSTANTES DA NOTA FISCAL INDICADA AO LADO
-                <table style="margin-top:14px;">
+                RECEBEMOS DE {{ $dados['emitente']['razao_social'] }} OS PRODUTOS E/OU SERVIÇOS CONSTANTES DA NOTA FISCAL ELETRÔNICA INDICADA AO LADO.<br>
+                EMISSÃO: {{ $dados['data_emissao'] }} &nbsp;&nbsp; DEST/REME: {{ $dados['destinatario']['nome'] }} &nbsp;&nbsp; VALOR TOTAL: R$ {{ $dados['totais']['valor_total_nota'] }}
+                <table style="margin-top:10px;">
                     <tr>
                         <td width="50%" style="border-top:1px solid #000;">
                             <span class="label">DATA DE RECEBIMENTO</span>
@@ -50,6 +51,7 @@
                 </table>
             </td>
             <td width="25%" class="centro">
+                <div class="valor" style="font-size:11px;">NF-e</div>
                 <span class="label">Nº</span> <span class="valor">{{ $dados['numero'] }}</span><br>
                 <span class="label">Série</span> <span class="valor-sm">{{ $dados['serie'] }}</span>
             </td>
@@ -78,10 +80,15 @@
                 <div>SÉRIE: {{ $dados['serie'] }} &nbsp; Página 1 de 1</div>
             </td>
             <td width="25%" class="centro">
-                <span class="label">CONTROLE DO FISCO</span><br>
                 @if ($dados['chave_acesso'])
-                    <div style="font-size:7px; word-break:break-all; margin-top:20px;">{{ $dados['chave_acesso'] }}</div>
+                    <span class="label">CHAVE DE ACESSO</span>
+                    <div style="font-size:7px; word-break:break-all; margin-top:4px;">{{ $dados['chave_acesso'] }}</div>
+                    <div style="font-size:6px; color:#444; margin-top:6px;">
+                        Consulta de autenticidade no portal nacional da NF-e<br>
+                        www.nfe.fazenda.gov.br/portal ou no site da Sefaz autorizadora
+                    </div>
                 @else
+                    <span class="label">CONTROLE DO FISCO</span>
                     <div style="margin-top:20px; font-size:8px; color:#666;">(código de barras gerado<br>somente após a emissão)</div>
                 @endif
             </td>
@@ -90,29 +97,29 @@
 
     <table class="caixa" style="border-top:none;">
         <tr>
-            <td style="border-right:1px solid #000;">
+            <td colspan="3" style="border-bottom:1px solid #000;">
                 <span class="label">NATUREZA DA OPERAÇÃO</span><br>
                 <span class="valor-sm">{{ $dados['natureza_operacao'] }}</span>
             </td>
-            <td width="35%">
+        </tr>
+        <tr>
+            <td width="34%" style="border-right:1px solid #000;">
                 <span class="label">INSCRIÇÃO ESTADUAL</span><br>
                 <span class="valor-sm">{{ $dados['emitente']['ie'] ?? '—' }}</span>
             </td>
-        </tr>
-        <tr>
-            <td colspan="2" style="border-top:1px solid #000;">
-                <span class="label">CHAVE DE ACESSO</span><br>
-                @if ($dados['chave_acesso'])
-                    <span class="valor-sm">{{ $dados['chave_acesso'] }}</span>
-                @else
-                    <span style="font-size:8px; color:#666;">Chave gerada somente após a emissão</span>
-                @endif
+            <td width="33%" style="border-right:1px solid #000;">
+                <span class="label">INSCR. ESTADUAL SUBST. TRIBUTÁRIO</span><br>
+                <span class="valor-sm">{{ $dados['emitente']['ie_substituto'] ?? '—' }}</span>
+            </td>
+            <td width="33%">
+                <span class="label">CNPJ</span><br>
+                <span class="valor-sm">{{ $dados['emitente']['cnpj'] }}</span>
             </td>
         </tr>
         <tr>
-            <td colspan="2" style="border-top:1px solid #000;">
+            <td colspan="3" style="border-top:1px solid #000;">
                 @if ($dados['emitida'])
-                    <span class="label">NÚMERO DE PROTOCOLO DE AUTORIZAÇÃO DE USO DA NF-E</span><br>
+                    <span class="label">PROTOCOLO DE AUTORIZAÇÃO DE USO</span><br>
                     <span class="valor-sm">{{ $dados['protocolo'] }}</span>
                 @else
                     <span class="semvalor">PRÉ-VISUALIZAÇÃO — DOCUMENTO SEM VALOR FISCAL — NOTA AINDA NÃO EMITIDA</span>

@@ -55,7 +55,7 @@
 
 <form id="form-nota" method="POST"
       action="{{ $ehEdicao ? route('notasfiscais.update', $notaFiscal) : route('notasfiscais.store') }}"
-      class="flex flex-col gap-6 max-w-5xl">
+      class="flex flex-col gap-6 w-full">
     @csrf
     @if ($ehEdicao) @method('PUT') @endif
     <input type="hidden" name="itens_json" id="itens_json">
@@ -76,7 +76,7 @@
             <h1 class="text-lg font-semibold">{{ $ehEdicao ? 'Editar Nota Fiscal (rascunho)' : 'Nova Nota Fiscal (Saída)' }}</h1>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-2 gap-4 max-w-5xl">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Nota</label>
                 <input type="hidden" name="cfop_saida_id" id="campo-cfop"
@@ -154,7 +154,7 @@
 
         <input type="text" id="input-busca-item-nf" placeholder="Nome, código interno ou código de barras..."
                autocomplete="off" disabled
-               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed">
+               class="w-full max-w-2xl border border-gray-300 rounded-lg px-3 py-2 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed">
 
         <div id="editor-item" class="hidden flex flex-col gap-3 mb-4 bg-gray-50 rounded-lg p-4">
             <div class="text-sm font-semibold text-gray-800" id="editor-produto-nome"></div>
@@ -272,6 +272,7 @@
                         <th class="text-right px-3 py-2">Vlr. IPI</th>
                         <th class="text-right px-3 py-2">% IPI</th>
                         <th></th>
+                        <th class="text-left px-3 py-2">Ref. NF origem</th>
                     </tr>
                 </thead>
                 <tbody id="linhas-grid-itens" class="divide-y divide-gray-100"></tbody>
@@ -279,6 +280,7 @@
                     <tr>
                         <td colspan="13" class="px-3 py-2 text-right">Total da nota</td>
                         <td class="px-3 py-2 text-right" id="total-grid-itens">R$ 0,00</td>
+                        <td></td>
                     </tr>
                 </tfoot>
             </table>
@@ -1109,7 +1111,7 @@ function abrirModalReferencia() {
 
     prepararBlocoMotivoAjuste();
 
-    const obrigatorio = String(campoFinalidade.value) === '2';
+    const obrigatorio = ['2', '5', '6'].includes(String(campoFinalidade.value));
     document.getElementById('aviso-referencia-obrigatoria').classList.toggle('hidden', !obrigatorio);
 
     document.getElementById('modal-referencia-nota').classList.remove('hidden');
@@ -1168,7 +1170,7 @@ function confirmarESalvarNota() {
     const ehAjuste = ['5', '6'].includes(finalidade);
     const motivo = document.getElementById('modal-motivo-ajuste').value;
 
-    if (finalidade === '2' && chavesReferenciadas.length === 0) {
+    if (['2', '5', '6'].includes(finalidade) && chavesReferenciadas.length === 0) {
         alert('Esta finalidade exige ao menos uma nota fiscal referenciada.');
         return;
     }

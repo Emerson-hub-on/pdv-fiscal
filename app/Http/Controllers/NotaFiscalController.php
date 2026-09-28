@@ -190,7 +190,7 @@ class NotaFiscalController extends Controller
         $notasReferenciadas = json_decode($dados['notas_referenciadas_json'] ?? '[]', true) ?: [];
         $notasReferenciadas = array_values(array_filter($notasReferenciadas, fn ($c) => preg_match('/^\d{44}$/', $c)));
 
-        if ($finalidade === 2 && count($notasReferenciadas) === 0) {
+        if (in_array($finalidade, [2, 5, 6], true) && count($notasReferenciadas) === 0) {
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'notas_referenciadas' => 'Esta finalidade exige ao menos uma nota fiscal referenciada.',
             ]);
