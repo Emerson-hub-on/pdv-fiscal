@@ -102,7 +102,7 @@ class NotaFiscalController extends Controller
                 'operador_id'                => $dados['operador_id'],
                 'informacoes_complementares' => $dados['informacoes_complementares'] ?? null,
                 'notas_referenciadas'        => $dados['notas_referenciadas'],
-                'tipo_operacao'              => 'saida',
+                'tipo_operacao'              => CfopSaida::findOrFail($dados['cfop_saida_id'])->tipo_operacao,
                 'origem_tipo'                => 'manual',
                 'status'                     => 'rascunho',
             ]);
@@ -144,6 +144,7 @@ class NotaFiscalController extends Controller
             $notaFiscal->operador_id = $dados['operador_id'];
             $notaFiscal->informacoes_complementares = $dados['informacoes_complementares'] ?? null;
             $notaFiscal->notas_referenciadas = $dados['notas_referenciadas'];
+            $notaFiscal->tipo_operacao = CfopSaida::findOrFail($dados['cfop_saida_id'])->tipo_operacao;
             $notaFiscal->save();
 
             // Substitui todos os itens — mais simples e seguro que tentar
@@ -380,9 +381,11 @@ class NotaFiscalController extends Controller
 
     public function emitir(NotaFiscal $notaFiscal)
     {
+        $notaFiscal->load('itens', 'cfopSaida');
+
         abort_if($notaFiscal->status !== 'rascunho', 403, 'Nota já foi emitida ou cancelada.');
         abort_if(!$notaFiscal->cliente_id, 422, 'Selecione o cliente antes de emitir.');
-        abort_if($notaFiscal->itens()->count() === 0, 422, 'Adicione ao menos um item antes de emitir.');
+        abort_if($notaFiscal->itens->count() === 0, 422, 'Adicione ao menos um item antes de emitir.');
 
         try {
             DB::transaction(function () use ($notaFiscal) {
@@ -404,13 +407,22 @@ class NotaFiscalController extends Controller
                 $notaFiscal->xml = $resultado['xml'];
                 $notaFiscal->emitida_em = now();
                 $notaFiscal->save();
+
+                // Estoque só é mexido depois da autorização da SEFAZ.
+                // Saída debita; entrada credita.
+                $cfop = $notaFiscal->cfopSaida;
+
+                if ($cfop->movimenta_estoque) {
+                    foreach ($notaFiscal->itens as $item) {
+                        $query = Produto::where('id', $item->produto_id)->lockForUpdate();
+
+                        $cfop->tipo_operacao === 'entrada'
+                            ? $query->increment('estoque', $item->quantidade)
+                            : $query->decrement('estoque', $item->quantidade);
+                    }
+                }
             });
         } catch (\Throwable $e) {
-            // Se a transação foi revertida, numero/serie/serie_nfe_id NÃO estão
-            // mais persistidos no banco — mas continuam em memória no objeto.
-            // Limpamos aqui para não "vazar" um número que a SerieNfe já não
-            // reconhece como usado (senão a próxima tentativa reutiliza o
-            // mesmo número com uma chave diferente e a SEFAZ rejeita por duplicidade).
             $notaFiscal->refresh();
             $notaFiscal->motivo_rejeicao = $e->getMessage();
             $notaFiscal->save();
@@ -452,9 +464,11 @@ class NotaFiscalController extends Controller
         DB::transaction(function () use ($notaFiscal, $dados, $resultado) {
             if ($notaFiscal->cfopSaida->movimenta_estoque) {
                 foreach ($notaFiscal->itens as $item) {
-                    Produto::where('id', $item->produto_id)
-                        ->lockForUpdate()
-                        ->increment('estoque', $item->quantidade);
+                    $query = Produto::where('id', $item->produto_id)->lockForUpdate();
+
+                    $notaFiscal->cfopSaida->tipo_operacao === 'entrada'
+                        ? $query->decrement('estoque', $item->quantidade)
+                        : $query->increment('estoque', $item->quantidade);
                 }
             }
 

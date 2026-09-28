@@ -183,7 +183,7 @@ class NotaFiscalService
         $std->serie = $notaFiscal->serie;
         $std->nNF = $notaFiscal->numero;
         $std->dhEmi = $dhEmi->format('Y-m-d\TH:i:sP');
-        $std->tpNF = $notaFiscal->tipo_operacao === 'entrada' ? 0 : 1;
+        $std->tpNF = $notaFiscal->cfopSaida->tipo_operacao === 'entrada' ? 0 : 1;
         $std->idDest = $idDest;
         $std->cMunFG = $this->empresa->cod_municipio;
         $std->tpImp = 1; // DANFE retrato

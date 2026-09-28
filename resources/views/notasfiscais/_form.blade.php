@@ -330,6 +330,14 @@
                 </select>
             </div>
 
+            <div class="mb-2">
+                <input type="text" id="cfop-form-codigo" placeholder="Código (4 dígitos)"
+                    maxlength="4" oninput="sugerirTipoCfop()" class="border rounded px-3 py-2 text-sm">
+                <select id="cfop-form-tipo" class="border rounded px-3 py-2 text-sm w-full">
+                    <option value="saida">Saída (CFOP 5xxx, 6xxx, 7xxx)</option>
+                    <option value="entrada">Entrada (CFOP 1xxx, 2xxx, 3xxx)</option>
+                </select>
+            </div>
 
             <label class="flex items-center gap-2 text-sm text-gray-700 mb-2">
                 <input type="checkbox" id="cfop-form-movimenta" checked>
@@ -487,6 +495,14 @@ const campoFinalidade = document.getElementById('campo-finalidade');
 
 const campoPagamento = document.getElementById('campo-pagamento');
 const campoOperador = document.getElementById('campo-operador');
+
+
+
+function sugerirTipoCfop() {
+    const primeiro = document.getElementById('cfop-form-codigo').value.charAt(0);
+    if (['1', '2', '3'].includes(primeiro)) document.getElementById('cfop-form-tipo').value = 'entrada';
+    else if (['5', '6', '7'].includes(primeiro)) document.getElementById('cfop-form-tipo').value = 'saida';
+}
 
 function cabecalhoValido() {
     return campoCliente.value !== '' && campoNatureza.value.trim() !== '' && campoFinalidade.value !== ''
@@ -647,6 +663,7 @@ function renderizarListaCfop() {
         <tr class="border-b border-gray-100 hover:bg-gray-50">
             <td class="py-2 font-mono cursor-pointer" onclick="selecionarCfop(${c.id})">${c.codigo}</td>
             <td class="py-2 cursor-pointer" onclick="selecionarCfop(${c.id})">${c.descricao}</td>
+            <td class="py-2 text-center cursor-pointer text-xs" onclick="selecionarCfop(${c.id})">${c.tipo_operacao === 'entrada' ? 'Entrada' : 'Saída'}</td>
             <td class="py-2 text-center cursor-pointer" onclick="selecionarCfop(${c.id})">${c.movimenta_estoque ? 'Sim' : 'Não'}</td>
             <td class="py-2 text-right">
                 <button type="button" onclick="abrirFormEdicaoCfop(${c.id})" class="text-blue-600 text-xs hover:underline">editar</button>
@@ -678,6 +695,7 @@ function abrirFormNovoCfop() {
     document.getElementById('cfop-form-natureza').value = '';
     document.getElementById('cfop-form-finalidade').value = '1';
     document.getElementById('form-cfop').classList.remove('hidden');
+    document.getElementById('cfop-form-tipo').value = 'saida';
 }
 
 function abrirFormEdicaoCfop(id) {
@@ -689,6 +707,7 @@ function abrirFormEdicaoCfop(id) {
     document.getElementById('cfop-form-natureza').value = cfop.natureza_operacao_padrao ?? '';
     document.getElementById('cfop-form-finalidade').value = cfop.finalidade_padrao ?? 1;
     document.getElementById('form-cfop').classList.remove('hidden');
+    document.getElementById('cfop-form-tipo').value = cfop.tipo_operacao ?? 'saida';
 }
 
 function fecharFormCfop() {
@@ -711,10 +730,12 @@ async function salvarFormCfop() {
     const rota = id ? `{{ route('cfop-saida.editar') }}` : `{{ route('cfop-saida.criar') }}`;
     const payload = {
         codigo, descricao,
+        tipo_operacao: document.getElementById('cfop-form-tipo').value,
         movimenta_estoque: movimentaEstoque,
         natureza_operacao_padrao: naturezaPadrao,
         finalidade_padrao: finalidadePadrao,
     };
+
     if (id) payload.id = id;
 
     const resp = await fetch(rota, {
