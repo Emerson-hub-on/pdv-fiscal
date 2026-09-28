@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('titulo', 'Nota Fiscal #' . $notaFiscal->id)
+@section('body-class', 'sidebar-oculta')
 
 @section('conteudo')
 
