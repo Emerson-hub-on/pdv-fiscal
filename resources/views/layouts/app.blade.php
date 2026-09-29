@@ -123,7 +123,7 @@
 
     <!-- Conteúdo principal -->
     <div id="conteudo-principal" class="ml-56 min-h-screen transition-[margin] duration-200 [.sidebar-oculta_&]:ml-16">
-        <main class="max-w-5xl mx-auto p-8 [.sidebar-oculta_&]:max-w-none [.sidebar-oculta_&]:mx-0 [.sidebar-oculta_&]:p-0">
+        <main class="max-w-5xl mx-auto p-8 [.conteudo-largo_&]:max-w-none [.conteudo-largo_&]:mx-0 [.conteudo-largo_&]:p-0">
 
             @php
                 // Mapa central do breadcrumb: prefixo da rota => [Grupo, Página]
