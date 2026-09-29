@@ -361,8 +361,9 @@
                 <tr class="text-left text-xs text-gray-500 border-b">
                     <th class="py-2 w-20">Código</th>
                     <th class="py-2">Descrição</th>
+                    <th class="py-4 w-32 text-center">Tipo da operação</th>
                     <th class="py-2 w-32 text-center">Mov. estoque</th>
-                    <th class="py-2 w-16"></th>
+                    
                 </tr>
             </thead>
             <tbody id="cfop-lista"></tbody>
