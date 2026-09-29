@@ -36,6 +36,7 @@
         Movimenta estoque
     </label>
 
+
     <button type="submit" class="bg-gray-800 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-gray-700 w-fit">
         {{ $ehEdicao ? 'Salvar Alterações' : 'Cadastrar' }}
     </button>

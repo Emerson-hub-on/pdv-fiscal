@@ -29,6 +29,7 @@ class CfopSaidaController extends Controller
             'movimenta_estoque'        => ['sometimes', 'boolean'],
             'natureza_operacao_padrao' => ['nullable', 'string', 'max:255'],
             'finalidade_padrao'        => ['nullable', 'in:1,2,3,4,5,6'],
+            'destacar_bases' => ['sometimes', 'boolean'],
         ]);
 
         $this->validarCoerenciaTipo($dados['codigo'], $dados['tipo_operacao']);
@@ -41,6 +42,7 @@ class CfopSaidaController extends Controller
             'natureza_operacao_padrao' => $dados['natureza_operacao_padrao'] ?? null,
             'finalidade_padrao'        => $dados['finalidade_padrao'] ?? 1,
             'ordem'                    => (CfopSaida::max('ordem') ?? 0) + 1,
+            'destacar_bases'           => $dados['destacar_bases'] ?? false,
         ]);
 
         return response()->json($cfop);
@@ -56,6 +58,7 @@ class CfopSaidaController extends Controller
             'movimenta_estoque'        => ['sometimes', 'boolean'],
             'natureza_operacao_padrao' => ['nullable', 'string', 'max:255'],
             'finalidade_padrao'        => ['nullable', 'in:1,2,3,4,5,6'],
+            'destacar_bases' => ['sometimes', 'boolean'],
         ]);
 
         $this->validarCoerenciaTipo($dados['codigo'], $dados['tipo_operacao']);
@@ -68,6 +71,7 @@ class CfopSaidaController extends Controller
             'movimenta_estoque'        => $dados['movimenta_estoque'] ?? false,
             'natureza_operacao_padrao' => $dados['natureza_operacao_padrao'] ?? null,
             'finalidade_padrao'        => $dados['finalidade_padrao'] ?? 1,
+            'destacar_bases'           => $dados['destacar_bases'] ?? false,
         ]);
 
         return response()->json($cfop);

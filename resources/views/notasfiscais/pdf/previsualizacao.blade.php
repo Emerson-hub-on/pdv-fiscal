@@ -190,24 +190,29 @@
             </tr>
         </thead>
         <tbody>
-            @foreach ($dados['itens'] as $item)
-                <tr>
-                    <td>{{ $item['codigo'] }}</td>
-                    <td>{{ $item['descricao'] }}</td>
-                    <td>{{ $item['ncm'] }}</td>
-                    <td>{{ $item['cst'] }}</td>
-                    <td>{{ $item['cfop'] }}</td>
-                    <td>{{ $item['unidade'] }}</td>
-                    <td class="direita">{{ $item['quantidade'] }}</td>
-                    <td class="direita">{{ $item['valor_unitario'] }}</td>
-                    <td class="direita">{{ $item['valor_total'] }}</td>
-                    <td class="direita">{{ $item['bc_icms'] }}</td>
-                    <td class="direita">{{ $item['valor_icms'] }}</td>
-                    <td class="direita">{{ $item['aliquota_icms'] }}</td>
-                    <td class="direita">{{ $item['valor_ipi'] }}</td>
-                    <td class="direita">{{ $item['aliquota_ipi'] }}</td>
-                </tr>
-            @endforeach
+        @foreach ($dados['itens'] as $item)
+            <tr @if($item['bases_manuais']) style="background:#fff8e1;" @endif>
+                <td>{{ $item['codigo'] }}</td>
+                <td>
+                    {{ $item['descricao'] }}
+                    @if($item['bases_manuais'])
+                        <span style="color:#b45309; font-size:6px;"> (bases destacadas manualmente)</span>
+                    @endif
+                </td>
+                <td>{{ $item['ncm'] }}</td>
+                <td>{{ $item['cst'] }}</td>
+                <td>{{ $item['cfop'] }}</td>
+                <td>{{ $item['unidade'] }}</td>
+                <td class="direita">{{ $item['quantidade'] }}</td>
+                <td class="direita">{{ $item['valor_unitario'] }}</td>
+                <td class="direita">{{ $item['valor_total'] }}</td>
+                <td class="direita">{{ $item['bc_icms'] }}</td>
+                <td class="direita">{{ $item['valor_icms'] }}</td>
+                <td class="direita">{{ $item['aliquota_icms'] }}</td>
+                <td class="direita">{{ $item['valor_ipi'] }}</td>
+                <td class="direita">{{ $item['aliquota_ipi'] }}</td>
+            </tr>
+        @endforeach
         </tbody>
     </table>
 

@@ -390,33 +390,54 @@ class NotaFiscalService
 
                 $trib = $item->tributacao;
 
-                if ($this->empresa->crt <= 2) {
-                    $icms = new \stdClass();
-                    $icms->item = $n;
-                    $icms->orig = $produto->origem_mercadoria;
-                    $icms->CSOSN = $trib?->csosn;
+if ($this->empresa->crt <= 2) {
+    $icms = new \stdClass();
+    $icms->item = $n;
+    $icms->orig = $produto->origem_mercadoria;
+    $icms->CSOSN = $trib?->csosn;
 
-                    // CSOSN 101 é o único caso do Simples Nacional em que a lei permite
-                    // conceder crédito de ICMS ao destinatário — reaproveita o mesmo campo
-                    // aliquota_icms do cadastro (nunca usado para SN em outro lugar) como
-                    // percentual de crédito.
-                    if ($trib?->csosn === '101' && $trib->aliquota_icms) {
-                        $baseCalculoItem = $item->valor_unitario * $item->quantidade;
-                        $percCredito = (float) $trib->aliquota_icms;
-                        $valorCredito = $baseCalculoItem * $percCredito / 100;
+    // vBC/pICMS/vICMS só existem no grupo ICMSSN para os CSOSN 500 (ST retida)
+    // e 900 (Outros) — nos demais, a lib ignora esses campos silenciosamente,
+    // então não pode ir pro acumulador do total (senão o total diverge dos itens).
+    $csosnComBaseCalculo = ['500', '900'];
 
-                        $icms->pCredSN = number_format($percCredito, 4, '.', '');
-                        $icms->vCredICMSSN = number_format($valorCredito, 2, '.', '');
+    if ($item->bc_icms_manual !== null && in_array($trib?->csosn, $csosnComBaseCalculo, true)) {
+        $baseManual = (float) $item->bc_icms_manual;
+        $aliquotaManual = (float) ($item->aliquota_icms_manual ?? 0);
+        $valorManual = (float) ($item->valor_icms_manual ?? 0);
 
-                        // Reaproveita os mesmos acumuladores do Regime Normal — assim o
-                        // destaque automático em devolução (montarInfAdicional) funciona
-                        // igual pros dois regimes, sem duplicar lógica nenhuma.
-                        $this->totalICMSBC += $baseCalculoItem;
-                        $this->totalICMS += $valorCredito;
-                    }
+        $icms->vBC = number_format($baseManual, 2, '.', '');
+        $icms->pICMS = number_format($aliquotaManual, 4, '.', '');
+        $icms->vICMS = number_format($valorManual, 2, '.', '');
 
-                    $nfe->tagICMSSN($icms);
-                }
+        $this->totalICMSBC += $baseManual;
+        $this->totalICMS += $valorManual;
+    }
+
+    // CSOSN 101 usa campos DIFERENTES (pCredSN/vCredICMSSN — crédito, não base de
+    // ICMS) — continua igual, sem depender do bloco acima
+    if ($trib?->csosn === '101') {
+        $percCredito = $item->aliquota_icms_manual !== null
+            ? (float) $item->aliquota_icms_manual
+            : (!empty($trib->aliquota_icms) ? (float) $trib->aliquota_icms : 0.00);
+
+        $baseCalculoItem = $item->bc_icms_manual !== null
+            ? (float) $item->bc_icms_manual
+            : $item->valor_unitario * $item->quantidade;
+
+        $valorCredito = $item->valor_icms_manual !== null
+            ? (float) $item->valor_icms_manual
+            : $baseCalculoItem * $percCredito / 100;
+
+        $icms->pCredSN = number_format($percCredito, 4, '.', '');
+        $icms->vCredICMSSN = number_format($valorCredito, 2, '.', '');
+
+        $this->totalICMSBC += $baseCalculoItem;
+        $this->totalICMS += $valorCredito;
+    }
+
+    $nfe->tagICMSSN($icms);
+}
                 else {
                     $cstIcms = str_pad((string) (int) ($trib?->cst_icms ?? 0), 2, '0', STR_PAD_LEFT);
 
@@ -427,7 +448,15 @@ class NotaFiscalService
 
                     $cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
 
-                    if (in_array($cstIcms, $cstsComBaseCalculo, true)) {
+                    if ($item->bc_icms_manual !== null) {
+                        $icms->modBC = 3;
+                        $icms->vBC = number_format($item->bc_icms_manual, 2, '.', '');
+                        $icms->pICMS = number_format($item->aliquota_icms_manual ?? 0, 2, '.', '');
+                        $icms->vICMS = number_format($item->valor_icms_manual ?? 0, 2, '.', '');
+
+                        $this->totalICMSBC += (float) $item->bc_icms_manual;
+                        $this->totalICMS += (float) ($item->valor_icms_manual ?? 0);
+                    } elseif (in_array($cstIcms, $cstsComBaseCalculo, true)) {
                         $icms->modBC = 3;
                         $icms->vBC = number_format($item->valor_unitario * $item->quantidade, 2, '.', '');
                         $icms->pICMS = number_format($trib->aliquota_icms, 2, '.', '');
@@ -496,7 +525,15 @@ class NotaFiscalService
                     $ipiStd->cEnq = $ipiClass->cenq ?? '999';
                     $ipiStd->CST = $ipiClass->codigo;
 
-                    if ($ipiClass->codigo === '50') {
+                    if ($item->valor_ipi_manual !== null) {
+                        $baseCalculoItem = $item->bc_icms_manual ?? ($item->valor_unitario * $item->quantidade);
+
+                        $ipiStd->vBC = number_format($baseCalculoItem, 2, '.', '');
+                        $ipiStd->pIPI = number_format($item->aliquota_ipi_manual ?? 0, 4, '.', '');
+                        $ipiStd->vIPI = number_format($item->valor_ipi_manual, 2, '.', '');
+
+                        $this->totalIPI += (float) $item->valor_ipi_manual;
+                    } elseif ($ipiClass->codigo === '50') {
                         $baseCalculoItem = $item->valor_unitario * $item->quantidade;
                         $aliquotaIpi = (float) ($ipiClass->aliquota ?? 0);
                         $valorIpi = $baseCalculoItem * $aliquotaIpi / 100;

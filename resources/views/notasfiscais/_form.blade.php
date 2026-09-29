@@ -4,24 +4,36 @@
     $itensIniciais = $ehEdicao
         ? $notaFiscal->itens->map(function ($i) {
             $subtotalBruto = (float) $i->valor_unitario * (float) $i->quantidade;
-            $trib = $i->tributacao;
-            $bcIcms = 0; $valorIcms = 0; $aliquotaIcms = 0;
             $cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
 
-            if ($trib && in_array($trib->cst_icms, $cstsComBaseCalculo, true)) {
-                $bcIcms = $subtotalBruto;
-                $aliquotaIcms = (float) $trib->aliquota_icms;
-                $valorIcms = $bcIcms * $aliquotaIcms / 100;
+            // 1. ICMS: Prioriza os dados manuais se preenchidos, senão calcula pelo padrão
+            if (!is_null($i->aliquota_icms_manual) || !is_null($i->bc_icms_manual)) {
+                $bcIcms       = (float) ($i->bc_icms_manual ?? 0);
+                $aliquotaIcms = (float) ($i->aliquota_icms_manual ?? 0);
+                $valorIcms    = (float) ($i->valor_icms_manual ?? ($bcIcms * $aliquotaIcms / 100));
+            } else {
+                $trib = $i->tributacao;
+                $bcIcms = 0; $valorIcms = 0; $aliquotaIcms = 0;
+
+                if ($trib && in_array($trib->cst_icms, $cstsComBaseCalculo, true)) {
+                    $bcIcms = $subtotalBruto;
+                    $aliquotaIcms = (float) $trib->aliquota_icms;
+                    $valorIcms = $bcIcms * $aliquotaIcms / 100;
+                }
             }
 
-            // IPI — só CST 50 (Saída Tributada) tem valor de fato; os demais (isenção,
-            // alíquota zero, suspensão etc.) ficam zerados mesmo com classificação vinculada.
-            $ipi = $i->ipi;
-            $valorIpi = 0; $aliquotaIpi = 0;
+            // 2. IPI: Prioriza os dados manuais se preenchidos, senão calcula pelo padrão
+            if (!is_null($i->aliquota_ipi_manual) || !is_null($i->valor_ipi_manual)) {
+                $aliquotaIpi = (float) ($i->aliquota_ipi_manual ?? 0);
+                $valorIpi    = (float) ($i->valor_ipi_manual ?? ($subtotalBruto * $aliquotaIpi / 100));
+            } else {
+                $ipi = $i->ipi;
+                $valorIpi = 0; $aliquotaIpi = 0;
 
-            if ($ipi && $ipi->codigo === '50' && $ipi->aliquota) {
-                $aliquotaIpi = (float) $ipi->aliquota;
-                $valorIpi = $subtotalBruto * $aliquotaIpi / 100;
+                if ($ipi && $ipi->codigo === '50' && $ipi->aliquota) {
+                    $aliquotaIpi = (float) $ipi->aliquota;
+                    $valorIpi = $subtotalBruto * $aliquotaIpi / 100;
+                }
             }
 
             return [
@@ -50,7 +62,6 @@
     $naturezaAtual = old('natureza_operacao', $ehEdicao ? $notaFiscal->natureza_operacao : null);
     $finalidadeAtual = old('finalidade', $ehEdicao ? $notaFiscal->finalidade : null);
     $notasReferenciadasIniciais = $ehEdicao ? ($notaFiscal->notas_referenciadas ?? []) : [];
-
 @endphp
 
 <form id="form-nota" method="POST"
@@ -337,8 +348,6 @@
             </div>
 
             <div class="mb-2">
-                <input type="text" id="cfop-form-codigo" placeholder="Código (4 dígitos)"
-                    maxlength="4" oninput="sugerirTipoCfop()" class="border rounded px-3 py-2 text-sm">
                 <select id="cfop-form-tipo" class="border rounded px-3 py-2 text-sm w-full">
                     <option value="saida">Saída (CFOP 5xxx, 6xxx, 7xxx)</option>
                     <option value="entrada">Entrada (CFOP 1xxx, 2xxx, 3xxx)</option>
@@ -349,6 +358,12 @@
                 <input type="checkbox" id="cfop-form-movimenta" checked>
                 Movimenta estoque (diminui o estoque do produto na quantidade vendida)
             </label>
+
+            <label class="flex items-center gap-2 text-sm text-gray-700 mb-2">
+                <input type="checkbox" id="cfop-form-destacar-bases">
+                Destacar bases (permite editar manualmente BC, valor e % de ICMS e IPI ao adicionar item)
+            </label>
+
             <div class="flex gap-2 justify-end">
                 <button type="button" onclick="fecharFormCfop()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
                 <button type="button" onclick="salvarFormCfop()"
@@ -363,6 +378,7 @@
                     <th class="py-2">Descrição</th>
                     <th class="py-4 w-32 text-center">Tipo da operação</th>
                     <th class="py-2 w-32 text-center">Mov. estoque</th>
+                    <th class="py-2 w-24 text-center">Destaca</th>
                     
                 </tr>
             </thead>
@@ -488,6 +504,7 @@
 
 <script>
 window.crtEmpresa = {{ (int) $crtEmpresa }};
+window.cfopDestacarBases = {{ ($ehEdicao && $notaFiscal->cfopSaida && $notaFiscal->cfopSaida->destacar_bases) ? 'true' : 'false' }};
 let itensNota = @json($itensIniciais);
 const finalidadesRefPorItem = @json(array_map('strval', config('fiscal.finalidades_referencia_por_item', [])));
 const motivosAjuste = @json(config('fiscal.motivos_ajuste', []));
@@ -682,6 +699,8 @@ function renderizarListaCfop() {
             <td class="py-2 text-right">
                 <button type="button" onclick="abrirFormEdicaoCfop(${c.id})" class="text-blue-600 text-xs hover:underline">editar</button>
             </td>
+            <td class="py-2 text-center text-xs">${c.destacar_bases ? 'Sim' : 'Não'}</td>
+
         </tr>
     `).join('');
 }
@@ -690,12 +709,15 @@ function renderizarListaCfop() {
 // Aqui está o auto-preenchimento pedido: escolher o CFOP já preenche natureza e finalidade
 function selecionarCfop(id) {
     const cfop = cfopsCache.find(c => c.id === id);
+    window.cfopDestacarBases = !!cfop.destacar_bases;
+
     campoCfop.value = cfop.id;
     document.getElementById('texto-cfop-selecionado').innerText = `${cfop.codigo} - ${cfop.descricao}`;
 
     campoNatureza.value = cfop.natureza_operacao_padrao ?? '';
     campoFinalidade.value = cfop.finalidade_padrao ?? 1;
 
+    
     atualizarTravaCabecalho();
     fecharModalCfop();
 }
@@ -710,6 +732,7 @@ function abrirFormNovoCfop() {
     document.getElementById('cfop-form-finalidade').value = '1';
     document.getElementById('form-cfop').classList.remove('hidden');
     document.getElementById('cfop-form-tipo').value = 'saida';
+    document.getElementById('cfop-form-destacar-bases').checked = false;
 }
 
 function abrirFormEdicaoCfop(id) {
@@ -722,6 +745,9 @@ function abrirFormEdicaoCfop(id) {
     document.getElementById('cfop-form-finalidade').value = cfop.finalidade_padrao ?? 1;
     document.getElementById('form-cfop').classList.remove('hidden');
     document.getElementById('cfop-form-tipo').value = cfop.tipo_operacao ?? 'saida';
+    document.getElementById('cfop-form-destacar-bases').checked = cfop.destacar_bases ?? false;
+
+
 }
 
 function fecharFormCfop() {
@@ -748,6 +774,7 @@ async function salvarFormCfop() {
         movimenta_estoque: movimentaEstoque,
         natureza_operacao_padrao: naturezaPadrao,
         finalidade_padrao: finalidadePadrao,
+        destacar_bases: document.getElementById('cfop-form-destacar-bases').checked,
     };
 
     if (id) payload.id = id;
@@ -769,6 +796,8 @@ async function salvarFormCfop() {
     await buscarCfop();
 
     if (campoCfop.value == cfopSalvo.id) {
+        window.cfopDestacarBases = !!cfopSalvo.destacar_bases;
+
         document.getElementById('texto-cfop-selecionado').innerText = `${cfopSalvo.codigo} - ${cfopSalvo.descricao}`;
         campoNatureza.value = cfopSalvo.natureza_operacao_padrao ?? '';
         campoFinalidade.value = cfopSalvo.finalidade_padrao ?? 1;
@@ -897,6 +926,11 @@ function abrirEditorItem(produto) {
     document.getElementById('editor-desconto-percentual').value = 0;
     document.getElementById('editor-item').classList.remove('hidden');
     atualizarCalculosEditor('valor');
+
+    const bases = window.cfopDestacarBases;
+    ['editor-bc-icms', 'editor-valor-icms', 'editor-aliquota-icms', 'editor-valor-ipi', 'editor-aliquota-ipi']
+    .forEach(id => document.getElementById(id).readOnly = !bases);
+
     document.getElementById('editor-quantidade').focus();
     document.getElementById('editor-referencia-devolucao').classList
     .toggle('hidden', !finalidadesRefPorItem.includes(String(campoFinalidade.value)));
@@ -909,7 +943,7 @@ function abrirEditorItem(produto) {
  * Desconto (R$) e Desconto % sincronizados entre si. origem indica qual dos dois
  * campos de desconto foi editado por último, pra saber qual recalcular a partir do outro.
  */
-function atualizarCalculosEditor(origemDesconto) {
+function atualizarCalculosEditor(origemDesconto, manterTributosManuais = false) {
     const quantidade = parseFloat(document.getElementById('editor-quantidade').value) || 0;
     const valorUnitario = parseFloat(document.getElementById('editor-valor-unitario').value) || 0;
     const subtotalBruto = quantidade * valorUnitario;
@@ -939,6 +973,13 @@ function atualizarCalculosEditor(origemDesconto) {
         valorIcms = bcIcms * aliquotaIcms / 100;
     }
 
+    // Só atualiza os inputs de ICMS se NÃO estiver configurado para destacar bases OU se NÃO for para manter as edições manuais
+    if (!window.cfopDestacarBases || !manterTributosManuais) {
+        document.getElementById('editor-bc-icms').value = 'R$ ' + bcIcms.toFixed(2);
+        document.getElementById('editor-valor-icms').value = 'R$ ' + valorIcms.toFixed(2);
+        document.getElementById('editor-aliquota-icms').value = aliquotaIcms.toFixed(2) + '%';
+    }
+
     // IPI — só CST 50 (Saída Tributada) gera valor
     const ipi = produtoSelecionadoParaEditor?.ipi;
     let valorIpi = 0, aliquotaIpi = 0;
@@ -948,13 +989,13 @@ function atualizarCalculosEditor(origemDesconto) {
         valorIpi = subtotalBruto * aliquotaIpi / 100;
     }
 
-    document.getElementById('editor-valor-ipi').value = 'R$ ' + valorIpi.toFixed(2);
-    document.getElementById('editor-aliquota-ipi').value = aliquotaIpi.toFixed(2) + '%';
-
-    document.getElementById('editor-bc-icms').value = 'R$ ' + bcIcms.toFixed(2);
-    document.getElementById('editor-valor-icms').value = 'R$ ' + valorIcms.toFixed(2);
-    document.getElementById('editor-aliquota-icms').value = aliquotaIcms.toFixed(2) + '%';
+    // Só atualiza os inputs de IPI se NÃO estiver configurado para destacar bases OU se NÃO for para manter as edições manuais
+    if (!window.cfopDestacarBases || !manterTributosManuais) {
+        document.getElementById('editor-valor-ipi').value = 'R$ ' + valorIpi.toFixed(2);
+        document.getElementById('editor-aliquota-ipi').value = aliquotaIpi.toFixed(2) + '%';
+    }
 }
+
 
 document.getElementById('editor-quantidade').addEventListener('input', () => atualizarCalculosEditor('valor'));
 document.getElementById('editor-valor-unitario').addEventListener('input', () => atualizarCalculosEditor('valor'));
@@ -984,23 +1025,35 @@ function adicionarLinhaNaGrid() {
     const subtotalBruto = quantidade * valorUnitario;
     const valorTotal = Math.max(subtotalBruto - valorDesconto, 0);
 
-    const trib = produtoSelecionadoParaEditor?.tributacao;
-    const cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
-    let bcIcms = 0, valorIcms = 0, aliquotaIcms = 0;
+    // INÍCIO DO NOVO BLOCO: Condicional para ler campos manuais ou calcular automaticamente
+    let bcIcms, valorIcms, aliquotaIcms, valorIpi, aliquotaIpi;
 
-    if (window.crtEmpresa > 2 && trib && cstsComBaseCalculo.includes(trib.cst_icms)) {
-        bcIcms = subtotalBruto;
-        aliquotaIcms = parseFloat(trib.aliquota_icms) || 0;
-        valorIcms = bcIcms * aliquotaIcms / 100;
+    if (window.cfopDestacarBases) {
+        bcIcms = parseFloat(document.getElementById('editor-bc-icms').value.replace('R$', '').replace(',', '.')) || 0;
+        valorIcms = parseFloat(document.getElementById('editor-valor-icms').value.replace('R$', '').replace(',', '.')) || 0;
+        aliquotaIcms = parseFloat(document.getElementById('editor-aliquota-icms').value.replace('%', '').replace(',', '.')) || 0;
+        valorIpi = parseFloat(document.getElementById('editor-valor-ipi').value.replace('R$', '').replace(',', '.')) || 0;
+        aliquotaIpi = parseFloat(document.getElementById('editor-aliquota-ipi').value.replace('%', '').replace(',', '.')) || 0;
+    } else {
+        const trib = produtoSelecionadoParaEditor?.tributacao;
+        const cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
+        bcIcms = 0; valorIcms = 0; aliquotaIcms = 0;
+
+        if (window.crtEmpresa > 2 && trib && cstsComBaseCalculo.includes(trib.cst_icms)) {
+            bcIcms = subtotalBruto;
+            aliquotaIcms = parseFloat(trib.aliquota_icms) || 0;
+            valorIcms = bcIcms * aliquotaIcms / 100;
+        }
+
+        const ipi = produtoSelecionadoParaEditor?.ipi;
+        valorIpi = 0; aliquotaIpi = 0;
+
+        if (ipi && ipi.codigo === '50' && ipi.aliquota) {
+            aliquotaIpi = parseFloat(ipi.aliquota) || 0;
+            valorIpi = subtotalBruto * aliquotaIpi / 100;
+        }
     }
-
-    const ipi = produtoSelecionadoParaEditor?.ipi;
-    let valorIpi = 0, aliquotaIpi = 0;
-
-    if (ipi && ipi.codigo === '50' && ipi.aliquota) {
-        aliquotaIpi = parseFloat(ipi.aliquota) || 0;
-        valorIpi = subtotalBruto * aliquotaIpi / 100;
-    }
+    // FIM DO NOVO BLOCO
 
     itensNota.push({
         produto_id: produtoSelecionadoParaEditor.id,
@@ -1017,10 +1070,9 @@ function adicionarLinhaNaGrid() {
         aliquota_icms: aliquotaIcms,
         valor_ipi: valorIpi,
         aliquota_ipi: aliquotaIpi,
+        bases_manuais: !!window.cfopDestacarBases,
         ref_chave_acesso: refChave || null,
         ref_nitem: refNitem,
-
-
     });
 
     document.getElementById('editor-item').classList.add('hidden');
@@ -1028,6 +1080,7 @@ function adicionarLinhaNaGrid() {
     renderizarGridItens();
     inputBuscaNf.focus();
 }
+
 
 
 function prepararBlocoMotivoAjuste() {

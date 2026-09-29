@@ -14,6 +14,7 @@
                 <th class="text-left px-4 py-2">Descrição</th>
                 <th class="text-left px-4 py-2">Finalidade</th>
                 <th class="text-center px-4 py-2">Movimenta estoque</th>
+                <th class="py-2 w-24 text-center">Destaca</th>
                 <th class="text-center px-4 py-2">Ativo</th>
                 <th class="text-right px-4 py-2">Ações</th>
             </tr>

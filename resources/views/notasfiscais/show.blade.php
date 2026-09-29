@@ -83,22 +83,34 @@
         $linhasItens = $notaFiscal->itens->map(function ($item) use ($cstsComBaseCalculo) {
             $subtotalBruto = (float) $item->valor_unitario * (float) $item->quantidade;
 
-            $trib = $item->tributacao;
-            $bcIcms = 0; $valorIcms = 0; $aliquotaIcms = 0;
+            // 1. ICMS: Prioriza os dados manuais se preenchidos, senão calcula pelo padrão
+            if (!is_null($item->aliquota_icms_manual) || !is_null($item->bc_icms_manual)) {
+                $bcIcms      = (float) ($item->bc_icms_manual ?? 0);
+                $aliquotaIcms = (float) ($item->aliquota_icms_manual ?? 0);
+                $valorIcms   = (float) ($item->valor_icms_manual ?? ($bcIcms * $aliquotaIcms / 100));
+            } else {
+                $trib = $item->tributacao;
+                $bcIcms = 0; $valorIcms = 0; $aliquotaIcms = 0;
 
-            if ($trib && in_array($trib->cst_icms, $cstsComBaseCalculo, true)) {
-                $bcIcms = $subtotalBruto;
-                $aliquotaIcms = (float) $trib->aliquota_icms;
-                $valorIcms = $bcIcms * $aliquotaIcms / 100;
+                if ($trib && in_array($trib->cst_icms, $cstsComBaseCalculo, true)) {
+                    $bcIcms = $subtotalBruto;
+                    $aliquotaIcms = (float) $trib->aliquota_icms;
+                    $valorIcms = $bcIcms * $aliquotaIcms / 100;
+                }
             }
 
-            // IPI — só CST 50 (Saída Tributada) tem valor de fato.
-            $ipi = $item->ipi;
-            $valorIpi = 0; $aliquotaIpi = 0;
+            // 2. IPI: Prioriza os dados manuais se preenchidos, senão calcula pelo padrão
+            if (!is_null($item->aliquota_ipi_manual) || !is_null($item->valor_ipi_manual)) {
+                $aliquotaIpi = (float) ($item->aliquota_ipi_manual ?? 0);
+                $valorIpi    = (float) ($item->valor_ipi_manual ?? ($subtotalBruto * $aliquotaIpi / 100));
+            } else {
+                $ipi = $item->ipi;
+                $valorIpi = 0; $aliquotaIpi = 0;
 
-            if ($ipi && $ipi->codigo === '50' && $ipi->aliquota) {
-                $aliquotaIpi = (float) $ipi->aliquota;
-                $valorIpi = $subtotalBruto * $aliquotaIpi / 100;
+                if ($ipi && $ipi->codigo === '50' && $ipi->aliquota) {
+                    $aliquotaIpi = (float) $ipi->aliquota;
+                    $valorIpi = $subtotalBruto * $aliquotaIpi / 100;
+                }
             }
 
             $descontoPercentual = $subtotalBruto > 0

@@ -13,14 +13,20 @@ class NotaFiscalItem extends Model
         'nota_fiscal_id', 'produto_id', 'descricao', 'ncm_id', 'cest_id',
         'class_trib_ibs_cbs_id', 'tributacao_id', 'pis_cofins_id', 'ipi_id',
         'quantidade', 'valor_unitario', 'valor_desconto', 'valor_total',
-        'ref_chave_acesso', 'ref_nitem',
+        'ref_chave_acesso', 'ref_nitem','bc_icms_manual', 'valor_icms_manual', 
+        'aliquota_icms_manual', 'valor_ipi_manual', 'aliquota_ipi_manual',
     ];
 
     protected $casts = [
-        'quantidade' => 'decimal:3',
-        'valor_unitario' => 'decimal:4',
-        'valor_desconto' => 'decimal:2',
-        'valor_total' => 'decimal:2',
+        'quantidade'            => 'decimal:3',
+        'valor_unitario'        => 'decimal:4',
+        'valor_desconto'        => 'decimal:2',
+        'valor_total'           => 'decimal:2',
+        'bc_icms_manual'        => 'decimal:2',
+        'valor_icms_manual'     => 'decimal:2',
+        'aliquota_icms_manual'  => 'decimal:2',
+        'valor_ipi_manual'      => 'decimal:2',
+        'aliquota_ipi_manual'   => 'decimal:2',
     ];
 
     public function notaFiscal(): BelongsTo

@@ -244,6 +244,7 @@ class NotaFiscalController extends Controller
             $descricao     = trim($itemDados['descricao'] ?? '') ?: null;
             $refChave      = trim($itemDados['ref_chave_acesso'] ?? '') ?: null;
             $refNitem      = $itemDados['ref_nitem'] ?? null;
+            $basesManuais  = !empty($itemDados['bases_manuais']);
 
             $notaFiscal->itens()->create([
                 'produto_id'            => $produto->id,
@@ -260,7 +261,11 @@ class NotaFiscalController extends Controller
                 'valor_unitario'        => $valorUnitario,
                 'valor_desconto'        => $valorDesconto,
                 'valor_total'           => $valorTotal,
-                
+                'bc_icms_manual'        => $basesManuais ? ($itemDados['bc_icms'] ?? null) : null,
+                'valor_icms_manual'     => $basesManuais ? ($itemDados['valor_icms'] ?? null) : null,
+                'aliquota_icms_manual'  => $basesManuais ? ($itemDados['aliquota_icms'] ?? null) : null,
+                'valor_ipi_manual'      => $basesManuais ? ($itemDados['valor_ipi'] ?? null) : null,
+                'aliquota_ipi_manual'   => $basesManuais ? ($itemDados['aliquota_ipi'] ?? null) : null,
             ]);
         }
 
@@ -544,27 +549,40 @@ class NotaFiscalController extends Controller
 
         $itens = $notaFiscal->itens->values()->map(function ($item, $index) use ($notaFiscal, &$totalBaseIcms, &$totalValorIcms) {
             $trib = $item->tributacao;
-            $baseIcms = 0;
-            $valorIcms = 0;
-            $aliquotaIcms = 0;
+            $subtotalBruto = $item->valor_unitario * $item->quantidade;
             $cstOuCsosn = $trib?->csosn ?? $trib?->cst_icms ?? '—';
 
-            if ($trib && $trib->cst_icms && in_array($trib->cst_icms, ['00', '10', '20', '70', '90'], true)) {
-                $baseIcms = $item->valor_unitario * $item->quantidade;
+            $cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
+
+            if ($item->bc_icms_manual !== null) {
+                // Destaque manual (CFOP com "destacar_bases" ativo) — prioridade sobre o cálculo automático
+                $baseIcms = (float) $item->bc_icms_manual;
+                $valorIcms = (float) ($item->valor_icms_manual ?? 0);
+                $aliquotaIcms = (float) ($item->aliquota_icms_manual ?? 0);
+            } elseif ($trib && $trib->cst_icms && in_array($trib->cst_icms, $cstsComBaseCalculo, true)) {
+                $baseIcms = $subtotalBruto;
                 $aliquotaIcms = (float) $trib->aliquota_icms;
                 $valorIcms = $baseIcms * $aliquotaIcms / 100;
+            } else {
+                $baseIcms = 0;
+                $valorIcms = 0;
+                $aliquotaIcms = 0;
             }
 
             $totalBaseIcms += $baseIcms;
             $totalValorIcms += $valorIcms;
 
             $ipi = $item->ipi;
-            $valorIpi = 0;
-            $aliquotaIpi = 0;
 
-            if ($ipi && $ipi->codigo === '50' && $ipi->aliquota) {
+            if ($item->valor_ipi_manual !== null) {
+                $valorIpi = (float) $item->valor_ipi_manual;
+                $aliquotaIpi = (float) ($item->aliquota_ipi_manual ?? 0);
+            } elseif ($ipi && $ipi->codigo === '50' && $ipi->aliquota) {
                 $aliquotaIpi = (float) $ipi->aliquota;
-                $valorIpi = $baseIcms > 0 ? $baseIcms * $aliquotaIpi / 100 : ($item->valor_unitario * $item->quantidade) * $aliquotaIpi / 100;
+                $valorIpi = $subtotalBruto * $aliquotaIpi / 100;
+            } else {
+                $valorIpi = 0;
+                $aliquotaIpi = 0;
             }
 
             return [
@@ -573,7 +591,7 @@ class NotaFiscalController extends Controller
                 'descricao'      => $item->descricao ?? $item->produto->nome,
                 'ncm'            => $item->ncm->codigo ?? '—',
                 'cst'            => $cstOuCsosn,
-                'cfop' => $notaFiscal->cfopSaida->codigo,
+                'cfop'           => $notaFiscal->cfopSaida->codigo,
                 'unidade'        => $item->produto->unidade_comercial,
                 'quantidade'     => number_format($item->quantidade, 3, ',', '.'),
                 'valor_unitario' => number_format($item->valor_unitario, 2, ',', '.'),
@@ -583,6 +601,7 @@ class NotaFiscalController extends Controller
                 'aliquota_icms'  => number_format($aliquotaIcms, 2, ',', '.'),
                 'valor_ipi'      => number_format($valorIpi, 2, ',', '.'),
                 'aliquota_ipi'   => number_format($aliquotaIpi, 2, ',', '.'),
+                'bases_manuais'  => $item->bc_icms_manual !== null || $item->valor_ipi_manual !== null,
             ];
         });
 
