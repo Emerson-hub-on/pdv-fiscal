@@ -379,7 +379,6 @@
                     <th class="py-2">Descrição</th>
                     <th class="py-4 w-32 text-center">Tipo da operação</th>
                     <th class="py-2 w-32 text-center">Mov. estoque</th>
-                    <th class="py-2 w-24 text-center">Destaca</th>
                     
                 </tr>
             </thead>
@@ -700,7 +699,7 @@ function renderizarListaCfop() {
             <td class="py-2 text-right">
                 <button type="button" onclick="abrirFormEdicaoCfop(${c.id})" class="text-blue-600 text-xs hover:underline">editar</button>
             </td>
-            <td class="py-2 text-center text-xs">${c.destacar_bases ? 'Sim' : 'Não'}</td>
+            
 
         </tr>
     `).join('');

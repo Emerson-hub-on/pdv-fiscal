@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('titulo', 'PDV - Venda')
-@section('body-class', 'sidebar-oculta')
+@section('body-class', 'sem-sidebar conteudo-largo')
 
 @section('conteudo')
 <div class="pt-32 flex justify-between items-center mb-4">

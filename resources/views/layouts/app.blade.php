@@ -12,7 +12,7 @@
      ícones) através da classe 'sidebar-oculta' no <body> — a mesma classe que
      já é definida via @section('body-class', 'sidebar-oculta') nas telas de
      criar/editar nota, e que também pode ser alternada pelo botão do topo. -->
-<aside id="nav-principal" class="bg-gray-800 fixed top-0 left-0 h-screen w-50 flex flex-col z-40 overflow-y-auto transition-[width] duration-200 [.sidebar-oculta_&]:w-16">
+<aside id="nav-principal" class="bg-gray-800 fixed top-0 left-0 h-screen w-50 flex flex-col z-40 overflow-y-auto transition-[width] duration-200 [.sidebar-oculta_&]:w-16 [.sem-sidebar_&]:hidden">
     <div class="px-3 py-4 border-b border-white/10 shrink-0 flex items-center justify-between [.sidebar-oculta_&]:justify-center">
         <div class="px-2 overflow-hidden [.sidebar-oculta_&]:hidden">
             <p class="text-white font-bold text-lg tracking-tight whitespace-nowrap">PDV Fiscal</p>
@@ -122,7 +122,7 @@
 </aside>
 
     <!-- Conteúdo principal -->
-    <div id="conteudo-principal" class="ml-56 min-h-screen transition-[margin] duration-200 [.sidebar-oculta_&]:ml-16">
+    <div id="conteudo-principal" class="ml-56 min-h-screen transition-[margin] duration-200 [.sidebar-oculta_&]:ml-16 [.sem-sidebar_&]:ml-0">
         <main class="max-w-5xl mx-auto p-8 [.conteudo-largo_&]:max-w-none [.conteudo-largo_&]:mx-0 [.conteudo-largo_&]:p-0">
 
             @php
