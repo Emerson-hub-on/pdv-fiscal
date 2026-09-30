@@ -307,8 +307,6 @@
         </div>
 </form>
 
-
-
 <!-- Modal CFOP -->
 <div id="modal-cfop" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6 max-h-[80vh] overflow-y-auto">
@@ -388,8 +386,6 @@
     </div>
 </div>
 
-
-
 <!-- Modal Forma de Pagamento -->
 <div id="modal-pagamento" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-lg w-full max-w-lg p-6 max-h-[80vh] overflow-y-auto">
@@ -424,8 +420,6 @@
         <p id="pagamento-vazio" class="text-sm text-gray-400 text-center py-4 hidden">Nenhuma forma encontrada.</p>
     </div>
 </div>
-
-
 
 <!-- Modal de busca de produto -->
 <div id="modal-busca-produto-nf" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
