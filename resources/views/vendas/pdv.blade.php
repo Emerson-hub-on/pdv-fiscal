@@ -4,11 +4,10 @@
 @section('body-class', 'sem-sidebar conteudo-largo')
 
 @section('conteudo')
-<div class="pt-32 flex justify-between items-center mb-4">
+<div class="h-screen flex flex-col overflow-hidden">
 
-<div class="fixed top-0 left-0 right-0 z-50
-            bg-linear-to-r from-slate-800 via-slate-900 to-slate-900
-            shadow-lg">
+<div class="bg-linear-to-r from-slate-800 via-slate-900 to-slate-900
+            shadow-lg shrink-0">
     <div class="flex justify-between items-center px-6 py-4 border-b border-white/10">
         <div>
             <h1 class="text-xl font-bold text-white tracking-tight">{{ $caixa->pdv->nome }}</h1>
@@ -64,7 +63,6 @@
             Desconto Item <span class="opacity-60">F4</span>
         </button>
     </div>
-</div>
 </div>
 
 
@@ -312,7 +310,7 @@
     
 
 <!-- Container do Grid ajustado para ocupar a altura restante da tela -->
-<div class="grid grid-cols-3 gap-6 shadow-md flex-1 h-[calc(100vh-120px)] pb-4 max-w-6xl mx-auto px-6">
+<div class="grid grid-cols-3 gap-6 shadow-md flex-1 overflow-hidden pb-4 max-w-6xl mx-auto px-6 w-full">
     
     <!-- Coluna da Esquerda (Carrinho) -->
     <div class="col-span-2 bg-white rounded-xl shadow-lg overflow-hidden flex flex-col h-full">
@@ -358,6 +356,7 @@
 
         <p id="erro-itens" class="text-red-600 text-sm mt-2 hidden"></p>
     </div>
+</div>
 </div>
 @endsection
 
