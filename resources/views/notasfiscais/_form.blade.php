@@ -53,6 +53,7 @@
                 'aliquota_ipi'        => $aliquotaIpi,
                 'ref_chave_acesso'    => $i->ref_chave_acesso,
                 'ref_nitem'           => $i->ref_nitem,
+                'bases_manuais'       => !is_null($i->bc_icms_manual) || !is_null($i->valor_ipi_manual),
             ];
         })->values()
         : collect();

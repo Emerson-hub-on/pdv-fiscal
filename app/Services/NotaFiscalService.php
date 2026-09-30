@@ -432,13 +432,11 @@ if ($this->empresa->crt <= 2) {
 
         $icms->pCredSN = number_format($percCredito, 4, '.', '');
         $icms->vCredICMSSN = number_format($valorCredito, 2, '.', '');
+        
+        }
 
-        $this->totalICMSBC += $baseCalculoItem;
-        $this->totalICMS += $valorCredito;
+        $nfe->tagICMSSN($icms);
     }
-
-    $nfe->tagICMSSN($icms);
-}
                 else {
                     $cstIcms = str_pad((string) (int) ($trib?->cst_icms ?? 0), 2, '0', STR_PAD_LEFT);
 
