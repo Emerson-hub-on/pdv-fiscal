@@ -406,6 +406,7 @@ if ($this->empresa->crt <= 2) {
         $aliquotaManual = (float) ($item->aliquota_icms_manual ?? 0);
         $valorManual = (float) ($item->valor_icms_manual ?? 0);
 
+        $icms->modBC = 3;
         $icms->vBC = number_format($baseManual, 2, '.', '');
         $icms->pICMS = number_format($aliquotaManual, 4, '.', '');
         $icms->vICMS = number_format($valorManual, 2, '.', '');
