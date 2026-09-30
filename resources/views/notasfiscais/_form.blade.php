@@ -443,6 +443,7 @@
                         <th class="py-2">Código</th>
                         <th class="py-2">Produto</th>
                         <th class="py-2">Preço</th>
+                        <th class="py-2">Estoque</th>
                     </tr>
                 </thead>
                 <tbody id="linhas-busca-produto-nf"></tbody>
@@ -903,6 +904,7 @@ function renderizarResultadosNf() {
                 <td class="py-3 font-mono text-sm ${destacado ? 'text-slate-300' : 'text-gray-500'}">${codigo}</td>
                 <td class="py-3 font-medium">${p.nome}</td>
                 <td class="py-3 ${destacado ? 'text-emerald-300' : 'text-emerald-600'} font-semibold">R$ ${Number(p.preco_venda).toFixed(2)}</td>
+                <td class="py-3 font-medium">${p.estoque}</td>
             </tr>
         `;
     }).join('');

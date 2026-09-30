@@ -363,7 +363,7 @@ class NotaFiscalController extends Controller
                     ->orWhere('nome', 'like', "{$termo}%");
             })
             ->limit(10)
-            ->get(['id', 'nome', 'codigo_interno', 'codigo_barras', 'preco_venda', 'ncm_id', 'cest_id', 'class_trib_ibs_cbs_id', 'tributacao_id', 'pis_cofins_id', 'ipi_id']);
+            ->get(['id', 'nome', 'codigo_interno', 'codigo_barras', 'preco_venda', 'estoque','ncm_id', 'cest_id', 'class_trib_ibs_cbs_id', 'tributacao_id', 'pis_cofins_id', 'ipi_id']);
 
         return response()->json($produtos);
     }
