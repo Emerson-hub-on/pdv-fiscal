@@ -352,21 +352,21 @@ class NotaFiscalController extends Controller
      * Busca produto por código de barras ou nome — mesmo padrão do buscarProduto do PDV.
      */
     public function buscarProduto(Request $request)
-    {
-        $termo = $request->get('termo');
+        {
+            $termo = $request->get('termo');
 
-        $produtos = Produto::ativos()
-            ->with(['tributacao:id,cst_icms,csosn,aliquota_icms', 'ipi:id,codigo,aliquota'])
-            ->where(function ($q) use ($termo) {
-                $q->where('codigo_barras', $termo)
-                    ->orWhere('codigo_interno', $termo)
-                    ->orWhere('nome', 'like', "{$termo}%");
-            })
-            ->limit(10)
-            ->get(['id', 'nome', 'codigo_interno', 'codigo_barras', 'preco_venda', 'estoque','ncm_id', 'cest_id', 'class_trib_ibs_cbs_id', 'tributacao_id', 'pis_cofins_id', 'ipi_id']);
+            $produtos = Produto::ativos()              
+                ->with(['tributacao:id,cst_icms,csosn,aliquota_icms', 'ipi:id,codigo,aliquota'])
+                ->where(function ($q) use ($termo) {
+                    $q->where('codigo_barras', $termo)
+                        ->orWhere('codigo_interno', $termo)
+                        ->orWhere('nome', 'like', "{$termo}%");
+                })
+                ->limit(10)
+                ->get(['id', 'nome', 'codigo_interno', 'codigo_barras', 'preco_venda', 'estoque', 'ncm_id', 'cest_id', 'class_trib_ibs_cbs_id', 'tributacao_id', 'pis_cofins_id', 'ipi_id']);
 
-        return response()->json($produtos);
-    }
+            return response()->json($produtos);
+        }
 
     public function adicionarItem(Request $request, NotaFiscal $notaFiscal)
     {

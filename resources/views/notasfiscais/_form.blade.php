@@ -6,6 +6,9 @@
             $subtotalBruto = (float) $i->valor_unitario * (float) $i->quantidade;
             $cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
 
+            $trib = $i->tributacao;
+            $cstOuCsosn = $trib?->csosn ?? $trib?->cst_icms ?? '—';
+
             // 1. ICMS: Prioriza os dados manuais se preenchidos, senão calcula pelo padrão
             if (!is_null($i->aliquota_icms_manual) || !is_null($i->bc_icms_manual)) {
                 $bcIcms       = (float) ($i->bc_icms_manual ?? 0);
@@ -41,6 +44,7 @@
                 'codigo'              => $i->produto->codigo_interno,
                 'codigo_barras'       => $i->produto->codigo_barras,
                 'descricao'           => $i->descricao ?? $i->produto->nome,
+                'cst_csosn'           => $cstOuCsosn,
                 'quantidade'          => (float) $i->quantidade,
                 'valor_unitario'      => (float) $i->valor_unitario,
                 'valor_total'         => (float) $i->valor_total,
@@ -273,6 +277,7 @@
                         <th class="text-left px-3 py-2">Código</th>
                         <th class="text-left px-3 py-2">Cód. Barras</th>
                         <th class="text-left px-3 py-2">Descrição</th>
+                        <th class="text-left px-3 py-2">Cst/Csosn</th>
                         <th class="text-right px-3 py-2">Qtd</th>
                         <th class="text-right px-3 py-2">Vl Unit</th>
                         <th class="text-right px-3 py-2">Vl Total</th>
@@ -1021,7 +1026,10 @@ function adicionarLinhaNaGrid() {
     const subtotalBruto = quantidade * valorUnitario;
     const valorTotal = Math.max(subtotalBruto - valorDesconto, 0);
 
-    // INÍCIO DO NOVO BLOCO: Condicional para ler campos manuais ou calcular automaticamente
+    // Declaração da tributação e do CST/CSOSN do produto selecionado
+    const trib = produtoSelecionadoParaEditor?.tributacao;
+    const cstOuCsosn = trib?.csosn ?? trib?.cst_icms ?? '—';
+
     let bcIcms, valorIcms, aliquotaIcms, valorIpi, aliquotaIpi;
 
     if (window.cfopDestacarBases) {
@@ -1031,7 +1039,6 @@ function adicionarLinhaNaGrid() {
         valorIpi = parseFloat(document.getElementById('editor-valor-ipi').value.replace('R$', '').replace(',', '.')) || 0;
         aliquotaIpi = parseFloat(document.getElementById('editor-aliquota-ipi').value.replace('%', '').replace(',', '.')) || 0;
     } else {
-        const trib = produtoSelecionadoParaEditor?.tributacao;
         const cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
         bcIcms = 0; valorIcms = 0; aliquotaIcms = 0;
 
@@ -1049,13 +1056,13 @@ function adicionarLinhaNaGrid() {
             valorIpi = subtotalBruto * aliquotaIpi / 100;
         }
     }
-    // FIM DO NOVO BLOCO
 
     itensNota.push({
         produto_id: produtoSelecionadoParaEditor.id,
         codigo: produtoSelecionadoParaEditor.codigo_interno,
         codigo_barras: produtoSelecionadoParaEditor.codigo_barras,
         descricao,
+        cst_csosn: cstOuCsosn, // <-- Agora a variável está definida
         quantidade,
         valor_unitario: valorUnitario,
         valor_total: valorTotal,
@@ -1123,6 +1130,7 @@ function renderizarGridItens() {
                 <td class="px-3 py-2">${item.codigo ?? '—'}</td>
                 <td class="px-3 py-2">${item.codigo_barras ?? '—'}</td>
                 <td class="px-3 py-2">${item.descricao}</td>
+                <td class="px-3 py-2 font-mono">${item.cst_csosn ?? '—'}</td>
                 <td class="px-3 py-2 text-right">${item.quantidade}</td>
                 <td class="px-3 py-2 text-right">R$ ${item.valor_unitario.toFixed(2)}</td>
                 <td class="px-3 py-2 text-right font-medium">R$ ${item.valor_total.toFixed(2)}</td>
