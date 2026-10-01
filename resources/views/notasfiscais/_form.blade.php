@@ -190,7 +190,7 @@
 
                 <div>
                     <label class="block text-xs text-gray-500 mb-1">Cst/Csosn</label>
-                    <input type="number" id="editor-cst-csosn" readonly
+                    <input type="text" id="editor-cst-csosn" readonly
                     class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
                 </div>
 
@@ -546,8 +546,30 @@ function sugerirTipoCfop() {
 }
 
 function cabecalhoValido() {
-    return campoCliente.value !== '' && campoNatureza.value.trim() !== '' && campoFinalidade.value !== ''
-        && campoCfop.value !== '' && campoPagamento.value !== '' && campoOperador.value !== '';
+    const cliente = campoCliente?.value ?? '';
+    const cfop = campoCfop?.value ?? '';
+    const pagamento = campoPagamento?.value ?? '';
+    const operador = campoOperador?.value ?? '';
+    const natureza = campoNatureza?.value?.trim() ?? '';
+    const finalidade = campoFinalidade?.value ?? '';
+
+    return cliente !== '' && 
+           cfop !== '' && 
+           pagamento !== '' && 
+           operador !== '' && 
+           natureza !== '' && 
+           finalidade !== '';
+}
+
+function atualizarTravaCabecalho() {
+    const valido = cabecalhoValido();
+    if (inputBuscaNf) {
+        inputBuscaNf.disabled = !valido;
+    }
+    const aviso = document.getElementById('aviso-cabecalho');
+    if (aviso) {
+        aviso.classList.toggle('hidden', valido);
+    }
 }
 
 [campoCliente, campoCfop, campoPagamento, campoOperador].forEach(campo => {
@@ -657,15 +679,7 @@ async function salvarFormaPagamento() {
         document.getElementById('texto-pagamento-selecionado').innerText = formaSalva.descricao;
     }
 }
-/**
- * Trava a área de itens até cliente + natureza + finalidade estarem preenchidos.
- * Evita o cenário de o operador montar a nota inteira e perder tudo por causa
- * de um erro de validação no cabeçalho — porque agora o cabeçalho é obrigatoriamente
- * válido ANTES de ele conseguir sequer buscar o primeiro produto.
- */
-function cabecalhoValido() {
-    return campoCliente.value !== '' && campoNatureza.value.trim() !== '' && campoFinalidade.value !== '' && campoCfop.value !== '';
-}
+
 campoCfop.addEventListener('change', atualizarTravaCabecalho);
 
 
