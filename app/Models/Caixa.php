@@ -7,9 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 class Caixa extends Model
 {
     protected $fillable = [
-        'operador_id', 'pdv_id', 'data_abertura', 'valor_abertura',
-        'data_fechamento', 'valor_fechamento_informado', 'valor_fechamento_esperado',
-        'status', 'observacao',
+        'operador_id', 
+        'pdv_id', 
+        'data_abertura', 
+        'valor_abertura',
+        'data_fechamento', 
+        'valor_fechamento_informado', 
+        'valor_fechamento_esperado',
+        'status', 
+        'observacao',
     ];
 
     protected $casts = [

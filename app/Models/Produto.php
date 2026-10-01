@@ -8,15 +8,44 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Produto extends Model
 {
     protected $fillable = [
-        'nome', 'descricao','categoria_id', 'marca_id', 'grupo_id',
-        'codigo_interno', 'codigo_barras','ncm_id', 'cest_id',
-        'unidade_comercial', 'unidade_tributavel',
-        'origem_mercadoria', 'class_trib_ibs_cbs_id',
-        'preco_venda', 'preco_custo','tem_variacao', 
-        'produto_balanca', 'estoque', 'estoque_minimo','ativo',
-        'tributacao_id', 'pis_cofins_id', 'ipi_id', 'preco_atacado', 'quantidade_minima_atacado',
-        'atacado_tem_prazo', 'atacado_data_inicio', 
-        'atacado_data_fim','codigo_barras_valido',
+        'nome', 
+        'descricao',
+        'categoria_id', 
+        'marca_id', 
+        'grupo_id',
+        'codigo_interno', 
+        'codigo_barras',
+        'ncm_id', 
+        'cest_id',
+        'unidade_comercial',
+        'unidade_tributavel',
+        'origem_mercadoria', 
+        'class_trib_ibs_cbs_id',
+        'preco_venda', 
+        'preco_custo',
+        'tem_variacao', 
+        'produto_balanca', 
+        'estoque',
+        'estoque_minimo',
+        'ativo',
+        'tributacao_id', 
+        'pis_cofins_id', 
+        'ipi_id', 
+        'preco_atacado', 
+        'quantidade_minima_atacado',
+        'atacado_tem_prazo', 
+        'atacado_data_inicio', 
+        'atacado_data_fim',
+        'codigo_barras_valido',
+    ];
+
+    protected $casts = [
+        'tem_variacao' => 'boolean',
+        'ativo' => 'boolean',
+        'preco_venda' => 'decimal:2',
+        'preco_custo' => 'decimal:2',
+        'produto_balanca' => 'boolean',
+        'codigo_barras_valido' => 'boolean',
     ];
 
     public function categoria()
@@ -58,15 +87,6 @@ class Produto extends Model
     {
         return $this->belongsTo(ClassificacaoIpi::class, 'ipi_id');
     }
-
-    protected $casts = [
-        'tem_variacao' => 'boolean',
-        'ativo' => 'boolean',
-        'preco_venda' => 'decimal:2',
-        'preco_custo' => 'decimal:2',
-        'produto_balanca' => 'boolean',
-        'codigo_barras_valido' => 'boolean',
-    ];
 
     public function tributacao()
     {
