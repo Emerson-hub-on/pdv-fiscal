@@ -18,7 +18,7 @@
             <p class="text-white font-bold text-lg tracking-tight whitespace-nowrap">PDV Fiscal</p>
             <p class="text-slate-400 text-xs mt-0.5 whitespace-nowrap">Painel administrativo</p>
         </div>
-        <button type="button" onclick="toggleSidebar()" title="Recolher/expandir menu"
+        <button type="button" onclick="toggleSidebar()" title="Minimizar/Expandir menu"
                 class="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg text-slate-300 hover:bg-white/10 hover:text-white transition">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <rect x="3" y="4" width="18" height="16" rx="2" stroke-width="2"></rect>
