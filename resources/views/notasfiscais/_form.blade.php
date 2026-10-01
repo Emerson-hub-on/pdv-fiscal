@@ -186,6 +186,13 @@
                     <input type="text" id="editor-codigo-barras" readonly
                         class="w-full border border-gray-200 bg-gray-100 rounded-lg px-2 py-1.5 text-sm text-gray-600">
                 </div>
+
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Cst/Csosn</label>
+                    <input type="number" id="editor-cst-csosn" readonly
+                    class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+                </div>
+
                 <div class="col-span-2">
                     <label class="block text-xs text-gray-500 mb-1">Descrição</label>
                     <input type="text" id="editor-descricao"
@@ -194,11 +201,13 @@
             </div>
 
             <div class="grid grid-cols-4 gap-3">
+
                 <div>
                     <label class="block text-xs text-gray-500 mb-1">Qtd</label>
                     <input type="number" step="0.001" id="editor-quantidade" value="1"
                         class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
                 </div>
+
                 <div>
                     <label class="block text-xs text-gray-500 mb-1">Vl Unit</label>
                     <input type="number" step="0.0001" id="editor-valor-unitario"
@@ -920,6 +929,7 @@ function abrirEditorItem(produto) {
     document.getElementById('editor-produto-nome').innerText = produto.nome;
     document.getElementById('editor-codigo').value = produto.codigo_interno ?? '';
     document.getElementById('editor-codigo-barras').value = produto.codigo_barras ?? '';
+    document.getElementById('editor-cst-csosn').value = produto.tributacao?.cst_icms ?? produto.tributacao?.csosn ?? '';
     document.getElementById('editor-descricao').value = produto.nome;
     document.getElementById('editor-quantidade').value = 1;
     document.getElementById('editor-valor-unitario').value = produto.preco_venda;
