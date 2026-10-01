@@ -23,6 +23,16 @@ return [
         'cbs'     => 0.90,
     ],
 
+    // CFOPs do cabeçalho em que cada item usa o CFOP cadastrado na sua tributação.
+    // Qualquer outro CFOP (devolução, remessa, bonificação...) vale para todos os itens.
+    'cfops_venda_por_item' => ['5102', '6102'],
+
+    // Equivalente interestadual quando não basta trocar o 5 por 6
+    'cfop_interestadual' => [
+        '5405' => '6404',
+        '5403' => '6403',
+    ],
+
     // Finalidades com vínculo à nota original feito por ITEM (DFeReferenciado):
     // 4 = Devolução, 5 = Nota de Crédito. Se a 6 também exigir, inclua aqui.
     'finalidades_referencia_por_item' => [4],

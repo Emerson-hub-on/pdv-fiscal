@@ -351,7 +351,7 @@ class NotaFiscalService
             if ($item->cest) {
                 $prod->CEST = $item->cest->codigo;
             }
-            $prod->CFOP = $notaFiscal->cfopSaida->codigo;
+            $prod->CFOP = $item->cfopEfetivo($notaFiscal);
             $prod->uCom = $produto->unidade_comercial;
             $prod->qCom = $item->quantidade;
             $prod->vUnCom = number_format($item->valor_unitario, 10, '.', '');

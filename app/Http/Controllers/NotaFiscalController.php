@@ -670,7 +670,7 @@ class NotaFiscalController extends Controller
                 'descricao'      => $item->descricao ?? $item->produto->nome,
                 'ncm'            => $item->ncm->codigo ?? '—',
                 'cst'            => $cstOuCsosn,
-                'cfop'           => $notaFiscal->cfopSaida->codigo,
+                'cfop'           => $item->cfopEfetivo($notaFiscal),
                 'unidade'        => $item->produto->unidade_comercial,
                 'quantidade'     => number_format($item->quantidade, 3, ',', '.'),
                 'valor_unitario' => number_format($item->valor_unitario, 2, ',', '.'),

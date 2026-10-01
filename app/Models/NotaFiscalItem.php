@@ -30,6 +30,25 @@ class NotaFiscalItem extends Model
         'aliquota_ipi_manual'   => 'decimal:2',
     ];
 
+
+    public function cfopEfetivo(NotaFiscal $nota): string
+    {
+        $cfopNota    = $nota->cfopSaida->codigo;
+        $cfopProduto = $this->tributacao?->cfop;
+
+        if (!$cfopProduto || !in_array($cfopNota, config('fiscal.cfops_venda_por_item', []), true)) {
+            return $cfopNota;
+        }
+
+        // Nota interestadual (CFOP do cabeçalho começa com 6)
+        if (str_starts_with($cfopNota, '6')) {
+            return config("fiscal.cfop_interestadual.{$cfopProduto}")
+                ?? '6' . substr($cfopProduto, 1);
+        }
+
+        return $cfopProduto;
+    }
+
     public function notaFiscal(): BelongsTo
     {
         return $this->belongsTo(NotaFiscal::class);
@@ -39,7 +58,7 @@ class NotaFiscalItem extends Model
     {
         return $this->belongsTo(Produto::class);
     }
-    
+
     public function variante(): BelongsTo
     {
         return $this->belongsTo(ProdutoVariante::class, 'produto_variante_id');

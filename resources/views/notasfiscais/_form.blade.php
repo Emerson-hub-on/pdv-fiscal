@@ -51,6 +51,8 @@
                 'valor_total'         => (float) $i->valor_total,
                 'valor_desconto'      => (float) $i->valor_desconto,
                 'desconto_percentual' => $subtotalBruto > 0 ? round(((float) $i->valor_desconto / $subtotalBruto) * 100, 2) : 0,
+                'tributacao'          => $i->tributacao,
+                'ipi'                 => $i->ipi,
                 'bc_icms'             => $bcIcms,
                 'valor_icms'          => $valorIcms,
                 'aliquota_icms'       => $aliquotaIcms,
@@ -280,10 +282,16 @@
                 </div>
             </div>
 
-            <button type="button" onclick="adicionarLinhaNaGrid()"
-                    class="bg-gray-800 text-white rounded-lg px-3 py-1.5 text-sm h-fit hover:bg-gray-700 w-fit">
-                Adicionar à nota
-            </button>
+            <div class="flex items-center gap-2">
+                <button type="button" id="btn-editor-confirmar" onclick="adicionarLinhaNaGrid()"
+                        class="bg-gray-800 text-white rounded-lg px-3 py-1.5 text-sm h-fit hover:bg-gray-700 w-fit">
+                    Adicionar à nota
+                </button>
+                <button type="button" id="btn-editor-remover" onclick="removerOuCancelarEditor()"
+                        class="border border-red-300 text-red-600 rounded-lg px-3 py-1.5 text-sm h-fit hover:bg-red-50 w-fit">
+                    Cancelar
+                </button>
+            </div>
         </div>
 
         @error('itens') <p class="text-red-600 text-sm mb-3">{{ $message }}</p> @enderror
@@ -305,8 +313,7 @@
                         <th class="text-right px-3 py-2">Vlr. ICMS</th>
                         <th class="text-right px-3 py-2">% ICMS</th>
                         <th class="text-right px-3 py-2">Vlr. IPI</th>
-                        <th class="text-right px-3 py-2">% IPI</th>
-                        <th></th>
+                        <th class="text-right px-3 py-2">% IPI</th>                       
                         <th class="text-left px-3 py-2">Ref. NF origem</th>
                     </tr>
                 </thead>
@@ -400,7 +407,6 @@
                     <th class="py-2">Descrição</th>
                     <th class="py-4 w-32 text-center">Tipo da operação</th>
                     <th class="py-2 w-32 text-center">Mov. estoque</th>
-                    
                 </tr>
             </thead>
             <tbody id="cfop-lista"></tbody>
@@ -559,6 +565,7 @@ let resultadosAtuaisNf = [];
 let indiceSelecionadoNf = -1;
 let timeoutBuscaNf;
 let produtoSelecionadoParaEditor = null;
+let indiceItemEmEdicao = null;
 let cfopsCache = [];
 let formasPagamentoCache = [];
 const campoCfop = document.getElementById('campo-cfop');
@@ -1076,6 +1083,9 @@ function selecionarResultadoNf(index) {
 
 function abrirEditorItem(produto) {
     produtoSelecionadoParaEditor = produto;
+    indiceItemEmEdicao = null;
+    atualizarBotoesEditor();
+    renderizarGridItens(); 
     document.getElementById('editor-produto-nome').innerText = produto.nome;
     document.getElementById('editor-codigo').value = produto.codigo_interno ?? '';
     document.getElementById('editor-codigo-barras').value = produto.codigo_barras ?? '';
@@ -1097,6 +1107,81 @@ function abrirEditorItem(produto) {
     .toggle('hidden', !finalidadesRefPorItem.includes(String(campoFinalidade.value)));
     document.getElementById('editor-ref-chave').value = '';
     document.getElementById('editor-ref-nitem').value = '';
+}
+
+function atualizarBotoesEditor() {
+    const editando = indiceItemEmEdicao !== null;
+    document.getElementById('btn-editor-confirmar').innerText = editando ? 'Atualizar item' : 'Adicionar à nota';
+    document.getElementById('btn-editor-remover').innerText  = editando ? 'Remover item' : 'Cancelar';
+}
+
+function fecharEditorItem() {
+    document.getElementById('editor-item').classList.add('hidden');
+    produtoSelecionadoParaEditor = null;
+    indiceItemEmEdicao = null;
+    renderizarGridItens();
+    inputBuscaNf.focus();
+}
+
+// Item na nota => remove. Produto ainda não adicionado => só cancela a operação.
+function removerOuCancelarEditor() {
+    if (indiceItemEmEdicao !== null) {
+        itensNota.splice(indiceItemEmEdicao, 1);
+    }
+    fecharEditorItem();
+}
+
+function editarItemDaGrid(index) {
+    const item = itensNota[index];
+    if (!item) return;
+
+    // o editor lê tributação/IPI daqui para recalcular ICMS e IPI
+    produtoSelecionadoParaEditor = {
+        produto_id:          item.produto_id,
+        produto_variante_id: item.produto_variante_id ?? null,
+        codigo_interno:      item.codigo,
+        codigo_barras:       item.codigo_barras,
+        tributacao:          item.tributacao ?? null,
+        ipi:                 item.ipi ?? null,
+    };
+    indiceItemEmEdicao = index;
+
+    document.getElementById('editor-produto-nome').innerText = item.descricao;
+    document.getElementById('editor-codigo').value           = item.codigo ?? '';
+    document.getElementById('editor-codigo-barras').value    = item.codigo_barras ?? '';
+    document.getElementById('editor-cst-csosn').value        = item.cst_csosn ?? '';
+    document.getElementById('editor-descricao').value        = item.descricao;
+    document.getElementById('editor-quantidade').value       = item.quantidade;
+    document.getElementById('editor-valor-unitario').value   = item.valor_unitario;
+    document.getElementById('editor-desconto').value         = item.valor_desconto;
+    document.getElementById('editor-desconto-percentual').value = item.desconto_percentual;
+
+    atualizarCalculosEditor('valor');
+
+    // CFOP que destaca bases: devolve ao editor os valores manuais que o operador tinha digitado
+    const bases = !!window.cfopDestacarBases;
+    ['editor-bc-icms', 'editor-valor-icms', 'editor-aliquota-icms', 'editor-valor-ipi', 'editor-aliquota-ipi']
+        .forEach(id => document.getElementById(id).readOnly = !bases);
+
+    if (bases && item.bases_manuais) {
+        document.getElementById('editor-bc-icms').value        = 'R$ ' + Number(item.bc_icms).toFixed(2);
+        document.getElementById('editor-valor-icms').value     = 'R$ ' + Number(item.valor_icms).toFixed(2);
+        document.getElementById('editor-aliquota-icms').value  = Number(item.aliquota_icms).toFixed(2) + '%';
+        document.getElementById('editor-valor-ipi').value      = 'R$ ' + Number(item.valor_ipi).toFixed(2);
+        document.getElementById('editor-aliquota-ipi').value   = Number(item.aliquota_ipi).toFixed(2) + '%';
+    }
+
+    document.getElementById('editor-referencia-devolucao').classList
+        .toggle('hidden', !finalidadesRefPorItem.includes(String(campoFinalidade.value)));
+    document.getElementById('editor-ref-chave').value = item.ref_chave_acesso ?? '';
+    document.getElementById('editor-ref-nitem').value = item.ref_nitem ?? '';
+
+    const editor = document.getElementById('editor-item');
+    editor.classList.remove('hidden');
+    atualizarBotoesEditor();
+    renderizarGridItens(); // destaca a linha em edição
+    editor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document.getElementById('editor-quantidade').focus();
 }
 
 /**
@@ -1217,13 +1302,13 @@ function adicionarLinhaNaGrid() {
         }
     }
 
-    itensNota.push({
+    const itemNovo = {
         produto_id: produtoSelecionadoParaEditor.produto_id,
         codigo: produtoSelecionadoParaEditor.codigo_interno,
         produto_variante_id: produtoSelecionadoParaEditor.produto_variante_id ?? null,
         codigo_barras: produtoSelecionadoParaEditor.codigo_barras,
         descricao,
-        cst_csosn: cstOuCsosn, // <-- Agora a variável está definida
+        cst_csosn: cstOuCsosn,
         quantidade,
         valor_unitario: valorUnitario,
         valor_total: valorTotal,
@@ -1237,12 +1322,18 @@ function adicionarLinhaNaGrid() {
         bases_manuais: !!window.cfopDestacarBases,
         ref_chave_acesso: refChave || null,
         ref_nitem: refNitem,
-    });
+        // guardados para permitir reeditar o item depois
+        tributacao: produtoSelecionadoParaEditor.tributacao ?? null,
+        ipi: produtoSelecionadoParaEditor.ipi ?? null,
+    };
 
-    document.getElementById('editor-item').classList.add('hidden');
-    produtoSelecionadoParaEditor = null;
-    renderizarGridItens();
-    inputBuscaNf.focus();
+    if (indiceItemEmEdicao !== null) {
+        itensNota[indiceItemEmEdicao] = itemNovo; // atualiza no mesmo lugar, mantém a ordem
+    } else {
+        itensNota.push(itemNovo);
+    }
+
+    fecharEditorItem(); // esconde o editor, zera estado, re-renderiza e foca na busca
 }
 
 
@@ -1265,11 +1356,6 @@ function prepararBlocoMotivoAjuste() {
 }
 
 
-function removerLinhaDaGrid(index) {
-    itensNota.splice(index, 1);
-    renderizarGridItens();
-}
-
 function renderizarGridItens() {
     const tbody = document.getElementById('linhas-grid-itens');
     const vazia = document.getElementById('grid-vazia');
@@ -1286,8 +1372,14 @@ function renderizarGridItens() {
 
     tbody.innerHTML = itensNota.map((item, index) => {
         totalNota += item.valor_total;
+        const emEdicao = index === indiceItemEmEdicao;
+        const refOrigem = item.ref_chave_acesso
+            ? item.ref_chave_acesso.slice(-8) + (item.ref_nitem ? ' (item ' + item.ref_nitem + ')' : '')
+            : '—';
+
         return `
-            <tr>
+            <tr class="cursor-pointer transition ${emEdicao ? 'bg-slate-100' : 'hover:bg-gray-50'}"
+                onclick="editarItemDaGrid(${index})" title="Clique para editar">
                 <td class="px-3 py-2">${item.codigo ?? '—'}</td>
                 <td class="px-3 py-2">${item.codigo_barras ?? '—'}</td>
                 <td class="px-3 py-2">${item.descricao}</td>
@@ -1302,10 +1394,7 @@ function renderizarGridItens() {
                 <td class="px-3 py-2 text-right">${item.aliquota_icms.toFixed(2)}%</td>
                 <td class="px-3 py-2 text-right">R$ ${item.valor_ipi.toFixed(2)}</td>
                 <td class="px-3 py-2 text-right">${item.aliquota_ipi.toFixed(2)}%</td>
-                <td class="px-3 py-2 text-right">
-                    <button type="button" onclick="removerLinhaDaGrid(${index})" class="text-red-600 text-xs hover:underline">remover</button>
-                </td>
-                <td class="px-3 py-2 text-xs font-mono">${item.ref_chave_acesso ? item.ref_chave_acesso.slice(-8) + (item.ref_nitem ? ' (item ' + item.ref_nitem + ')' : '') : '—'}</td>
+                <td class="px-3 py-2 text-xs font-mono">${refOrigem}</td>
             </tr>
         `;
     }).join('');
