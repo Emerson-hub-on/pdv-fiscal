@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use App\Models\CfopSaida;
+use App\Models\ProdutoVariante;
 
 
 
@@ -248,6 +249,7 @@ class NotaFiscalController extends Controller
 
             $notaFiscal->itens()->create([
                 'produto_id'            => $produto->id,
+                'produto_variante_id'   => $itemDados['produto_variante_id'] ?? null,
                 'descricao'             => $descricao,
                 'ref_chave_acesso'      => $refChave,
                 'ref_nitem'             => $refNitem ?: null,
@@ -352,21 +354,60 @@ class NotaFiscalController extends Controller
      * Busca produto por código de barras ou nome — mesmo padrão do buscarProduto do PDV.
      */
     public function buscarProduto(Request $request)
-        {
-            $termo = $request->get('termo');
+    {
+        $termo = $request->get('termo');
 
-            $produtos = Produto::ativos()              
-                ->with(['tributacao:id,cst_icms,csosn,aliquota_icms', 'ipi:id,codigo,aliquota'])
-                ->where(function ($q) use ($termo) {
-                    $q->where('codigo_barras', $termo)
-                        ->orWhere('codigo_interno', $termo)
-                        ->orWhere('nome', 'like', "{$termo}%");
-                })
-                ->limit(10)
-                ->get(['id', 'nome', 'codigo_interno', 'codigo_barras', 'preco_venda', 'estoque', 'ncm_id', 'cest_id', 'class_trib_ibs_cbs_id', 'tributacao_id', 'pis_cofins_id', 'ipi_id']);
+        $produtos = Produto::ativos()
+            ->with(['tributacao:id,cst_icms,csosn,aliquota_icms', 'ipi:id,codigo,aliquota', 'variantes'])
+            ->where(function ($q) use ($termo) {
+                $q->where('codigo_barras', $termo)
+                    ->orWhere('codigo_interno', $termo)
+                    ->orWhere('nome', 'like', "{$termo}%");
+            })
+            ->limit(10)
+            ->get(['id', 'nome', 'codigo_interno', 'codigo_barras', 'preco_venda', 'estoque', 'tem_variacao',
+                'ncm_id', 'cest_id', 'class_trib_ibs_cbs_id', 'tributacao_id', 'pis_cofins_id', 'ipi_id']);
 
-            return response()->json($produtos);
+        $resultados = [];
+
+        foreach ($produtos as $produto) {
+            if ($produto->tem_variacao && $produto->variantes->isNotEmpty()) {
+                foreach ($produto->variantes as $variante) {
+                    $resultados[] = $this->formatarResultadoBusca($produto, $variante);
+                }
+            } else {
+                $resultados[] = $this->formatarResultadoBusca($produto, null);
+            }
         }
+
+        return response()->json($resultados);
+    }
+
+    /**
+     * Uma linha por produto simples, ou uma linha por VARIANTE quando o
+     * produto tem variação — mesmo padrão do caixa, pra garantir que o
+     * operador escolha a variante certa e o estoque debite na linha certa.
+     */
+    private function formatarResultadoBusca(Produto $produto, ?ProdutoVariante $variante): array
+    {
+        return [
+            'produto_id'            => $produto->id,
+            'produto_variante_id'   => $variante?->id,
+            'nome'                  => $variante ? "{$produto->nome} — {$variante->cor} {$variante->tamanho}" : $produto->nome,
+            'codigo_interno'        => $produto->codigo_interno,
+            'codigo_barras'         => $produto->codigo_barras,
+            'preco_venda'           => $produto->preco_venda,
+            'estoque'               => $variante ? $variante->estoque : $produto->estoque,
+            'ncm_id'                => $produto->ncm_id,
+            'cest_id'               => $produto->cest_id,
+            'class_trib_ibs_cbs_id' => $produto->class_trib_ibs_cbs_id,
+            'tributacao_id'         => $produto->tributacao_id,
+            'pis_cofins_id'         => $produto->pis_cofins_id,
+            'ipi_id'                => $produto->ipi_id,
+            'tributacao'            => $produto->tributacao,
+            'ipi'                   => $produto->ipi,
+        ];
+    }
 
     public function adicionarItem(Request $request, NotaFiscal $notaFiscal)
     {
@@ -451,7 +492,9 @@ class NotaFiscalController extends Controller
 
                 if ($cfop->movimenta_estoque) {
                     foreach ($notaFiscal->itens as $item) {
-                        $query = Produto::where('id', $item->produto_id)->lockForUpdate();
+                        $query = $item->produto_variante_id
+                            ? \App\Models\ProdutoVariante::where('id', $item->produto_variante_id)->lockForUpdate()
+                            : Produto::where('id', $item->produto_id)->lockForUpdate();
 
                         $cfop->tipo_operacao === 'entrada'
                             ? $query->increment('estoque', $item->quantidade)
@@ -501,7 +544,9 @@ class NotaFiscalController extends Controller
         DB::transaction(function () use ($notaFiscal, $dados, $resultado) {
             if ($notaFiscal->cfopSaida->movimenta_estoque) {
                 foreach ($notaFiscal->itens as $item) {
-                    $query = Produto::where('id', $item->produto_id)->lockForUpdate();
+                    $query = $item->produto_variante_id
+                        ? \App\Models\ProdutoVariante::where('id', $item->produto_variante_id)->lockForUpdate()
+                        : Produto::where('id', $item->produto_id)->lockForUpdate();
 
                     $notaFiscal->cfopSaida->tipo_operacao === 'entrada'
                         ? $query->decrement('estoque', $item->quantidade)

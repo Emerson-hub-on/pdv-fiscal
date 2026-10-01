@@ -10,11 +10,12 @@ class NotaFiscalItem extends Model
     protected $table = 'nota_fiscal_itens';
 
     protected $fillable = [
-        'nota_fiscal_id', 'produto_id', 'descricao', 'ncm_id', 'cest_id',
-        'class_trib_ibs_cbs_id', 'tributacao_id', 'pis_cofins_id', 'ipi_id',
-        'quantidade', 'valor_unitario', 'valor_desconto', 'valor_total',
-        'ref_chave_acesso', 'ref_nitem','bc_icms_manual', 'valor_icms_manual', 
-        'aliquota_icms_manual', 'valor_ipi_manual', 'aliquota_ipi_manual',
+        'nota_fiscal_id', 'produto_id', 'produto_variante_id','descricao', 
+        'ncm_id', 'cest_id','class_trib_ibs_cbs_id', 'tributacao_id', 
+        'pis_cofins_id', 'ipi_id','quantidade', 'valor_unitario', 
+        'valor_desconto', 'valor_total','ref_chave_acesso', 'ref_nitem',
+        'bc_icms_manual', 'valor_icms_manual', 'aliquota_icms_manual', 
+        'valor_ipi_manual', 'aliquota_ipi_manual',
     ];
 
     protected $casts = [
@@ -37,6 +38,11 @@ class NotaFiscalItem extends Model
     public function produto(): BelongsTo
     {
         return $this->belongsTo(Produto::class);
+    }
+    
+    public function variante(): BelongsTo
+    {
+        return $this->belongsTo(ProdutoVariante::class, 'produto_variante_id');
     }
 
     public function ncm(): BelongsTo

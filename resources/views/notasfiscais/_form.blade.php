@@ -42,6 +42,7 @@
             return [
                 'produto_id'          => $i->produto_id,
                 'codigo'              => $i->produto->codigo_interno,
+                'produto_variante_id' => $i->produto_variante_id,
                 'codigo_barras'       => $i->produto->codigo_barras,
                 'descricao'           => $i->descricao ?? $i->produto->nome,
                 'cst_csosn'           => $cstOuCsosn,
@@ -844,10 +845,10 @@ inputBuscaNf?.addEventListener('keydown', async (e) => {
 
     const resp = await fetch(`{{ route('notasfiscais.buscar-produto') }}?termo=${encodeURIComponent(termo)}`);
     const produtos = await resp.json();
-    const exato = produtos.find(p => p.codigo_barras === termo || p.codigo_interno === termo);
-
-    if (exato) {
-        abrirEditorItem(exato);
+    
+    const exatos = produtos.filter(p => p.codigo_barras === termo || p.codigo_interno === termo);
+    if (exatos.length === 1) {
+        abrirEditorItem(exatos[0]);
         inputBuscaNf.value = '';
         return;
     }
@@ -1068,8 +1069,9 @@ function adicionarLinhaNaGrid() {
     }
 
     itensNota.push({
-        produto_id: produtoSelecionadoParaEditor.id,
+        produto_id: produtoSelecionadoParaEditor.produto_id,
         codigo: produtoSelecionadoParaEditor.codigo_interno,
+        produto_variante_id: produtoSelecionadoParaEditor.produto_variante_id ?? null,
         codigo_barras: produtoSelecionadoParaEditor.codigo_barras,
         descricao,
         cst_csosn: cstOuCsosn, // <-- Agora a variável está definida
