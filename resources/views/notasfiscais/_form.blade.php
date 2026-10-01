@@ -128,18 +128,26 @@
                 @error('forma_pagamento_id') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
+            @php
+                $clienteAtual = old('cliente_id')
+                    ? \App\Models\Cliente::find(old('cliente_id'))
+                    : ($ehEdicao ? $notaFiscal->cliente : null);
+            @endphp
+
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
-                <select name="cliente_id" id="campo-cliente" required
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                    <option value="">Selecione...</option>
-                    @foreach ($clientes as $cliente)
-                        <option value="{{ $cliente->id }}"
-                            @selected(old('cliente_id', $ehEdicao ? $notaFiscal->cliente_id : null) == $cliente->id)>
-                            {{ $cliente->nome }} — {{ $cliente->cpf_cnpj_formatado }}
-                        </option>
-                    @endforeach
-                </select>
+                <input type="hidden" name="cliente_id" id="campo-cliente"
+                    value="{{ old('cliente_id', $ehEdicao ? $notaFiscal->cliente_id : '') }}">
+                <button type="button" onclick="abrirModalCliente()"
+                        class="w-full text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
+                    <span id="texto-cliente-selecionado">
+                        @if ($clienteAtual)
+                            {{ $clienteAtual->nome }} — {{ $clienteAtual->cpf_cnpj_formatado }}
+                        @else
+                            Selecionar cliente...
+                        @endif
+                    </span>
+                </button>
                 @error('cliente_id') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
@@ -436,6 +444,34 @@
     </div>
 </div>
 
+
+<!-- Modal de busca de cliente -->
+<div id="modal-busca-cliente" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+            <h2 class="text-lg font-bold text-white">Selecionar Cliente</h2>
+            <button type="button" onclick="fecharModalCliente()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
+        </div>
+        <div class="p-6">
+            <input type="text" id="busca-cliente-modal" placeholder="Buscar por nome ou CPF/CNPJ..."
+                   autocomplete="off"
+                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
+                        <th class="py-2">Nome</th>
+                        <th class="py-2">CPF/CNPJ</th>
+                        <th class="py-2">UF</th>
+                        <th class="py-2">Telefone</th>
+                    </tr>
+                </thead>
+                <tbody id="linhas-busca-cliente"></tbody>
+            </table>
+            <p class="text-xs text-gray-400 mt-3">Use ↑ ↓ para navegar e Enter para selecionar.</p>
+        </div>
+    </div>
+</div>
+
 <!-- Modal de busca de produto -->
 <div id="modal-busca-produto-nf" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
@@ -526,6 +562,13 @@ let produtoSelecionadoParaEditor = null;
 let cfopsCache = [];
 let formasPagamentoCache = [];
 const campoCfop = document.getElementById('campo-cfop');
+let clientesAtuais = [];
+let indiceClienteSelecionado = -1;
+let timeoutBuscaCliente;
+let contadorBuscaCliente = 0; // descarta respostas antigas se o operador digitar rápido
+
+const inputBuscaCliente  = document.getElementById('busca-cliente-modal');
+const linhasBuscaCliente = document.getElementById('linhas-busca-cliente');
 
 const inputBuscaNf = document.getElementById('input-busca-item-nf');
 const inputBuscaModalNf = document.getElementById('busca-produto-modal-nf');
@@ -538,6 +581,98 @@ const campoPagamento = document.getElementById('campo-pagamento');
 const campoOperador = document.getElementById('campo-operador');
 
 
+
+function escaparHtml(texto) {
+    const div = document.createElement('div');
+    div.textContent = texto ?? '';
+    return div.innerHTML;
+}
+
+function abrirModalCliente() {
+    const modal = document.getElementById('modal-busca-cliente');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    inputBuscaCliente.value = '';
+    inputBuscaCliente.focus();
+    buscarClientes(''); // sem termo = 20 primeiros em ordem alfabética
+}
+
+function fecharModalCliente() {
+    const modal = document.getElementById('modal-busca-cliente');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    clientesAtuais = [];
+    indiceClienteSelecionado = -1;
+}
+
+async function buscarClientes(termo) {
+    const minhaBusca = ++contadorBuscaCliente;
+    const resp = await fetch(`{{ route('notasfiscais.buscar-cliente') }}?termo=${encodeURIComponent(termo)}`);
+    const dados = await resp.json();
+
+    if (minhaBusca !== contadorBuscaCliente) return; // chegou uma busca mais nova, ignora esta
+
+    clientesAtuais = dados;
+    indiceClienteSelecionado = dados.length > 0 ? 0 : -1;
+    renderizarClientes();
+}
+
+function renderizarClientes() {
+    if (clientesAtuais.length === 0) {
+        linhasBuscaCliente.innerHTML = '<tr><td colspan="4" class="p-3 text-sm text-gray-400 text-center">Nenhum cliente encontrado.</td></tr>';
+        return;
+    }
+
+    linhasBuscaCliente.innerHTML = clientesAtuais.map((c, index) => {
+        const destacado = index === indiceClienteSelecionado;
+        return `
+            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
+                onclick="selecionarCliente(${index})">
+                <td class="py-3 font-medium">${escaparHtml(c.nome)}</td>
+                <td class="py-3 font-mono text-sm ${destacado ? 'text-slate-300' : 'text-gray-500'}">${escaparHtml(c.cpf_cnpj)}</td>
+                <td class="py-3">${escaparHtml(c.uf)}</td>
+                <td class="py-3">${escaparHtml(c.telefone)}</td>
+            </tr>
+        `;
+    }).join('');
+
+    // mantém a linha destacada visível ao navegar com as setas
+    linhasBuscaCliente.children[indiceClienteSelecionado]?.scrollIntoView({ block: 'nearest' });
+}
+
+function selecionarCliente(index) {
+    const c = clientesAtuais[index];
+    if (!c) return;
+
+    campoCliente.value = c.id;
+    document.getElementById('texto-cliente-selecionado').innerText = `${c.nome} — ${c.cpf_cnpj}`;
+
+    atualizarTravaCabecalho(); // input hidden não dispara 'change', então chamamos na mão
+    fecharModalCliente();
+}
+
+inputBuscaCliente?.addEventListener('input', () => {
+    clearTimeout(timeoutBuscaCliente);
+    timeoutBuscaCliente = setTimeout(() => buscarClientes(inputBuscaCliente.value.trim()), 300);
+});
+
+inputBuscaCliente?.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { fecharModalCliente(); return; }
+    if (clientesAtuais.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        indiceClienteSelecionado = (indiceClienteSelecionado + 1) % clientesAtuais.length;
+        renderizarClientes();
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        indiceClienteSelecionado = (indiceClienteSelecionado - 1 + clientesAtuais.length) % clientesAtuais.length;
+        renderizarClientes();
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (indiceClienteSelecionado >= 0) selecionarCliente(indiceClienteSelecionado);
+    }
+});
 
 function sugerirTipoCfop() {
     const primeiro = document.getElementById('cfop-form-codigo').value.charAt(0);

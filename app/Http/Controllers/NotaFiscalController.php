@@ -351,6 +351,39 @@ class NotaFiscalController extends Controller
     }
 
     /**
+     * Busca de clientes para o modal da nota.
+     * Sem termo: os 20 primeiros em ordem alfabética.
+     * Com termo: nome (contém) ou CPF/CNPJ (só dígitos).
+     */
+    public function buscarCliente(Request $request)
+    {
+        $termo   = trim((string) $request->get('termo', ''));
+        $digitos = preg_replace('/\D/', '', $termo);
+
+        $clientes = Cliente::ativos()
+            ->when($termo !== '', function ($q) use ($termo, $digitos) {
+                $q->where(function ($q) use ($termo, $digitos) {
+                    $q->where('nome', 'like', "%{$termo}%");
+
+                    if ($digitos !== '') {
+                        $q->orWhere('cpf_cnpj', 'like', "%{$digitos}%");
+                    }
+                });
+            })
+            ->orderBy('nome')
+            ->limit(20)
+            ->get(['id', 'nome', 'cpf_cnpj', 'uf', 'telefone']);
+
+        return response()->json($clientes->map(fn ($c) => [
+            'id'       => $c->id,
+            'nome'     => $c->nome,
+            'cpf_cnpj' => $c->cpf_cnpj_formatado,
+            'uf'       => $c->uf,
+            'telefone' => $c->telefone,
+        ]));
+    }
+
+    /**
      * Busca produto por código de barras ou nome — mesmo padrão do buscarProduto do PDV.
      */
     public function buscarProduto(Request $request)
@@ -382,6 +415,7 @@ class NotaFiscalController extends Controller
 
         return response()->json($resultados);
     }
+    
 
     /**
      * Uma linha por produto simples, ou uma linha por VARIANTE quando o

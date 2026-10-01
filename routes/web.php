@@ -103,6 +103,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/clientes/{cliente}/toggle-ativo', [ClienteController::class, 'toggleAtivo'])->name('clientes.toggleAtivo');
 
     // Endpoints JSON usados pelo modal "Adicionar consumidor" no caixa
+    Route::get('notasfiscais/buscar-cliente', [NotaFiscalController::class, 'buscarCliente'])
+    ->name('notasfiscais.buscar-cliente');
     Route::get('/clientes/buscar', [ClienteController::class, 'buscar'])->name('clientes.buscar');
     Route::get('/notas-fiscais/buscar-cliente', [NotaFiscalController::class, 'buscarCliente'])->name('notasfiscais.buscar-cliente');
     Route::post('/clientes/criar-rapido', [ClienteController::class, 'criarRapido'])->name('clientes.criarRapido');
