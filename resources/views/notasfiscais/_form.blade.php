@@ -450,10 +450,27 @@
             </button>
         </div>
 
+        <!-- O formulário de cadastro/edição começa aqui -->
         <div id="form-pagamento" class="hidden bg-gray-50 rounded-lg p-3 mb-3">
             <input type="hidden" id="pagamento-form-id">
+            
             <input type="text" id="pagamento-form-descricao" placeholder="Descrição (ex: A prazo 45 dias)"
                 class="w-full border rounded px-3 py-2 text-sm mb-2">
+            
+            <!-- INCLUSÃO DOS NOVOS CAMPOS SEFAZ -->
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <select id="pagamento-form-meio" class="border rounded px-3 py-2 text-sm bg-white">
+                    @foreach (\App\Models\FormaPagamento::MEIOS as $codigo => $nome)
+                        <option value="{{ $codigo }}">{{ $codigo }} - {{ $nome }}</option>
+                    @endforeach
+                </select>
+                <select id="pagamento-form-indpag" class="border rounded px-3 py-2 text-sm bg-white">
+                    <option value="0">À vista</option>
+                    <option value="1">A prazo</option>
+                </select>
+            </div>
+            <!-- FIM DA INCLUSÃO -->
+
             <div class="flex gap-2 justify-end">
                 <button type="button" onclick="fecharFormPagamento()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
                 <button type="button" onclick="salvarFormaPagamento(this)"
@@ -467,6 +484,7 @@
         <p id="pagamento-vazio" class="text-sm text-gray-400 text-center py-4 hidden">Nenhuma forma encontrada.</p>
     </div>
 </div>
+
 
 
 <!-- Modal de busca de cliente -->
@@ -811,6 +829,8 @@ function selecionarFormaPagamento(id) {
 function abrirFormNovaFormaPagamento() {
     document.getElementById('pagamento-form-id').value = '';
     document.getElementById('pagamento-form-descricao').value = '';
+    document.getElementById('pagamento-form-meio').value = '01';
+    document.getElementById('pagamento-form-indpag').value = '0';
     document.getElementById('form-pagamento').classList.remove('hidden');
 }
 
@@ -819,6 +839,8 @@ function abrirFormEdicaoPagamento(id) {
     const forma = formasPagamentoCache.find(f => f.id === id);
     document.getElementById('pagamento-form-id').value = forma.id;
     document.getElementById('pagamento-form-descricao').value = forma.descricao;
+    document.getElementById('pagamento-form-meio').value = forma.meio_pagamento ?? '99';
+    document.getElementById('pagamento-form-indpag').value = forma.ind_pag ?? 0;
     document.getElementById('form-pagamento').classList.remove('hidden');
 }
 
@@ -830,6 +852,8 @@ function fecharFormPagamento() {
 async function salvarFormaPagamento(botao) {
     const id = document.getElementById('pagamento-form-id').value;
     const descricao = document.getElementById('pagamento-form-descricao').value.trim();
+    const meio_pagamento = document.getElementById('pagamento-form-meio').value;
+    const ind_pag = document.getElementById('pagamento-form-indpag').value;
 
     if (descricao.length < 2) {
         mostrarAviso('Informe uma descrição válida.', 'erro');
@@ -837,7 +861,9 @@ async function salvarFormaPagamento(botao) {
     }
 
     const rota = id ? `{{ route('formas-pagamento.editar') }}` : `{{ route('formas-pagamento.criar') }}`;
-    const payload = id ? { id, descricao } : { descricao };
+    const payload = id
+    ? { id, descricao, meio_pagamento, ind_pag }
+    : { descricao, meio_pagamento, ind_pag };
 
     await comCarregando(botao, 'Salvando...', async () => {
         try {

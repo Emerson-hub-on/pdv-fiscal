@@ -63,7 +63,7 @@ class NotaFiscalService
 
     public function emitir(NotaFiscal $notaFiscal): array
     {
-        $notaFiscal->load('itens.produto', 'itens.ncm', 'itens.cest', 'itens.tributacao', 'itens.pisCofins', 'itens.ipi', 'itens.classificacaoTributaria', 'cliente', 'cfopSaida');
+        $notaFiscal->load('itens.produto', 'itens.ncm', 'itens.cest', 'itens.tributacao', 'itens.pisCofins', 'itens.ipi', 'itens.classificacaoTributaria', 'cliente', 'cfopSaida', 'formaPagamento');
 
         $idLote = str_pad($notaFiscal->numero, 15, '0', STR_PAD_LEFT);
 
@@ -82,7 +82,7 @@ class NotaFiscalService
             $this->montarItens($nfe, $notaFiscal);
             $this->montarTotais($nfe, $notaFiscal);
             $this->montarTransporte($nfe);
-            $this->montarPagamento($nfe);
+            $this->montarPagamento($nfe, $notaFiscal);
             $this->montarInfAdicional($nfe, $notaFiscal);
             $this->montarResponsavelTecnico($nfe);
 
@@ -728,21 +728,36 @@ if ($this->empresa->crt <= 2) {
         $std->modFrete = 9; // sem transporte declarado por ora
         $nfe->tagtransp($std);
     }
-
+    
     /**
-     * NF-e faturada no admin não tem forma de pagamento coletada no ato —
-     * usa "90 = Sem pagamento", válido para faturamento/B2B.
-     * Ajustável depois se você quiser registrar a forma de pagamento na nota.
+     * Pagamento da NF-e conforme a forma escolhida na nota.
+     * Ajuste (3) e devolução (4), ou forma "90 - Sem pagamento", saem com tPag 90 e vPag 0.
      */
-    protected function montarPagamento(Make $nfe): void
+    protected function montarPagamento(Make $nfe, NotaFiscal $notaFiscal): void
     {
-        $std = new \stdClass();
-        $nfe->tagpag($std);
+        $nfe->tagpag(new \stdClass());
 
+        $forma = $notaFiscal->formaPagamento;
         $det = new \stdClass();
-        $det->indPag = 0;
-        $det->tPag = '90';
-        $det->vPag = 0;
+
+        $semPagamento = !$forma
+            || $forma->meio_pagamento === '90'
+            || in_array((int) $notaFiscal->finalidade, [3, 4], true);
+
+        if ($semPagamento) {
+            $det->indPag = 0;
+            $det->tPag = '90';
+            $det->vPag = '0.00';
+        } else {
+            $det->indPag = (int) $forma->ind_pag;
+            $det->tPag = $forma->meio_pagamento;
+            $det->vPag = number_format($notaFiscal->valor_total, 2, '.', '');
+
+            if ($det->tPag === '99') {
+                $det->xPag = mb_substr($forma->descricao, 0, 60); // obrigatório quando tPag = 99
+            }
+        }
+
         $nfe->tagDetPag($det);
     }
 
