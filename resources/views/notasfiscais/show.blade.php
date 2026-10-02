@@ -1,14 +1,14 @@
 @extends('layouts.app')
 
 @section('titulo', 'Nota Fiscal #' . $notaFiscal->id)
-@section('body-class', 'sidebar-oculta')
+@section('body-class', 'sidebar-oculta conteudo-largo')
 
 @section('conteudo')
 
 @include('notasfiscais._recalculo_flash')
 
 
-<div class="flex flex-col gap-6 max-w-4xl mx-auto mt-4">
+<div class="flex flex-col gap-6 w-fit max-w-full mt-4">
 
     <div class="bg-white rounded-lg shadow p-6 flex justify-between items-start">
         <div>
@@ -80,7 +80,7 @@
         // no item (snapshot de tributação/IPI no momento da nota).
         $cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
 
-        $linhasItens = $notaFiscal->itens->map(function ($item) use ($cstsComBaseCalculo) {
+        $linhasItens = $notaFiscal->itens->map(function ($item) use ($cstsComBaseCalculo, $notaFiscal) {
             $subtotalBruto = (float) $item->valor_unitario * (float) $item->quantidade;
 
             // 1. ICMS: Prioriza os dados manuais se preenchidos, senão calcula pelo padrão
@@ -121,6 +121,8 @@
                 'codigo'              => $item->produto->codigo_interno,
                 'codigo_barras'       => $item->produto->codigo_barras,
                 'descricao'           => $item->descricao ?? $item->produto->nome,
+                'cfop'                => $item->cfopEfetivo($notaFiscal),
+                'cst'                 => $item->tributacao?->csosn ?? $item->tributacao?->cst_icms,
                 'quantidade'          => $item->quantidade_formatada,
                 'valor_unitario'      => $item->valor_unitario,
                 'valor_total'         => $item->valor_total,
@@ -137,12 +139,14 @@
 
     <div class="bg-white rounded-lg shadow overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="w-auto text-sm whitespace-nowrap">
                 <thead class="bg-gray-700 text-amber-50 text-xs uppercase">
                     <tr>
                         <th class="text-left px-3 py-2">Código</th>
                         <th class="text-left px-3 py-2">Cód. Barras</th>
                         <th class="text-left px-3 py-2">Descrição</th>
+                        <th class="text-left px-3 py-2">CFOP</th>
+                        <th class="text-left px-3 py-2">CST/CSOSN</th>
                         <th class="text-right px-3 py-2">Qtd</th>
                         <th class="text-right px-3 py-2">Vl Unit</th>
                         <th class="text-right px-3 py-2">Vl Total</th>
@@ -160,7 +164,9 @@
                         <tr>
                             <td class="px-3 py-2">{{ $linha['codigo'] ?? '—' }}</td>
                             <td class="px-3 py-2">{{ $linha['codigo_barras'] ?? '—' }}</td>
-                            <td class="px-3 py-2">{{ $linha['descricao'] }}</td>
+                            <td class="px-3 py-2 whitespace-normal min-w-48">{{ $linha['descricao'] }}</td>
+                            <td class="px-3 py-2">{{ $linha['cfop'] ?? '—' }}</td>
+                            <td class="px-8 py-2">{{ $linha['cst'] ?? '—' }}</td>
                             <td class="px-3 py-2 text-right">{{ $linha['quantidade'] }}</td>
                             <td class="px-3 py-2 text-right">R$ {{ number_format($linha['valor_unitario'], 2, ',', '.') }}</td>
                             <td class="px-3 py-2 text-right font-medium">R$ {{ number_format($linha['valor_total'], 2, ',', '.') }}</td>
@@ -176,7 +182,7 @@
                 </tbody>
                 <tfoot class="bg-gray-700 text-amber-50 font-medium">
                     <tr>
-                        <td colspan="12" class="px-3 py-2 text-right">Total</td>
+                        <td colspan="14" class="px-3 py-2 text-right">Total</td>
                         <td class="px-3 py-2 text-right">R$ {{ number_format($notaFiscal->valor_total, 2, ',', '.') }}</td>
                     </tr>
                 </tfoot>

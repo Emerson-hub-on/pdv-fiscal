@@ -83,7 +83,7 @@
 
 <form id="form-nota" method="POST"
       action="{{ $ehEdicao ? route('notasfiscais.update', $notaFiscal) : route('notasfiscais.store') }}"
-      class="flex flex-col gap-6 w-full max-w-5xl mx-auto mt-6 mb-6">
+      class="flex flex-col gap-6 w-fit max-w-full min-w-[min(64rem,100%)] mt-6 mb-6">
     @csrf
     @if ($ehEdicao) @method('PUT') @endif
     <input type="hidden" name="itens_json" id="itens_json">
@@ -312,12 +312,13 @@
         @error('itens') <p class="text-red-600 text-sm mb-3">{{ $message }}</p> @enderror
 
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="w-full text-sm whitespace-nowrap">
                 <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
                     <tr>
                         <th class="text-left px-3 py-2">Código</th>
                         <th class="text-left px-3 py-2">Cód. Barras</th>
                         <th class="text-left px-3 py-2">Descrição</th>
+                        <th class="text-left px-3 py-2">CFOP</th>
                         <th class="text-left px-3 py-2">Cst/Csosn</th>
                         <th class="text-right px-3 py-2">Qtd</th>
                         <th class="text-right px-3 py-2">Vl Unit</th>
@@ -336,7 +337,7 @@
                 <tbody id="linhas-grid-itens" class="divide-y divide-gray-100"></tbody>
                 <tfoot class="bg-gray-50 font-medium">
                     <tr>
-                        <td colspan="13" class="px-3 py-2 text-right">Total da nota</td>
+                        <td colspan="14" class="px-3 py-2 text-right">Total da nota</td>
                         <td class="px-3 py-2 text-right" id="total-grid-itens">R$ 0,00</td>
                         <td></td>
                     </tr>
@@ -593,6 +594,28 @@
 <script>
 window.crtEmpresa = {{ (int) $crtEmpresa }};
 window.cfopDestacarBases = {{ ($ehEdicao && $notaFiscal->cfopSaida && $notaFiscal->cfopSaida->destacar_bases) ? 'true' : 'false' }};
+window.cfopCodigoNota = @json($ehEdicao && $notaFiscal->cfopSaida ? (string) $notaFiscal->cfopSaida->codigo : '');
+const cfopsVendaPorItem = @json(array_map('strval', config('fiscal.cfops_venda_por_item', [])));
+const cfopInterestadual = @json(config('fiscal.cfop_interestadual', []));
+
+// Libera a largura total da tela (variante já prevista no layouts/app)
+document.body.classList.add('conteudo-largo');
+
+// Espelha NotaFiscalItem::cfopEfetivo() do backend
+function cfopEfetivoItem(item) {
+    const cfopNota = window.cfopCodigoNota ?? '';
+    const cfopProduto = item.tributacao?.cfop ? String(item.tributacao.cfop) : null;
+
+    if (!cfopProduto || !cfopsVendaPorItem.includes(cfopNota)) {
+        return cfopNota || '—';
+    }
+
+    if (cfopNota.startsWith('6')) {
+        return cfopInterestadual[cfopProduto] ?? ('6' + cfopProduto.substring(1));
+    }
+
+    return cfopProduto;
+}
 let itensNota = @json($itensIniciais);
 const finalidadesRefPorItem = @json(array_map('strval', config('fiscal.finalidades_referencia_por_item', [])));
 const motivosAjuste = @json(config('fiscal.motivos_ajuste', []));
@@ -944,6 +967,7 @@ function selecionarCfop(id) {
     window.cfopDestacarBases = !!cfop.destacar_bases;
 
     campoCfop.value = cfop.id;
+    window.cfopCodigoNota = String(cfop.codigo);
     document.getElementById('texto-cfop-selecionado').innerText = `${cfop.codigo} - ${cfop.descricao}`;
 
     campoNatureza.value = cfop.natureza_operacao_padrao ?? '';
@@ -951,6 +975,7 @@ function selecionarCfop(id) {
 
     
     atualizarTravaCabecalho();
+    renderizarGridItens(); // o CFOP efetivo dos itens depende do CFOP da nota
     fecharModalCfop();
 }
 
@@ -1020,10 +1045,12 @@ async function salvarFormCfop(botao) {
 
             if (campoCfop.value == cfopSalvo.id) {
                 window.cfopDestacarBases = !!cfopSalvo.destacar_bases;
+                window.cfopCodigoNota = String(cfopSalvo.codigo);
 
                 document.getElementById('texto-cfop-selecionado').innerText = `${cfopSalvo.codigo} - ${cfopSalvo.descricao}`;
                 campoNatureza.value = cfopSalvo.natureza_operacao_padrao ?? '';
                 campoFinalidade.value = cfopSalvo.finalidade_padrao ?? 1;
+                renderizarGridItens();
             }
 
             mostrarAviso('CFOP salvo.', 'sucesso');
@@ -1471,7 +1498,8 @@ function renderizarGridItens() {
                 onclick="editarItemDaGrid(${index})" title="Clique para editar">
                 <td class="px-3 py-2">${item.codigo ?? '—'}</td>
                 <td class="px-3 py-2">${item.codigo_barras ?? '—'}</td>
-                <td class="px-3 py-2">${item.descricao}</td>
+                <td class="px-3 py-2 whitespace-normal min-w-48">${item.descricao}</td>
+                <td class="px-3 py-2 font-mono">${cfopEfetivoItem(item)}</td>
                 <td class="px-3 py-2 font-mono">${item.cst_csosn ?? '—'}</td>
                 <td class="px-3 py-2 text-right">${item.quantidade}</td>
                 <td class="px-3 py-2 text-right">R$ ${item.valor_unitario.toFixed(2)}</td>

@@ -182,8 +182,7 @@
                 <th>Un</th>
                 <th>Qtde</th>
                 <th>Valor unit.</th>
-                <th>Valor total</th>
-                <th>Outras desp.</th>
+                <th>Valor total</th>                
                 <th>BC ICMS</th>
                 <th>Vlr. ICMS</th>
                 <th>% ICMS</th>
@@ -207,8 +206,7 @@
                 <td>{{ $item['unidade'] }}</td>
                 <td class="direita">{{ $item['quantidade'] }}</td>
                 <td class="direita">{{ $item['valor_unitario'] }}</td>
-                <td class="direita">{{ $item['valor_total'] }}</td>
-                <td class="direita">{{ $item['valor_outras_despesas'] }}</td>
+                <td class="direita">{{ $item['valor_total'] }}</td>               
                 <td class="direita">{{ $item['bc_icms'] }}</td>
                 <td class="direita">{{ $item['valor_icms'] }}</td>
                 <td class="direita">{{ $item['aliquota_icms'] }}</td>
