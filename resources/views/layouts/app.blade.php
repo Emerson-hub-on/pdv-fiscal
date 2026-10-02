@@ -6,20 +6,26 @@
     <title>@yield('titulo', 'PDV Fiscal')</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="bg-gray-100 text-gray-800 @yield('body-class')">
+<body class="bg-gray-100 text-gray-800 min-h-screen relative @yield('body-class')">
+
+<!-- Fundo dividido: 1/4 superior cinza e 3/4 branco -->
+<div class="absolute inset-0 flex flex-col -z-10 pointer-events-none">
+    <div class="w-full h-2/5 bg-gray-200"></div>
+    <div class="w-full h-3/5 bg-white"></div>
+</div>
 
 <!-- Sidebar: alterna entre expandida (w-50, com texto) e recolhida (w-16, só
      ícones) através da classe 'sidebar-oculta' no <body> — a mesma classe que
      já é definida via @section('body-class', 'sidebar-oculta') nas telas de
      criar/editar nota, e que também pode ser alternada pelo botão do topo. -->
-<aside id="nav-principal" class="bg-gray-800 fixed top-0 left-0 h-screen w-50 flex flex-col z-40 overflow-y-auto transition-[width] duration-200 [.sidebar-oculta_&]:w-16 [.sem-sidebar_&]:hidden">
+<aside id="nav-principal" class="bg-gray-900 fixed top-0 left-0 h-screen w-50 flex flex-col z-40 overflow-y-auto transition-[width] duration-200 [.sidebar-oculta_&]:w-16 [.sem-sidebar_&]:hidden">
     <div class="px-3 py-4 border-b border-white/10 shrink-0 flex items-center justify-between [.sidebar-oculta_&]:justify-center">
         <div class="px-2 overflow-hidden [.sidebar-oculta_&]:hidden">
-            <p class="text-white font-bold text-lg tracking-tight whitespace-nowrap">PDV Fiscal</p>
+            <p class="text-amber-50 font-bold text-lg tracking-tight whitespace-nowrap">PDV Fiscal</p>
             <p class="text-slate-400 text-xs mt-0.5 whitespace-nowrap">Painel administrativo</p>
         </div>
         <button type="button" onclick="toggleSidebar()" title="Minimizar/Expandir menu"
-                class="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg text-slate-300 hover:bg-white/10 hover:text-white transition">
+                class="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <rect x="3" y="4" width="18" height="16" rx="2" stroke-width="2"></rect>
                 <line x1="9" y1="4" x2="9" y2="20" stroke-width="2"></line>
@@ -31,7 +37,7 @@
         <!-- Menu Dropdown: Cadastros -->
         <div class="flex flex-col">
             <button onclick="toggleCadastros()" 
-                    class="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-slate-300 hover:bg-white/10 hover:text-white text-sm font-medium transition cursor-pointer [.sidebar-oculta_&]:justify-center [.sidebar-oculta_&]:px-0">
+                    class="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 text-sm font-medium transition cursor-pointer [.sidebar-oculta_&]:justify-center [.sidebar-oculta_&]:px-0">
                 <span class="flex items-center gap-3">
                     <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"></path>
@@ -47,19 +53,19 @@
             <!-- Subopções (inicialmente ocultas com 'hidden'; também ocultas com a sidebar recolhida) -->
             <div id="sub-cadastros" class="hidden [.sidebar-oculta_&]:hidden flex flex-col gap-1 pl-4 mt-1 border-l border-white/10 ml-3">
                 <a href="{{ route('produtos.index') }}"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white text-sm transition">
+                class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
                     Produtos
                 </a>
                 <a href="{{ route('clientes.index') }}"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white text-sm transition">
+                class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
                     Clientes
                 </a>
                 <a href="{{ route('empresa.editar') }}"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white text-sm transition">
+                class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
                     Empresa
                 </a>
                 <a href="{{ route('pdvs.index') }}"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white text-sm transition">
+                class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
                     PDVs
                 </a>
             </div>
@@ -67,7 +73,7 @@
         <!-- Menu Dropdown: Faturamento -->
         <div class="flex flex-col">
             <button onclick="toggleFaturamento()"
-                    class="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-slate-300 hover:bg-white/10 hover:text-white text-sm font-medium transition cursor-pointer [.sidebar-oculta_&]:justify-center [.sidebar-oculta_&]:px-0">
+                    class="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 text-sm font-medium transition cursor-pointer [.sidebar-oculta_&]:justify-center [.sidebar-oculta_&]:px-0">
                 <span class="flex items-center gap-3">
                     <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m-6 4h6m-6 4h4M5 3h14a1 1 0 011 1v16l-3-2-3 2-3-2-3 2-3-2-3 2V4a1 1 0 011-1z"></path>
@@ -83,7 +89,7 @@
                 <!-- Nota Fiscal (nível 2, abre lateral) -->
                 <div class="relative">
                     <button id="btn-notafiscal" onclick="toggleNotaFiscal()"
-                            class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white text-sm transition">
+                            class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
                         <span>Nota Fiscal</span>
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -91,18 +97,16 @@
                     </button>
 
                     <!-- Flyout lateral: 'fixed' + posição calculada via JS, para escapar do overflow-y-auto do menu -->
-                    <div id="sub-notafiscal" class="hidden fixed bg-gray-800 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                    <div id="sub-notafiscal" class="hidden fixed bg-gray-900 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
                         <a href="{{ route('notasfiscais.index') }}"
-                        class="block px-3 py-2 text-sm text-slate-400 hover:bg-white/10 hover:text-white transition">
+                        class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                             Saída
                         </a>
-                        {{-- futuramente: <a href="{{ route('notasfiscais.entrada') }}">Entrada</a> --}}
                         
                         <a href="{{ route('series-nfe.index') }}"
-                        class="block px-3 py-2 text-sm text-slate-400 hover:bg-white/10 hover:text-white transition border-t border-white/10">
+                        class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition border-t border-white/10">
                             Última numeração de NF-e
                         </a>   
-                    
                     </div>
 
                 </div>
@@ -112,7 +116,7 @@
 
     <div class="px-3 py-4 border-t border-white/10 shrink-0 [.sidebar-oculta_&]:px-2">
         <button onclick="sincronizarAgora()" id="btn-sincronizar"
-                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-white/10 hover:text-white text-sm font-medium transition cursor-pointer [.sidebar-oculta_&]:justify-center [.sidebar-oculta_&]:px-0">
+                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 text-sm font-medium transition cursor-pointer [.sidebar-oculta_&]:justify-center [.sidebar-oculta_&]:px-0">
             <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
             </svg>
@@ -127,7 +131,6 @@
 
             @php
                 // Mapa central do breadcrumb: prefixo da rota => [Grupo, Página]
-                // Toda tela nova sob "Cadastros" (ou outro grupo) só precisa de uma linha aqui.
                 $breadcrumbMapa = [
                     'produtos' => ['Cadastros', 'Produtos'],
                     'clientes' => ['Cadastros', 'Clientes'],
@@ -137,8 +140,7 @@
                     'series-nfe' => ['Faturamento', 'Séries de NF-e'],
                 ];
 
-                $rotaAtual = \Illuminate\Support\Facades\Route::currentRouteName();
-                $prefixoRota = $rotaAtual ? explode('.', $rotaAtual)[0] : null;
+                $rotaAtual = \Illuminate\Support\Facades\Route::currentRouteName();$prefixoRota = $rotaAtual ? explode('.', $rotaAtual)[0] : null;
                 $breadcrumbAuto = $breadcrumbMapa[$prefixoRota] ?? null;
             @endphp
 
@@ -167,14 +169,11 @@
     @yield('scripts')
 
     <script>
-
     function toggleSidebar() {
         document.body.classList.toggle('sidebar-oculta');
     }
 
     function toggleCadastros() {
-        // Se a sidebar estiver recolhida, expande primeiro — não tem espaço
-        // pra mostrar o submenu com a largura de ícones.
         if (document.body.classList.contains('sidebar-oculta')) {
             document.body.classList.remove('sidebar-oculta');
         }
@@ -182,10 +181,7 @@
         const subMenu = document.getElementById('sub-cadastros');
         const seta = document.getElementById('seta-cadastros');
     
-        // Alterna a classe 'hidden' do Tailwind para mostrar/esconder
         subMenu.classList.toggle('hidden');
-    
-        // Gira a setinha para indicar aberto/fechado
         seta.classList.toggle('rotate-180');
     }   
 
@@ -204,9 +200,6 @@
         const estaAbrindo = flyout.classList.contains('hidden');
 
         if (estaAbrindo) {
-            // Como o flyout agora é 'fixed', calculamos a posição em relação
-            // ao botão para ele "escapar" do overflow-y-auto do menu e ficar
-            // sempre sobreposto ao restante do conteúdo.
             const rect = botao.getBoundingClientRect();
             flyout.style.top = rect.top + 'px';
             flyout.style.left = (rect.right + 4) + 'px';
@@ -215,7 +208,6 @@
         flyout.classList.toggle('hidden');
     }
 
-    // Fecha o flyout ao clicar fora dele
     document.addEventListener('click', function (evento) {
         const flyout = document.getElementById('sub-notafiscal');
         const botao = document.getElementById('btn-notafiscal');
