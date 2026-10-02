@@ -735,7 +735,10 @@ class NotaFiscalController extends Controller
             ],
 
             'itens' => $itens,
-            'informacoes_complementares' => $notaFiscal->informacoes_complementares,
+            'informacoes_complementares' => collect([
+                $notaFiscal->textoNotasReferenciadas(),
+                $notaFiscal->informacoes_complementares,
+            ])->filter()->implode(' | ') ?: null,
         ];
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('notasfiscais.pdf.previsualizacao', compact('dados'))

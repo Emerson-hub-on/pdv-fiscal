@@ -782,6 +782,11 @@ if ($this->empresa->crt <= 2) {
             }
         }
 
+        $referencias = $notaFiscal->textoNotasReferenciadas();
+        if ($referencias) {
+            $partes[] = $referencias;
+        }
+
         if ($notaFiscal->informacoes_complementares) {
             $partes[] = $notaFiscal->informacoes_complementares;
         }
@@ -791,7 +796,7 @@ if ($this->empresa->crt <= 2) {
         }
 
         $std = new \stdClass();
-        $std->infCpl = implode(' | ', $partes);
+        $std->infCpl = mb_substr(implode(' | ', $partes), 0, 5000);
         $nfe->taginfAdic($std);
     }
 
