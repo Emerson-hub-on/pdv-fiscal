@@ -15,7 +15,8 @@ class NotaFiscalItem extends Model
         'pis_cofins_id', 'ipi_id','quantidade', 'valor_unitario', 
         'valor_desconto', 'valor_total','ref_chave_acesso', 'ref_nitem',
         'bc_icms_manual', 'valor_icms_manual', 'aliquota_icms_manual', 
-        'valor_ipi_manual', 'aliquota_ipi_manual', 'valor_outras_despesas'
+        'valor_ipi_manual', 'aliquota_ipi_manual', 'valor_outras_despesas',
+        'valor_frete',
     ];
 
     protected $casts = [
@@ -29,6 +30,7 @@ class NotaFiscalItem extends Model
         'valor_ipi_manual'      => 'decimal:2',
         'aliquota_ipi_manual'   => 'decimal:2',
         'valor_outras_despesas' => 'decimal:2',
+        'valor_frete'           => 'decimal:2',
     ];
 
 
@@ -53,7 +55,8 @@ class NotaFiscalItem extends Model
     public function getBaseImpostosAttribute(): float
     {
         return ((float) $this->valor_unitario * (float) $this->quantidade)
-            + (float) $this->valor_outras_despesas;
+            + (float) $this->valor_outras_despesas
+            + (float) $this->valor_frete;
     }
 
     public function notaFiscal(): BelongsTo

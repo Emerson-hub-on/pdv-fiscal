@@ -15,7 +15,7 @@ return [
     | para o seu CRT). Quando for hora de ativar, é só virar 'true' aqui
     | — nenhum código precisa mudar.
     */
-    'emitir_ibscbs' => env('FISCAL_EMITIR_IBSCBS', false),
+    'emitir_ibscbs' => env('FISCAL_EMITIR_IBSCBS', true),
 
     'aliquotas_ibscbs_transicao' => [
         'ibs_uf'  => 0.10,

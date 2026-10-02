@@ -106,6 +106,7 @@ class NotaFiscalController extends Controller
                 'notas_referenciadas'        => $dados['notas_referenciadas'],
                 'tipo_operacao'              => CfopSaida::findOrFail($dados['cfop_saida_id'])->tipo_operacao,
                 'motivo_ajuste'              => $dados['motivo_ajuste'],
+                'frete_por_item'             => $dados['frete_por_item'],
                 'origem_tipo'                => 'manual',
                 'status'                     => 'rascunho',
             ]);
@@ -149,6 +150,7 @@ class NotaFiscalController extends Controller
             $notaFiscal->notas_referenciadas = $dados['notas_referenciadas'];
             $notaFiscal->tipo_operacao = CfopSaida::findOrFail($dados['cfop_saida_id'])->tipo_operacao;
             $notaFiscal->motivo_ajuste = $dados['motivo_ajuste'];
+            $notaFiscal->frete_por_item = $dados['frete_por_item'];
             $notaFiscal->save();
 
             // Substitui todos os itens — mais simples e seguro que tentar
@@ -176,6 +178,8 @@ class NotaFiscalController extends Controller
             'informacoes_complementares' => ['nullable', 'string', 'max:2000'],
             'notas_referenciadas_json'   => ['nullable', 'string'],
             'itens_json'                 => ['required', 'string'],
+            'frete_modo'  => ['required', 'in:item,global'],
+            'frete_total' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $finalidade = (int) $dados['finalidade'];
@@ -221,6 +225,32 @@ class NotaFiscalController extends Controller
             }
         }
 
+        $freteTotal = round((float) ($dados['frete_total'] ?? 0), 2);
+
+        if ($dados['frete_modo'] === 'item') {
+            foreach ($itens as $k => $item) {
+                $itens[$k]['valor_frete'] = round(max(0, (float) ($item['valor_frete'] ?? 0)), 2);
+            }
+
+            $somaItens = round(array_sum(array_column($itens, 'valor_frete')), 2);
+
+            // A soma do frete dos itens tem que ser exatamente o frete total da nota
+            if (abs($somaItens - $freteTotal) > 0.004) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'frete' => sprintf(
+                        'A soma do frete dos itens (R$ %s) precisa ser igual ao frete total (R$ %s).',
+                        number_format($somaItens, 2, ',', '.'),
+                        number_format($freteTotal, 2, ',', '.')
+                    ),
+                ]);
+            }
+        } else {
+            $itens = $this->ratearFrete($itens, $freteTotal);
+        }
+
+        $dados['frete_por_item'] = $dados['frete_modo'] === 'item';
+        unset($dados['frete_modo'], $dados['frete_total']);
+
         $dados['itens'] = $itens;
         $dados['notas_referenciadas'] = $notasReferenciadas;
         $dados['motivo_ajuste'] = $motivo;
@@ -263,6 +293,7 @@ class NotaFiscalController extends Controller
                 'valor_unitario'        => $valorUnitario,
                 'valor_desconto'        => $valorDesconto,
                 'valor_outras_despesas' => max(0, (float) ($itemDados['valor_outras_despesas'] ?? 0)),
+                'valor_frete'           => round(max(0, (float) ($itemDados['valor_frete'] ?? 0)), 2),
                 'valor_total'           => $valorTotal,
                 'bc_icms_manual'        => $basesManuais ? ($itemDados['bc_icms'] ?? null) : null,
                 'valor_icms_manual'     => $basesManuais ? ($itemDados['valor_icms'] ?? null) : null,
@@ -597,6 +628,38 @@ class NotaFiscalController extends Controller
         });
 
         return redirect()->route('notasfiscais.index')->with('sucesso', 'Nota fiscal cancelada com sucesso. Protocolo: ' . $resultado['protocolo']);
+    }
+
+
+    /** Rateia o frete global entre os itens, proporcional ao valor de cada um; a soma fecha em centavos. */
+    private function ratearFrete(array $itens, float $freteTotal): array
+    {
+        $totalCentavos = (int) round($freteTotal * 100);
+
+        $pesos = array_map(
+            fn ($i) => max(0.0, ((float) $i['quantidade'] * (float) $i['valor_unitario']) - (float) ($i['valor_desconto'] ?? 0)),
+            $itens
+        );
+        $somaPesos = array_sum($pesos);
+
+        $centavos = [];
+        foreach ($pesos as $k => $peso) {
+            $centavos[$k] = $somaPesos > 0
+                ? (int) floor($totalCentavos * $peso / $somaPesos)
+                : intdiv($totalCentavos, count($pesos));
+        }
+
+        // sobra do arredondamento vai para o item de maior valor
+        $sobra = $totalCentavos - array_sum($centavos);
+        if ($sobra !== 0) {
+            $centavos[array_keys($pesos, max($pesos))[0]] += $sobra;
+        }
+
+        foreach ($itens as $k => $_) {
+            $itens[$k]['valor_frete'] = $centavos[$k] / 100;
+        }
+
+        return $itens;
     }
 
     public function danfe(NotaFiscal $notaFiscal)

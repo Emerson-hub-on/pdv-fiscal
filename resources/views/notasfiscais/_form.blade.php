@@ -2,9 +2,10 @@
     $ehEdicao = isset($notaFiscal) && $notaFiscal !== null;
 
     $itensIniciais = $ehEdicao
-        ? $notaFiscal->itens->map(function ($i) {
+        ? $notaFiscal->itens->map(function ($i) use ($notaFiscal, $ehEdicao) {
             $subtotalBruto = (float) $i->valor_unitario * (float) $i->quantidade;
-            $baseImpostos = $subtotalBruto + (float) $i->valor_outras_despesas;
+            $freteItem = ($ehEdicao && $notaFiscal->frete_por_item) ? (float) $i->valor_frete : 0;
+            $baseImpostos = $subtotalBruto + (float) $i->valor_outras_despesas + $freteItem;
             $cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
 
             $trib = $i->tributacao;
@@ -51,6 +52,7 @@
                 'valor_total'           => (float) $i->valor_total,
                 'valor_desconto'        => (float) $i->valor_desconto,
                 'valor_outras_despesas' => (float) $i->valor_outras_despesas,
+                'valor_frete'           => $freteItem,
                 'desconto_percentual'   => $subtotalBruto > 0 ? round(((float) $i->valor_desconto / $subtotalBruto) * 100, 2) : 0,
                 'tributacao'            => $i->tributacao,
                 'ipi'                   => $i->ipi,
@@ -67,6 +69,7 @@
         : collect();
 
     $motivoAtual = old('motivo_ajuste', $ehEdicao ? $notaFiscal->motivo_ajuste : null);
+    $freteModoInicial = old('frete_modo', ($ehEdicao && $notaFiscal->frete_por_item) ? 'item' : 'global');
     $labelsFinalidade = [1 => 'Normal', 2 => 'Complementar', 3 => 'Ajuste', 4 => 'Devolução', 5 => 'Nota de Crédito', 6 => 'Nota de Débito'];
     $naturezaAtual = old('natureza_operacao', $ehEdicao ? $notaFiscal->natureza_operacao : null);
     $finalidadeAtual = old('finalidade', $ehEdicao ? $notaFiscal->finalidade : null);
@@ -178,6 +181,21 @@
             <input type="hidden" name="natureza_operacao" id="campo-natureza" value="{{ $naturezaAtual }}">
             <input type="hidden" name="finalidade" id="campo-finalidade" value="{{ $finalidadeAtual }}">
             <input type="hidden" name="motivo_ajuste" id="campo-motivo-ajuste" value="{{ $motivoAtual }}">
+            <input type="hidden" name="frete_modo" id="campo-frete-modo" value="{{ $freteModoInicial }}">
+            <input type="hidden" name="frete_total" id="campo-frete-total" value="0">
+        </div>
+
+        <!-- Select de Frete -->
+        <div class="flex items-center gap-4 text-sm mb-3">
+            <span class="font-medium text-gray-700">Frete:</span>
+            <label class="flex items-center gap-1">
+                <input type="radio" name="frete_modo_ui" value="item" onchange="definirFreteModo('item')"
+                    {{ $freteModoInicial === 'item' ? 'checked' : '' }}> Item a item
+            </label>
+            <label class="flex items-center gap-1">
+                <input type="radio" name="frete_modo_ui" value="global" onchange="definirFreteModo('global')"
+                    {{ $freteModoInicial === 'global' ? 'checked' : '' }}> Valor total (informado ao confirmar)
+            </label>
         </div>
     </div>
 
@@ -220,7 +238,7 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-5 gap-3">
+            <div class="grid grid-cols-6 gap-3">
 
                 <div>
                     <label class="block text-xs text-gray-500 mb-1">Qtd</label>
@@ -247,6 +265,12 @@
                 <div>
                     <label class="block text-xs text-gray-500 mb-1">Outras despesas (R$)</label>
                     <input type="number" step="0.01" min="0" id="editor-outras-despesas" value="0"
+                        class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+                </div>
+
+                <div id="editor-bloco-frete" class="{{ $freteModoInicial === 'item' ? '' : 'hidden' }}">
+                    <label class="block text-xs text-gray-500 mb-1">Frete (R$)</label>
+                    <input type="number" step="0.01" min="0" id="editor-frete" value="0"
                         class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
                 </div>
 
@@ -326,6 +350,7 @@
                         <th class="text-right px-3 py-2">Desconto</th>
                         <th class="text-right px-3 py-2">Desconto %</th>
                         <th class="text-right px-3 py-2">Outras desp.</th>
+                        <th class="text-right px-3 py-2">Frete</th>
                         <th class="text-right px-3 py-2">BC ICMS</th>
                         <th class="text-right px-3 py-2">Vlr. ICMS</th>
                         <th class="text-right px-3 py-2">% ICMS</th>
@@ -337,7 +362,12 @@
                 <tbody id="linhas-grid-itens" class="divide-y divide-gray-100"></tbody>
                 <tfoot class="bg-gray-50 font-medium">
                     <tr>
-                        <td colspan="14" class="px-3 py-2 text-right">Total da nota</td>
+                        <td colspan="15" class="px-3 py-1 text-right text-gray-500">Frete total</td>
+                        <td class="px-3 py-1 text-right" id="total-frete-grid">R$ 0,00</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td colspan="15" class="px-3 py-2 text-right">Total da nota</td>
                         <td class="px-3 py-2 text-right" id="total-grid-itens">R$ 0,00</td>
                         <td></td>
                     </tr>
@@ -559,6 +589,19 @@
             <select id="modal-motivo-ajuste" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></select>
         </div>
 
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Frete</label>
+            <div id="bloco-frete-global">
+                <input type="number" step="0.01" min="0" id="modal-frete-global" value="0"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                <p class="text-xs text-gray-500 mt-1">O valor é rateado entre os itens, proporcional ao valor de cada um.</p>
+            </div>
+            <p id="bloco-frete-itens" class="hidden text-sm text-gray-700">
+                Soma dos fretes dos itens: <strong id="modal-frete-soma">R$ 0,00</strong>
+                <span class="text-gray-400">(informado item a item)</span>
+            </p>
+        </div>
+
         <label class="block text-sm font-medium text-gray-700 mb-1">
             Nota(s) fiscal(is) referenciada(s)
             <span class="text-gray-400 font-normal">(chave de acesso, 44 dígitos)</span>
@@ -595,8 +638,61 @@
 window.crtEmpresa = {{ (int) $crtEmpresa }};
 window.cfopDestacarBases = {{ ($ehEdicao && $notaFiscal->cfopSaida && $notaFiscal->cfopSaida->destacar_bases) ? 'true' : 'false' }};
 window.cfopCodigoNota = @json($ehEdicao && $notaFiscal->cfopSaida ? (string) $notaFiscal->cfopSaida->codigo : '');
+let itensNota = @json($itensIniciais);
+let chavesReferenciadas = @json($notasReferenciadasIniciais);
+let resultadosAtuaisNf = [];
+let indiceSelecionadoNf = -1;
+let timeoutBuscaNf;
+let produtoSelecionadoParaEditor = null;
+let indiceItemEmEdicao = null;
+let cfopsCache = [];
+let formasPagamentoCache = [];
+let clientesAtuais = [];
+let indiceClienteSelecionado = -1;
+let timeoutBuscaCliente;
+let contadorBuscaCliente = 0; // descarta respostas antigas se o operador digitar rápido
+const finalidadesRefPorItem = @json(array_map('strval', config('fiscal.finalidades_referencia_por_item', [])));
+const motivosAjuste = @json(config('fiscal.motivos_ajuste', []));
+const inputBuscaCliente  = document.getElementById('busca-cliente-modal');
+const linhasBuscaCliente = document.getElementById('linhas-busca-cliente');
+const inputBuscaNf = document.getElementById('input-busca-item-nf');
+const inputBuscaModalNf = document.getElementById('busca-produto-modal-nf');
+const linhasBuscaDivNf = document.getElementById('linhas-busca-produto-nf');
+const campoCliente = document.getElementById('campo-cliente');
+const campoNatureza = document.getElementById('campo-natureza');
+const campoFinalidade = document.getElementById('campo-finalidade');
+const campoCfop = document.getElementById('campo-cfop');
+const campoPagamento = document.getElementById('campo-pagamento');
+const campoOperador = document.getElementById('campo-operador');
 const cfopsVendaPorItem = @json(array_map('strval', config('fiscal.cfops_venda_por_item', [])));
 const cfopInterestadual = @json(config('fiscal.cfop_interestadual', []));
+let freteModo = @json($freteModoInicial);
+let freteGlobal = {{ (float) old('frete_total', ($ehEdicao && !$notaFiscal->frete_por_item) ? $notaFiscal->valor_frete : 0) }};
+
+
+function somaFreteItens() {
+    return itensNota.reduce((s, i) => s + (Number(i.valor_frete) || 0), 0);
+}
+
+function freteTotalNota() {
+    return freteModo === 'item' ? somaFreteItens() : freteGlobal;
+}
+
+function definirFreteModo(modo) {
+    if (modo === freteModo) return;
+
+    if (modo === 'global' && somaFreteItens() > 0
+        && !confirm('Os fretes informados item a item serão descartados. Continuar?')) {
+        document.querySelector('input[name="frete_modo_ui"][value="item"]').checked = true;
+        return;
+    }
+
+    if (modo === 'global') itensNota.forEach(i => i.valor_frete = 0);
+
+    freteModo = modo;
+    document.getElementById('editor-bloco-frete').classList.toggle('hidden', modo !== 'item');
+    renderizarGridItens();
+}
 
 // Libera a largura total da tela (variante já prevista no layouts/app)
 document.body.classList.add('conteudo-largo');
@@ -616,36 +712,6 @@ function cfopEfetivoItem(item) {
 
     return cfopProduto;
 }
-let itensNota = @json($itensIniciais);
-const finalidadesRefPorItem = @json(array_map('strval', config('fiscal.finalidades_referencia_por_item', [])));
-const motivosAjuste = @json(config('fiscal.motivos_ajuste', []));
-let chavesReferenciadas = @json($notasReferenciadasIniciais);
-let resultadosAtuaisNf = [];
-let indiceSelecionadoNf = -1;
-let timeoutBuscaNf;
-let produtoSelecionadoParaEditor = null;
-let indiceItemEmEdicao = null;
-let cfopsCache = [];
-let formasPagamentoCache = [];
-const campoCfop = document.getElementById('campo-cfop');
-let clientesAtuais = [];
-let indiceClienteSelecionado = -1;
-let timeoutBuscaCliente;
-let contadorBuscaCliente = 0; // descarta respostas antigas se o operador digitar rápido
-
-const inputBuscaCliente  = document.getElementById('busca-cliente-modal');
-const linhasBuscaCliente = document.getElementById('linhas-busca-cliente');
-
-const inputBuscaNf = document.getElementById('input-busca-item-nf');
-const inputBuscaModalNf = document.getElementById('busca-produto-modal-nf');
-const linhasBuscaDivNf = document.getElementById('linhas-busca-produto-nf');
-const campoCliente = document.getElementById('campo-cliente');
-const campoNatureza = document.getElementById('campo-natureza');
-const campoFinalidade = document.getElementById('campo-finalidade');
-
-const campoPagamento = document.getElementById('campo-pagamento');
-const campoOperador = document.getElementById('campo-operador');
-
 
 
 function escaparHtml(texto) {
@@ -1192,6 +1258,7 @@ function abrirEditorItem(produto) {
     document.getElementById('editor-valor-unitario').value = produto.preco_venda;
     document.getElementById('editor-desconto').value = 0;
     document.getElementById('editor-outras-despesas').value = 0;
+    document.getElementById('editor-frete').value = 0;
     document.getElementById('editor-desconto-percentual').value = 0;
     document.getElementById('editor-item').classList.remove('hidden');
     atualizarCalculosEditor('valor');
@@ -1254,6 +1321,7 @@ function editarItemDaGrid(index) {
     document.getElementById('editor-desconto').value         = item.valor_desconto;
     document.getElementById('editor-desconto-percentual').value = item.desconto_percentual;
     document.getElementById('editor-outras-despesas').value = item.valor_outras_despesas ?? 0;
+    document.getElementById('editor-frete').value = item.valor_frete ?? 0;
 
     atualizarCalculosEditor('valor');
 
@@ -1306,7 +1374,8 @@ function atualizarCalculosEditor(origemDesconto, manterTributosManuais = false) 
 
     const valorTotal = Math.max(subtotalBruto - desconto, 0);
     const outrasDespesas = parseFloat(document.getElementById('editor-outras-despesas').value) || 0;
-    const baseImpostos = subtotalBruto + outrasDespesas;
+    const frete = freteModo === 'item' ? (parseFloat(document.getElementById('editor-frete').value) || 0) : 0;
+    const baseImpostos = subtotalBruto + outrasDespesas + frete;
     document.getElementById('editor-valor-total').value = 'R$ ' + valorTotal.toFixed(2);
 
     // ICMS — mesma regra usada no NotaFiscalService::montarItens() na emissão real
@@ -1359,7 +1428,7 @@ document.getElementById('editor-valor-unitario').addEventListener('input', () =>
 document.getElementById('editor-desconto').addEventListener('input', () => atualizarCalculosEditor('valor'));
 document.getElementById('editor-desconto-percentual').addEventListener('input', () => atualizarCalculosEditor('percentual'));
 document.getElementById('editor-outras-despesas').addEventListener('input', () => atualizarCalculosEditor('valor'));
-
+document.getElementById('editor-frete').addEventListener('input', () => atualizarCalculosEditor('valor'));
 
 
 function adicionarLinhaNaGrid() {
@@ -1371,13 +1440,14 @@ function adicionarLinhaNaGrid() {
     const descricao = document.getElementById('editor-descricao').value.trim();
     const refChave = document.getElementById('editor-ref-chave').value.replace(/\D/g, '');
     const refNitem = document.getElementById('editor-ref-nitem').value || null;
+    const frete = freteModo === 'item' ? (parseFloat(document.getElementById('editor-frete').value) || 0) : 0;
 
     if (finalidadesRefPorItem.includes(String(campoFinalidade.value)) && refChave.length !== 44) {
         alert('Informe a chave de acesso (44 dígitos) da nota de origem deste item.');
         return;
     }
 
-    if (quantidade <= 0 || valorUnitario < 0 || descricao.length < 1 || outrasDespesas < 0) {
+    if (quantidade <= 0 || valorUnitario < 0 || descricao.length < 1 || outrasDespesas < 0 || frete < 0) {
         alert('Preencha quantidade, valor unitário e descrição corretamente.');
         return;
     }
@@ -1390,7 +1460,7 @@ function adicionarLinhaNaGrid() {
     const cstOuCsosn = trib?.csosn ?? trib?.cst_icms ?? '—';
 
     let bcIcms, valorIcms, aliquotaIcms, valorIpi, aliquotaIpi;
-    const baseImpostos = subtotalBruto + outrasDespesas;
+    const baseImpostos = subtotalBruto + outrasDespesas + frete;
 
     if (window.cfopDestacarBases) {
         bcIcms = parseFloat(document.getElementById('editor-bc-icms').value.replace('R$', '').replace(',', '.')) || 0;
@@ -1429,6 +1499,7 @@ function adicionarLinhaNaGrid() {
         valor_total: valorTotal,
         valor_desconto: valorDesconto,
         valor_outras_despesas: outrasDespesas,
+        valor_frete: frete,
         desconto_percentual: descontoPercentual,
         bc_icms: bcIcms,
         valor_icms: valorIcms,
@@ -1475,11 +1546,13 @@ function prepararBlocoMotivoAjuste() {
 function renderizarGridItens() {
     const tbody = document.getElementById('linhas-grid-itens');
     const vazia = document.getElementById('grid-vazia');
+    
 
     if (itensNota.length === 0) {
         tbody.innerHTML = '';
         vazia.classList.remove('hidden');
         document.getElementById('total-grid-itens').innerText = 'R$ 0,00';
+        document.getElementById('total-frete-grid').innerText = 'R$ 0,00';
         return;
     }
     vazia.classList.add('hidden');
@@ -1507,6 +1580,7 @@ function renderizarGridItens() {
                 <td class="px-3 py-2 text-right">R$ ${item.valor_desconto.toFixed(2)}</td>
                 <td class="px-3 py-2 text-right">${item.desconto_percentual.toFixed(2)}%</td>
                 <td class="px-3 py-2 text-right">R$ ${Number(item.valor_outras_despesas ?? 0).toFixed(2)}</td>
+                <td class="px-3 py-2 text-right">${freteModo === 'item' ? 'R$ ' + Number(item.valor_frete ?? 0).toFixed(2) : '—'}</td>
                 <td class="px-3 py-2 text-right">R$ ${item.bc_icms.toFixed(2)}</td>
                 <td class="px-3 py-2 text-right">R$ ${item.valor_icms.toFixed(2)}</td>
                 <td class="px-3 py-2 text-right">${item.aliquota_icms.toFixed(2)}%</td>
@@ -1517,7 +1591,9 @@ function renderizarGridItens() {
         `;
     }).join('');
 
-    document.getElementById('total-grid-itens').innerText = 'R$ ' + totalNota.toFixed(2).replace('.', ',');
+    const frete = freteTotalNota();
+    document.getElementById('total-frete-grid').innerText = 'R$ ' + frete.toFixed(2).replace('.', ',');
+    document.getElementById('total-grid-itens').innerText = 'R$ ' + (totalNota + frete).toFixed(2).replace('.', ',');
 }
 
 document.getElementById('form-nota').addEventListener('submit', function (e) {
@@ -1531,6 +1607,11 @@ document.getElementById('form-nota').addEventListener('submit', function (e) {
 
 
 function abrirModalReferencia() {
+    const modoItem = freteModo === 'item';
+    document.getElementById('bloco-frete-global').classList.toggle('hidden', modoItem);
+    document.getElementById('bloco-frete-itens').classList.toggle('hidden', !modoItem);
+    document.getElementById('modal-frete-global').value = freteGlobal.toFixed(2);
+    document.getElementById('modal-frete-soma').innerText = 'R$ ' + somaFreteItens().toFixed(2).replace('.', ',');
     renderizarChavesReferenciadas();
     document.getElementById('modal-informacoes-complementares').value =
         document.getElementById('campo-informacoes-complementares').value;
@@ -1613,6 +1694,17 @@ function confirmarESalvarNota() {
             return;
         }
     }
+
+    if (freteModo === 'global') {
+        const valor = parseFloat(document.getElementById('modal-frete-global').value) || 0;
+        if (valor < 0) {
+                mostrarAviso('O frete não pode ser negativo.', 'erro');
+                return;
+            }
+        freteGlobal = Math.round(valor * 100) / 100;
+    }
+    document.getElementById('campo-frete-modo').value = freteModo;
+    document.getElementById('campo-frete-total').value = freteTotalNota().toFixed(2);
 
     document.getElementById('campo-motivo-ajuste').value = ehAjuste ? motivo : '';
     document.getElementById('campo-notas-referenciadas').value = JSON.stringify(chavesReferenciadas);

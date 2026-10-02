@@ -81,7 +81,7 @@ class NotaFiscalService
             $this->montarDest($nfe, $notaFiscal);
             $this->montarItens($nfe, $notaFiscal);
             $this->montarTotais($nfe, $notaFiscal);
-            $this->montarTransporte($nfe);
+            $this->montarTransporte($nfe, $notaFiscal);
             $this->montarPagamento($nfe, $notaFiscal);
             $this->montarInfAdicional($nfe, $notaFiscal);
             $this->montarResponsavelTecnico($nfe);
@@ -363,6 +363,10 @@ class NotaFiscalService
 
             if ($descontoEfetivo > 0) {
                 $prod->vDesc = number_format($descontoEfetivo, 2, '.', '');
+            }
+
+            if ((float) $item->valor_frete > 0) {
+                $prod->vFrete = number_format($item->valor_frete, 2, '.', '');
             }
 
             $outrasDespesas = (float) $item->valor_outras_despesas;
@@ -703,7 +707,7 @@ if ($this->empresa->crt <= 2) {
         $std->vFCPST = 0;
         $std->vFCPSTRet = 0;
         $std->vProd = number_format($vProdBruto, 2, '.', '');
-        $std->vFrete = number_format($notaFiscal->valor_frete, 2, '.', '');
+        $std->vFrete = number_format($notaFiscal->itens->sum('valor_frete'), 2, '.', '');
         $std->vSeg = 0;
         if ($notaFiscal->valor_desconto > 0) {
             $std->vDesc = number_format($notaFiscal->valor_desconto, 2, '.', '');
@@ -722,10 +726,13 @@ if ($this->empresa->crt <= 2) {
         }
     }
 
-    protected function montarTransporte(Make $nfe): void
+    protected function montarTransporte(Make $nfe, NotaFiscal $notaFiscal): void
     {
         $std = new \stdClass();
-        $std->modFrete = 9; // sem transporte declarado por ora
+        // 0 = frete por conta do remetente (CIF, cobrado na nota); 9 = sem frete
+        $std->modFrete = $notaFiscal->itens->sum('valor_frete') > 0
+            ? (int) config('fiscal.mod_frete_com_frete', 0)
+            : 9;
         $nfe->tagtransp($std);
     }
     

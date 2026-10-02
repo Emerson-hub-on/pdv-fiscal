@@ -25,6 +25,7 @@ class NotaFiscal extends Model
         'informacoes_complementares',
         'notas_referenciadas',
         'motivo_ajuste',
+        'frete_por_item',
     ];
 
     protected $casts = [
@@ -34,6 +35,7 @@ class NotaFiscal extends Model
         'valor_total' => 'decimal:2',
         'emitida_em' => 'datetime',
         'notas_referenciadas' => 'array',
+        'frete_por_item' => 'boolean',
     ];
 
     public function cliente(): BelongsTo
@@ -78,9 +80,11 @@ class NotaFiscal extends Model
     {
         $produtos = $this->itens()->sum('valor_total');
         $outras   = $this->itens()->sum('valor_outras_despesas');
+        $frete    = $this->itens()->sum('valor_frete'); // o frete da nota é sempre a soma dos itens
 
         $this->valor_produtos = $produtos;
-        $this->valor_total = $produtos - $this->valor_desconto + $this->valor_frete + $outras;
+        $this->valor_frete = $frete;
+        $this->valor_total = $produtos - $this->valor_desconto + $frete + $outras;
         $this->save();
     }
 
