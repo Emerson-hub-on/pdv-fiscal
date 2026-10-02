@@ -523,15 +523,26 @@ if ($this->empresa->crt <= 2) {
                 // ou IPINT sem esses campos) conforme a presença de vBC/pIPI/vIPI no std.
                 // Só CST 50 (Saída Tributada) tem valor de fato; os demais (isenção, alíquota
                 // zero, suspensão, imune, outras) entram só com CST, sem base de cálculo.
-                $ipiClass = $item->ipi;
+                $ipiClass  = $item->ipi;
+                $ipiManual = $item->valor_ipi_manual !== null;
 
-                if ($ipiClass) {
+                // Sem classificação de IPI, só entra no XML se o operador destacou valor manual
+                if ($ipiClass || ($ipiManual && (float) $item->valor_ipi_manual > 0)) {
+                    $cstIpi = $ipiClass?->codigo;
+
+                    // IPITrib (com vBC/pIPI/vIPI) só existe para CST 00, 49, 50 e 99.
+                    // Destaque manual com outro CST (ou sem classificação) seria descartado em silêncio pela lib,
+                    // então usa o "outras" da operação: 49 na entrada, 99 na saída.
+                    if ($ipiManual && !in_array($cstIpi, ['00', '49', '50', '99'], true)) {
+                        $cstIpi = $notaFiscal->cfopSaida->tipo_operacao === 'entrada' ? '49' : '99';
+                    }
+
                     $ipiStd = new \stdClass();
                     $ipiStd->item = $n;
-                    $ipiStd->cEnq = $ipiClass->cenq ?? '999';
-                    $ipiStd->CST = $ipiClass->codigo;
+                    $ipiStd->cEnq = $ipiClass?->cenq ?? '999';
+                    $ipiStd->CST = $cstIpi;
 
-                    if ($item->valor_ipi_manual !== null) {
+                    if ($ipiManual) {
                         $baseCalculoItem = (float) $item->bc_icms_manual > 0
                             ? (float) $item->bc_icms_manual
                             : $item->base_impostos;
@@ -541,7 +552,7 @@ if ($this->empresa->crt <= 2) {
                         $ipiStd->vIPI = number_format($item->valor_ipi_manual, 2, '.', '');
 
                         $this->totalIPI += (float) $item->valor_ipi_manual;
-                    } elseif ($ipiClass->codigo === '50') {
+                    } elseif ($ipiClass && $ipiClass->codigo === '50') {
                         $baseCalculoItem = $item->base_impostos;
                         $aliquotaIpi = (float) ($ipiClass->aliquota ?? 0);
                         $valorIpi = $baseCalculoItem * $aliquotaIpi / 100;
