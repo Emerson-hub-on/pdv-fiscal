@@ -70,6 +70,7 @@
 
     $motivoAtual = old('motivo_ajuste', $ehEdicao ? $notaFiscal->motivo_ajuste : null);
     $freteModoInicial = old('frete_modo', ($ehEdicao && $notaFiscal->frete_por_item) ? 'item' : 'global');
+    $modFreteInicial = (string) old('mod_frete', $ehEdicao ? $notaFiscal->mod_frete : 9);
     $labelsFinalidade = [1 => 'Normal', 2 => 'Complementar', 3 => 'Ajuste', 4 => 'Devolução', 5 => 'Nota de Crédito', 6 => 'Nota de Débito'];
     $naturezaAtual = old('natureza_operacao', $ehEdicao ? $notaFiscal->natureza_operacao : null);
     $finalidadeAtual = old('finalidade', $ehEdicao ? $notaFiscal->finalidade : null);
@@ -95,7 +96,7 @@
         value="{{ old('informacoes_complementares', $ehEdicao ? $notaFiscal->informacoes_complementares : '') }}">
 
     <div class="bg-white rounded-lg shadow p-6">
-        <div class="flex items-center gap-2 mb-4">
+        <div class="flex items-center justify-between mb-4">
             @if ($ehEdicao)
                 <a href="{{ route('notasfiscais.index') }}" title="Voltar para Notas Fiscais"
                 class="text-gray-500 hover:text-gray-800 transition">
@@ -105,7 +106,44 @@
                 </a>
             @endif
             <h1 class="text-lg font-semibold">{{ $ehEdicao ? 'Editar Nota Fiscal (rascunho)' : 'Nova Nota Fiscal (Saída)' }}</h1>
+            
+        <div class="relative" id="menu-opcoes">
+            <button type="button" id="btn-opcoes" onclick="alternarMenuOpcoes()"
+                    class="flex items-center gap-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm hover:bg-gray-50">
+                Opções
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+
+            <div id="painel-opcoes"
+                class="hidden absolute right-0 mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-40 p-4 text-sm">
+                <p class="font-medium text-gray-700 mb-2">Modalidade do frete</p>
+                @foreach (\App\Models\NotaFiscal::MODALIDADES_FRETE as $codigo => $nome)
+                    <label class="flex items-center gap-2 mb-1 cursor-pointer">
+                        <input type="radio" name="mod_frete_ui" value="{{ $codigo }}"
+                            onchange="definirModFrete('{{ $codigo }}')"
+                            {{ $modFreteInicial === (string) $codigo ? 'checked' : '' }}>
+                        {{ $nome }}
+                    </label>
+                @endforeach
+
+                <div id="opcoes-valor-frete" class="mt-3 pt-3 border-t border-gray-100">
+                    <p class="font-medium text-gray-700 mb-2">Valor do frete</p>
+                    <label class="flex items-center gap-2 mb-1 cursor-pointer">
+                        <input type="radio" name="frete_modo_ui" value="item" onchange="definirFreteModo('item')"
+                            {{ $freteModoInicial === 'item' ? 'checked' : '' }}> Item a item
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="frete_modo_ui" value="global" onchange="definirFreteModo('global')"
+                            {{ $freteModoInicial === 'global' ? 'checked' : '' }}> Valor total (informado ao confirmar)
+                    </label>
+                </div>
+            </div>
         </div>
+        
+        </div>
+
 
         <div class="grid grid-cols-2 gap-4 max-w-5xl">
             <div>
@@ -183,19 +221,8 @@
             <input type="hidden" name="motivo_ajuste" id="campo-motivo-ajuste" value="{{ $motivoAtual }}">
             <input type="hidden" name="frete_modo" id="campo-frete-modo" value="{{ $freteModoInicial }}">
             <input type="hidden" name="frete_total" id="campo-frete-total" value="0">
-        </div>
-
-        <!-- Select de Frete -->
-        <div class="flex items-center gap-4 text-sm mb-3">
-            <span class="font-medium text-gray-700">Frete:</span>
-            <label class="flex items-center gap-1">
-                <input type="radio" name="frete_modo_ui" value="item" onchange="definirFreteModo('item')"
-                    {{ $freteModoInicial === 'item' ? 'checked' : '' }}> Item a item
-            </label>
-            <label class="flex items-center gap-1">
-                <input type="radio" name="frete_modo_ui" value="global" onchange="definirFreteModo('global')"
-                    {{ $freteModoInicial === 'global' ? 'checked' : '' }}> Valor total (informado ao confirmar)
-            </label>
+            <input type="hidden" name="mod_frete" id="campo-mod-frete" value="{{ $modFreteInicial }}">
+            
         </div>
     </div>
 
@@ -589,7 +616,7 @@
             <select id="modal-motivo-ajuste" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></select>
         </div>
 
-        <div class="mb-4">
+        <div id="bloco-frete-modal" class="mb-4">
             <label class="block text-sm font-medium text-gray-700 mb-1">Frete</label>
             <div id="bloco-frete-global">
                 <input type="number" step="0.01" min="0" id="modal-frete-global" value="0"
@@ -667,8 +694,51 @@ const campoOperador = document.getElementById('campo-operador');
 const cfopsVendaPorItem = @json(array_map('strval', config('fiscal.cfops_venda_por_item', [])));
 const cfopInterestadual = @json(config('fiscal.cfop_interestadual', []));
 let freteModo = @json($freteModoInicial);
+let modFrete = @json($modFreteInicial);
 let freteGlobal = {{ (float) old('frete_total', ($ehEdicao && !$notaFiscal->frete_por_item) ? $notaFiscal->valor_frete : 0) }};
 
+
+
+function alternarMenuOpcoes(forcarFechar = false) {
+    const painel = document.getElementById('painel-opcoes');
+    painel.classList.toggle('hidden', forcarFechar ? true : !painel.classList.contains('hidden'));
+}
+
+document.addEventListener('click', (e) => {
+    if (!document.getElementById('menu-opcoes').contains(e.target)) alternarMenuOpcoes(true);
+});
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') alternarMenuOpcoes(true);
+});
+
+// Mostra/esconde o que depende da modalidade e do modo do frete
+function aplicarVisibilidadeFrete() {
+    const semFrete = modFrete === '9';
+    document.getElementById('opcoes-valor-frete').classList.toggle('hidden', semFrete);
+    document.getElementById('editor-bloco-frete').classList.toggle('hidden', semFrete || freteModo !== 'item');
+}
+
+function definirModFrete(valor) {
+    if (valor === modFrete) return;
+
+    if (valor === '9' && freteTotalNota() > 0
+        && !confirm('Sem frete: o valor de frete informado será zerado. Continuar?')) {
+        document.querySelector(`input[name="mod_frete_ui"][value="${modFrete}"]`).checked = true;
+        return;
+    }
+
+    modFrete = valor;
+
+    if (valor === '9') {
+        itensNota.forEach(i => i.valor_frete = 0);
+        freteGlobal = 0;
+        freteModo = 'global';
+        document.querySelector('input[name="frete_modo_ui"][value="global"]').checked = true;
+    }
+
+    aplicarVisibilidadeFrete();
+    renderizarGridItens();
+}
 
 function somaFreteItens() {
     return itensNota.reduce((s, i) => s + (Number(i.valor_frete) || 0), 0);
@@ -690,7 +760,7 @@ function definirFreteModo(modo) {
     if (modo === 'global') itensNota.forEach(i => i.valor_frete = 0);
 
     freteModo = modo;
-    document.getElementById('editor-bloco-frete').classList.toggle('hidden', modo !== 'item');
+    aplicarVisibilidadeFrete();
     renderizarGridItens();
 }
 
@@ -1612,6 +1682,7 @@ function abrirModalReferencia() {
     document.getElementById('bloco-frete-itens').classList.toggle('hidden', !modoItem);
     document.getElementById('modal-frete-global').value = freteGlobal.toFixed(2);
     document.getElementById('modal-frete-soma').innerText = 'R$ ' + somaFreteItens().toFixed(2).replace('.', ',');
+    document.getElementById('bloco-frete-modal').classList.toggle('hidden', modFrete === '9');
     renderizarChavesReferenciadas();
     document.getElementById('modal-informacoes-complementares').value =
         document.getElementById('campo-informacoes-complementares').value;
@@ -1695,7 +1766,7 @@ function confirmarESalvarNota() {
         }
     }
 
-    if (freteModo === 'global') {
+    if (freteModo === 'global' && modFrete !== '9') {
         const valor = parseFloat(document.getElementById('modal-frete-global').value) || 0;
         if (valor < 0) {
                 mostrarAviso('O frete não pode ser negativo.', 'erro');
@@ -1709,8 +1780,8 @@ function confirmarESalvarNota() {
     document.getElementById('campo-motivo-ajuste').value = ehAjuste ? motivo : '';
     document.getElementById('campo-notas-referenciadas').value = JSON.stringify(chavesReferenciadas);
     document.getElementById('campo-informacoes-complementares').value =
-        document.getElementById('modal-informacoes-complementares').value;
-
+    document.getElementById('modal-informacoes-complementares').value;
+    document.getElementById('campo-mod-frete').value = modFrete;
     fecharModalReferencia();
     document.getElementById('form-nota').requestSubmit();
 }
@@ -1797,4 +1868,5 @@ function postJson(url, payload) {
 // Inicialização: se vier preenchido (edição) ou old() de uma tentativa anterior (criação), já libera e renderiza
 atualizarTravaCabecalho();
 renderizarGridItens();
+aplicarVisibilidadeFrete();
 </script>

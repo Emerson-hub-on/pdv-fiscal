@@ -26,6 +26,7 @@ class NotaFiscal extends Model
         'notas_referenciadas',
         'motivo_ajuste',
         'frete_por_item',
+        'mod_frete',
     ];
 
     protected $casts = [
@@ -36,6 +37,12 @@ class NotaFiscal extends Model
         'emitida_em' => 'datetime',
         'notas_referenciadas' => 'array',
         'frete_por_item' => 'boolean',
+    ];
+
+    public const MODALIDADES_FRETE = [
+        9 => 'Sem frete',
+        0 => 'Por conta do remetente (CIF)',
+        1 => 'Por conta do destinatário (FOB)',
     ];
 
     public function cliente(): BelongsTo

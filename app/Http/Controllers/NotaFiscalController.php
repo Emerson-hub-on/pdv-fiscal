@@ -107,6 +107,7 @@ class NotaFiscalController extends Controller
                 'tipo_operacao'              => CfopSaida::findOrFail($dados['cfop_saida_id'])->tipo_operacao,
                 'motivo_ajuste'              => $dados['motivo_ajuste'],
                 'frete_por_item'             => $dados['frete_por_item'],
+                'mod_frete'                  => (int) $dados['mod_frete'], 
                 'origem_tipo'                => 'manual',
                 'status'                     => 'rascunho',
             ]);
@@ -151,6 +152,7 @@ class NotaFiscalController extends Controller
             $notaFiscal->tipo_operacao = CfopSaida::findOrFail($dados['cfop_saida_id'])->tipo_operacao;
             $notaFiscal->motivo_ajuste = $dados['motivo_ajuste'];
             $notaFiscal->frete_por_item = $dados['frete_por_item'];
+            $notaFiscal->mod_frete = (int) $dados['mod_frete']; 
             $notaFiscal->save();
 
             // Substitui todos os itens — mais simples e seguro que tentar
@@ -178,8 +180,9 @@ class NotaFiscalController extends Controller
             'informacoes_complementares' => ['nullable', 'string', 'max:2000'],
             'notas_referenciadas_json'   => ['nullable', 'string'],
             'itens_json'                 => ['required', 'string'],
-            'frete_modo'  => ['required', 'in:item,global'],
-            'frete_total' => ['nullable', 'numeric', 'min:0'],
+            'frete_modo'                 => ['required', 'in:item,global'],
+            'frete_total'                => ['nullable', 'numeric', 'min:0'],
+            'mod_frete'                  => ['required', 'in:' . implode(',', array_keys(NotaFiscal::MODALIDADES_FRETE))],
         ]);
 
         $finalidade = (int) $dados['finalidade'];
@@ -246,6 +249,12 @@ class NotaFiscalController extends Controller
             }
         } else {
             $itens = $this->ratearFrete($itens, $freteTotal);
+        }
+
+        if ((int) $dados['mod_frete'] === 9 && round(array_sum(array_column($itens, 'valor_frete')), 2) > 0) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'frete' => 'Com a opção "Sem frete" o valor do frete deve ser zero.',
+            ]);
         }
 
         $dados['frete_por_item'] = $dados['frete_modo'] === 'item';

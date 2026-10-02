@@ -729,10 +729,7 @@ if ($this->empresa->crt <= 2) {
     protected function montarTransporte(Make $nfe, NotaFiscal $notaFiscal): void
     {
         $std = new \stdClass();
-        // 0 = frete por conta do remetente (CIF, cobrado na nota); 9 = sem frete
-        $std->modFrete = $notaFiscal->itens->sum('valor_frete') > 0
-            ? (int) config('fiscal.mod_frete_com_frete', 0)
-            : 9;
+        $std->modFrete = (int) $notaFiscal->mod_frete;
         $nfe->tagtransp($std);
     }
     
