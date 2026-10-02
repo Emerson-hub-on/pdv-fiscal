@@ -630,6 +630,7 @@ class NotaFiscalController extends Controller
         $itens = $notaFiscal->itens->values()->map(function ($item, $index) use ($notaFiscal, &$totalBaseIcms, &$totalValorIcms) {
             $trib = $item->tributacao;
             $subtotalBruto = $item->valor_unitario * $item->quantidade;
+            $baseImpostos = $item->base_impostos;
             $cstOuCsosn = $trib?->csosn ?? $trib?->cst_icms ?? '—';
 
             $cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
@@ -640,7 +641,7 @@ class NotaFiscalController extends Controller
                 $valorIcms = (float) ($item->valor_icms_manual ?? 0);
                 $aliquotaIcms = (float) ($item->aliquota_icms_manual ?? 0);
             } elseif ($trib && $trib->cst_icms && in_array($trib->cst_icms, $cstsComBaseCalculo, true)) {
-                $baseIcms = $subtotalBruto;
+                $baseIcms = $baseImpostos;
                 $aliquotaIcms = (float) $trib->aliquota_icms;
                 $valorIcms = $baseIcms * $aliquotaIcms / 100;
             } else {
@@ -659,7 +660,7 @@ class NotaFiscalController extends Controller
                 $aliquotaIpi = (float) ($item->aliquota_ipi_manual ?? 0);
             } elseif ($ipi && $ipi->codigo === '50' && $ipi->aliquota) {
                 $aliquotaIpi = (float) $ipi->aliquota;
-                $valorIpi = $subtotalBruto * $aliquotaIpi / 100;
+                $valorIpi = $baseImpostos * $aliquotaIpi / 100;
             } else {
                 $valorIpi = 0;
                 $aliquotaIpi = 0;

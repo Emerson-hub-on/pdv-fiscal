@@ -50,6 +50,12 @@ class NotaFiscalItem extends Model
         return $cfopProduto;
     }
 
+    public function getBaseImpostosAttribute(): float
+    {
+        return ((float) $this->valor_unitario * (float) $this->quantidade)
+            + (float) $this->valor_outras_despesas;
+    }
+
     public function notaFiscal(): BelongsTo
     {
         return $this->belongsTo(NotaFiscal::class);

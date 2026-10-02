@@ -4,6 +4,7 @@
     $itensIniciais = $ehEdicao
         ? $notaFiscal->itens->map(function ($i) {
             $subtotalBruto = (float) $i->valor_unitario * (float) $i->quantidade;
+            $baseImpostos = $subtotalBruto + (float) $i->valor_outras_despesas;
             $cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
 
             $trib = $i->tributacao;
@@ -15,11 +16,10 @@
                 $aliquotaIcms = (float) ($i->aliquota_icms_manual ?? 0);
                 $valorIcms    = (float) ($i->valor_icms_manual ?? ($bcIcms * $aliquotaIcms / 100));
             } else {
-                $trib = $i->tributacao;
                 $bcIcms = 0; $valorIcms = 0; $aliquotaIcms = 0;
 
                 if ($trib && in_array($trib->cst_icms, $cstsComBaseCalculo, true)) {
-                    $bcIcms = $subtotalBruto;
+                    $bcIcms = $baseImpostos;
                     $aliquotaIcms = (float) $trib->aliquota_icms;
                     $valorIcms = $bcIcms * $aliquotaIcms / 100;
                 }
@@ -28,40 +28,40 @@
             // 2. IPI: Prioriza os dados manuais se preenchidos, senão calcula pelo padrão
             if (!is_null($i->aliquota_ipi_manual) || !is_null($i->valor_ipi_manual)) {
                 $aliquotaIpi = (float) ($i->aliquota_ipi_manual ?? 0);
-                $valorIpi    = (float) ($i->valor_ipi_manual ?? ($subtotalBruto * $aliquotaIpi / 100));
+                $valorIpi    = (float) ($i->valor_ipi_manual ?? ($baseImpostos * $aliquotaIpi / 100));
             } else {
                 $ipi = $i->ipi;
                 $valorIpi = 0; $aliquotaIpi = 0;
 
                 if ($ipi && $ipi->codigo === '50' && $ipi->aliquota) {
                     $aliquotaIpi = (float) $ipi->aliquota;
-                    $valorIpi = $subtotalBruto * $aliquotaIpi / 100;
+                    $valorIpi = $baseImpostos * $aliquotaIpi / 100;
                 }
             }
 
             return [
-                'produto_id'          => $i->produto_id,
-                'codigo'              => $i->produto->codigo_interno,
-                'produto_variante_id' => $i->produto_variante_id,
-                'codigo_barras'       => $i->produto->codigo_barras,
-                'descricao'           => $i->descricao ?? $i->produto->nome,
-                'cst_csosn'           => $cstOuCsosn,
-                'quantidade'          => (float) $i->quantidade,
-                'valor_unitario'      => (float) $i->valor_unitario,
-                'valor_total'         => (float) $i->valor_total,
-                'valor_desconto'      => (float) $i->valor_desconto,
+                'produto_id'            => $i->produto_id,
+                'codigo'                => $i->produto->codigo_interno,
+                'produto_variante_id'   => $i->produto_variante_id,
+                'codigo_barras'         => $i->produto->codigo_barras,
+                'descricao'             => $i->descricao ?? $i->produto->nome,
+                'cst_csosn'             => $cstOuCsosn,
+                'quantidade'            => (float) $i->quantidade,
+                'valor_unitario'        => (float) $i->valor_unitario,
+                'valor_total'           => (float) $i->valor_total,
+                'valor_desconto'        => (float) $i->valor_desconto,
                 'valor_outras_despesas' => (float) $i->valor_outras_despesas,
-                'desconto_percentual' => $subtotalBruto > 0 ? round(((float) $i->valor_desconto / $subtotalBruto) * 100, 2) : 0,
-                'tributacao'          => $i->tributacao,
-                'ipi'                 => $i->ipi,
-                'bc_icms'             => $bcIcms,
-                'valor_icms'          => $valorIcms,
-                'aliquota_icms'       => $aliquotaIcms,
-                'valor_ipi'           => $valorIpi,
-                'aliquota_ipi'        => $aliquotaIpi,
-                'ref_chave_acesso'    => $i->ref_chave_acesso,
-                'ref_nitem'           => $i->ref_nitem,
-                'bases_manuais'       => !is_null($i->bc_icms_manual) || !is_null($i->valor_ipi_manual),
+                'desconto_percentual'   => $subtotalBruto > 0 ? round(((float) $i->valor_desconto / $subtotalBruto) * 100, 2) : 0,
+                'tributacao'            => $i->tributacao,
+                'ipi'                   => $i->ipi,
+                'bc_icms'               => $bcIcms,
+                'valor_icms'            => $valorIcms,
+                'aliquota_icms'         => $aliquotaIcms,
+                'valor_ipi'             => $valorIpi,
+                'aliquota_ipi'          => $aliquotaIpi,
+                'ref_chave_acesso'      => $i->ref_chave_acesso,
+                'ref_nitem'             => $i->ref_nitem,
+                'bases_manuais'         => !is_null($i->bc_icms_manual) || !is_null($i->valor_ipi_manual),
             ];
         })->values()
         : collect();
@@ -72,6 +72,14 @@
     $finalidadeAtual = old('finalidade', $ehEdicao ? $notaFiscal->finalidade : null);
     $notasReferenciadasIniciais = $ehEdicao ? ($notaFiscal->notas_referenciadas ?? []) : [];
 @endphp
+
+@if ($errors->any())
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            mostrarAviso({{ Illuminate\Support\Js::from($errors->all()) }}.join('\n'), 'erro');
+        });
+    </script>
+@endif
 
 <form id="form-nota" method="POST"
       action="{{ $ehEdicao ? route('notasfiscais.update', $notaFiscal) : route('notasfiscais.store') }}"
@@ -343,6 +351,8 @@
                 {{ $ehEdicao ? 'Salvar Alterações' : 'Salvar Nota' }}
             </button>
         </div>
+
+        <div id="area-avisos" class="fixed top-4 right-4 z-[100] flex flex-col gap-2 w-80 max-w-[90vw]"></div>
 </form>
 
 <!-- Modal CFOP -->
@@ -403,7 +413,7 @@
 
             <div class="flex gap-2 justify-end">
                 <button type="button" onclick="fecharFormCfop()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
-                <button type="button" onclick="salvarFormCfop()"
+                <button type="button" onclick="salvarFormCfop(this)"
                         class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded">Salvar</button>
             </div>
         </div>
@@ -446,7 +456,7 @@
                 class="w-full border rounded px-3 py-2 text-sm mb-2">
             <div class="flex gap-2 justify-end">
                 <button type="button" onclick="fecharFormPagamento()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
-                <button type="button" onclick="salvarFormaPagamento()"
+                <button type="button" onclick="salvarFormaPagamento(this)"
                         class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded">Salvar</button>
             </div>
         </div>
@@ -622,8 +632,21 @@ function fecharModalCliente() {
 
 async function buscarClientes(termo) {
     const minhaBusca = ++contadorBuscaCliente;
-    const resp = await fetch(`{{ route('notasfiscais.buscar-cliente') }}?termo=${encodeURIComponent(termo)}`);
-    const dados = await resp.json();
+    let dados;
+
+    try {
+        dados = await requisicaoJson(
+            `{{ route('notasfiscais.buscar-cliente') }}?termo=${encodeURIComponent(termo)}`
+        );
+    } catch (e) {
+        if (minhaBusca === contadorBuscaCliente) { // erro de busca antiga não interessa
+            mostrarAviso('Falha ao buscar clientes:\n' + e.message, 'erro');
+            clientesAtuais = [];
+            indiceClienteSelecionado = -1;
+            renderizarClientes();
+        }
+        return;
+    }
 
     if (minhaBusca !== contadorBuscaCliente) return; // chegou uma busca mais nova, ignora esta
 
@@ -742,8 +765,16 @@ function fecharModalPagamento() {
 
 async function buscarFormaPagamento() {
     const termo = document.getElementById('pagamento-busca').value.trim();
-    const resp = await fetch(`{{ route('formas-pagamento.listar') }}?termo=${encodeURIComponent(termo)}`);
-    formasPagamentoCache = await resp.json();
+
+    try {
+        formasPagamentoCache = await requisicaoJson(
+            `{{ route('formas-pagamento.listar') }}?termo=${encodeURIComponent(termo)}`
+        );
+    } catch (e) {
+        mostrarAviso('Falha ao buscar formas de pagamento:\n' + e.message, 'erro');
+        formasPagamentoCache = [];
+    }
+
     renderizarListaPagamento();
 }
 
@@ -796,38 +827,35 @@ function fecharFormPagamento() {
     document.getElementById('form-pagamento').classList.add('hidden');
 }
 
-async function salvarFormaPagamento() {
+async function salvarFormaPagamento(botao) {
     const id = document.getElementById('pagamento-form-id').value;
     const descricao = document.getElementById('pagamento-form-descricao').value.trim();
 
     if (descricao.length < 2) {
-        alert('Informe uma descrição válida.');
+        mostrarAviso('Informe uma descrição válida.', 'erro');
         return;
     }
 
     const rota = id ? `{{ route('formas-pagamento.editar') }}` : `{{ route('formas-pagamento.criar') }}`;
     const payload = id ? { id, descricao } : { descricao };
 
-    const resp = await fetch(rota, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-        body: JSON.stringify(payload),
+    await comCarregando(botao, 'Salvando...', async () => {
+        try {
+            const formaSalva = await postJson(rota, payload);
+
+            fecharFormPagamento();
+            await buscarFormaPagamento();
+
+            // Se a forma editada é a que já estava selecionada no cabeçalho, atualiza o texto exibido
+            if (campoPagamento.value == formaSalva.id) {
+                document.getElementById('texto-pagamento-selecionado').innerText = formaSalva.descricao;
+            }
+
+            mostrarAviso('Forma de pagamento salva.', 'sucesso');
+        } catch (e) {
+            mostrarAviso('Não foi possível salvar a forma de pagamento:\n' + e.message, 'erro');
+        }
     });
-
-    if (!resp.ok) {
-        const erro = await resp.json();
-        alert('Erro ao salvar: ' + (erro.message || 'verifique os dados.'));
-        return;
-    }
-
-    const formaSalva = await resp.json();
-    fecharFormPagamento();
-    await buscarFormaPagamento();
-
-    // Se a forma editada é a que já estava selecionada no cabeçalho, atualiza o texto exibido
-    if (campoPagamento.value == formaSalva.id) {
-        document.getElementById('texto-pagamento-selecionado').innerText = formaSalva.descricao;
-    }
 }
 
 campoCfop.addEventListener('change', atualizarTravaCabecalho);
@@ -848,8 +876,12 @@ function fecharModalCfop() {
 
 async function buscarCfop() {
     const termo = document.getElementById('cfop-busca').value.trim();
-    const resp = await fetch(`{{ route('cfop-saida.listar') }}?termo=${encodeURIComponent(termo)}`);
-    cfopsCache = await resp.json();
+    try {
+        cfopsCache = await requisicaoJson(`{{ route('cfop-saida.listar') }}?termo=${encodeURIComponent(termo)}`);
+    } catch (e) {
+        mostrarAviso('Falha ao buscar CFOPs:\n' + e.message, 'erro');
+        cfopsCache = [];
+    }
     renderizarListaCfop();
 }
 
@@ -928,7 +960,7 @@ function fecharFormCfop() {
     document.getElementById('form-cfop').classList.add('hidden');
 }
 
-async function salvarFormCfop() {
+async function salvarFormCfop(botao) {
     const id = document.getElementById('cfop-form-id').value;
     const codigo = document.getElementById('cfop-form-codigo').value.trim();
     const descricao = document.getElementById('cfop-form-descricao').value.trim();
@@ -937,7 +969,7 @@ async function salvarFormCfop() {
     const finalidadePadrao = document.getElementById('cfop-form-finalidade').value;
 
     if (codigo.length !== 4 || descricao.length < 3) {
-        alert('Informe um código de 4 dígitos e uma descrição válida.');
+        mostrarAviso('Informe um código de 4 dígitos e uma descrição válida.', 'erro');
         return;
     }
 
@@ -953,29 +985,26 @@ async function salvarFormCfop() {
 
     if (id) payload.id = id;
 
-    const resp = await fetch(rota, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-        body: JSON.stringify(payload),
+    await comCarregando(botao, 'Salvando...', async () => {
+        try {
+            const cfopSalvo = await postJson(rota, payload);
+
+            fecharFormCfop();
+            await buscarCfop();
+
+            if (campoCfop.value == cfopSalvo.id) {
+                window.cfopDestacarBases = !!cfopSalvo.destacar_bases;
+
+                document.getElementById('texto-cfop-selecionado').innerText = `${cfopSalvo.codigo} - ${cfopSalvo.descricao}`;
+                campoNatureza.value = cfopSalvo.natureza_operacao_padrao ?? '';
+                campoFinalidade.value = cfopSalvo.finalidade_padrao ?? 1;
+            }
+
+            mostrarAviso('CFOP salvo.', 'sucesso');
+        } catch (e) {
+            mostrarAviso('Não foi possível salvar o CFOP:\n' + e.message, 'erro');
+        }
     });
-
-    if (!resp.ok) {
-        const erro = await resp.json();
-        alert('Erro ao salvar CFOP: ' + (erro.message || 'verifique os dados.'));
-        return;
-    }
-
-    const cfopSalvo = await resp.json();
-    fecharFormCfop();
-    await buscarCfop();
-
-    if (campoCfop.value == cfopSalvo.id) {
-        window.cfopDestacarBases = !!cfopSalvo.destacar_bases;
-
-        document.getElementById('texto-cfop-selecionado').innerText = `${cfopSalvo.codigo} - ${cfopSalvo.descricao}`;
-        campoNatureza.value = cfopSalvo.natureza_operacao_padrao ?? '';
-        campoFinalidade.value = cfopSalvo.finalidade_padrao ?? 1;
-    }
 }
 
 
@@ -1042,8 +1071,15 @@ function fecharModalBuscaNf() {
 }
 
 async function buscarProdutoNf(termo) {
-    const resp = await fetch(`{{ route('notasfiscais.buscar-produto') }}?termo=${encodeURIComponent(termo)}`);
-    resultadosAtuaisNf = await resp.json();
+    try {
+        resultadosAtuaisNf = await requisicaoJson(
+            `{{ route('notasfiscais.buscar-produto') }}?termo=${encodeURIComponent(termo)}`
+        );
+    } catch (e) {
+        mostrarAviso('Falha ao buscar produtos:\n' + e.message, 'erro');
+        return; // não abre o modal com resultado antigo ou vazio
+    }
+
     indiceSelecionadoNf = resultadosAtuaisNf.length > 0 ? 0 : -1;
     abrirModalBuscaNf(termo);
 }
@@ -1216,15 +1252,27 @@ function atualizarCalculosEditor(origemDesconto, manterTributosManuais = false) 
     }
 
     const valorTotal = Math.max(subtotalBruto - desconto, 0);
+    const outrasDespesas = parseFloat(document.getElementById('editor-outras-despesas').value) || 0;
+    const baseImpostos = subtotalBruto + outrasDespesas;
     document.getElementById('editor-valor-total').value = 'R$ ' + valorTotal.toFixed(2);
 
     // ICMS — mesma regra usada no NotaFiscalService::montarItens() na emissão real
     const trib = produtoSelecionadoParaEditor?.tributacao;
     const cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
+    // No Simples só existe grupo de base de cálculo para CSOSN 500 e 900 (igual ao serviço)
+    const csosnComBaseCalculo = ['500', '900'];
+    const simplesDestacando = window.crtEmpresa <= 2 && !!window.cfopDestacarBases;
     let bcIcms = 0, valorIcms = 0, aliquotaIcms = 0;
 
     if (window.crtEmpresa > 2 && trib && cstsComBaseCalculo.includes(trib.cst_icms)) {
-        bcIcms = subtotalBruto;
+        // Regime normal: calcula sempre
+        bcIcms = baseImpostos;
+        aliquotaIcms = parseFloat(trib.aliquota_icms) || 0;
+        valorIcms = bcIcms * aliquotaIcms / 100;
+    } else if (simplesDestacando && trib && csosnComBaseCalculo.includes(String(trib.csosn))) {
+        // Simples Nacional: só sugere quando o CFOP destaca bases (ex.: devolução);
+        // os campos continuam editáveis para o operador ajustar
+        bcIcms = baseImpostos;
         aliquotaIcms = parseFloat(trib.aliquota_icms) || 0;
         valorIcms = bcIcms * aliquotaIcms / 100;
     }
@@ -1242,7 +1290,7 @@ function atualizarCalculosEditor(origemDesconto, manterTributosManuais = false) 
 
     if (ipi && ipi.codigo === '50' && ipi.aliquota) {
         aliquotaIpi = parseFloat(ipi.aliquota) || 0;
-        valorIpi = subtotalBruto * aliquotaIpi / 100;
+        valorIpi = baseImpostos * aliquotaIpi / 100;
     }
 
     // Só atualiza os inputs de IPI se NÃO estiver configurado para destacar bases OU se NÃO for para manter as edições manuais
@@ -1257,6 +1305,8 @@ document.getElementById('editor-quantidade').addEventListener('input', () => atu
 document.getElementById('editor-valor-unitario').addEventListener('input', () => atualizarCalculosEditor('valor'));
 document.getElementById('editor-desconto').addEventListener('input', () => atualizarCalculosEditor('valor'));
 document.getElementById('editor-desconto-percentual').addEventListener('input', () => atualizarCalculosEditor('percentual'));
+document.getElementById('editor-outras-despesas').addEventListener('input', () => atualizarCalculosEditor('valor'));
+
 
 
 function adicionarLinhaNaGrid() {
@@ -1287,6 +1337,7 @@ function adicionarLinhaNaGrid() {
     const cstOuCsosn = trib?.csosn ?? trib?.cst_icms ?? '—';
 
     let bcIcms, valorIcms, aliquotaIcms, valorIpi, aliquotaIpi;
+    const baseImpostos = subtotalBruto + outrasDespesas;
 
     if (window.cfopDestacarBases) {
         bcIcms = parseFloat(document.getElementById('editor-bc-icms').value.replace('R$', '').replace(',', '.')) || 0;
@@ -1299,7 +1350,7 @@ function adicionarLinhaNaGrid() {
         bcIcms = 0; valorIcms = 0; aliquotaIcms = 0;
 
         if (window.crtEmpresa > 2 && trib && cstsComBaseCalculo.includes(trib.cst_icms)) {
-            bcIcms = subtotalBruto;
+            bcIcms = baseImpostos;
             aliquotaIcms = parseFloat(trib.aliquota_icms) || 0;
             valorIcms = bcIcms * aliquotaIcms / 100;
         }
@@ -1309,7 +1360,7 @@ function adicionarLinhaNaGrid() {
 
         if (ipi && ipi.codigo === '50' && ipi.aliquota) {
             aliquotaIpi = parseFloat(ipi.aliquota) || 0;
-            valorIpi = subtotalBruto * aliquotaIpi / 100;
+            valorIpi = baseImpostos * aliquotaIpi / 100;
         }
     }
 
@@ -1518,6 +1569,84 @@ function confirmarESalvarNota() {
     document.getElementById('form-nota').requestSubmit();
 }
 
+function mostrarAviso(mensagem, tipo = 'erro') {
+    const cores = {
+        erro:    'bg-red-50 border-red-300 text-red-800',
+        sucesso: 'bg-green-50 border-green-300 text-green-800',
+        info:    'bg-blue-50 border-blue-300 text-blue-800',
+    };
+
+    const aviso = document.createElement('div');
+    aviso.className = `border rounded-lg shadow-lg px-4 py-3 text-sm flex gap-3 items-start ${cores[tipo] ?? cores.info}`;
+    aviso.setAttribute('role', 'alert');
+
+    const texto = document.createElement('div');
+    texto.className = 'flex-1 whitespace-pre-line';
+    texto.textContent = mensagem; // textContent: mensagem do servidor nunca vira HTML
+
+    const fechar = document.createElement('button');
+    fechar.type = 'button';
+    fechar.className = 'text-lg leading-none opacity-60 hover:opacity-100';
+    fechar.innerHTML = '&times;';
+    fechar.onclick = () => aviso.remove();
+
+    aviso.append(texto, fechar);
+    document.getElementById('area-avisos').appendChild(aviso);
+
+    setTimeout(() => aviso.remove(), tipo === 'erro' ? 10000 : 4000);
+}
+
+// Desabilita o botão e mostra "Salvando..." enquanto a ação roda
+async function comCarregando(botao, textoCarregando, acao) {
+    if (!botao || botao.disabled) return;
+    const textoOriginal = botao.innerText;
+    botao.disabled = true;
+    botao.innerText = textoCarregando;
+    botao.classList.add('opacity-60', 'cursor-wait');
+    try {
+        return await acao();
+    } finally {
+        botao.disabled = false;
+        botao.innerText = textoOriginal;
+        botao.classList.remove('opacity-60', 'cursor-wait');
+    }
+}
+
+async function requisicaoJson(url, opcoes = {}) {
+    let resp;
+    try {
+        resp = await fetch(url, {
+            ...opcoes,
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                ...(opcoes.headers ?? {}),
+            },
+        });
+    } catch (e) {
+        throw new Error('Sem conexão com o servidor. Verifique se o sistema local está em execução.');
+    }
+
+    const ehJson = (resp.headers.get('content-type') || '').includes('application/json');
+    const dados = ehJson ? await resp.json() : null;
+
+    if (!resp.ok) {
+        if (resp.status === 419) throw new Error('Sua sessão expirou. Recarregue a página (F5) e tente de novo.');
+        if (dados?.errors) throw new Error(Object.values(dados.errors).flat().join('\n'));
+        throw new Error(dados?.message ?? `O servidor retornou erro ${resp.status}.`);
+    }
+
+    if (dados === null) throw new Error('Resposta inesperada do servidor. Tente novamente.');
+    return dados;
+}
+
+function postJson(url, payload) {
+    return requisicaoJson(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+}
 
 // Inicialização: se vier preenchido (edição) ou old() de uma tentativa anterior (criação), já libera e renderiza
 atualizarTravaCabecalho();

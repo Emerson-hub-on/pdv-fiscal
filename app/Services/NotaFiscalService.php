@@ -461,10 +461,12 @@ if ($this->empresa->crt <= 2) {
                         $this->totalICMSBC += (float) $item->bc_icms_manual;
                         $this->totalICMS += (float) ($item->valor_icms_manual ?? 0);
                     } elseif (in_array($cstIcms, $cstsComBaseCalculo, true)) {
+                        $baseIcms = $item->base_impostos;
+
                         $icms->modBC = 3;
-                        $icms->vBC = number_format($item->valor_unitario * $item->quantidade, 2, '.', '');
+                        $icms->vBC = number_format($baseIcms, 2, '.', '');
                         $icms->pICMS = number_format($trib->aliquota_icms, 2, '.', '');
-                        $icms->vICMS = number_format(($item->valor_unitario * $item->quantidade * $trib->aliquota_icms / 100), 2, '.', '');
+                        $icms->vICMS = number_format($baseIcms * $trib->aliquota_icms / 100, 2, '.', '');
 
                         $this->totalICMSBC += (float) $icms->vBC;
                         $this->totalICMS += (float) $icms->vICMS;
@@ -530,7 +532,9 @@ if ($this->empresa->crt <= 2) {
                     $ipiStd->CST = $ipiClass->codigo;
 
                     if ($item->valor_ipi_manual !== null) {
-                        $baseCalculoItem = $item->bc_icms_manual ?? ($item->valor_unitario * $item->quantidade);
+                        $baseCalculoItem = (float) $item->bc_icms_manual > 0
+                            ? (float) $item->bc_icms_manual
+                            : $item->base_impostos;
 
                         $ipiStd->vBC = number_format($baseCalculoItem, 2, '.', '');
                         $ipiStd->pIPI = number_format($item->aliquota_ipi_manual ?? 0, 4, '.', '');
@@ -538,7 +542,7 @@ if ($this->empresa->crt <= 2) {
 
                         $this->totalIPI += (float) $item->valor_ipi_manual;
                     } elseif ($ipiClass->codigo === '50') {
-                        $baseCalculoItem = $item->valor_unitario * $item->quantidade;
+                        $baseCalculoItem = $item->base_impostos;
                         $aliquotaIpi = (float) ($ipiClass->aliquota ?? 0);
                         $valorIpi = $baseCalculoItem * $aliquotaIpi / 100;
 
