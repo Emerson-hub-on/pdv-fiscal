@@ -262,6 +262,7 @@ class NotaFiscalController extends Controller
                 'quantidade'            => $quantidade,
                 'valor_unitario'        => $valorUnitario,
                 'valor_desconto'        => $valorDesconto,
+                'valor_outras_despesas' => max(0, (float) ($itemDados['valor_outras_despesas'] ?? 0)),
                 'valor_total'           => $valorTotal,
                 'bc_icms_manual'        => $basesManuais ? ($itemDados['bc_icms'] ?? null) : null,
                 'valor_icms_manual'     => $basesManuais ? ($itemDados['valor_icms'] ?? null) : null,
@@ -675,12 +676,14 @@ class NotaFiscalController extends Controller
                 'quantidade'     => number_format($item->quantidade, 3, ',', '.'),
                 'valor_unitario' => number_format($item->valor_unitario, 2, ',', '.'),
                 'valor_total'    => number_format($item->valor_total, 2, ',', '.'),
+                'valor_outras_despesas' => number_format($item->valor_outras_despesas, 2, ',', '.'),
                 'bc_icms'        => number_format($baseIcms, 2, ',', '.'),
                 'valor_icms'     => number_format($valorIcms, 2, ',', '.'),
                 'aliquota_icms'  => number_format($aliquotaIcms, 2, ',', '.'),
                 'valor_ipi'      => number_format($valorIpi, 2, ',', '.'),
                 'aliquota_ipi'   => number_format($aliquotaIpi, 2, ',', '.'),
                 'bases_manuais'  => $item->bc_icms_manual !== null || $item->valor_ipi_manual !== null,
+                
             ];
         });
 
@@ -727,6 +730,7 @@ class NotaFiscalController extends Controller
                 'valor_frete'       => number_format($notaFiscal->valor_frete, 2, ',', '.'),
                 'valor_desconto'    => number_format($notaFiscal->valor_desconto, 2, ',', '.'),
                 'valor_total_nota'  => number_format($notaFiscal->valor_total, 2, ',', '.'),
+                'valor_outras_despesas' => number_format($notaFiscal->itens->sum('valor_outras_despesas'), 2, ',', '.'),
             ],
 
             'itens' => $itens,

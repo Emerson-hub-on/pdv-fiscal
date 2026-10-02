@@ -365,6 +365,11 @@ class NotaFiscalService
                 $prod->vDesc = number_format($descontoEfetivo, 2, '.', '');
             }
 
+            $outrasDespesas = (float) $item->valor_outras_despesas;
+            if ($outrasDespesas > 0) {
+                $prod->vOutro = number_format($outrasDespesas, 2, '.', '');
+            }
+
             $prod->indTot = 1;
             $nfe->tagprod($prod);
             // Referenciamento por item — obrigatório em devolução desde a mudança de

@@ -162,10 +162,11 @@
             <td width="25%" style="border-left:1px solid #000;"><span class="label">DESCONTO</span><br><span class="valor-sm">R$ {{ $dados['totais']['valor_desconto'] }}</span></td>
         </tr>
         <tr style="border-top:1px solid #000;">
-            <td colspan="3"><span class="label">VALOR TOTAL DOS PRODUTOS</span><br><span class="valor-sm">R$ {{ $dados['totais']['valor_produtos'] }}</span></td>
+            <td colspan="2"><span class="label">VALOR TOTAL DOS PRODUTOS</span><br><span class="valor-sm">R$ {{ $dados['totais']['valor_produtos'] }}</span></td>
+            <td style="border-left:1px solid #000;"><span class="label">OUTRAS DESPESAS ACESSÓRIAS</span><br><span class="valor-sm">R$ {{ $dados['totais']['valor_outras_despesas'] }}</span></td>
             <td style="border-left:1px solid #000;"><span class="label">VALOR TOTAL DA NOTA</span><br><span class="valor" style="font-size:12px;">R$ {{ $dados['totais']['valor_total_nota'] }}</span></td>
         </tr>
-    </table>
+    </table>                                                                                                                                                                                                                                                
 
     <div style="height:6px;"></div>
 
@@ -182,6 +183,7 @@
                 <th>Qtde</th>
                 <th>Valor unit.</th>
                 <th>Valor total</th>
+                <th>Outras desp.</th>
                 <th>BC ICMS</th>
                 <th>Vlr. ICMS</th>
                 <th>% ICMS</th>
@@ -206,6 +208,7 @@
                 <td class="direita">{{ $item['quantidade'] }}</td>
                 <td class="direita">{{ $item['valor_unitario'] }}</td>
                 <td class="direita">{{ $item['valor_total'] }}</td>
+                <td class="direita">{{ $item['valor_outras_despesas'] }}</td>
                 <td class="direita">{{ $item['bc_icms'] }}</td>
                 <td class="direita">{{ $item['valor_icms'] }}</td>
                 <td class="direita">{{ $item['aliquota_icms'] }}</td>

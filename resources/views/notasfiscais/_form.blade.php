@@ -50,6 +50,7 @@
                 'valor_unitario'      => (float) $i->valor_unitario,
                 'valor_total'         => (float) $i->valor_total,
                 'valor_desconto'      => (float) $i->valor_desconto,
+                'valor_outras_despesas' => (float) $i->valor_outras_despesas,
                 'desconto_percentual' => $subtotalBruto > 0 ? round(((float) $i->valor_desconto / $subtotalBruto) * 100, 2) : 0,
                 'tributacao'          => $i->tributacao,
                 'ipi'                 => $i->ipi,
@@ -211,7 +212,7 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-4 gap-3">
+            <div class="grid grid-cols-5 gap-3">
 
                 <div>
                     <label class="block text-xs text-gray-500 mb-1">Qtd</label>
@@ -235,7 +236,13 @@
                         class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
                 </div>
 
-                <div id="editor-referencia-devolucao" class="hidden grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Outras despesas (R$)</label>
+                    <input type="number" step="0.01" min="0" id="editor-outras-despesas" value="0"
+                        class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+                </div>
+
+                <div id="editor-referencia-devolucao" class="hidden grid grid-cols-2 gap-3 col-span-5">
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">Chave da NF-e original (devolução)</label>
                         <input type="text" id="editor-ref-chave" maxlength="44"
@@ -309,6 +316,7 @@
                         <th class="text-right px-3 py-2">Vl Total</th>
                         <th class="text-right px-3 py-2">Desconto</th>
                         <th class="text-right px-3 py-2">Desconto %</th>
+                        <th class="text-right px-3 py-2">Outras desp.</th>
                         <th class="text-right px-3 py-2">BC ICMS</th>
                         <th class="text-right px-3 py-2">Vlr. ICMS</th>
                         <th class="text-right px-3 py-2">% ICMS</th>
@@ -1094,6 +1102,7 @@ function abrirEditorItem(produto) {
     document.getElementById('editor-quantidade').value = 1;
     document.getElementById('editor-valor-unitario').value = produto.preco_venda;
     document.getElementById('editor-desconto').value = 0;
+    document.getElementById('editor-outras-despesas').value = 0;
     document.getElementById('editor-desconto-percentual').value = 0;
     document.getElementById('editor-item').classList.remove('hidden');
     atualizarCalculosEditor('valor');
@@ -1155,6 +1164,7 @@ function editarItemDaGrid(index) {
     document.getElementById('editor-valor-unitario').value   = item.valor_unitario;
     document.getElementById('editor-desconto').value         = item.valor_desconto;
     document.getElementById('editor-desconto-percentual').value = item.desconto_percentual;
+    document.getElementById('editor-outras-despesas').value = item.valor_outras_despesas ?? 0;
 
     atualizarCalculosEditor('valor');
 
@@ -1254,6 +1264,7 @@ function adicionarLinhaNaGrid() {
     const valorUnitario = parseFloat(document.getElementById('editor-valor-unitario').value) || 0;
     const valorDesconto = parseFloat(document.getElementById('editor-desconto').value) || 0;
     const descontoPercentual = parseFloat(document.getElementById('editor-desconto-percentual').value) || 0;
+    const outrasDespesas = parseFloat(document.getElementById('editor-outras-despesas').value) || 0;
     const descricao = document.getElementById('editor-descricao').value.trim();
     const refChave = document.getElementById('editor-ref-chave').value.replace(/\D/g, '');
     const refNitem = document.getElementById('editor-ref-nitem').value || null;
@@ -1263,7 +1274,7 @@ function adicionarLinhaNaGrid() {
         return;
     }
 
-    if (quantidade <= 0 || valorUnitario < 0 || descricao.length < 1) {
+    if (quantidade <= 0 || valorUnitario < 0 || descricao.length < 1 || outrasDespesas < 0) {
         alert('Preencha quantidade, valor unitário e descrição corretamente.');
         return;
     }
@@ -1313,6 +1324,7 @@ function adicionarLinhaNaGrid() {
         valor_unitario: valorUnitario,
         valor_total: valorTotal,
         valor_desconto: valorDesconto,
+        valor_outras_despesas: outrasDespesas,
         desconto_percentual: descontoPercentual,
         bc_icms: bcIcms,
         valor_icms: valorIcms,
@@ -1371,7 +1383,7 @@ function renderizarGridItens() {
     let totalNota = 0;
 
     tbody.innerHTML = itensNota.map((item, index) => {
-        totalNota += item.valor_total;
+        totalNota += item.valor_total + Number(item.valor_outras_despesas ?? 0);
         const emEdicao = index === indiceItemEmEdicao;
         const refOrigem = item.ref_chave_acesso
             ? item.ref_chave_acesso.slice(-8) + (item.ref_nitem ? ' (item ' + item.ref_nitem + ')' : '')
@@ -1389,6 +1401,7 @@ function renderizarGridItens() {
                 <td class="px-3 py-2 text-right font-medium">R$ ${item.valor_total.toFixed(2)}</td>
                 <td class="px-3 py-2 text-right">R$ ${item.valor_desconto.toFixed(2)}</td>
                 <td class="px-3 py-2 text-right">${item.desconto_percentual.toFixed(2)}%</td>
+                <td class="px-3 py-2 text-right">R$ ${Number(item.valor_outras_despesas ?? 0).toFixed(2)}</td>
                 <td class="px-3 py-2 text-right">R$ ${item.bc_icms.toFixed(2)}</td>
                 <td class="px-3 py-2 text-right">R$ ${item.valor_icms.toFixed(2)}</td>
                 <td class="px-3 py-2 text-right">${item.aliquota_icms.toFixed(2)}%</td>

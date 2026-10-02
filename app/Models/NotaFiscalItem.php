@@ -15,7 +15,7 @@ class NotaFiscalItem extends Model
         'pis_cofins_id', 'ipi_id','quantidade', 'valor_unitario', 
         'valor_desconto', 'valor_total','ref_chave_acesso', 'ref_nitem',
         'bc_icms_manual', 'valor_icms_manual', 'aliquota_icms_manual', 
-        'valor_ipi_manual', 'aliquota_ipi_manual',
+        'valor_ipi_manual', 'aliquota_ipi_manual', 'valor_outras_despesas'
     ];
 
     protected $casts = [
@@ -28,6 +28,7 @@ class NotaFiscalItem extends Model
         'aliquota_icms_manual'  => 'decimal:2',
         'valor_ipi_manual'      => 'decimal:2',
         'aliquota_ipi_manual'   => 'decimal:2',
+        'valor_outras_despesas' => 'decimal:2',
     ];
 
 

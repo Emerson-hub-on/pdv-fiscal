@@ -77,12 +77,10 @@ class NotaFiscal extends Model
     public function recalcularTotais(): void
     {
         $produtos = $this->itens()->sum('valor_total');
+        $outras   = $this->itens()->sum('valor_outras_despesas');
 
-        // Atribuição direta (não update()) — 'valor_produtos' e 'valor_total'
-        // ficam de propósito fora do $fillable, então mass assignment não
-        // gravaria nada aqui (mesmo padrão usado em NotaFiscalController::emitir()).
         $this->valor_produtos = $produtos;
-        $this->valor_total = $produtos - $this->valor_desconto + $this->valor_frete;
+        $this->valor_total = $produtos - $this->valor_desconto + $this->valor_frete + $outras;
         $this->save();
     }
 
