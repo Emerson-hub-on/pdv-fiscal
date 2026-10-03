@@ -33,19 +33,40 @@
 
                     <!-- Coluna Ações -->
                     <td class="px-4 py-3">
-                        <div class="flex items-center gap-3">
-                            <a href="{{ route('usuarios.edit', [$perfil, $usuario]) }}" class="text-blue-600 hover:text-blue-700 font-medium">Editar</a>
-                            
-                            <!-- Bloco inserido: Link Permissões -->
-                            @if ($perfil === 'fiscal')
-                                <a href="{{ route('usuarios.permissoes', [$perfil, $usuario]) }}" class="text-purple-600 hover:text-purple-700 font-medium">Permissões</a>
-                            @endif
+                        <div class="relative inline-block">
+                            <button type="button" data-menu-acoes title="Ações" aria-label="Ações" aria-haspopup="true"
+                                    class="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition">
+                                <svg class="w-5 h-5 pointer-events-none" fill="currentColor" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="4" r="1.6"></circle>
+                                    <circle cx="10" cy="10" r="1.6"></circle>
+                                    <circle cx="10" cy="16" r="1.6"></circle>
+                                </svg>
+                            </button>
 
-                            <form action="{{ route('usuarios.revogar', [$perfil, $usuario]) }}" method="POST"
-                                  onsubmit="return confirm({{ Illuminate\Support\Js::from('Remover o acesso de ' . $usuario->name . ' como ' . $cfg['singular'] . '?') }})">
-                                @csrf
-                                <button type="submit" class="text-orange-600 hover:text-orange-700 font-medium">Remover acesso</button>
-                            </form>
+                            <div data-menu-acoes-painel
+                                class="hidden fixed z-50 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 text-sm">
+                                <a href="{{ route('usuarios.edit', [$perfil, $usuario]) }}"
+                                class="block px-4 py-2.5 text-gray-800 hover:bg-gray-50">
+                                    Editar
+                                </a>
+
+                                @if ($perfil === 'fiscal')
+                                    <a href="{{ route('usuarios.permissoes', [$perfil, $usuario]) }}"
+                                    class="block px-4 py-2.5 text-gray-800 hover:bg-gray-50">
+                                        Permissões
+                                    </a>
+                                @endif
+
+                                <div class="border-t border-gray-100 my-1"></div>
+
+                                <form action="{{ route('usuarios.revogar', [$perfil, $usuario]) }}" method="POST"
+                                    onsubmit="return confirm({{ Illuminate\Support\Js::from('Remover o acesso de ' . $usuario->name . ' como ' . $cfg['singular'] . '?') }})">
+                                    @csrf
+                                    <button type="submit" class="w-full text-left px-4 py-2.5 text-red-600 hover:bg-gray-50">
+                                        Remover acesso
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </td>
                 </tr>

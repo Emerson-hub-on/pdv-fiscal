@@ -233,6 +233,43 @@
 
 <script>
 
+function fecharMenusAcoes() {
+    document.querySelectorAll('[data-menu-acoes-painel]').forEach(p => p.classList.add('hidden'));
+}
+
+document.addEventListener('click', (e) => {
+    const botao = e.target.closest('[data-menu-acoes]');
+
+    if (!botao) {
+        // clique fora do menu fecha; cliques nos itens do menu seguem normalmente
+        if (!e.target.closest('[data-menu-acoes-painel]')) fecharMenusAcoes();
+        return;
+    }
+
+    const painel = botao.parentElement.querySelector('[data-menu-acoes-painel]');
+    const estavaFechado = painel.classList.contains('hidden');
+
+    fecharMenusAcoes();
+    if (!estavaFechado) return; // segundo clique no mesmo botão só fecha
+
+    painel.classList.remove('hidden'); // precisa estar visível para medir o tamanho
+
+    const rect = botao.getBoundingClientRect();
+    const altura = painel.offsetHeight;
+    const largura = painel.offsetWidth;
+    const abrirParaCima = rect.bottom + altura + 8 > window.innerHeight;
+
+    painel.style.top = (abrirParaCima ? rect.top - altura - 4 : rect.bottom + 4) + 'px';
+    painel.style.left = Math.max(8, rect.right - largura) + 'px'; // alinha a borda direita com o botão
+});
+
+// o menu é fixo na tela, então fecha ao rolar ou redimensionar para não ficar solto do botão
+window.addEventListener('scroll', fecharMenusAcoes, true);
+window.addEventListener('resize', fecharMenusAcoes);
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') fecharMenusAcoes();
+});
+
 function toggleFlyout(idFlyout, idBotao) {
     const flyout = document.getElementById(idFlyout);
     const botao = document.getElementById(idBotao);
