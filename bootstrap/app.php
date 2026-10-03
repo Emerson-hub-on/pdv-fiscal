@@ -12,7 +12,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->alias(['acesso' => \App\Http\Middleware\VerificaAcesso::class]);
+        $middleware->alias([
+            'acesso' => \App\Http\Middleware\VerificaAcesso::class,
+            'permissao' => \App\Http\Middleware\PermissaoModulo::class,
+
+            ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

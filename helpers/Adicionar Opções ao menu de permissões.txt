@@ -1,0 +1,97 @@
+Depende de a tela nova ser parte de um módulo que já existe ou um módulo novo. Em nenhum dos dois casos precisa de migration ou de mexer nos dados dos usuários.
+
+Caso 1: a tela pertence a um módulo existente
+
+Exemplo: uma tela nova de "Marcas de produto". É só colocar as rotas dentro do grupo do módulo certo no web.php:
+
+php
+Route::middleware('permissao:produtos')->group(function () {
+    // ...rotas que já estavam aqui
+    Route::resource('marcas', MarcaController::class);
+});
+
+Ela herda as regras sozinha: quem está sem acesso a Produtos não entra, e quem está em "somente consulta" só visualiza. Depois disso falta só esconder, na tela, o que o operador não pode usar:
+
+Link no menu: @if (auth()->user()?->podeVer('produtos'))
+Botões de novo, editar e inativar: @if (auth()->user()->podeAlterar('produtos'))
+Caso 2: é um módulo novo (aparece na tela de Permissões)
+
+Exemplo: um cadastro de Fornecedores com permissão própria.
+
+Registre o módulo em config/permissoes.php:
+php
+   'fornecedores' => ['nome' => 'Fornecedores', 'descricao' => 'Cadastro de fornecedores'],
+
+A tela de permissões monta a tabela a partir desse arquivo, então a linha nova aparece sozinha para todos os operadores fiscais.
+
+Envolva as rotas num grupo com a mesma chave, dentro do acesso:fiscal:
+php
+   Route::middleware('permissao:fornecedores')->group(function () {
+       Route::resource('fornecedores', FornecedorController::class)->except(['show', 'destroy']);
+       Route::post('fornecedores/{fornecedor}/toggle-ativo', [FornecedorController::class, 'toggleAtivo'])
+           ->name('fornecedores.toggleAtivo');
+   });
+Menu e botões: os mesmos podeVer('fornecedores') e podeAlterar('fornecedores') do caso 1.
+
+Quem já tem restrições salvas não é afetado: o módulo novo nasce como "Acesso total" para todos, porque só guardamos as exceções.
+
+A regra do "somente consulta"
+
+O middleware trata como alteração qualquer requisição que não seja GET, mais os GETs cujo nome da rota termina em .create ou .edit. Se você criar uma rota GET que abra uma tela de alteração com outro nome (como empresa.editar ou notasfiscais.cancelar-form), adicione o nome na lista GETS_DE_ALTERACAO do PermissaoModulo. Se esquecer, um operador em "somente consulta" consegue abrir a tela, mas o botão de salvar (POST) continua bloqueado.
+
+O erro mais fácil de cometer
+
+Uma rota dentro de acesso:fiscal mas fora de qualquer grupo permissao: fica liberada para todos os operadores fiscais, e ninguém percebe, porque o sistema não reclama. Para pegar isso, crie um teste que falha quando esquecem:
+
+tests/Feature/PermissoesTest.php
+
+php
+<?php
+
+namespace Tests\Feature;
+
+use Illuminate\Support\Facades\Route;
+use Tests\TestCase;
+
+class PermissoesTest extends TestCase
+{
+    public function test_toda_rota_fiscal_pertence_a_um_modulo_de_permissao(): void
+    {
+        $modulos = array_keys(config('permissoes.modulos'));
+        $problemas = [];
+
+        foreach (Route::getRoutes()->getRoutes() as $rota) {
+            $middlewares = $rota->gatherMiddleware();
+
+            if (!in_array('acesso:fiscal', $middlewares, true)) {
+                continue;
+            }
+
+            $permissoes = array_values(array_filter($middlewares, fn ($m) => is_string($m) && str_starts_with($m, 'permissao:')));
+            $descricao = $rota->methods()[0] . ' /' . $rota->uri();
+
+            if (!$permissoes) {
+                $problemas[] = "{$descricao}: sem middleware permissao:*";
+                continue;
+            }
+
+            foreach ($permissoes as $permissao) {
+                $chave = substr($permissao, strlen('permissao:'));
+                if (!in_array($chave, $modulos, true)) {
+                    $problemas[] = "{$descricao}: módulo '{$chave}' não existe em config/permissoes.php";
+                }
+            }
+        }
+
+        $this->assertEmpty($problemas, "Rotas sem permissão de módulo:\n" . implode("\n", $problemas));
+    }
+}
+
+Rode com php artisan test --filter=PermissoesTest sempre que mexer em rotas. O teste cobre os dois erros: a rota esquecida fora de um grupo permissao: e a chave digitada errada, que não existe no config (nesse caso o nivelPermissao devolveria "total" e ninguém seria bloqueado de verdade).
+
+Resumo do checklist
+A rota está dentro de acesso:fiscal e de um grupo permissao:<modulo>?
+Se o módulo é novo, a chave está em config/permissoes.php?
+O link do menu usa podeVer e os botões de alteração usam podeAlterar?
+Se existe um GET que abre tela de alteração com nome fora do padrão, ele entrou em GETS_DE_ALTERACAO?
+php artisan test --filter=PermissoesTest passa?

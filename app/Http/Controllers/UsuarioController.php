@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 
 class UsuarioController extends Controller
 {
@@ -18,6 +19,49 @@ class UsuarioController extends Controller
             'singular' => 'Operador Fiscal', 'sistema' => 'o sistema de cadastros',
         ],
     ];
+
+
+    public function permissoes(string $perfil, User $usuario)
+    {
+        abort_unless($perfil === 'fiscal', 404); // permissões só existem para o Operador Fiscal
+
+        $cfg = $this->cfg($perfil);
+        $this->garantirDoPerfil($usuario, $cfg);
+
+        $modulos = config('permissoes.modulos');
+        $niveis  = config('permissoes.niveis');
+        $atuais  = collect($modulos)->mapWithKeys(fn ($m, $chave) => [$chave => $usuario->nivelPermissao($chave)]);
+
+        return view('usuarios.permissoes', compact('perfil', 'cfg', 'usuario', 'modulos', 'niveis', 'atuais'));
+    }
+
+    public function salvarPermissoes(Request $request, string $perfil, User $usuario)
+    {
+        abort_unless($perfil === 'fiscal', 404);
+
+        $cfg = $this->cfg($perfil);
+        $this->garantirDoPerfil($usuario, $cfg);
+
+        $request->validate([
+            'permissoes'   => ['required', 'array'],
+            'permissoes.*' => [Rule::in(array_keys(config('permissoes.niveis')))],
+        ]);
+
+        // Só guarda o que foge do padrão (acesso total)
+        $restricoes = [];
+        foreach (array_keys(config('permissoes.modulos')) as $modulo) {
+            $nivel = $request->input("permissoes.{$modulo}", 'total');
+
+            if ($nivel !== 'total') {
+                $restricoes[$modulo] = $nivel;
+            }
+        }
+
+        $usuario->update(['permissoes' => $restricoes ?: null]);
+
+        return redirect()->route('usuarios.index', $perfil)
+            ->with('sucesso', "Permissões de {$usuario->name} atualizadas.");
+    }
 
     private function cfg(string $perfil): array
     {

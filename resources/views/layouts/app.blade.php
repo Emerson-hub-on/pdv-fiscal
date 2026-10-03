@@ -52,18 +52,37 @@
 
             <!-- Subopções (inicialmente ocultas com 'hidden'; também ocultas com a sidebar recolhida) -->
             <div id="sub-cadastros" class="hidden [.sidebar-oculta_&]:hidden flex flex-col gap-1 pl-4 mt-1 border-l border-white/10 ml-3">
-                <a href="{{ route('produtos.index') }}"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
-                    Produtos
-                </a>
-                <a href="{{ route('clientes.index') }}"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
-                    Clientes
-                </a>
-                <a href="{{ route('empresa.editar') }}"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
-                    Empresa
-                </a>
+                @if (auth()->user()?->podeVer('produtos'))
+                    <a href="{{ route('produtos.index') }}"
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                        Produtos
+                    </a>
+                @endif
+
+                @if (auth()->user()?->podeVer('clientes'))
+                    <a href="{{ route('clientes.index') }}"
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                        Clientes
+                    </a>
+                @endif
+
+                @if (auth()->user()?->podeVer('empresa'))
+                    <a href="{{ route('empresa.editar') }}"
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                        Empresa
+                    </a>
+                @endif
+
+                @if (auth()->user()?->podeVer('pdvs'))
+                    <a href="{{ route('pdvs.index') }}"
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                        PDVs
+                    </a>
+                @endif
+
+                @if (auth()->user()?->podeVer('transportadoras'))
+                    {{-- o bloco do flyout "Transportadoras" inteiro --}}
+                @endif
 
                 @if (auth()->user()?->isAdmin())
                     <div class="relative">
@@ -88,11 +107,7 @@
                         </div>
                     </div>
                 @endif
-                
-                <a href="{{ route('pdvs.index') }}"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
-                    PDVs
-                </a>
+
                 <div class="relative">
                     <button id="btn-transportadoras" onclick="toggleFlyout('sub-transportadoras', 'btn-transportadoras')"
                             class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">

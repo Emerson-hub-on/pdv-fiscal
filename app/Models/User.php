@@ -11,8 +11,19 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 
-#[Fillable(['name', 'username', 'tipo', 'email', 'password', 'acesso_caixa', 'acesso_fiscal'])]
-#[Hidden(['password', 'remember_token'])]
+#[Fillable([
+    'name', 
+    'username', 
+    'tipo', 
+    'email', 
+    'password', 
+    'acesso_caixa', 
+    'acesso_fiscal', 
+    'permissoes'])]
+#[Hidden([
+    'password', 
+    'remember_token'])]
+
 class User extends Authenticatable
 {
     use HasFactory, Notifiable;
@@ -24,7 +35,33 @@ class User extends Authenticatable
             'password'          => 'hashed',
             'acesso_caixa'      => 'boolean',
             'acesso_fiscal'     => 'boolean',
+            'permissoes'        => 'array'
         ];
+    }
+
+    public function nivelPermissao(string $modulo): string
+    {
+        if ($this->isAdmin()) {
+            return 'total';
+        }
+
+        if (!$this->acesso_fiscal) {
+            return 'bloqueado';
+        }
+
+        $nivel = ($this->permissoes ?? [])[$modulo] ?? 'total';
+
+        return in_array($nivel, ['total', 'consulta', 'bloqueado'], true) ? $nivel : 'total';
+    }
+
+    public function podeVer(string $modulo): bool
+    {
+        return $this->nivelPermissao($modulo) !== 'bloqueado';
+    }
+
+    public function podeAlterar(string $modulo): bool
+    {
+        return $this->nivelPermissao($modulo) === 'total';
     }
 
     public function isAdmin(): bool
