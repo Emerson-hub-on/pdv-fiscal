@@ -27,6 +27,8 @@ use App\Http\Controllers\CfopSaidaController;
 use App\Http\Controllers\FormaPagamentoController;
 use App\Http\Controllers\SerieNfeController;
 use App\Http\Controllers\InutilizacaoNfeController;
+use App\Http\Controllers\TransportadorController;
+use App\Http\Controllers\VeiculoController;
 
 
 
@@ -148,7 +150,17 @@ Route::middleware('auth')->group(function () {
     Route::put('series-nfe/{serieNfe}', [SerieNfeController::class, 'update'])->name('series-nfe.update');
     Route::post('inutilizacao-nfe/executar', [InutilizacaoNfeController::class, 'executar'])
     ->name('inutilizacao-nfe.executar');
-
+    Route::get('transportadores/listar', [TransportadorController::class, 'listar'])->name('transportadores.listar');
+    Route::post('transportadores/criar', [TransportadorController::class, 'criar'])->name('transportadores.criar');
+    Route::post('transportadores/editar', [TransportadorController::class, 'editar'])->name('transportadores.editar');
+    Route::resource('transportadores', TransportadorController::class)
+        ->except(['show', 'destroy'])
+        ->parameters(['transportadores' => 'transportador']);
+    Route::post('transportadores/{transportador}/toggle-ativo', [TransportadorController::class, 'toggleAtivo'])
+        ->name('transportadores.toggleAtivo');
+    Route::resource('veiculos', VeiculoController::class)->except(['show', 'destroy']);
+    Route::post('veiculos/{veiculo}/toggle-ativo', [VeiculoController::class, 'toggleAtivo'])
+        ->name('veiculos.toggleAtivo');
 
 
 

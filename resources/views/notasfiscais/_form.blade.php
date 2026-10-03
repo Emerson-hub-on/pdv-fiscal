@@ -1,6 +1,10 @@
 @php
     $ehEdicao = isset($notaFiscal) && $notaFiscal !== null;
 
+    $transportadorAtual = old('transportador_id')
+    ? \App\Models\Transportador::find(old('transportador_id'))
+    : ($ehEdicao ? $notaFiscal->transportador : null);
+
     $itensIniciais = $ehEdicao
         ? $notaFiscal->itens->map(function ($i) use ($notaFiscal, $ehEdicao) {
             $subtotalBruto = (float) $i->valor_unitario * (float) $i->quantidade;
@@ -222,7 +226,8 @@
             <input type="hidden" name="frete_modo" id="campo-frete-modo" value="{{ $freteModoInicial }}">
             <input type="hidden" name="frete_total" id="campo-frete-total" value="0">
             <input type="hidden" name="mod_frete" id="campo-mod-frete" value="{{ $modFreteInicial }}">
-            
+            <input type="hidden" name="transportador_id" id="campo-transportador" value="{{ $transportadorAtual?->id }}">
+
         </div>
     </div>
 
@@ -572,6 +577,29 @@
     </div>
 </div>
 
+<!-- Modal de busca de Transportador -->
+<div id="modal-busca-transportador" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[60]">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+            <h2 class="text-lg font-bold text-white">Selecionar Transportador</h2>
+            <button type="button" onclick="fecharModalTransportador()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
+        </div>
+        <div class="p-6">
+            <input type="text" id="busca-transportador-modal" autocomplete="off" placeholder="Buscar por nome ou CPF/CNPJ..."
+                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
+                        <th class="py-2">Nome</th><th class="py-2">CPF/CNPJ</th><th class="py-2">Município/UF</th>
+                    </tr>
+                </thead>
+                <tbody id="linhas-busca-transportador"></tbody>
+            </table>
+            <p class="text-xs text-gray-400 mt-3">Use ↑ ↓ para navegar e Enter para selecionar.</p>
+        </div>
+    </div>
+</div>
+
 <!-- Modal de busca de produto -->
 <div id="modal-busca-produto-nf" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
@@ -614,6 +642,30 @@
         <div id="bloco-motivo-ajuste" class="hidden mb-4">
             <label class="block text-sm font-medium text-gray-700 mb-1">Motivo do ajuste</label>
             <select id="modal-motivo-ajuste" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></select>
+        </div>
+
+        <div id="bloco-transportador-modal" class="hidden mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+                Transportador
+                <span id="modal-transportador-obrigatorio" class="hidden text-red-500">*</span>
+                <span id="modal-mod-frete-texto" class="text-xs text-gray-400 font-normal"></span>
+            </label>
+
+            <button type="button" onclick="abrirModalTransportador()"
+                    class="w-full text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
+                <span id="texto-transportador-selecionado">
+                    @if ($transportadorAtual)
+                        {{ $transportadorAtual->nome }} — {{ $transportadorAtual->documento_formatado }}
+                    @else
+                        Selecionar transportador...
+                    @endif
+                </span>
+            </button>
+
+            <div class="flex justify-between mt-1 text-xs">
+                <button type="button" onclick="limparTransportador()" class="text-red-600 hover:underline">remover</button>
+                <a href="{{ route('transportadores.create') }}" target="_blank" class="text-blue-700 hover:underline">cadastrar novo</a>
+            </div>
         </div>
 
         <div id="bloco-frete-modal" class="mb-4">
@@ -696,8 +748,111 @@ const cfopInterestadual = @json(config('fiscal.cfop_interestadual', []));
 let freteModo = @json($freteModoInicial);
 let modFrete = @json($modFreteInicial);
 let freteGlobal = {{ (float) old('frete_total', ($ehEdicao && !$notaFiscal->frete_por_item) ? $notaFiscal->valor_frete : 0) }};
+let transportadoresAtuais = [];
+let indiceTransportador = -1;
+let timeoutBuscaTransportador;
+let contadorBuscaTransportador = 0;
+const rotulosModFrete = @json(\App\Models\NotaFiscal::MODALIDADES_FRETE);
+const inputBuscaTransportador  = document.getElementById('busca-transportador-modal');
+const linhasBuscaTransportador = document.getElementById('linhas-busca-transportador');
+const campoTransportador       = document.getElementById('campo-transportador');
 
 
+function abrirModalTransportador() {
+    const modal = document.getElementById('modal-busca-transportador');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    inputBuscaTransportador.value = '';
+    inputBuscaTransportador.focus();
+    buscarTransportadores('');
+}
+
+function fecharModalTransportador() {
+    const modal = document.getElementById('modal-busca-transportador');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    transportadoresAtuais = [];
+    indiceTransportador = -1;
+}
+
+async function buscarTransportadores(termo) {
+    const minhaBusca = ++contadorBuscaTransportador;
+    let dados;
+
+    try {
+        dados = await requisicaoJson(`{{ route('transportadores.listar') }}?termo=${encodeURIComponent(termo)}`);
+    } catch (e) {
+        if (minhaBusca === contadorBuscaTransportador) {
+            mostrarAviso('Falha ao buscar transportadores:\n' + e.message, 'erro');
+            transportadoresAtuais = [];
+            renderizarTransportadores();
+        }
+        return;
+    }
+
+    if (minhaBusca !== contadorBuscaTransportador) return;
+
+    transportadoresAtuais = dados;
+    indiceTransportador = dados.length > 0 ? 0 : -1;
+    renderizarTransportadores();
+}
+
+function renderizarTransportadores() {
+    if (transportadoresAtuais.length === 0) {
+        linhasBuscaTransportador.innerHTML = '<tr><td colspan="3" class="p-3 text-sm text-gray-400 text-center">Nenhum transportador encontrado.</td></tr>';
+        return;
+    }
+
+    linhasBuscaTransportador.innerHTML = transportadoresAtuais.map((t, index) => {
+        const destacado = index === indiceTransportador;
+        return `
+            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
+                onclick="selecionarTransportador(${index})">
+                <td class="py-3 font-medium">${escaparHtml(t.nome)}</td>
+                <td class="py-3 font-mono text-sm ${destacado ? 'text-slate-300' : 'text-gray-500'}">${escaparHtml(t.documento_formatado)}</td>
+                <td class="py-3">${escaparHtml(t.municipio)}/${escaparHtml(t.uf)}</td>
+            </tr>`;
+    }).join('');
+
+    linhasBuscaTransportador.children[indiceTransportador]?.scrollIntoView({ block: 'nearest' });
+}
+
+function selecionarTransportador(index) {
+    const t = transportadoresAtuais[index];
+    if (!t) return;
+
+    campoTransportador.value = t.id;
+    document.getElementById('texto-transportador-selecionado').innerText = `${t.nome} — ${t.documento_formatado}`;
+    fecharModalTransportador();
+}
+
+function limparTransportador() {
+    campoTransportador.value = '';
+    document.getElementById('texto-transportador-selecionado').innerText = 'Selecionar transportador...';
+}
+
+inputBuscaTransportador?.addEventListener('input', () => {
+    clearTimeout(timeoutBuscaTransportador);
+    timeoutBuscaTransportador = setTimeout(() => buscarTransportadores(inputBuscaTransportador.value.trim()), 300);
+});
+
+inputBuscaTransportador?.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { fecharModalTransportador(); return; }
+    if (transportadoresAtuais.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        indiceTransportador = (indiceTransportador + 1) % transportadoresAtuais.length;
+        renderizarTransportadores();
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        indiceTransportador = (indiceTransportador - 1 + transportadoresAtuais.length) % transportadoresAtuais.length;
+        renderizarTransportadores();
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (indiceTransportador >= 0) selecionarTransportador(indiceTransportador);
+    }
+});
 
 function alternarMenuOpcoes(forcarFechar = false) {
     const painel = document.getElementById('painel-opcoes');
@@ -724,6 +879,7 @@ function definirModFrete(valor) {
     if (valor === '9' && freteTotalNota() > 0
         && !confirm('Sem frete: o valor de frete informado será zerado. Continuar?')) {
         document.querySelector(`input[name="mod_frete_ui"][value="${modFrete}"]`).checked = true;
+        
         return;
     }
 
@@ -734,6 +890,7 @@ function definirModFrete(valor) {
         freteGlobal = 0;
         freteModo = 'global';
         document.querySelector('input[name="frete_modo_ui"][value="global"]').checked = true;
+        limparTransportador();
     }
 
     aplicarVisibilidadeFrete();
@@ -1678,6 +1835,12 @@ document.getElementById('form-nota').addEventListener('submit', function (e) {
 
 function abrirModalReferencia() {
     const modoItem = freteModo === 'item';
+    const mostrarTransportador = modFrete !== '9';
+    document.getElementById('bloco-transportador-modal').classList.toggle('hidden', !mostrarTransportador);
+    document.getElementById('modal-transportador-obrigatorio').classList.toggle('hidden', modFrete !== '2');
+    document.getElementById('modal-mod-frete-texto').innerText = mostrarTransportador
+        ? '(' + rotulosModFrete[modFrete] + ')'
+        : '';
     document.getElementById('bloco-frete-global').classList.toggle('hidden', modoItem);
     document.getElementById('bloco-frete-itens').classList.toggle('hidden', !modoItem);
     document.getElementById('modal-frete-global').value = freteGlobal.toFixed(2);
@@ -1782,6 +1945,10 @@ function confirmarESalvarNota() {
     document.getElementById('campo-informacoes-complementares').value =
     document.getElementById('modal-informacoes-complementares').value;
     document.getElementById('campo-mod-frete').value = modFrete;
+    if (modFrete === '2' && !campoTransportador.value) {
+        mostrarAviso('Informe o transportador: o frete é por conta de terceiros.', 'erro');
+        return;
+    }
     fecharModalReferencia();
     document.getElementById('form-nota').requestSubmit();
 }

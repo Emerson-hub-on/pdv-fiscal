@@ -63,7 +63,7 @@ class NotaFiscalService
 
     public function emitir(NotaFiscal $notaFiscal): array
     {
-        $notaFiscal->load('itens.produto', 'itens.ncm', 'itens.cest', 'itens.tributacao', 'itens.pisCofins', 'itens.ipi', 'itens.classificacaoTributaria', 'cliente', 'cfopSaida', 'formaPagamento');
+        $notaFiscal->load('itens.produto', 'itens.ncm', 'itens.cest', 'itens.tributacao', 'itens.pisCofins', 'itens.ipi', 'itens.classificacaoTributaria', 'cliente', 'cfopSaida', 'formaPagamento', 'transportador');
 
         $idLote = str_pad($notaFiscal->numero, 15, '0', STR_PAD_LEFT);
 
@@ -731,6 +731,26 @@ if ($this->empresa->crt <= 2) {
         $std = new \stdClass();
         $std->modFrete = (int) $notaFiscal->mod_frete;
         $nfe->tagtransp($std);
+
+        $t = $notaFiscal->transportador;
+
+        if ($t && (int) $notaFiscal->mod_frete !== 9) {
+            $transporta = new \stdClass();
+
+            if ($t->tipo_pessoa === 'F') {
+                $transporta->CPF = $t->documento;
+            } else {
+                $transporta->CNPJ = $t->documento;
+            }
+
+            $transporta->xNome  = $t->nome;
+            $transporta->IE     = $t->ie;
+            $transporta->xEnder = $t->endereco_nfe;
+            $transporta->xMun   = $t->municipio;
+            $transporta->UF     = $t->uf;
+
+            $nfe->tagtransporta($transporta);
+        }
     }
     
     /**

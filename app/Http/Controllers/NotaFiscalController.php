@@ -108,6 +108,7 @@ class NotaFiscalController extends Controller
                 'motivo_ajuste'              => $dados['motivo_ajuste'],
                 'frete_por_item'             => $dados['frete_por_item'],
                 'mod_frete'                  => (int) $dados['mod_frete'], 
+                'transportador_id'           => $dados['transportador_id'] ?? null,
                 'origem_tipo'                => 'manual',
                 'status'                     => 'rascunho',
             ]);
@@ -153,6 +154,7 @@ class NotaFiscalController extends Controller
             $notaFiscal->motivo_ajuste = $dados['motivo_ajuste'];
             $notaFiscal->frete_por_item = $dados['frete_por_item'];
             $notaFiscal->mod_frete = (int) $dados['mod_frete']; 
+            $notaFiscal->transportador_id = $dados['transportador_id'] ?? null;
             $notaFiscal->save();
 
             // Substitui todos os itens — mais simples e seguro que tentar
@@ -183,6 +185,7 @@ class NotaFiscalController extends Controller
             'frete_modo'                 => ['required', 'in:item,global'],
             'frete_total'                => ['nullable', 'numeric', 'min:0'],
             'mod_frete'                  => ['required', 'in:' . implode(',', array_keys(NotaFiscal::MODALIDADES_FRETE))],
+            'transportador_id'           => ['nullable', 'exists:transportadores,id'],
         ]);
 
         $finalidade = (int) $dados['finalidade'];
@@ -254,6 +257,15 @@ class NotaFiscalController extends Controller
         if ((int) $dados['mod_frete'] === 9 && round(array_sum(array_column($itens, 'valor_frete')), 2) > 0) {
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'frete' => 'Com a opção "Sem frete" o valor do frete deve ser zero.',
+            ]);
+        }
+        $modFrete = (int) $dados['mod_frete'];
+
+        if ($modFrete === 9) {
+            $dados['transportador_id'] = null; // sem transporte não se informa transportador
+        } elseif ($modFrete === 2 && empty($dados['transportador_id'])) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'transportador_id' => 'Informe o transportador quando o frete é por conta de terceiros.',
             ]);
         }
 

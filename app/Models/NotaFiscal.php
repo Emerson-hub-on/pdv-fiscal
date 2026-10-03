@@ -27,6 +27,7 @@ class NotaFiscal extends Model
         'motivo_ajuste',
         'frete_por_item',
         'mod_frete',
+        'transportador_id',
     ];
 
     protected $casts = [
@@ -40,10 +41,18 @@ class NotaFiscal extends Model
     ];
 
     public const MODALIDADES_FRETE = [
-        9 => 'Sem frete',
-        0 => 'Por conta do remetente (CIF)',
-        1 => 'Por conta do destinatário (FOB)',
+        9 => 'Sem ocorrência de transporte',
+        0 => 'Frete por conta do remetente (CIF)',
+        1 => 'Frete por conta do destinatário (FOB)',
+        2 => 'Frete por conta de terceiros',
+        3 => 'Transporte próprio por conta do remetente',
+        4 => 'Transporte próprio por conta do destinatário',
     ];
+
+    public function transportador(): BelongsTo
+    {
+        return $this->belongsTo(Transportador::class);
+    }
 
     public function cliente(): BelongsTo
     {
