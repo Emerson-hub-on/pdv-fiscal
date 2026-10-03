@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use App\Models\User;
+
 
 class AuthController extends Controller
 {
@@ -23,19 +26,34 @@ class AuthController extends Controller
         $credenciais = $request->validate([
             'username' => 'required|string',
             'password' => 'required|string',
-            'modo' => 'required|in:admin,operador',
+            'modo'     => 'required|in:admin,operador',
         ]);
 
-        if (Auth::attempt(['username' => $credenciais['username'], 'password' => $credenciais['password']])) {
-            $request->session()->regenerate();
-            $request->session()->put('modo', $credenciais['modo']);
+        $usuario = User::where('username', User::normalizarUsername($credenciais['username']))->first();
 
-            return $credenciais['modo'] === 'admin'
-                ? redirect()->route('produtos.index')
-                : redirect()->route('caixa.abrir-form'); // ainda vamos criar essa rota
+        if (!$usuario || !Hash::check($credenciais['password'], $usuario->password)) {
+            return back()->withErrors(['username' => 'Usuário ou senha inválidos.'])->withInput($request->only('modo'));
         }
 
-        return back()->withErrors(['username' => 'Usuário ou senha inválidos.']);
+        // "admin" = sistema de cadastros/faturamento; "operador" = caixa
+        $modo = $credenciais['modo'];
+        $permitido = $modo === 'admin' ? $usuario->podeAcessarFiscal() : $usuario->podeAcessarCaixa();
+
+        if (!$permitido) {
+            return back()->withErrors([
+                'username' => $modo === 'admin'
+                    ? 'Este usuário não tem acesso ao sistema de cadastros.'
+                    : 'Este usuário não tem acesso ao caixa.',
+            ]);
+        }
+
+        Auth::login($usuario);
+        $request->session()->regenerate();
+        $request->session()->put('modo', $modo);
+
+        return $modo === 'admin'
+            ? redirect()->route('produtos.index')
+            : redirect()->route('caixa.abrir-form');
     }
 
     public function logout(Request $request)

@@ -9,24 +9,45 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'username', 'tipo', 'email', 'password', 'acesso_caixa', 'acesso_fiscal'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'password'          => 'hashed',
+            'acesso_caixa'      => 'boolean',
+            'acesso_fiscal'     => 'boolean',
         ];
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->tipo === 'admin';
+    }
+
+    public function podeAcessarCaixa(): bool
+    {
+        return $this->isAdmin() || $this->acesso_caixa;
+    }
+
+    public function podeAcessarFiscal(): bool
+    {
+        return $this->isAdmin() || $this->acesso_fiscal;
+    }
+
+    /** "João da Silva" => "joao.da.silva" (o mesmo cálculo existe em JS no formulário) */
+    public static function normalizarUsername(string $valor): string
+    {
+        $valor = strtolower(trim(Str::ascii($valor)));
+        $valor = preg_replace('/\s+/', '.', $valor);
+
+        return trim(preg_replace('/[^a-z0-9._-]/', '', $valor), '.');
     }
 }

@@ -64,6 +64,31 @@
                 class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
                     Empresa
                 </a>
+
+                @if (auth()->user()?->isAdmin())
+                    <div class="relative">
+                        <button id="btn-usuarios" onclick="toggleFlyout('sub-usuarios', 'btn-usuarios')"
+                                class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                            <span>Usuários</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
+
+                        <div id="sub-usuarios" data-flyout data-botao="btn-usuarios"
+                            class="hidden fixed bg-gray-900 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                            <a href="{{ route('usuarios.index', 'caixa') }}"
+                            class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                                Operador de Caixa
+                            </a>
+                            <a href="{{ route('usuarios.index', 'fiscal') }}"
+                            class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition border-t border-white/10">
+                                Operador Fiscal
+                            </a>
+                        </div>
+                    </div>
+                @endif
+                
                 <a href="{{ route('pdvs.index') }}"
                 class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
                     PDVs
