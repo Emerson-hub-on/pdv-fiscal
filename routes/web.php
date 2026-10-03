@@ -161,6 +161,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('veiculos', VeiculoController::class)->except(['show', 'destroy']);
     Route::post('veiculos/{veiculo}/toggle-ativo', [VeiculoController::class, 'toggleAtivo'])
         ->name('veiculos.toggleAtivo');
+    Route::get('veiculos/listar', [VeiculoController::class, 'listar'])->name('veiculos.listar');
 
 
 

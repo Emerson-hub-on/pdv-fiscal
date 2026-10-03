@@ -63,7 +63,7 @@ class NotaFiscalService
 
     public function emitir(NotaFiscal $notaFiscal): array
     {
-        $notaFiscal->load('itens.produto', 'itens.ncm', 'itens.cest', 'itens.tributacao', 'itens.pisCofins', 'itens.ipi', 'itens.classificacaoTributaria', 'cliente', 'cfopSaida', 'formaPagamento', 'transportador');
+        $notaFiscal->load('itens.produto', 'itens.ncm', 'itens.cest', 'itens.tributacao', 'itens.pisCofins', 'itens.ipi', 'itens.classificacaoTributaria', 'cliente', 'cfopSaida', 'formaPagamento', 'transportador', 'veiculo');
 
         $idLote = str_pad($notaFiscal->numero, 15, '0', STR_PAD_LEFT);
 
@@ -750,6 +750,32 @@ if ($this->empresa->crt <= 2) {
             $transporta->UF     = $t->uf;
 
             $nfe->tagtransporta($transporta);
+        }
+        $veiculo = $notaFiscal->veiculo;
+
+        if ($veiculo && (int) $notaFiscal->mod_frete !== 9) {
+            $veic = new \stdClass();
+            $veic->placa = $veiculo->placa;
+            $veic->UF    = $veiculo->uf;
+            $veic->RNTC  = $veiculo->rntrc;
+
+            $nfe->tagveicTransp($veic);
+        }
+
+        $temVolume = $notaFiscal->vol_quantidade || $notaFiscal->vol_especie || $notaFiscal->vol_marca
+            || $notaFiscal->vol_numeracao || $notaFiscal->vol_peso_liquido !== null || $notaFiscal->vol_peso_bruto !== null;
+
+        if ($temVolume) {
+            $vol = new \stdClass();
+            $vol->item   = 1;
+            $vol->qVol   = $notaFiscal->vol_quantidade;
+            $vol->esp    = $notaFiscal->vol_especie;
+            $vol->marca  = $notaFiscal->vol_marca;
+            $vol->nVol   = $notaFiscal->vol_numeracao;
+            $vol->pesoL  = $notaFiscal->vol_peso_liquido !== null ? number_format((float) $notaFiscal->vol_peso_liquido, 3, '.', '') : null;
+            $vol->pesoB  = $notaFiscal->vol_peso_bruto !== null ? number_format((float) $notaFiscal->vol_peso_bruto, 3, '.', '') : null;
+
+            $nfe->tagvol($vol);
         }
     }
     

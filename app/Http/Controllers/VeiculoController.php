@@ -45,6 +45,30 @@ class VeiculoController extends Controller
         return view('veiculos.index', compact('veiculos', 'filtro', 'ordenarPor'));
     }
 
+    public function listar(Request $request)
+    {
+        $termo = trim((string) $request->get('termo', ''));
+        $placa = Veiculo::normalizarPlaca($termo);
+
+        $veiculos = Veiculo::ativos()
+            ->with('transportador:id,nome')
+            // com transportadora escolhida na nota, só mostra os veículos dela
+            ->when($request->filled('transportador_id'), fn ($q) => $q->where('transportador_id', $request->transportador_id))
+            ->when($termo !== '', function ($q) use ($termo, $placa) {
+                $q->where(function ($q) use ($termo, $placa) {
+                    if ($placa !== '') {
+                        $q->orWhere('placa', 'like', "%{$placa}%");
+                    }
+                    $q->orWhereHas('transportador', fn ($t) => $t->where('nome', 'like', "%{$termo}%"));
+                });
+            })
+            ->orderBy('placa')
+            ->limit(20)
+            ->get();
+
+        return response()->json($veiculos);
+    }
+
     public function create()
     {
         return view('veiculos.create', ['transportadores' => $this->transportadoresParaSelect()]);

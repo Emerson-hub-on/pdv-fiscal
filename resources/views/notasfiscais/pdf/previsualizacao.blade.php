@@ -166,7 +166,37 @@
             <td style="border-left:1px solid #000;"><span class="label">OUTRAS DESPESAS ACESSÓRIAS</span><br><span class="valor-sm">R$ {{ $dados['totais']['valor_outras_despesas'] }}</span></td>
             <td style="border-left:1px solid #000;"><span class="label">VALOR TOTAL DA NOTA</span><br><span class="valor" style="font-size:12px;">R$ {{ $dados['totais']['valor_total_nota'] }}</span></td>
         </tr>
-    </table>                                                                                                                                                                                                                                                
+    </table>      
+    
+    <!-- Transportador / Volumes -->
+    <table class="caixa">
+        <tr><td colspan="3" class="titulo-secao">TRANSPORTADOR / VOLUMES TRANSPORTADOS</td></tr>
+        <tr>
+            <td width="40%"><span class="label">NOME / RAZÃO SOCIAL</span><br><span class="valor-sm">{{ $dados['transporte']['transportador'] ?? '—' }}</span></td>
+            <td width="30%" style="border-left:1px solid #000;"><span class="label">FRETE</span><br>{{ $dados['transporte']['modalidade'] }}</td>
+            <td width="30%" style="border-left:1px solid #000;"><span class="label">CNPJ/CPF</span><br>{{ $dados['transporte']['documento'] ?? '—' }}</td>
+        </tr>
+        <tr style="border-top:1px solid #000;">
+            <td><span class="label">ENDEREÇO</span><br>{{ $dados['transporte']['endereco'] ?? '—' }}</td>
+            <td style="border-left:1px solid #000;"><span class="label">MUNICÍPIO/UF</span><br>{{ $dados['transporte']['municipio_uf'] ?? '—' }}</td>
+            <td style="border-left:1px solid #000;"><span class="label">INSCRIÇÃO ESTADUAL</span><br>{{ $dados['transporte']['ie'] ?? '—' }}</td>
+        </tr>
+        <tr style="border-top:1px solid #000;">
+            <td><span class="label">PLACA DO VEÍCULO</span><br>{{ $dados['transporte']['placa'] ?? '—' }}</td>
+            <td style="border-left:1px solid #000;"><span class="label">UF</span><br>{{ $dados['transporte']['uf_placa'] ?? '—' }}</td>
+            <td style="border-left:1px solid #000;"><span class="label">RNTRC</span><br>{{ $dados['transporte']['rntrc'] ?? '—' }}</td>
+        </tr>
+        <tr style="border-top:1px solid #000;">
+            <td><span class="label">QUANTIDADE</span><br>{{ $dados['transporte']['vol_quantidade'] ?? '—' }}</td>
+            <td style="border-left:1px solid #000;"><span class="label">ESPÉCIE</span><br>{{ $dados['transporte']['vol_especie'] ?? '—' }}</td>
+            <td style="border-left:1px solid #000;"><span class="label">MARCA</span><br>{{ $dados['transporte']['vol_marca'] ?? '—' }}</td>
+        </tr>
+        <tr style="border-top:1px solid #000;">
+            <td><span class="label">NUMERAÇÃO</span><br>{{ $dados['transporte']['vol_numeracao'] ?? '—' }}</td>
+            <td style="border-left:1px solid #000;"><span class="label">PESO BRUTO (KG)</span><br>{{ $dados['transporte']['peso_bruto'] ?? '—' }}</td>
+            <td style="border-left:1px solid #000;"><span class="label">PESO LÍQUIDO (KG)</span><br>{{ $dados['transporte']['peso_liquido'] ?? '—' }}</td>
+        </tr>
+    </table>
 
     <div style="height:6px;"></div>
 

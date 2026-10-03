@@ -28,6 +28,13 @@ class NotaFiscal extends Model
         'frete_por_item',
         'mod_frete',
         'transportador_id',
+        'veiculo_id', 
+        'vol_quantidade', 
+        'vol_especie', 
+        'vol_marca', 
+        'vol_numeracao', 
+        'vol_peso_liquido', 
+        'vol_peso_bruto',
     ];
 
     protected $casts = [
@@ -38,6 +45,8 @@ class NotaFiscal extends Model
         'emitida_em' => 'datetime',
         'notas_referenciadas' => 'array',
         'frete_por_item' => 'boolean',
+        'vol_peso_liquido' => 'decimal:3',
+        'vol_peso_bruto'   => 'decimal:3',
     ];
 
     public const MODALIDADES_FRETE = [
@@ -48,6 +57,11 @@ class NotaFiscal extends Model
         3 => 'Transporte próprio por conta do remetente',
         4 => 'Transporte próprio por conta do destinatário',
     ];
+
+    public function veiculo(): BelongsTo
+    {
+        return $this->belongsTo(Veiculo::class);
+    }
 
     public function transportador(): BelongsTo
     {

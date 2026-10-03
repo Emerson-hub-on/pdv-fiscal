@@ -108,10 +108,10 @@ class NotaFiscalController extends Controller
                 'motivo_ajuste'              => $dados['motivo_ajuste'],
                 'frete_por_item'             => $dados['frete_por_item'],
                 'mod_frete'                  => (int) $dados['mod_frete'], 
-                'transportador_id'           => $dados['transportador_id'] ?? null,
                 'origem_tipo'                => 'manual',
                 'status'                     => 'rascunho',
-            ]);
+
+            ] + $this->camposTransporte($dados));
 
             $this->substituirItens($notaFiscal, $dados['itens']);
 
@@ -154,7 +154,7 @@ class NotaFiscalController extends Controller
             $notaFiscal->motivo_ajuste = $dados['motivo_ajuste'];
             $notaFiscal->frete_por_item = $dados['frete_por_item'];
             $notaFiscal->mod_frete = (int) $dados['mod_frete']; 
-            $notaFiscal->transportador_id = $dados['transportador_id'] ?? null;
+            $notaFiscal->fill($this->camposTransporte($dados));
             $notaFiscal->save();
 
             // Substitui todos os itens — mais simples e seguro que tentar
@@ -186,6 +186,13 @@ class NotaFiscalController extends Controller
             'frete_total'                => ['nullable', 'numeric', 'min:0'],
             'mod_frete'                  => ['required', 'in:' . implode(',', array_keys(NotaFiscal::MODALIDADES_FRETE))],
             'transportador_id'           => ['nullable', 'exists:transportadores,id'],
+            'veiculo_id'                 => ['nullable', 'exists:veiculos,id'],
+            'vol_quantidade'             => ['nullable', 'integer', 'min:1'],
+            'vol_especie'                => ['nullable', 'string', 'max:60'],
+            'vol_marca'                  => ['nullable', 'string', 'max:60'],
+            'vol_numeracao'              => ['nullable', 'string', 'max:60'],
+            'vol_peso_liquido'           => ['nullable', 'numeric', 'min:0'],
+            'vol_peso_bruto'             => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $finalidade = (int) $dados['finalidade'];
@@ -259,13 +266,46 @@ class NotaFiscalController extends Controller
                 'frete' => 'Com a opção "Sem frete" o valor do frete deve ser zero.',
             ]);
         }
+
         $modFrete = (int) $dados['mod_frete'];
 
         if ($modFrete === 9) {
-            $dados['transportador_id'] = null; // sem transporte não se informa transportador
-        } elseif ($modFrete === 2 && empty($dados['transportador_id'])) {
+            $dados['transportador_id'] = null; // sem transporte não se informa transportador nem veículo
+            $dados['veiculo_id'] = null;
+        } else {
+            if ($modFrete === 2 && empty($dados['transportador_id'])) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'transportador_id' => 'Informe o transportador quando o frete é por conta de terceiros.',
+                ]);
+            }
+
+            // Operação interestadual: mesmo critério do idDest do XML (UF do cliente x UF da empresa)
+            $clienteUf = \App\Models\Cliente::find($dados['cliente_id'])?->uf;
+            $interestadual = $clienteUf !== Empresa::first()->uf;
+
+            if (empty($dados['veiculo_id']) && ($modFrete === 1 || $interestadual)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'veiculo_id' => $modFrete === 1
+                        ? 'Informe o veículo: frete por conta do destinatário (FOB).'
+                        : 'Informe o veículo: operação interestadual.',
+                ]);
+            }
+
+            if (!empty($dados['veiculo_id']) && !empty($dados['transportador_id'])) {
+                $donoDoVeiculo = \App\Models\Veiculo::find($dados['veiculo_id'])->transportador_id;
+
+                if ($donoDoVeiculo && (int) $donoDoVeiculo !== (int) $dados['transportador_id']) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'veiculo_id' => 'O veículo selecionado pertence a outra transportadora.',
+                    ]);
+                }
+            }
+        }
+
+        if (isset($dados['vol_peso_liquido'], $dados['vol_peso_bruto'])
+            && (float) $dados['vol_peso_liquido'] > (float) $dados['vol_peso_bruto']) {
             throw \Illuminate\Validation\ValidationException::withMessages([
-                'transportador_id' => 'Informe o transportador quando o frete é por conta de terceiros.',
+                'vol_peso_liquido' => 'O peso líquido não pode ser maior que o peso bruto.',
             ]);
         }
 
@@ -278,6 +318,20 @@ class NotaFiscalController extends Controller
         unset($dados['itens_json'], $dados['notas_referenciadas_json']);
 
         return $dados;
+    }
+
+    private function camposTransporte(array $dados): array
+    {
+        return [
+            'transportador_id' => $dados['transportador_id'] ?? null,
+            'veiculo_id'       => $dados['veiculo_id'] ?? null,
+            'vol_quantidade'   => $dados['vol_quantidade'] ?? null,
+            'vol_especie'      => $dados['vol_especie'] ?? null,
+            'vol_marca'        => $dados['vol_marca'] ?? null,
+            'vol_numeracao'    => $dados['vol_numeracao'] ?? null,
+            'vol_peso_liquido' => $dados['vol_peso_liquido'] ?? null,
+            'vol_peso_bruto'   => $dados['vol_peso_bruto'] ?? null,
+        ];
     }
 
     /**
@@ -816,6 +870,26 @@ class NotaFiscalController extends Controller
                 'valor_desconto'    => number_format($notaFiscal->valor_desconto, 2, ',', '.'),
                 'valor_total_nota'  => number_format($notaFiscal->valor_total, 2, ',', '.'),
                 'valor_outras_despesas' => number_format($notaFiscal->itens->sum('valor_outras_despesas'), 2, ',', '.'),
+            ],
+
+            'transporte' => [
+                'modalidade'     => NotaFiscal::MODALIDADES_FRETE[(int) $notaFiscal->mod_frete] ?? '—',
+                'transportador'  => $notaFiscal->transportador?->nome,
+                'documento'      => $notaFiscal->transportador?->documento_formatado,
+                'ie'             => $notaFiscal->transportador?->ie,
+                'endereco'       => $notaFiscal->transportador?->endereco_nfe,
+                'municipio_uf'   => $notaFiscal->transportador
+                    ? $notaFiscal->transportador->municipio . '/' . $notaFiscal->transportador->uf
+                    : null,
+                'placa'          => $notaFiscal->veiculo?->placa_formatada,
+                'uf_placa'       => $notaFiscal->veiculo?->uf,
+                'rntrc'          => $notaFiscal->veiculo?->rntrc,
+                'vol_quantidade' => $notaFiscal->vol_quantidade,
+                'vol_especie'    => $notaFiscal->vol_especie,
+                'vol_marca'      => $notaFiscal->vol_marca,
+                'vol_numeracao'  => $notaFiscal->vol_numeracao,
+                'peso_bruto'     => $notaFiscal->vol_peso_bruto !== null ? number_format((float) $notaFiscal->vol_peso_bruto, 3, ',', '.') : null,
+                'peso_liquido'   => $notaFiscal->vol_peso_liquido !== null ? number_format((float) $notaFiscal->vol_peso_liquido, 3, ',', '.') : null,
             ],
 
             'itens' => $itens,

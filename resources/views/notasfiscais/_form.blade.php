@@ -5,6 +5,14 @@
     ? \App\Models\Transportador::find(old('transportador_id'))
     : ($ehEdicao ? $notaFiscal->transportador : null);
 
+    $veiculoAtual = old('veiculo_id')
+    ? \App\Models\Veiculo::with('transportador')->find(old('veiculo_id'))
+    : ($ehEdicao ? $notaFiscal->veiculo : null);
+
+    $ufClienteInicial = old('cliente_id')
+        ? \App\Models\Cliente::find(old('cliente_id'))?->uf
+        : ($ehEdicao ? $notaFiscal->cliente?->uf : null);
+
     $itensIniciais = $ehEdicao
         ? $notaFiscal->itens->map(function ($i) use ($notaFiscal, $ehEdicao) {
             $subtotalBruto = (float) $i->valor_unitario * (float) $i->quantidade;
@@ -227,6 +235,11 @@
             <input type="hidden" name="frete_total" id="campo-frete-total" value="0">
             <input type="hidden" name="mod_frete" id="campo-mod-frete" value="{{ $modFreteInicial }}">
             <input type="hidden" name="transportador_id" id="campo-transportador" value="{{ $transportadorAtual?->id }}">
+            <input type="hidden" name="veiculo_id" id="campo-veiculo" value="{{ $veiculoAtual?->id }}">
+            @foreach (['quantidade', 'especie', 'marca', 'numeracao', 'peso_liquido', 'peso_bruto'] as $campo)
+                <input type="hidden" name="vol_{{ $campo }}" id="campo-vol-{{ $campo }}"
+                    value="{{ old('vol_' . $campo, $ehEdicao ? $notaFiscal->{'vol_' . $campo} : '') }}">
+            @endforeach
 
         </div>
     </div>
@@ -600,6 +613,29 @@
     </div>
 </div>
 
+<!-- Modal de busca de Veículo -->
+<div id="modal-busca-veiculo" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[60]">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+            <h2 class="text-lg font-bold text-white">Selecionar Veículo</h2>
+            <button type="button" onclick="fecharModalVeiculo()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
+        </div>
+        <div class="p-6">
+            <input type="text" id="busca-veiculo-modal" autocomplete="off" placeholder="Buscar por placa ou transportadora..."
+                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
+                        <th class="py-2">Placa</th><th class="py-2">UF</th><th class="py-2">RNTRC</th><th class="py-2">Transportadora</th>
+                    </tr>
+                </thead>
+                <tbody id="linhas-busca-veiculo"></tbody>
+            </table>
+            <p class="text-xs text-gray-400 mt-3">Use ↑ ↓ para navegar e Enter para selecionar.</p>
+        </div>
+    </div>
+</div>
+
 <!-- Modal de busca de produto -->
 <div id="modal-busca-produto-nf" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
@@ -629,7 +665,7 @@
 
 <!-- Modal de Confirmação — Notas Referenciadas + Informações Complementares -->
 <div id="modal-referencia-nota" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-lg p-6">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-bold">Confirmar Nota Fiscal</h2>
             <button type="button" onclick="fecharModalReferencia()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
@@ -665,6 +701,50 @@
             <div class="flex justify-between mt-1 text-xs">
                 <button type="button" onclick="limparTransportador()" class="text-red-600 hover:underline">remover</button>
                 <a href="{{ route('transportadores.create') }}" target="_blank" class="text-blue-700 hover:underline">cadastrar novo</a>
+            </div>
+        </div>
+
+        <div id="bloco-veiculo-modal" class="hidden mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+                Veículo
+                <span id="modal-veiculo-obrigatorio" class="hidden text-red-500">*</span>
+                <span id="modal-veiculo-motivo" class="text-xs text-gray-400 font-normal"></span>
+            </label>
+
+            <button type="button" onclick="abrirModalVeiculo()"
+                    class="w-full text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
+                <span id="texto-veiculo-selecionado">
+                    @if ($veiculoAtual)
+                        {{ $veiculoAtual->placa_formatada }} — {{ $veiculoAtual->uf }}
+                    @else
+                        Selecionar veículo...
+                    @endif
+                </span>
+            </button>
+
+            <div class="flex justify-between mt-1 text-xs">
+                <button type="button" onclick="limparVeiculo()" class="text-red-600 hover:underline">remover</button>
+                <a href="{{ route('veiculos.create') }}" target="_blank" class="text-blue-700 hover:underline">cadastrar novo</a>
+            </div>
+        </div>
+
+        <div id="bloco-volumes-modal" class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+                Volumes transportados <span class="text-xs text-gray-400 font-normal">(opcional)</span>
+            </label>
+            <div class="grid grid-cols-3 gap-2">
+                <input type="number" min="1" step="1" id="modal-vol-quantidade" placeholder="Quantidade"
+                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                <input type="text" maxlength="60" id="modal-vol-especie" placeholder="Espécie (caixas, fardos...)"
+                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                <input type="text" maxlength="60" id="modal-vol-marca" placeholder="Marca"
+                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                <input type="text" maxlength="60" id="modal-vol-numeracao" placeholder="Numeração"
+                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                <input type="number" min="0" step="0.001" id="modal-vol-peso_liquido" placeholder="Peso líquido (kg)"
+                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                <input type="number" min="0" step="0.001" id="modal-vol-peso_bruto" placeholder="Peso bruto (kg)"
+                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
             </div>
         </div>
 
@@ -714,6 +794,7 @@
 
 
 <script>
+window.ufEmpresa = @json(optional(\App\Models\Empresa::first())->uf);
 window.crtEmpresa = {{ (int) $crtEmpresa }};
 window.cfopDestacarBases = {{ ($ehEdicao && $notaFiscal->cfopSaida && $notaFiscal->cfopSaida->destacar_bases) ? 'true' : 'false' }};
 window.cfopCodigoNota = @json($ehEdicao && $notaFiscal->cfopSaida ? (string) $notaFiscal->cfopSaida->codigo : '');
@@ -756,7 +837,134 @@ const rotulosModFrete = @json(\App\Models\NotaFiscal::MODALIDADES_FRETE);
 const inputBuscaTransportador  = document.getElementById('busca-transportador-modal');
 const linhasBuscaTransportador = document.getElementById('linhas-busca-transportador');
 const campoTransportador       = document.getElementById('campo-transportador');
+let ufCliente = @json($ufClienteInicial);
+let veiculoDoTransportadorId = @json($veiculoAtual?->transportador_id);
 
+const camposVolume = ['quantidade', 'especie', 'marca', 'numeracao', 'peso_liquido', 'peso_bruto'];
+
+// Regra de obrigatoriedade: frete FOB ou operação interestadual (e só se há transporte)
+function veiculoObrigatorio() {
+    if (modFrete === '9') return false;
+    return modFrete === '1' || (!!ufCliente && !!window.ufEmpresa && ufCliente !== window.ufEmpresa);
+}
+
+let veiculosAtuais = [];
+let indiceVeiculo = -1;
+let timeoutBuscaVeiculo;
+let contadorBuscaVeiculo = 0;
+
+
+const inputBuscaVeiculo  = document.getElementById('busca-veiculo-modal');
+const linhasBuscaVeiculo = document.getElementById('linhas-busca-veiculo');
+const campoVeiculo       = document.getElementById('campo-veiculo');
+
+function abrirModalVeiculo() {
+    const modal = document.getElementById('modal-busca-veiculo');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    inputBuscaVeiculo.value = '';
+    inputBuscaVeiculo.focus();
+    buscarVeiculos('');
+}
+
+function fecharModalVeiculo() {
+    const modal = document.getElementById('modal-busca-veiculo');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    veiculosAtuais = [];
+    indiceVeiculo = -1;
+}
+
+async function buscarVeiculos(termo) {
+    const minhaBusca = ++contadorBuscaVeiculo;
+    const params = new URLSearchParams({ termo });
+    if (campoTransportador.value) params.set('transportador_id', campoTransportador.value);
+
+    let dados;
+    try {
+        dados = await requisicaoJson(`{{ route('veiculos.listar') }}?${params.toString()}`);
+    } catch (e) {
+        if (minhaBusca === contadorBuscaVeiculo) {
+            mostrarAviso('Falha ao buscar veículos:\n' + e.message, 'erro');
+            veiculosAtuais = [];
+            renderizarVeiculos();
+        }
+        return;
+    }
+
+    if (minhaBusca !== contadorBuscaVeiculo) return;
+
+    veiculosAtuais = dados;
+    indiceVeiculo = dados.length > 0 ? 0 : -1;
+    renderizarVeiculos();
+}
+
+function renderizarVeiculos() {
+    if (veiculosAtuais.length === 0) {
+        linhasBuscaVeiculo.innerHTML = '<tr><td colspan="4" class="p-3 text-sm text-gray-400 text-center">Nenhum veículo encontrado.</td></tr>';
+        return;
+    }
+
+    linhasBuscaVeiculo.innerHTML = veiculosAtuais.map((v, index) => {
+        const destacado = index === indiceVeiculo;
+        return `
+            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
+                onclick="selecionarVeiculo(${index})">
+                <td class="py-3 font-mono font-medium">${escaparHtml(v.placa_formatada)}</td>
+                <td class="py-3">${escaparHtml(v.uf)}</td>
+                <td class="py-3 font-mono text-sm ${destacado ? 'text-slate-300' : 'text-gray-500'}">${escaparHtml(v.rntrc ?? '—')}</td>
+                <td class="py-3">${escaparHtml(v.transportador?.nome ?? '—')}</td>
+            </tr>`;
+    }).join('');
+
+    linhasBuscaVeiculo.children[indiceVeiculo]?.scrollIntoView({ block: 'nearest' });
+}
+
+function selecionarVeiculo(index) {
+    const v = veiculosAtuais[index];
+    if (!v) return;
+
+    campoVeiculo.value = v.id;
+    veiculoDoTransportadorId = v.transportador_id ?? null;
+    document.getElementById('texto-veiculo-selecionado').innerText = `${v.placa_formatada} — ${v.uf}`;
+
+    // Veículo de uma transportadora e nenhuma escolhida ainda: preenche a transportadora junto
+    if (v.transportador && !campoTransportador.value) {
+        campoTransportador.value = v.transportador.id;
+        document.getElementById('texto-transportador-selecionado').innerText = v.transportador.nome;
+    }
+
+    fecharModalVeiculo();
+}
+
+function limparVeiculo() {
+    campoVeiculo.value = '';
+    veiculoDoTransportadorId = null;
+    document.getElementById('texto-veiculo-selecionado').innerText = 'Selecionar veículo...';
+}
+
+inputBuscaVeiculo?.addEventListener('input', () => {
+    clearTimeout(timeoutBuscaVeiculo);
+    timeoutBuscaVeiculo = setTimeout(() => buscarVeiculos(inputBuscaVeiculo.value.trim()), 300);
+});
+
+inputBuscaVeiculo?.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { fecharModalVeiculo(); return; }
+    if (veiculosAtuais.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        indiceVeiculo = (indiceVeiculo + 1) % veiculosAtuais.length;
+        renderizarVeiculos();
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        indiceVeiculo = (indiceVeiculo - 1 + veiculosAtuais.length) % veiculosAtuais.length;
+        renderizarVeiculos();
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (indiceVeiculo >= 0) selecionarVeiculo(indiceVeiculo);
+    }
+});
 
 function abrirModalTransportador() {
     const modal = document.getElementById('modal-busca-transportador');
@@ -820,6 +1028,8 @@ function renderizarTransportadores() {
 function selecionarTransportador(index) {
     const t = transportadoresAtuais[index];
     if (!t) return;
+
+    if (veiculoDoTransportadorId && veiculoDoTransportadorId !== t.id) limparVeiculo();
 
     campoTransportador.value = t.id;
     document.getElementById('texto-transportador-selecionado').innerText = `${t.nome} — ${t.documento_formatado}`;
@@ -890,6 +1100,7 @@ function definirModFrete(valor) {
         freteGlobal = 0;
         freteModo = 'global';
         document.querySelector('input[name="frete_modo_ui"][value="global"]').checked = true;
+        limparVeiculo();
         limparTransportador();
     }
 
@@ -1015,6 +1226,7 @@ function renderizarClientes() {
 function selecionarCliente(index) {
     const c = clientesAtuais[index];
     if (!c) return;
+    ufCliente = c.uf;
 
     campoCliente.value = c.id;
     document.getElementById('texto-cliente-selecionado').innerText = `${c.nome} — ${c.cpf_cnpj}`;
@@ -1836,6 +2048,16 @@ document.getElementById('form-nota').addEventListener('submit', function (e) {
 function abrirModalReferencia() {
     const modoItem = freteModo === 'item';
     const mostrarTransportador = modFrete !== '9';
+    const exigeVeiculo = veiculoObrigatorio();
+    document.getElementById('bloco-veiculo-modal').classList.toggle('hidden', modFrete === '9');
+    document.getElementById('modal-veiculo-obrigatorio').classList.toggle('hidden', !exigeVeiculo);
+    document.getElementById('modal-veiculo-motivo').innerText = exigeVeiculo
+        ? (modFrete === '1' ? '(frete por conta do destinatário)' : '(operação interestadual)')
+        : '';
+
+    camposVolume.forEach(c => {
+        document.getElementById('modal-vol-' + c).value = document.getElementById('campo-vol-' + c).value;
+    });
     document.getElementById('bloco-transportador-modal').classList.toggle('hidden', !mostrarTransportador);
     document.getElementById('modal-transportador-obrigatorio').classList.toggle('hidden', modFrete !== '2');
     document.getElementById('modal-mod-frete-texto').innerText = mostrarTransportador
@@ -1949,6 +2171,26 @@ function confirmarESalvarNota() {
         mostrarAviso('Informe o transportador: o frete é por conta de terceiros.', 'erro');
         return;
     }
+    if (veiculoObrigatorio() && !campoVeiculo.value) {
+        mostrarAviso(
+            modFrete === '1'
+                ? 'Informe o veículo: o frete é por conta do destinatário (FOB).'
+                : 'Informe o veículo: a operação é interestadual.',
+            'erro'
+        );
+        return;
+    }
+
+    const pesoLiq = parseFloat(document.getElementById('modal-vol-peso_liquido').value);
+    const pesoBru = parseFloat(document.getElementById('modal-vol-peso_bruto').value);
+    if (!isNaN(pesoLiq) && !isNaN(pesoBru) && pesoLiq > pesoBru) {
+        mostrarAviso('O peso líquido não pode ser maior que o peso bruto.', 'erro');
+        return;
+    }
+
+    camposVolume.forEach(c => {
+        document.getElementById('campo-vol-' + c).value = document.getElementById('modal-vol-' + c).value;
+    });
     fecharModalReferencia();
     document.getElementById('form-nota').requestSubmit();
 }
