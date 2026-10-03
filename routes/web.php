@@ -64,7 +64,9 @@ Route::middleware('auth')->group(function () {
         Route::post('inutilizacao', [InutilizacaoController::class, 'executar'])->name('inutilizacao.executar');
         Route::get('cancelamento/listar', [CancelamentoController::class, 'listar'])->name('cancelamento.listar');
         Route::post('cancelamento/{venda}/cancelar', [CancelamentoController::class, 'cancelar'])->name('cancelamento.cancelar');
-        Route::post('supervisor/autorizar', [SupervisorController::class, 'autorizar'])->name('supervisor.autorizar');
+        Route::post('supervisor/autorizar', [SupervisorController::class, 'autorizar'])
+            ->middleware('throttle:10,1')
+            ->name('supervisor.autorizar');
 
         // Endpoints JSON usados pelo modal "Adicionar consumidor" no caixa
         Route::get('/clientes/buscar', [ClienteController::class, 'buscar'])->name('clientes.buscar');
@@ -215,7 +217,7 @@ Route::middleware('auth')->group(function () {
     // =====================================================================
     Route::middleware('acesso:admin')
         ->prefix('usuarios')
-        ->where(['perfil' => 'caixa|fiscal'])
+        ->where(['perfil' => 'caixa|fiscal|supervisor'])
         ->group(function () {
             Route::get('{perfil}', [UsuarioController::class, 'index'])->name('usuarios.index');
             Route::get('{perfil}/create', [UsuarioController::class, 'create'])->name('usuarios.create');

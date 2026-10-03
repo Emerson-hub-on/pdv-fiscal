@@ -23,6 +23,9 @@
                             @if ($usuario->acesso_fiscal)
                                 <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">Fiscal</span>
                             @endif
+                            @if ($usuario->acesso_supervisor)
+                                <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700">Supervisor</span>
+                            @endif
                             
                             <!-- Bloco inserido: Selo de Restrições -->
                             @if ($perfil === 'fiscal' && !empty($usuario->permissoes))

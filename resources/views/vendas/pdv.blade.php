@@ -43,7 +43,7 @@
     </button>
     <!-- Adicionado id no container do menu -->
     <div id="dropdown-cancelamento" class="absolute hidden bg-slate-200 rounded-lg shadow-xl mt-2 w-52 overflow-hidden z-50 border border-white/10">
-        <button onclick="fecharDropdownCancelamento(); abrirModalCancelamento();"
+        <button onclick="fecharDropdownCancelamento(); solicitarCancelamentoNfce();"
                 class="opcao-dropdown w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-700 hover:text-white transition" data-index="0">
             Cancelar NFC-e
         </button>
@@ -1237,6 +1237,11 @@ function abrirModalCancelarItem() {
     abrirModalAutorizacao('Autorização necessária para cancelar um item.');
 }
 
+function solicitarCancelamentoNfce() {
+    tipoDescontoPendente = 'cancelar_nfce';
+    abrirModalAutorizacao('Autorização necessária para cancelar uma NFC-e.');
+}
+
 function abrirModalLimparPdv() {
     if (carrinho.length === 0) {
         alert('O carrinho já está vazio.');
@@ -1375,9 +1380,10 @@ async function confirmarAutorizacao() {
         abrirLancamentoCancelarItem();
     } else if (tipoDescontoPendente === 'limpar_pdv') {
         executarLimparPdv();
+    } else if (tipoDescontoPendente === 'cancelar_nfce') {
+        abrirModalCancelamento();
     }
 }
-
 
 
 function abrirLancamentoDescontoItem() {

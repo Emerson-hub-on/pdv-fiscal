@@ -100,6 +100,12 @@
                             class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                                 Operador de Caixa
                             </a>
+
+                            <a href="{{ route('usuarios.index', 'supervisor') }}"
+                            class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition border-t border-white/10">
+                                Supervisor
+                            </a>
+                            
                             <a href="{{ route('usuarios.index', 'fiscal') }}"
                             class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition border-t border-white/10">
                                 Operador Fiscal

@@ -18,6 +18,10 @@ class UsuarioController extends Controller
             'campo' => 'acesso_fiscal', 'titulo' => 'Operadores Fiscais',
             'singular' => 'Operador Fiscal', 'sistema' => 'o sistema de cadastros',
         ],
+        'supervisor' => [
+            'campo' => 'acesso_supervisor', 'titulo' => 'Supervisores',
+            'singular' => 'Supervisor', 'sistema' => 'as autorizações do caixa',
+        ],
     ];
 
 

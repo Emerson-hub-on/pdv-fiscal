@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Caixa;
 use App\Services\SyncService;
 use Illuminate\Http\Request;
+use App\Support\AutorizacaoSupervisor;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+
 
 class VendaController extends Controller
 {
@@ -18,6 +20,12 @@ class VendaController extends Controller
         if (!$caixa) {
             return redirect()->route('caixa.abrir-form');
         }
+
+        // Abrir o PDV sem carrinho salvo na sessão = venda nova: descarta autorizações antigas
+        if (!session()->has('venda_carrinho')) {
+            AutorizacaoSupervisor::consumir('desconto');
+        }
+        AutorizacaoSupervisor::consumir('cancelar_nfce');
 
         $carrinhoSalvo = session('venda_carrinho');
         $itensIniciais = $carrinhoSalvo['itens'] ?? [];
@@ -161,52 +169,67 @@ private function resolverPrecoUnitario($produto, $quantidade): float
             'cliente_id' => 'nullable|integer',
             'cpf_na_nota' => 'nullable|digits:11',
         ]);
- 
+
         $caixa = Caixa::aberto(Auth::id());
- 
+
         if (!$caixa) {
             return response()->json(['erro' => 'Nenhum caixa aberto.'], 422);
         }
- 
+
+        // Qualquer desconto (por item ou global) exige autorização de supervisor válida
+        $temDesconto = collect($validado['itens'])->sum(fn ($i) => (float) ($i['desconto'] ?? 0)) > 0
+            || (float) ($validado['desconto_global'] ?? 0) > 0;
+
+        if ($temDesconto && !AutorizacaoSupervisor::valida('desconto')) {
+            return response()->json([
+                'erro' => 'Desconto sem autorização do supervisor. Solicite a autorização novamente.',
+            ], 403);
+        }
+
         try {
-            $total = 0;
-            $itensParaSalvar = [];
- 
-            DB::connection('sqlite_local')->transaction(function () use ($validado, &$total, &$itensParaSalvar) {
+            $uuid = (string) Str::uuid();
+            $totalComDesconto = 0;
+
+            // Baixa de estoque, conferências e gravação da venda pendente na MESMA transação:
+            // se qualquer conferência falhar, a baixa de estoque é desfeita junto.
+            DB::connection('sqlite_local')->transaction(function () use ($validado, $caixa, $uuid, &$totalComDesconto) {
+                $total = 0;
+                $itensParaSalvar = [];
+
                 foreach ($validado['itens'] as $item) {
                     if (!empty($item['produto_variante_id'])) {
                         $variante = DB::connection('sqlite_local')->table('produto_variantes_cache')
                             ->where('id', $item['produto_variante_id'])->lockForUpdate()->first();
- 
+
                         if (!$variante || $variante->estoque < $item['quantidade']) {
                             throw new \Exception('Estoque insuficiente (local) para o item selecionado.');
                         }
- 
+
                         DB::connection('sqlite_local')->table('produto_variantes_cache')
                             ->where('id', $variante->id)
                             ->decrement('estoque', $item['quantidade']);
- 
+
                         $produto = DB::connection('sqlite_local')->table('produtos_cache')
                             ->where('id', $item['produto_id'])->first();
                     } else {
                         $produto = DB::connection('sqlite_local')->table('produtos_cache')
                             ->where('id', $item['produto_id'])->lockForUpdate()->first();
- 
+
                         if (!$produto || $produto->estoque < $item['quantidade']) {
                             throw new \Exception('Estoque insuficiente (local) para ' . ($produto->nome ?? 'produto'));
                         }
- 
+
                         DB::connection('sqlite_local')->table('produtos_cache')
                             ->where('id', $produto->id)
                             ->decrement('estoque', $item['quantidade']);
                     }
- 
+
                     $precoUnitario = $this->resolverPrecoUnitario($produto, $item['quantidade']);
- 
+
                     $desconto = min($item['desconto'] ?? 0, $precoUnitario * $item['quantidade']);
                     $subtotal = ($precoUnitario * $item['quantidade']) - $desconto;
                     $total += $subtotal;
- 
+
                     $itensParaSalvar[] = [
                         'produto_id' => $item['produto_id'],
                         'produto_variante_id' => $item['produto_variante_id'] ?? null,
@@ -215,54 +238,54 @@ private function resolverPrecoUnitario($produto, $quantidade): float
                         'desconto' => $desconto,
                     ];
                 }
+
+                $descontoGlobal = $validado['desconto_global'] ?? 0;
+                $descontoTotal = collect($itensParaSalvar)->sum('desconto') + $descontoGlobal;
+
+                // Abate o desconto global do total antes de conferir os pagamentos
+                $totalComDesconto = $total - $descontoGlobal;
+
+                if ($totalComDesconto < 0) {
+                    throw new \Exception('Desconto global maior que o total da venda.');
+                }
+
+                $totalPagamentos = collect($validado['pagamentos'])->sum('valor');
+                $troco = round($totalPagamentos - $totalComDesconto, 2);
+
+                if ($troco < -0.01) {
+                    throw new \Exception('A soma dos pagamentos é menor que o total da venda.');
+                }
+
+                DB::connection('sqlite_local')->table('vendas_pendentes')->insert([
+                    'uuid' => $uuid,
+                    'caixa_id_central' => $caixa->id,
+                    'operador_id_central' => Auth::id(),
+                    'cliente_id' => $validado['cliente_id'] ?? null,
+                    'cpf_na_nota' => $validado['cpf_na_nota'] ?? null,
+                    'total' => $totalComDesconto,
+                    'troco' => $troco,
+                    'desconto' => $descontoTotal,
+                    'forma_pagamento' => null,
+                    'pagamentos' => json_encode($validado['pagamentos']),
+                    'itens' => json_encode($itensParaSalvar),
+                    'status' => 'pendente_sync',
+                    'vendida_em' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
             });
- 
-            $descontoGlobal = $validado['desconto_global'] ?? 0;
-            $descontoTotal = collect($itensParaSalvar)->sum('desconto') + $descontoGlobal;
- 
-            // Abate o desconto global do total antes de conferir os pagamentos
-            $totalComDesconto = $total - $descontoGlobal;
- 
-            if ($totalComDesconto < 0) {
-                return response()->json(['erro' => 'Desconto global maior que o total da venda.'], 422);
-            }
- 
-            $totalPagamentos = collect($validado['pagamentos'])->sum('valor');
-            $troco = round($totalPagamentos - $totalComDesconto, 2);
- 
-            if ($troco < -0.01) {
-                return response()->json(['erro' => 'A soma dos pagamentos é menor que o total da venda.'], 422);
-            }
- 
-            $uuid = (string) Str::uuid();
- 
-            DB::connection('sqlite_local')->table('vendas_pendentes')->insert([
-                'uuid' => $uuid,
-                'caixa_id_central' => $caixa->id,
-                'operador_id_central' => Auth::id(),
-                'cliente_id' => $validado['cliente_id'] ?? null,
-                'cpf_na_nota' => $validado['cpf_na_nota'] ?? null,
-                'total' => $totalComDesconto,
-                'troco' => $troco,
-                'desconto' => $descontoTotal,
-                'forma_pagamento' => null,
-                'pagamentos' => json_encode($validado['pagamentos']),
-                'itens' => json_encode($itensParaSalvar),
-                'status' => 'pendente_sync',
-                'vendida_em' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
- 
+
+            // Venda gravada: encerra o carrinho e a autorização de desconto desta venda
             session()->forget('venda_carrinho');
- 
+            AutorizacaoSupervisor::consumir('desconto');
+
             $emissao = ['sucesso' => false, 'contingencia' => false, 'erro' => null];
- 
+
             try {
                 (new SyncService())->enviarVendasPendentes();
- 
+
                 $vendaCentral = \App\Models\Venda::where('uuid', $uuid)->first();
- 
+
                 if ($vendaCentral) {
                     try {
                         $resultado = (new \App\Services\FiscalEmissorService())->emitir($vendaCentral);
@@ -279,7 +302,7 @@ private function resolverPrecoUnitario($produto, $quantidade): float
             } catch (\Exception $e) {
                 // Nem a sincronização rolou - venda fica local, o scheduler tenta depois
             }
- 
+
             return response()->json([
                 'sucesso' => true,
                 'venda_uuid' => $uuid,

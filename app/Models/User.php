@@ -19,10 +19,15 @@ use Illuminate\Support\Str;
     'password', 
     'acesso_caixa', 
     'acesso_fiscal', 
-    'permissoes'])]
+    'acesso_supervisor', 
+    'permissoes'
+    
+    ])]
 #[Hidden([
     'password', 
-    'remember_token'])]
+    'remember_token'
+
+    ])]
 
 class User extends Authenticatable
 {
@@ -35,6 +40,7 @@ class User extends Authenticatable
             'password'          => 'hashed',
             'acesso_caixa'      => 'boolean',
             'acesso_fiscal'     => 'boolean',
+            'acesso_supervisor' => 'boolean',
             'permissoes'        => 'array'
         ];
     }
@@ -77,6 +83,11 @@ class User extends Authenticatable
     public function podeAcessarFiscal(): bool
     {
         return $this->isAdmin() || $this->acesso_fiscal;
+    }
+
+    public function podeAutorizar(): bool
+    {
+        return $this->isAdmin() || (bool) $this->acesso_supervisor;
     }
 
     /** "João da Silva" => "joao.da.silva" (o mesmo cálculo existe em JS no formulário) */
