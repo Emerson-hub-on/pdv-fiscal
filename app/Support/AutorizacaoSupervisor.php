@@ -5,24 +5,18 @@ namespace App\Support;
 class AutorizacaoSupervisor
 {
     // Validade, em minutos. null = sem prazo: vale até a operação terminar
-    // (o desconto é descartado ao finalizar a venda, cancelar o cupom ou abrir uma venda nova).
+    // (os descontos são descartados ao finalizar a venda, cancelar o cupom ou abrir uma venda nova).
     private const VALIDADE = [
-        'desconto'      => null,
-        'cancelar_nfce' => 10,
+        'desconto_item'   => null,
+        'desconto_global' => null,
+        'cancelar_nfce'   => 10,
     ];
 
-    // Ação enviada pelo modal => tipo de autorização guardado na sessão.
     // Cancelar item e cancelar cupom não entram: só mexem no carrinho local,
     // nada fiscal é gravado.
-    private const ACOES = [
-        'desconto_item'   => 'desconto',
-        'desconto_global' => 'desconto',
-        'cancelar_nfce'   => 'cancelar_nfce',
-    ];
-
     public static function tipoDaAcao(?string $acao): ?string
     {
-        return self::ACOES[$acao] ?? null;
+        return array_key_exists($acao, self::VALIDADE) ? $acao : null;
     }
 
     public static function conceder(string $tipo, int $supervisorId): void

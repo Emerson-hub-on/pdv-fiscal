@@ -384,6 +384,14 @@ let resultadosAtuais = [];
 let indiceSelecionado = -1;
 let descontoGlobal = {{ $descontoGlobalInicial }};
 let tipoDescontoPendente = null;
+const liberacoes = @json($liberacoes);
+const chavePermissao = {
+    item: 'desconto_item',
+    global: 'desconto_global',
+    cancelar_item: 'cancelar_item',
+    limpar_pdv: 'cancelar_cupom',
+    cancelar_nfce: 'cancelar_nfce',
+};
 let timeoutBusca;
 let indiceDropdownCancelamento = -1;
 let tipoDescontoEscolhido = null;
@@ -616,14 +624,6 @@ inputBusca.addEventListener('keydown', (e) => {
 });
 
 
-
-function toggleDropdownCancelamento() {
-    document.getElementById('dropdown-cancelamento').classList.toggle('hidden');
-}
-
-function fecharDropdownCancelamento() {
-    document.getElementById('dropdown-cancelamento').classList.add('hidden');
-}
 
 // Fecha o dropdown se o operador clicar fora dele
 document.addEventListener('click', (e) => {
@@ -1218,37 +1218,70 @@ function atualizarTotais() {
 }
 
 
-function abrirModalDescontoItem() {
-    if (carrinho.length === 0) {
-        alert('Adicione um item ao carrinho primeiro.');
-        return;
+function executarAcaoAutorizada() {
+    if (tipoDescontoPendente === 'item' || tipoDescontoPendente === 'global') {
+        // Desconto: vai para escolha de tipo primeiro
+        document.getElementById('modal-tipo-desconto').classList.remove('hidden');
+        document.getElementById('modal-tipo-desconto').classList.add('flex');
+        _handlerTipoDesconto = function (e) {
+            if (e.key === '1') { e.preventDefault(); escolherTipoDesconto('valor'); }
+            if (e.key === '2') { e.preventDefault(); escolherTipoDesconto('porcentagem'); }
+        };
+        document.addEventListener('keydown', _handlerTipoDesconto);
+
+    } else if (tipoDescontoPendente === 'cancelar_item') {
+        abrirLancamentoCancelarItem();
+    } else if (tipoDescontoPendente === 'limpar_pdv') {
+        executarLimparPdv();
+    } else if (tipoDescontoPendente === 'cancelar_nfce') {
+        abrirModalCancelamento();
     }
-    tipoDescontoPendente = 'item';
-    abrirModalAutorizacao('Autorização necessária para aplicar desconto em item.');
 }
 
-
-function abrirModalCancelarItem() {
-    if (carrinho.length === 0) {
-        alert('Não há itens no carrinho.');
-        return;
-    }
-    tipoDescontoPendente = 'cancelar_item';
-    abrirModalAutorizacao('Autorização necessária para cancelar um item.');
+function solicitarAutorizacao(tipo, descricao) {    
+    tipoDescontoPendente = tipo;    
+    // Operador liberado para esta ação: executa direto, sem pedir supervisor    
+    if (liberacoes[chavePermissao[tipo]]) {        
+        executarAcaoAutorizada();        
+        return;    
+    }    
+    abrirModalAutorizacao(descricao);
 }
 
-function solicitarCancelamentoNfce() {
-    tipoDescontoPendente = 'cancelar_nfce';
-    abrirModalAutorizacao('Autorização necessária para cancelar uma NFC-e.');
+function solicitarCancelamentoNfce() {    
+    solicitarAutorizacao('cancelar_nfce', 'Autorização necessária para cancelar uma NFC-e.');
 }
 
-function abrirModalLimparPdv() {
-    if (carrinho.length === 0) {
-        alert('O carrinho já está vazio.');
-        return;
-    }
-    tipoDescontoPendente = 'limpar_pdv';
-    abrirModalAutorizacao('Autorização necessária para cancelar o cupom (limpar todos os itens).');
+function abrirModalDescontoItem() {    
+    if (carrinho.length === 0) {        
+        alert('Adicione um item ao carrinho primeiro.');        
+        return;    
+    }    
+    solicitarAutorizacao('item', 'Autorização necessária para aplicar desconto em item.');
+}
+
+function abrirModalCancelarItem() {    
+    if (carrinho.length === 0) {        
+        alert('Não há itens no carrinho.');        
+        return;    
+    }    
+    solicitarAutorizacao('cancelar_item', 'Autorização necessária para cancelar um item.');
+}
+
+function abrirModalLimparPdv() {    
+    if (carrinho.length === 0) {        
+        alert('O carrinho já está vazio.');        
+        return;    
+    }    
+    solicitarAutorizacao('limpar_pdv', 'Autorização necessária para cancelar o cupom (limpar todos os itens).');
+}
+
+function abrirModalDescontoGlobal() {    
+    if (carrinho.length === 0) {        
+        alert('Adicione um item ao carrinho primeiro.');        
+        return;    
+    }    
+    solicitarAutorizacao('global', 'Autorização necessária para aplicar desconto geral.');
 }
 
 
@@ -1303,15 +1336,6 @@ function confirmarDescontoItem() {
     tipoDescontoEscolhido = null;
 }
 
-function abrirModalDescontoGlobal() {
-    if (carrinho.length === 0) {
-        alert('Adicione um item ao carrinho primeiro.');
-        return;
-    }
-    tipoDescontoPendente = 'global';
-    abrirModalAutorizacao('Autorização necessária para aplicar desconto geral.');
-}
-
 function fecharModalDescontoGlobal() {
     document.getElementById('modal-desconto-global').classList.add('hidden');
     document.getElementById('modal-desconto-global').classList.remove('flex');
@@ -1346,7 +1370,11 @@ async function confirmarAutorizacao() {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
             },
-            body: JSON.stringify({ username: usuario, password: senha }),
+            body: JSON.stringify({
+                username: usuario,
+                password: senha,
+                acao: chavePermissao[tipoDescontoPendente],
+            }),
         });
 
         const resultado = await resp.json();
@@ -1362,27 +1390,11 @@ async function confirmarAutorizacao() {
         return;
     }
 
-    // Autorizado - fecha o modal de senha e abre o modal de lançamento correspondente
+    // Autorizado - fecha o modal de senha e executa a ação correspondente
     document.getElementById('modal-autorizacao').classList.add('hidden');
     document.getElementById('modal-autorizacao').classList.remove('flex');
 
-    if (tipoDescontoPendente === 'item' || tipoDescontoPendente === 'global') {
-        // Desconto: vai para escolha de tipo primeiro
-        document.getElementById('modal-tipo-desconto').classList.remove('hidden');
-        document.getElementById('modal-tipo-desconto').classList.add('flex');
-        _handlerTipoDesconto = function (e) {
-            if (e.key === '1') { e.preventDefault(); escolherTipoDesconto('valor'); }
-            if (e.key === '2') { e.preventDefault(); escolherTipoDesconto('porcentagem'); }
-        };
-        document.addEventListener('keydown', _handlerTipoDesconto);
-    
-    } else if (tipoDescontoPendente === 'cancelar_item') {
-        abrirLancamentoCancelarItem();
-    } else if (tipoDescontoPendente === 'limpar_pdv') {
-        executarLimparPdv();
-    } else if (tipoDescontoPendente === 'cancelar_nfce') {
-        abrirModalCancelamento();
-    }
+    executarAcaoAutorizada();
 }
 
 

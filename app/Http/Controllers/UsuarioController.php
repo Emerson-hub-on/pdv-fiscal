@@ -27,10 +27,18 @@ class UsuarioController extends Controller
 
     public function permissoes(string $perfil, User $usuario)
     {
-        abort_unless($perfil === 'fiscal', 404); // permissões só existem para o Operador Fiscal
+        abort_unless(in_array($perfil, ['fiscal', 'caixa'], true), 404); // permissões só existem para Fiscal e Caixa
 
         $cfg = $this->cfg($perfil);
         $this->garantirDoPerfil($usuario, $cfg);
+
+        if ($perfil === 'caixa') {
+            $acoes  = config('permissoes.caixa.acoes');
+            $niveis = config('permissoes.caixa.niveis');
+            $atuais = collect($acoes)->mapWithKeys(fn ($a, $chave) => [$chave => $usuario->nivelPermissaoCaixa($chave)]);
+
+            return view('usuarios.permissoes_caixa', compact('perfil', 'cfg', 'usuario', 'acoes', 'niveis', 'atuais'));
+        }
 
         $modulos = config('permissoes.modulos');
         $niveis  = config('permissoes.niveis');
@@ -41,10 +49,32 @@ class UsuarioController extends Controller
 
     public function salvarPermissoes(Request $request, string $perfil, User $usuario)
     {
-        abort_unless($perfil === 'fiscal', 404);
+        abort_unless(in_array($perfil, ['fiscal', 'caixa'], true), 404);
 
         $cfg = $this->cfg($perfil);
         $this->garantirDoPerfil($usuario, $cfg);
+
+        if ($perfil === 'caixa') {
+            $request->validate([
+                'permissoes'   => ['required', 'array'],
+                'permissoes.*' => [Rule::in(array_keys(config('permissoes.caixa.niveis')))],
+            ]);
+
+            // Só guarda o que foge do padrão (exige supervisor)
+            $liberacoes = [];
+            foreach (array_keys(config('permissoes.caixa.acoes')) as $acao) {
+                $nivel = $request->input("permissoes.{$acao}", 'supervisor');
+
+                if ($nivel !== 'supervisor') {
+                    $liberacoes[$acao] = $nivel;
+                }
+            }
+
+            $usuario->update(['permissoes_caixa' => $liberacoes ?: null]);
+
+            return redirect()->route('usuarios.index', $perfil)
+                ->with('sucesso', "Permissões de {$usuario->name} atualizadas.");
+        }
 
         $request->validate([
             'permissoes'   => ['required', 'array'],

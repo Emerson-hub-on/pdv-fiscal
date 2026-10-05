@@ -20,7 +20,8 @@ use Illuminate\Support\Str;
     'acesso_caixa', 
     'acesso_fiscal', 
     'acesso_supervisor', 
-    'permissoes'
+    'permissoes',
+    'permissoes_caixa',
     
     ])]
 #[Hidden([
@@ -41,7 +42,8 @@ class User extends Authenticatable
             'acesso_caixa'      => 'boolean',
             'acesso_fiscal'     => 'boolean',
             'acesso_supervisor' => 'boolean',
-            'permissoes'        => 'array'
+            'permissoes'        => 'array',
+            'permissoes_caixa'  => 'array'
         ];
     }
 
@@ -58,6 +60,18 @@ class User extends Authenticatable
         $nivel = ($this->permissoes ?? [])[$modulo] ?? 'total';
 
         return in_array($nivel, ['total', 'consulta', 'bloqueado'], true) ? $nivel : 'total';
+    }
+
+    public function nivelPermissaoCaixa(string $acao): string
+    {
+        $nivel = $this->permissoes_caixa[$acao] ?? 'supervisor';
+
+        return $nivel === 'liberado' ? 'liberado' : 'supervisor';
+    }
+
+    public function caixaLiberado(string $acao): bool
+    {
+        return $this->nivelPermissaoCaixa($acao) === 'liberado';
     }
 
     public function podeVer(string $modulo): bool

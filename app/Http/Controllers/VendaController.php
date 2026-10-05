@@ -23,15 +23,17 @@ class VendaController extends Controller
 
         // Abrir o PDV sem carrinho salvo na sessão = venda nova: descarta autorizações antigas
         if (!session()->has('venda_carrinho')) {
-            AutorizacaoSupervisor::consumir('desconto');
+            AutorizacaoSupervisor::consumir('desconto_item');
+            AutorizacaoSupervisor::consumir('desconto_global');
         }
         AutorizacaoSupervisor::consumir('cancelar_nfce');
 
         $carrinhoSalvo = session('venda_carrinho');
         $itensIniciais = $carrinhoSalvo['itens'] ?? [];
         $descontoGlobalInicial = $carrinhoSalvo['desconto_global'] ?? 0;
+        $liberacoes = $this->liberacoesDoOperador();
 
-        return view('vendas.pdv', compact('caixa', 'itensIniciais', 'descontoGlobalInicial'));
+        return view('vendas.pdv', compact('caixa', 'itensIniciais', 'descontoGlobalInicial', 'liberacoes'));
     }
 
 /**
@@ -91,6 +93,16 @@ class VendaController extends Controller
         return response()->json($produtos);
     }
 
+
+    private function liberacoesDoOperador(): array
+    {
+        $usuario = Auth::user();
+
+        return collect(array_keys(config('permissoes.caixa.acoes')))
+            ->mapWithKeys(fn ($acao) => [$acao => $usuario->caixaLiberado($acao)])
+            ->all();
+    }
+
     /**
      * Grava a venda no banco LOCAL (fila de pendentes), nao mais direto no MySQL.
      */
@@ -125,16 +137,18 @@ class VendaController extends Controller
             return redirect()->route('vendas.pdv')->with('erro', 'Nenhum item no carrinho. Adicione itens antes de prosseguir.');
         }
 
-        return view('vendas.pagamento', $dados);
+        return view('vendas.pagamento', $dados + ['liberacoes' => $this->liberacoesDoOperador()]);
     }
 
     public function limparSessaoCarrinho()
     {
         session()->forget('venda_carrinho');
+        AutorizacaoSupervisor::consumir('desconto_item');
+        AutorizacaoSupervisor::consumir('desconto_global');
         return response()->json(['sucesso' => true]);
     }
     
-private function resolverPrecoUnitario($produto, $quantidade): float
+    private function resolverPrecoUnitario($produto, $quantidade): float
     {
         $temAtacadoConfigurado = $produto->preco_atacado && $produto->quantidade_minima_atacado;
  
@@ -176,11 +190,20 @@ private function resolverPrecoUnitario($produto, $quantidade): float
             return response()->json(['erro' => 'Nenhum caixa aberto.'], 422);
         }
 
-        // Qualquer desconto (por item ou global) exige autorização de supervisor válida
-        $temDesconto = collect($validado['itens'])->sum(fn ($i) => (float) ($i['desconto'] ?? 0)) > 0
-            || (float) ($validado['desconto_global'] ?? 0) > 0;
+        // Cada tipo de desconto exige: operador liberado OU autorização de supervisor válida
+        $usuario = Auth::user();
+        $descontoItens = collect($validado['itens'])->sum(fn ($i) => (float) ($i['desconto'] ?? 0));
+        $descontoGlobalInformado = (float) ($validado['desconto_global'] ?? 0);
 
-        if ($temDesconto && !AutorizacaoSupervisor::valida('desconto')) {
+        $semAutorizacaoItem = $descontoItens > 0
+            && !$usuario->caixaLiberado('desconto_item')
+            && !AutorizacaoSupervisor::valida('desconto_item');
+
+        $semAutorizacaoGlobal = $descontoGlobalInformado > 0
+            && !$usuario->caixaLiberado('desconto_global')
+            && !AutorizacaoSupervisor::valida('desconto_global');
+
+        if ($semAutorizacaoItem || $semAutorizacaoGlobal) {
             return response()->json([
                 'erro' => 'Desconto sem autorização do supervisor. Solicite a autorização novamente.',
             ], 403);
@@ -277,7 +300,8 @@ private function resolverPrecoUnitario($produto, $quantidade): float
 
             // Venda gravada: encerra o carrinho e a autorização de desconto desta venda
             session()->forget('venda_carrinho');
-            AutorizacaoSupervisor::consumir('desconto');
+            AutorizacaoSupervisor::consumir('desconto_item');
+            AutorizacaoSupervisor::consumir('desconto_global');
 
             $emissao = ['sucesso' => false, 'contingencia' => false, 'erro' => null];
 

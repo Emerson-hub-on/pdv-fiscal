@@ -6,6 +6,7 @@ use App\Models\Produto;
 use App\Models\Cliente;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Models\User;
 use Exception;
 
 class SyncService
@@ -101,6 +102,53 @@ class SyncService
         } catch (\Throwable $e) {
             // Throwable (nao so Exception) pra capturar tambem TypeError/Error,
             // como o de tentar gravar um objeto de relacao numa coluna de texto
+            return ['sucesso' => false, 'erro' => $e->getMessage()];
+        }
+    }
+
+        /**
+     * Direcao 1c: puxa do MySQL central os usuarios que precisam entrar no caixa
+     * (admin, operadores de caixa e supervisores) para o login funcionar offline.
+     * Troca o cache inteiro numa transacao: quem perdeu acesso sai junto.
+     */
+    public function puxarUsuarios(): array
+    {
+        try {
+            $usuarios = User::where(function ($q) {
+                $q->where('tipo', 'admin')
+                  ->orWhere('acesso_caixa', true)
+                  ->orWhere('acesso_supervisor', true);
+            })->get();
+
+            // Nunca esvazia o cache por causa de uma resposta vazia
+            if ($usuarios->isEmpty()) {
+                return ['sucesso' => true, 'usuarios_atualizados' => 0];
+            }
+
+            $linhas = $usuarios->map(fn ($u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'username' => $u->username,
+                'tipo' => $u->tipo,
+                'password' => $u->getRawOriginal('password'),
+                'acesso_caixa' => (int) $u->acesso_caixa,
+                'acesso_fiscal' => (int) $u->acesso_fiscal,
+                'acesso_supervisor' => (int) $u->acesso_supervisor,
+                'permissoes' => $u->getRawOriginal('permissoes'),
+                'permissoes_caixa' => $u->getRawOriginal('permissoes_caixa'),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ])->all();
+
+            DB::connection('sqlite_local')->transaction(function () use ($linhas) {
+                DB::connection('sqlite_local')->table('usuarios_cache')->delete();
+                DB::connection('sqlite_local')->table('usuarios_cache')->insert($linhas);
+            });
+
+            $this->salvarMeta('ultima_sincronizacao_usuarios', now()->toDateTimeString());
+
+            return ['sucesso' => true, 'usuarios_atualizados' => $usuarios->count()];
+        } catch (\Throwable $e) {
             return ['sucesso' => false, 'erro' => $e->getMessage()];
         }
     }
@@ -255,9 +303,10 @@ class SyncService
     {
         $catalogo = $this->puxarCatalogo();
         $clientes = $this->puxarClientes();
+        $usuarios = $this->puxarUsuarios();
         $vendas = $this->enviarVendasPendentes();
 
-        return ['catalogo' => $catalogo, 'clientes' => $clientes, 'vendas' => $vendas];
+        return ['catalogo' => $catalogo, 'clientes' => $clientes, 'usuarios' => $usuarios, 'vendas' => $vendas];
     }
 
     protected function obterMeta(string $chave, string $default = null): ?string

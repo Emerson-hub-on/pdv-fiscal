@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\UsuarioCache;
+use App\Support\AutorizacaoSupervisor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -15,26 +17,30 @@ class SupervisorController extends Controller
         $validado = $request->validate([
             'username' => 'required|string',
             'password' => 'required|string',
-            'acao'     => 'nullable|string|max:60', // opcional: ex. "cancelar_item", "desconto_global"
+            'acao'     => 'nullable|string|in:desconto_item,desconto_global,cancelar_item,cancelar_cupom,cancelar_nfce',
         ]);
 
+        // O caixa só consulta o SQLite local
+        $user = UsuarioCache::porUsername(User::normalizarUsername($validado['username']));
+
         // Pode autorizar: administrador ou usuário cadastrado como Supervisor
-        $user = User::where('username', User::normalizarUsername($validado['username']))
-            ->where(function ($q) {
-                $q->where('tipo', 'admin')->orWhere('acesso_supervisor', true);
-            })
-            ->first();
-
-        if ($user && Hash::check($validado['password'], $user->password)) {
-            Log::info('Autorização de supervisor', [
-                'supervisor_id' => $user->id,
-                'operador_id'   => Auth::id(),
-                'acao'          => $validado['acao'] ?? null,
-            ]);
-
-            return response()->json(['autorizado' => true, 'supervisor' => $user->name]);
+        if (!$user || !$user->podeAutorizar() || !Hash::check($validado['password'], $user->password)) {
+            return response()->json(['autorizado' => false], 403);
         }
 
-        return response()->json(['autorizado' => false], 403);
+        $acao = $validado['acao'] ?? null;
+
+        // Registra no servidor o que foi autorizado, para o finalizar/cancelar conferirem
+        if ($tipo = AutorizacaoSupervisor::tipoDaAcao($acao)) {
+            AutorizacaoSupervisor::conceder($tipo, $user->id);
+        }
+
+        Log::info('Autorização de supervisor', [
+            'supervisor_id' => $user->id,
+            'operador_id'   => Auth::id(),
+            'acao'          => $acao,
+        ]);
+
+        return response()->json(['autorizado' => true, 'supervisor' => $user->name]);
     }
 }

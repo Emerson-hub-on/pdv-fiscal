@@ -15,8 +15,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'acesso' => \App\Http\Middleware\VerificaAcesso::class,
             'permissao' => \App\Http\Middleware\PermissaoModulo::class,
+        ]);
 
-            ]);
+        // Quem não está logado volta para o login do contexto certo (caixa x cadastros)
+        $middleware->redirectGuestsTo(fn (Request $request) => route('auth.login', [
+            'modo' => in_array('auth:caixa', $request->route()?->gatherMiddleware() ?? [], true)
+                ? 'operador'
+                : 'admin',
+        ]));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

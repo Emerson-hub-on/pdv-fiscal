@@ -28,8 +28,8 @@
                             @endif
                             
                             <!-- Bloco inserido: Selo de Restrições -->
-                            @if ($perfil === 'fiscal' && !empty($usuario->permissoes))
-                                <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700">Restrições</span>
+                            @if ($perfil === 'caixa' && !empty($usuario->permissoes_caixa))
+                                <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700">Liberações</span>
                             @endif
                         </div>
                     </td>
@@ -53,7 +53,7 @@
                                     Editar
                                 </a>
 
-                                @if ($perfil === 'fiscal')
+                                @if (in_array($perfil, ['fiscal', 'caixa'], true))
                                     <a href="{{ route('usuarios.permissoes', [$perfil, $usuario]) }}"
                                     class="block px-4 py-2.5 text-gray-800 hover:bg-gray-50">
                                         Permissões

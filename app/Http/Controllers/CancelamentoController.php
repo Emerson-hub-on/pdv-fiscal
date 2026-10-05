@@ -35,12 +35,36 @@ class CancelamentoController extends Controller
 
     public function cancelar(Request $request, Venda $venda)
     {
+        $usuario = Auth::user();
+        $liberado = $usuario->caixaLiberado('cancelar_nfce');
+
+        // Operador liberado dispensa o supervisor; os demais precisam da autorização de sessão
+        if (!$liberado && !AutorizacaoSupervisor::valida('cancelar_nfce')) {
+            return response()->json([
+                'sucesso' => false,
+                'erro' => 'Autorização do supervisor ausente, expirada ou já utilizada. Feche esta janela e solicite novamente.',
+            ], 403);
+        }
+
         $validado = $request->validate([
             'justificativa' => 'required|string|min:15',
         ]);
 
         try {
+            $supervisorId = $liberado ? null : AutorizacaoSupervisor::supervisorId('cancelar_nfce');
+
             $resultado = (new FiscalEmissorService())->cancelar($venda, $validado['justificativa']);
+
+            // Uso único: só gasta a autorização quando o cancelamento deu certo
+            AutorizacaoSupervisor::consumir('cancelar_nfce');
+
+            Log::info('NFC-e cancelada', [
+                'venda_id'      => $venda->id,
+                'operador_id'   => $usuario->id,
+                'supervisor_id' => $supervisorId,
+                'liberado'      => $liberado,
+            ]);
+
             return response()->json(['sucesso' => true, 'protocolo' => $resultado['protocolo']]);
         } catch (\Exception $e) {
             return response()->json(['sucesso' => false, 'erro' => $e->getMessage()]);

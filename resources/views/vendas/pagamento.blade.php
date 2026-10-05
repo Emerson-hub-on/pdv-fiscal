@@ -250,6 +250,7 @@ let tipoDescontoPendente = null;
 let formaSelecionada = 'dinheiro';
 let indiceFormaDestacada = 0;
 let tipoDescontoEscolhido = null;
+const liberacoes = @json($liberacoes);
 let _handlerTipoDesconto = null;
 let _handlerConfirmarVoltar = null;
 let clienteSelecionadoId = null;
@@ -525,12 +526,31 @@ function fecharTodosModais() {
 
 function abrirModalDescontoGlobal() {
     tipoDescontoPendente = 'global';
+
+    // Operador liberado para o desconto geral: segue direto, sem pedir supervisor
+    if (liberacoes.desconto_global) {
+        abrirEscolhaTipoDesconto();
+        return;
+    }
+
     document.getElementById('autorizacao-descricao').innerText = 'Autorização necessária para aplicar desconto geral.';
     document.getElementById('autorizacao-usuario').value = '';
     document.getElementById('autorizacao-senha').value = '';
     document.getElementById('autorizacao-erro').classList.add('hidden');
     document.getElementById('modal-autorizacao').classList.remove('hidden');
     document.getElementById('modal-autorizacao').classList.add('flex');
+}
+
+
+function abrirEscolhaTipoDesconto() {
+    document.getElementById('modal-tipo-desconto').classList.remove('hidden');
+    document.getElementById('modal-tipo-desconto').classList.add('flex');
+
+    _handlerTipoDesconto = function (e) {
+        if (e.key === '1') { e.preventDefault(); escolherTipoDesconto('valor'); }
+        if (e.key === '2') { e.preventDefault(); escolherTipoDesconto('porcentagem'); }
+    };
+    document.addEventListener('keydown', _handlerTipoDesconto);
 }
 
 
@@ -571,15 +591,7 @@ async function confirmarAutorizacao() {
 
     document.getElementById('modal-autorizacao').classList.add('hidden');
     document.getElementById('modal-autorizacao').classList.remove('flex');
-
-    document.getElementById('modal-tipo-desconto').classList.remove('hidden');
-    document.getElementById('modal-tipo-desconto').classList.add('flex');
-
-    _handlerTipoDesconto = function (e) {
-        if (e.key === '1') { e.preventDefault(); escolherTipoDesconto('valor'); }
-        if (e.key === '2') { e.preventDefault(); escolherTipoDesconto('porcentagem'); }
-    };
-    document.addEventListener('keydown', _handlerTipoDesconto);
+    abrirEscolhaTipoDesconto();
 }
 
 

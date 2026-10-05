@@ -42,6 +42,11 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        'caixa' => [
+            'driver' => 'session',
+            'provider' => 'usuarios_caixa',
+        ],
     ],
 
     /*
@@ -64,13 +69,13 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', User::class),
+            'model' => env('AUTH_MODEL', App\Models\User::class),
         ],
 
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
+        'usuarios_caixa' => [
+            'driver' => 'usuarios-locais',
+            'model' => App\Models\User::class,
+        ],
     ],
 
     /*

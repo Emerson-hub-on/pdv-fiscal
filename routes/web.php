@@ -43,7 +43,7 @@ Route::middleware('auth')->group(function () {
     // =====================================================================
     // CAIXA — Operador de Caixa (e admin)
     // =====================================================================
-    Route::middleware('acesso:caixa')->group(function () {
+    Route::middleware(['auth:caixa', 'acesso:caixa'])->group(function () {
         Route::get('caixa/abrir', [CaixaController::class, 'abrirForm'])->name('caixa.abrir-form');
         Route::post('caixa/abrir', [CaixaController::class, 'abrir'])->name('caixa.abrir');
         Route::get('caixa/fechar', [CaixaController::class, 'fecharForm'])->name('caixa.fechar-form');
@@ -76,7 +76,7 @@ Route::middleware('auth')->group(function () {
     // =====================================================================
     // USADAS PELOS DOIS SISTEMAS (caixa e cadastros)
     // =====================================================================
-    Route::middleware('acesso:caixa,fiscal')->group(function () {
+    Route::middleware(['auth:web,caixa', 'acesso:caixa,fiscal'])->group(function () {
         Route::post('sincronizar-agora', [SincronizacaoController::class, 'executar'])->name('sincronizacao.executar');
         Route::get('/api/consulta-cnpj/{cnpj}', [ClienteController::class, 'consultarCnpj'])
             ->name('clientes.consultarCnpj');
@@ -85,7 +85,7 @@ Route::middleware('auth')->group(function () {
     // =====================================================================
     // SISTEMA DE CADASTROS E FATURAMENTO — Operador Fiscal (e admin)
     // =====================================================================
-    Route::middleware('acesso:fiscal')->group(function () {
+    Route::middleware(['auth:web', 'acesso:fiscal'])->group(function () {
 
         // ---------------- PRODUTOS E CLASSIFICAÇÕES FISCAIS ----------------
         Route::middleware('permissao:produtos')->group(function () {
@@ -215,7 +215,7 @@ Route::middleware('auth')->group(function () {
     // =====================================================================
     // ADMINISTRAÇÃO — gestão de usuários (só admin)
     // =====================================================================
-    Route::middleware('acesso:admin')
+     Route::middleware(['auth:web', 'acesso:admin'])
         ->prefix('usuarios')
         ->where(['perfil' => 'caixa|fiscal|supervisor'])
         ->group(function () {
