@@ -154,7 +154,6 @@ class UsuarioController extends Controller
             // Um código por pessoa: o próximo livre (códigos nunca são reaproveitados)
             $usuario = User::create([
                 'name'     => trim($dados['name']),
-                'tipo'     => 'operador', // coluna antiga, ainda obrigatória até a etapa 3
                 'password' => $dados['password'],
                 'codigo'   => (int) User::max('codigo') + 1,
             ]);

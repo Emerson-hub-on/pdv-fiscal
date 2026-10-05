@@ -10,13 +10,9 @@ class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
-        User::firstOrCreate(
-            ['username' => 'admin'],
-            [
-                'name' => 'Administrador',
-                'password' => Hash::make('12345'),
-                'tipo' => 'admin',
-            ]
+        User::updateOrCreate(
+            ['codigo' => 1],
+            ['name' => 'Administrador', 'password' => '138257', 'is_admin' => true]
         );
     }
 }

@@ -14,7 +14,6 @@ use Illuminate\Notifications\Notifiable;
 #[Fillable([
     'name',
     'codigo',
-    'tipo',
     'email',
     'password',
     'is_admin',
