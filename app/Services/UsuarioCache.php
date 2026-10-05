@@ -27,7 +27,7 @@ class UsuarioCache
     }
 
     // Monta um User "existente" a partir da linha do cache: os métodos do model
-    // (isAdmin, podeAcessarCaixa, caixaLiberado, casts de array) funcionam normalmente.
+    // (isAdmin, podeAcessarCaixa, caixaLiberado, supervisorLibera...) leem o mapa_acessos.
     private static function hidratar(?object $linha): ?User
     {
         if (!$linha) {
@@ -35,8 +35,8 @@ class UsuarioCache
         }
 
         $atributos = (array) $linha;
-        $atributos['codigo_caixa'] = $atributos['codigo']; // o model conhece a coluna do central
-        $atributos['remember_token'] = null; // o cache não guarda; evita erro em logout/strict mode
+        $atributos['ativo'] = 1;             // o cache só guarda pessoas ativas
+        $atributos['remember_token'] = null; // evita erro em logout/strict mode
 
         return (new User)->newFromBuilder($atributos);
     }

@@ -22,9 +22,9 @@
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Código de acesso</label>
             @if ($usuario)
-                <input type="text" value="{{ $usuario->{$cfg['codigo']} }}" disabled
+                <input type="text" value="{{ $usuario->codigo }}" disabled
                        class="w-full border border-gray-200 bg-gray-50 text-gray-500 font-mono rounded-lg px-3 py-2.5 text-sm">
-                <p class="text-xs text-gray-400 mt-1">Usado no login junto com a senha. Não pode ser alterado.</p>
+                <p class="text-xs text-gray-400 mt-1">Usado no login junto com a senha, em todos os tipos de acesso desta pessoa. Não pode ser alterado.</p>
             @else
                 <p class="text-xs text-gray-500">
                     Gerado automaticamente ao salvar. É o código que a pessoa digita no login, junto com a senha.
@@ -39,7 +39,7 @@
             <input type="password" name="password" minlength="4" autocomplete="new-password"
                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
             @if ($usuario)
-                <p class="text-xs text-gray-400 mt-1">Deixe em branco para manter a senha atual.</p>
+                <p class="text-xs text-gray-400 mt-1">Deixe em branco para manter a senha atual. A senha vale para todos os tipos de acesso desta pessoa.</p>
             @endif
         </div>
     </div>

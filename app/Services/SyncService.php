@@ -114,33 +114,37 @@ class SyncService
     public function puxarUsuarios(): array
     {
         try {
-            $usuarios = User::whereNotNull('codigo_caixa')
-                ->where(function ($q) {
-                    $q->where('tipo', 'admin')
-                      ->orWhere('acesso_caixa', true)
-                      ->orWhere('acesso_supervisor', true);
-                })->get();
+            $usuarios = User::with('acessos.tipo')
+                ->where('ativo', true)
+                ->whereNotNull('codigo')
+                ->get();
 
-            // Nunca esvazia o cache por causa de uma resposta vazia
-            if ($usuarios->isEmpty()) {
-                return ['sucesso' => true, 'usuarios_atualizados' => 0];
+            $agora = now();
+            $linhas = [];
+
+            foreach ($usuarios as $u) {
+                $mapa = $u->mapaAcessos('caixa'); // o caixa só precisa dos acessos do próprio contexto
+
+                if (!$u->is_admin && !$mapa) {
+                    continue;
+                }
+
+                $linhas[] = [
+                    'id' => $u->id,
+                    'codigo' => $u->codigo,
+                    'name' => $u->name,
+                    'password' => $u->getRawOriginal('password'),
+                    'is_admin' => (int) $u->is_admin,
+                    'mapa_acessos' => json_encode($mapa),
+                    'created_at' => $agora,
+                    'updated_at' => $agora,
+                ];
             }
 
-            $linhas = $usuarios->map(fn ($u) => [
-                'id' => $u->id,
-                'codigo' => $u->codigo_caixa,
-                'name' => $u->name,
-                'tipo' => $u->tipo,
-                'password' => $u->getRawOriginal('password'),
-                'acesso_caixa' => (int) $u->acesso_caixa,
-                'acesso_fiscal' => (int) $u->acesso_fiscal,
-                'acesso_supervisor' => (int) $u->acesso_supervisor,
-                'permissoes' => $u->getRawOriginal('permissoes'),
-                'permissoes_caixa' => $u->getRawOriginal('permissoes_caixa'),
-                'permissoes_supervisor' => $u->getRawOriginal('permissoes_supervisor'),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ])->all();
+            // Nunca esvazia o cache por causa de uma resposta vazia
+            if (!$linhas) {
+                return ['sucesso' => true, 'usuarios_atualizados' => 0];
+            }
 
             DB::connection('sqlite_local')->transaction(function () use ($linhas) {
                 DB::connection('sqlite_local')->table('usuarios_cache')->delete();
@@ -149,7 +153,7 @@ class SyncService
 
             $this->salvarMeta('ultima_sincronizacao_usuarios', now()->toDateTimeString());
 
-            return ['sucesso' => true, 'usuarios_atualizados' => $usuarios->count()];
+            return ['sucesso' => true, 'usuarios_atualizados' => count($linhas)];
         } catch (\Throwable $e) {
             return ['sucesso' => false, 'erro' => $e->getMessage()];
         }

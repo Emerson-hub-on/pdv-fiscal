@@ -30,14 +30,14 @@ class AuthController extends Controller
             'modo'     => 'required|in:admin,operador',
         ]);
 
-        // "admin" = sistema de cadastros/faturamento (servidor central, guard "web", codigo_servidor)
-        // "operador" = caixa (cache local do SQLite, guard "caixa", codigo_caixa)
+        // "admin" = sistema de cadastros/faturamento (servidor central, guard "web")
+        // "operador" = caixa (cache local do SQLite, guard "caixa")
         $modo = $credenciais['modo'];
         $guard = $modo === 'admin' ? 'web' : 'caixa';
         $codigo = (int) $credenciais['codigo'];
 
         $usuario = $modo === 'admin'
-            ? User::where('codigo_servidor', $codigo)->first()
+            ? User::where('codigo', $codigo)->where('ativo', true)->first()
             : $this->usuarioDoCaixa($codigo);
 
         if (!$usuario || !Hash::check($credenciais['password'], $usuario->password)) {
@@ -74,7 +74,7 @@ class AuthController extends Controller
         $codigo = (int) $dados['codigo'];
 
         $usuario = $dados['modo'] === 'admin'
-            ? User::where('codigo_servidor', $codigo)->first()
+            ? User::where('codigo', $codigo)->where('ativo', true)->first()
             : UsuarioCache::porCodigo($codigo); // caixa: só o SQLite local
 
         $permitido = $usuario && ($dados['modo'] === 'admin'

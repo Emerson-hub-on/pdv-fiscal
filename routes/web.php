@@ -234,5 +234,7 @@ Route::middleware('auth')->group(function () {
             Route::post('{perfil}/{usuario}/revogar', [UsuarioController::class, 'revogar'])->name('usuarios.revogar');
             Route::get('{perfil}/{usuario}/permissoes', [UsuarioController::class, 'permissoes'])->name('usuarios.permissoes');
             Route::put('{perfil}/{usuario}/permissoes', [UsuarioController::class, 'salvarPermissoes'])->name('usuarios.permissoes.salvar');
+            Route::post('{perfil}/vincular', [UsuarioController::class, 'vincular'])->name('usuarios.vincular');
+        
         });
 });
