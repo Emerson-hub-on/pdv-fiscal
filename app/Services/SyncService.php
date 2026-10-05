@@ -202,35 +202,150 @@ class SyncService
      * Direcao 1e: espelha os caixas ABERTOS no SQLite. Lista vazia e valida (nenhum caixa aberto):
      * apaga o espelho, e assim um caixa fechado no servidor sai do PDV.
      */
+    /**
+     * Direcao 2b: sobe os caixas (aberturas e fechamentos) do SQLite para o servidor.
+     * Idempotente: o servidor localiza o caixa pelo uuid.
+     */
+    public function enviarCaixas(): array
+    {
+        if (CentralStatus::fora()) {
+            return ['sucesso' => true, 'enviados' => 0, 'falhas' => 0];
+        }
+
+        $pendentes = DB::connection('sqlite_local')->table('caixas_local')
+            ->where('sync_pendente', true)
+            ->orderBy('id')
+            ->get();
+
+        $enviados = 0;
+        $falhas = 0;
+
+        foreach ($pendentes as $c) {
+            try {
+                // Um operador não pode ter dois caixas abertos no servidor
+                if ($c->status === 'aberto') {
+                    $conflito = Caixa::where('operador_id', $c->operador_id)
+                        ->where('status', 'aberto')
+                        ->where(fn ($q) => $q->whereNull('uuid')->orWhere('uuid', '!=', $c->uuid))
+                        ->exists();
+
+                    if ($conflito) {
+                        throw new Exception('O operador já tem outro caixa aberto no servidor.');
+                    }
+                }
+
+                $central = Caixa::updateOrCreate(
+                    ['uuid' => $c->uuid],
+                    [
+                        'operador_id' => $c->operador_id,
+                        'pdv_id' => $c->pdv_id,
+                        'data_abertura' => $c->data_abertura,
+                        'valor_abertura' => $c->valor_abertura,
+                        'data_fechamento' => $c->data_fechamento,
+                        'valor_fechamento_informado' => $c->valor_fechamento_informado,
+                        'valor_fechamento_esperado' => $c->valor_fechamento_esperado,
+                        'status' => $c->status,
+                        'observacao' => $c->observacao,
+                    ]
+                );
+
+                DB::connection('sqlite_local')->table('caixas_local')
+                    ->where('id', $c->id)
+                    ->update([
+                        'id_central' => $central->id,
+                        'sync_pendente' => false,
+                        'sync_erro' => null,
+                        'sincronizado_em' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                $enviados++;
+            } catch (\Throwable $e) {
+                // Servidor fora do ar: não é erro do caixa, continua pendente
+                if (CentralStatus::erroDeConexao($e)) {
+                    CentralStatus::marcarFora();
+                    break;
+                }
+
+                DB::connection('sqlite_local')->table('caixas_local')
+                    ->where('id', $c->id)
+                    ->update(['sync_erro' => $e->getMessage(), 'updated_at' => now()]);
+
+                $falhas++;
+            }
+        }
+
+        return ['sucesso' => true, 'enviados' => $enviados, 'falhas' => $falhas];
+    }
+
+    /**
+     * Direcao 1e: traz do servidor os caixas abertos que esta maquina ainda nao conhece,
+     * e fecha localmente os que o servidor ja fechou por outra via.
+     */
     public function puxarCaixasAbertos(): array
     {
         try {
-            $caixas = Caixa::where('status', 'aberto')->get();
+            $local = DB::connection('sqlite_local');
             $agora = now();
 
-            $linhas = $caixas->map(fn ($c) => [
-                'id' => $c->id,
-                'operador_id' => $c->operador_id,
-                'pdv_id' => $c->pdv_id,
-                'data_abertura' => $c->data_abertura,
-                'valor_abertura' => $c->valor_abertura,
-                'status' => 'aberto',
-                'created_at' => $agora,
-                'updated_at' => $agora,
-            ])->all();
-
-            DB::connection('sqlite_local')->transaction(function () use ($linhas) {
-                DB::connection('sqlite_local')->table('caixas_cache')->delete();
-
-                if ($linhas) {
-                    DB::connection('sqlite_local')->table('caixas_cache')->insert($linhas);
+            foreach (Caixa::where('status', 'aberto')->get() as $c) {
+                if ($local->table('caixas_local')->where('uuid', $c->uuid)->exists()) {
+                    continue;
                 }
-            });
 
-            return ['sucesso' => true, 'caixas_abertos' => count($linhas)];
+                $local->table('caixas_local')->insert([
+                    'uuid' => $c->uuid,
+                    'id_central' => $c->id,
+                    'operador_id' => $c->operador_id,
+                    'pdv_id' => $c->pdv_id,
+                    'data_abertura' => $c->data_abertura,
+                    'valor_abertura' => $c->valor_abertura,
+                    'status' => 'aberto',
+                    'sync_pendente' => false,
+                    'sincronizado_em' => $agora,
+                    'created_at' => $agora,
+                    'updated_at' => $agora,
+                ]);
+            }
+
+            $idsAbertos = $local->table('caixas_local')
+                ->where('status', 'aberto')
+                ->where('sync_pendente', false)
+                ->whereNotNull('id_central')
+                ->pluck('id_central');
+
+            if ($idsAbertos->isNotEmpty()) {
+                foreach (Caixa::whereIn('id', $idsAbertos)->where('status', '!=', 'aberto')->get() as $c) {
+                    $local->table('caixas_local')->where('id_central', $c->id)->update([
+                        'status' => $c->status,
+                        'data_fechamento' => $c->data_fechamento,
+                        'valor_fechamento_informado' => $c->valor_fechamento_informado,
+                        'valor_fechamento_esperado' => $c->valor_fechamento_esperado,
+                        'observacao' => $c->observacao,
+                        'updated_at' => $agora,
+                    ]);
+                }
+            }
+
+            return ['sucesso' => true];
         } catch (\Throwable $e) {
             return $this->registrarFalha($e);
         }
+    }
+
+    // Os dois sentidos dos caixas: primeiro sobe o que é local, depois traz o que falta
+    public function sincronizarCaixas(): array
+    {
+        $envio = $this->enviarCaixas();
+        $pull = CentralStatus::fora()
+            ? ['sucesso' => false, 'erro' => 'Servidor indisponível']
+            : $this->puxarCaixasAbertos();
+
+        return [
+            'sucesso' => $envio['sucesso'] && $pull['sucesso'],
+            'erro' => $pull['erro'] ?? null,
+            'enviados' => $envio['enviados'],
+        ];
     }
 
     // Marca o servidor como fora do ar quando o erro for de conexao
@@ -311,10 +426,17 @@ class SyncService
                     DB::transaction(function () use ($vendaLocal) {
                         $itens = json_decode($vendaLocal->itens, true);
                         $pagamentos = json_decode($vendaLocal->pagamentos, true) ?? [];
+                        
+                        $caixaId = $vendaLocal->caixa_id_central
+                        ?? Caixa::where('uuid', $vendaLocal->caixa_uuid)->value('id');
+
+                        if (!$caixaId) {
+                            throw new Exception('O caixa desta venda ainda não foi sincronizado com o servidor.');
+                        }
 
                         $vendaId = DB::table('vendas')->insertGetId([
                             'uuid' => $vendaLocal->uuid,
-                            'caixa_id' => $vendaLocal->caixa_id_central,
+                            'caixa_id' => $caixaId,
                             'operador_id' => $vendaLocal->operador_id_central,
                             'cliente_id' => $vendaLocal->cliente_id,
                             'cpf_na_nota' => $vendaLocal->cpf_na_nota,
@@ -404,11 +526,11 @@ class SyncService
         $resultado = [];
 
         $passos = [
+            'caixas'   => 'sincronizarCaixas',
             'catalogo' => 'puxarCatalogo',
             'clientes' => 'puxarClientes',
             'usuarios' => 'puxarUsuarios',
             'pdvs'     => 'puxarPdvs',
-            'caixas'   => 'puxarCaixasAbertos',
         ];
 
         foreach ($passos as $chave => $metodo) {

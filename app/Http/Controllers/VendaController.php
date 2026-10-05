@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\CaixaCache;
+use App\Models\CaixaLocal;
 use App\Support\CentralStatus;
 use App\Services\SyncService;
 use Illuminate\Http\Request;
@@ -16,13 +16,13 @@ class VendaController extends Controller
 {
     public function pdv()
     {
-        $caixa = CaixaCache::aberto(Auth::id());
+        $caixa = CaixaLocal::aberto(Auth::id());
 
-        // Caixa recém-aberto no servidor ainda pode não estar no espelho local
-        if (!$caixa) {
+        // Caixa aberto no servidor por outro caminho: traz para cá (só se o servidor responder)
+        if (!$caixa && !CentralStatus::fora()) {
             (new SyncService())->puxarPdvs();
             (new SyncService())->puxarCaixasAbertos();
-            $caixa = CaixaCache::aberto(Auth::id());
+            $caixa = CaixaLocal::aberto(Auth::id());
         }
 
         if (!$caixa) {
@@ -192,7 +192,7 @@ class VendaController extends Controller
             'cpf_na_nota' => 'nullable|digits:11',
         ]);
 
-        $caixa = CaixaCache::aberto(Auth::id());
+        $caixa = CaixaLocal::aberto(Auth::id());
 
         if (!$caixa) {
             return response()->json(['erro' => 'Nenhum caixa aberto.'], 422);
@@ -289,7 +289,8 @@ class VendaController extends Controller
 
                 DB::connection('sqlite_local')->table('vendas_pendentes')->insert([
                     'uuid' => $uuid,
-                    'caixa_id_central' => $caixa->id,
+                    'caixa_id_central' => $caixa->id_central,
+                    'caixa_uuid' => $caixa->uuid,
                     'operador_id_central' => Auth::id(),
                     'cliente_id' => $validado['cliente_id'] ?? null,
                     'cpf_na_nota' => $validado['cpf_na_nota'] ?? null,

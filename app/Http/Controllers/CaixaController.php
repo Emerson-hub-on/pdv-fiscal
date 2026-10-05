@@ -2,29 +2,35 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Caixa;
-use App\Models\Pdv;
-use App\Models\CaixaCache;
+use App\Models\CaixaLocal;
+use App\Models\PdvCache;
 use App\Services\SyncService;
-use Illuminate\Support\Facades\Auth;
+use App\Support\CentralStatus;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class CaixaController extends Controller
 {
     public function abrirForm()
     {
-        // Caixa já aberto (espelho local): vai direto ao PDV, sem consultar o servidor
-        if (CaixaCache::aberto(Auth::id())) {
+        $caixa = CaixaLocal::aberto(Auth::id());
+
+        // Caixa aberto no servidor por outro caminho (ou em outra máquina): traz para cá
+        if (!$caixa && !CentralStatus::fora()) {
+            (new SyncService())->puxarCaixasAbertos();
+            $caixa = CaixaLocal::aberto(Auth::id());
+        }
+
+        if ($caixa) {
             return redirect()->route('vendas.pdv');
         }
 
-        $caixaAberto = Caixa::aberto(Auth::id());
+        $pdv = $this->pdvDestaMaquina();
 
-        if ($caixaAberto) {
-            return redirect()->route('vendas.pdv');
+        if (!$pdv) {
+            abort(503, 'Os dados do PDV ainda não foram sincronizados. Conecte ao servidor e tente novamente.');
         }
-
-        $pdv = Pdv::findOrFail(config('app.pdv_id'));
 
         return view('caixa.abrir', compact('pdv'));
     }
@@ -33,18 +39,25 @@ class CaixaController extends Controller
     {
         $validado = $request->validate([
             'valor_abertura' => 'required|numeric|min:0',
-            'pdv_id' => 'required|exists:pdvs,id',
+            'pdv_id' => 'required|exists:sqlite_local.pdvs_cache,id',
         ]);
 
-        Caixa::create([
+        if (CaixaLocal::aberto(Auth::id())) {
+            return redirect()->route('vendas.pdv');
+        }
+
+        CaixaLocal::create([
+            'uuid' => (string) Str::uuid(),
             'operador_id' => Auth::id(),
             'pdv_id' => $validado['pdv_id'],
             'data_abertura' => now(),
             'valor_abertura' => $validado['valor_abertura'],
             'status' => 'aberto',
+            'sync_pendente' => true,
         ]);
-        (new SyncService())->puxarCaixasAbertos();
-        
+
+        // Sobe para o servidor agora; se ele estiver fora do ar, fica pendente e o agendador envia depois
+        (new SyncService())->enviarCaixas();
 
         return redirect()->route('vendas.pdv')->with('sucesso', 'Caixa aberto com sucesso.');
     }
@@ -54,7 +67,7 @@ class CaixaController extends Controller
      */
     public function fecharForm()
     {
-        $caixa = Caixa::aberto(Auth::id());
+        $caixa = CaixaLocal::aberto(Auth::id());
 
         if (!$caixa) {
             return redirect()->route('caixa.abrir-form');
@@ -67,7 +80,7 @@ class CaixaController extends Controller
 
     public function fechar(Request $request)
     {
-        $caixa = Caixa::aberto(Auth::id());
+        $caixa = CaixaLocal::aberto(Auth::id());
 
         if (!$caixa) {
             return redirect()->route('caixa.abrir-form');
@@ -86,9 +99,29 @@ class CaixaController extends Controller
             'valor_fechamento_esperado' => $valorEsperado,
             'observacao' => $validado['observacao'] ?? null,
             'status' => 'fechado',
+            'sync_pendente' => true,
         ]);
-        (new SyncService())->puxarCaixasAbertos();
 
-        return redirect()->route('auth.escolha')->with('sucesso', 'Caixa fechado com sucesso.');
+        (new SyncService())->enviarCaixas();
+
+        $mensagem = $caixa->fresh()->sync_pendente
+            ? 'Caixa fechado. O fechamento será enviado ao servidor quando a conexão voltar.'
+            : 'Caixa fechado com sucesso.';
+
+        return redirect()->route('auth.escolha')->with('sucesso', $mensagem);
+    }
+
+    // PDV desta máquina, do espelho local (tenta sincronizar uma vez se ainda não existir)
+    private function pdvDestaMaquina(): ?PdvCache
+    {
+        $id = config('app.pdv_id');
+        $pdv = PdvCache::find($id);
+
+        if (!$pdv && !CentralStatus::fora()) {
+            (new SyncService())->puxarPdvs();
+            $pdv = PdvCache::find($id);
+        }
+
+        return $pdv;
     }
 }

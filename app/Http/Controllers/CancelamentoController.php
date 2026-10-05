@@ -57,6 +57,9 @@ class CancelamentoController extends Controller
 
             // Uso único: só gasta a autorização quando o cancelamento deu certo
             AutorizacaoSupervisor::consumir('cancelar_nfce');
+            \Illuminate\Support\Facades\DB::connection('sqlite_local')->table('vendas_pendentes')
+                ->where('uuid', $venda->uuid)
+                ->update(['status' => 'cancelada', 'updated_at' => now()]);
 
             Log::info('NFC-e cancelada', [
                 'venda_id'      => $venda->id,

@@ -55,6 +55,7 @@ class AuthController extends Controller
         }
 
         Auth::guard($guard)->login($usuario);
+        \Log::info('login ok', ['guard' => $guard, 'sid' => $request->session()->getId()]);
         $request->session()->regenerate();
         $request->session()->put('modo', $modo);
 

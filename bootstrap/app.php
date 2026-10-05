@@ -18,12 +18,20 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         // Quem não está logado volta para o login do contexto certo (caixa x cadastros)
-        $middleware->redirectGuestsTo(fn (Request $request) => route('auth.login', [
-            'modo' => in_array('auth:caixa', $request->route()?->gatherMiddleware() ?? [], true)
-                ? 'operador'
-                : 'admin',
-        ]));
-    })
+        $middleware->redirectGuestsTo(function (Request $request) {
+                    \Log::info('barrado como visitante', [
+                        'path' => $request->path(),
+                        'sid' => $request->session()->getId(),
+                        'tem_login_caixa' => collect($request->session()->all())->keys()->contains(fn ($k) => str_starts_with($k, 'login_caixa')),
+                    ]);
+
+                    return route('auth.login', [
+                        'modo' => in_array('auth:caixa', $request->route()?->gatherMiddleware() ?? [], true)
+                            ? 'operador'
+                            : 'admin',
+                    ]);
+                });
+            })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),

@@ -42,8 +42,6 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
     ->name('auth.usuario');
 
 
-Route::middleware('auth')->group(function () {
-
     // =====================================================================
     // CAIXA — Operador de Caixa (e admin)
     // =====================================================================
@@ -241,4 +239,3 @@ Route::middleware('auth')->group(function () {
             Route::post('{perfil}/vincular', [UsuarioController::class, 'vincular'])->name('usuarios.vincular');
         
         });
-});

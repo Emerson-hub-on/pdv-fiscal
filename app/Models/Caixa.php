@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Caixa extends Model
 {
     protected $fillable = [
+        'uuid',
         'operador_id', 
         'pdv_id', 
         'data_abertura', 
@@ -25,6 +27,13 @@ class Caixa extends Model
         'valor_fechamento_informado' => 'decimal:2',
         'valor_fechamento_esperado' => 'decimal:2',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Caixa $caixa) {
+            $caixa->uuid ??= (string) Str::uuid();
+        });
+    }
 
     public function operador()
     {
