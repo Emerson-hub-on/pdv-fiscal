@@ -7,13 +7,12 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Str;
 
 #[Fillable([
     'name', 
-    'username', 
     'tipo', 
     'email', 
     'password', 
@@ -25,6 +24,9 @@ use Illuminate\Support\Str;
     'codigo_caixa',
     'codigo_servidor',
     'permissoes_supervisor',
+    'codigo',
+    'is_admin',
+    'ativo',
 
     ])]
 #[Hidden([
@@ -48,9 +50,15 @@ class User extends Authenticatable
             'permissoes'        => 'array',
             'permissoes_caixa'  => 'array',
             'permissoes_supervisor' => 'array',
+            'is_admin'          => 'boolean',
+            'ativo'             => 'boolean',
         ];
     }
 
+    public function acessos(): HasMany
+    {
+        return $this->hasMany(Acesso::class);
+    }
 
     public function nivelPermissaoSupervisor(string $acao): string
     {
