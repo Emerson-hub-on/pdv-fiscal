@@ -9,6 +9,7 @@ class SincronizacaoController extends Controller
     public function executar()
     {
         try {
+            \App\Support\CentralStatus::marcarOnline();
             $resultado = (new SyncService())->sincronizarTudo();
 
             return response()->json([

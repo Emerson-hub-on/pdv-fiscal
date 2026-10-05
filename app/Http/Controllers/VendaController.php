@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Caixa;
+use App\Models\CaixaCache;
+use App\Support\CentralStatus;
 use App\Services\SyncService;
 use Illuminate\Http\Request;
 use App\Support\AutorizacaoSupervisor;
@@ -15,7 +16,14 @@ class VendaController extends Controller
 {
     public function pdv()
     {
-        $caixa = Caixa::aberto(Auth::id());
+        $caixa = CaixaCache::aberto(Auth::id());
+
+        // Caixa recém-aberto no servidor ainda pode não estar no espelho local
+        if (!$caixa) {
+            (new SyncService())->puxarPdvs();
+            (new SyncService())->puxarCaixasAbertos();
+            $caixa = CaixaCache::aberto(Auth::id());
+        }
 
         if (!$caixa) {
             return redirect()->route('caixa.abrir-form');
@@ -184,7 +192,7 @@ class VendaController extends Controller
             'cpf_na_nota' => 'nullable|digits:11',
         ]);
 
-        $caixa = Caixa::aberto(Auth::id());
+        $caixa = CaixaCache::aberto(Auth::id());
 
         if (!$caixa) {
             return response()->json(['erro' => 'Nenhum caixa aberto.'], 422);
@@ -305,26 +313,35 @@ class VendaController extends Controller
 
             $emissao = ['sucesso' => false, 'contingencia' => false, 'erro' => null];
 
-            try {
-                (new SyncService())->enviarVendasPendentes();
+            if (CentralStatus::fora()) {
+                // Servidor fora do ar: a venda fica no caixa e sobe pelo agendador quando a conexão voltar
+                $emissao['erro'] = 'Servidor indisponível: a venda foi salva no caixa e será enviada quando a conexão voltar.';
+            } else {
+                try {
+                    (new SyncService())->enviarVendasPendentes();
 
-                $vendaCentral = \App\Models\Venda::where('uuid', $uuid)->first();
+                    $vendaCentral = \App\Models\Venda::where('uuid', $uuid)->first();
 
-                if ($vendaCentral) {
-                    try {
-                        $resultado = (new \App\Services\FiscalEmissorService())->emitir($vendaCentral);
-                        $emissao = ['sucesso' => true, 'contingencia' => false, 'chave' => $resultado['chave']];
-                    } catch (\Exception $e) {
-                        $vendaCentral->refresh();
-                        $emissao = [
-                            'sucesso' => false,
-                            'contingencia' => $vendaCentral->status === 'contingencia',
-                            'erro' => $e->getMessage(),
-                        ];
+                    if ($vendaCentral) {
+                        try {
+                            $resultado = (new \App\Services\FiscalEmissorService())->emitir($vendaCentral);
+                            $emissao = ['sucesso' => true, 'contingencia' => false, 'chave' => $resultado['chave']];
+                        } catch (\Exception $e) {
+                            $vendaCentral->refresh();
+                            $emissao = [
+                                'sucesso' => false,
+                                'contingencia' => $vendaCentral->status === 'contingencia',
+                                'erro' => $e->getMessage(),
+                            ];
+                        }
                     }
+                } catch (\Throwable $e) {
+                    if (CentralStatus::erroDeConexao($e)) {
+                        CentralStatus::marcarFora();
+                        $emissao['erro'] = 'Servidor indisponível: a venda foi salva no caixa e será enviada quando a conexão voltar.';
+                    }
+                    // Nem a sincronização rolou - venda fica local, o scheduler tenta depois
                 }
-            } catch (\Exception $e) {
-                // Nem a sincronização rolou - venda fica local, o scheduler tenta depois
             }
 
             return response()->json([

@@ -4,13 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\Caixa;
 use App\Models\Pdv;
-use Illuminate\Http\Request;
+use App\Models\CaixaCache;
+use App\Services\SyncService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 
 class CaixaController extends Controller
 {
     public function abrirForm()
     {
+        // Caixa já aberto (espelho local): vai direto ao PDV, sem consultar o servidor
+        if (CaixaCache::aberto(Auth::id())) {
+            return redirect()->route('vendas.pdv');
+        }
+
         $caixaAberto = Caixa::aberto(Auth::id());
 
         if ($caixaAberto) {
@@ -36,6 +43,8 @@ class CaixaController extends Controller
             'valor_abertura' => $validado['valor_abertura'],
             'status' => 'aberto',
         ]);
+        (new SyncService())->puxarCaixasAbertos();
+        
 
         return redirect()->route('vendas.pdv')->with('sucesso', 'Caixa aberto com sucesso.');
     }
@@ -78,6 +87,7 @@ class CaixaController extends Controller
             'observacao' => $validado['observacao'] ?? null,
             'status' => 'fechado',
         ]);
+        (new SyncService())->puxarCaixasAbertos();
 
         return redirect()->route('auth.escolha')->with('sucesso', 'Caixa fechado com sucesso.');
     }

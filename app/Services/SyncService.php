@@ -4,6 +4,9 @@ namespace App\Services;
 
 use App\Models\Produto;
 use App\Models\Cliente;
+use App\Models\Caixa;
+use App\Models\Pdv;
+use App\Support\CentralStatus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Models\User;
@@ -100,9 +103,7 @@ class SyncService
 
             return ['sucesso' => true, 'produtos_atualizados' => $produtos->count()];
         } catch (\Throwable $e) {
-            // Throwable (nao so Exception) pra capturar tambem TypeError/Error,
-            // como o de tentar gravar um objeto de relacao numa coluna de texto
-            return ['sucesso' => false, 'erro' => $e->getMessage()];
+            return $this->registrarFalha($e);
         }
     }
 
@@ -155,8 +156,91 @@ class SyncService
 
             return ['sucesso' => true, 'usuarios_atualizados' => count($linhas)];
         } catch (\Throwable $e) {
-            return ['sucesso' => false, 'erro' => $e->getMessage()];
+            return $this->registrarFalha($e);
         }
+    }
+
+
+        /**
+     * Direcao 1d: espelha os PDVs no SQLite (so o que o caixa precisa para exibir; sem CSC).
+     */
+    public function puxarPdvs(): array
+    {
+        try {
+            $pdvs = Pdv::all();
+
+            if ($pdvs->isEmpty()) {
+                return ['sucesso' => true, 'pdvs_atualizados' => 0];
+            }
+
+            $agora = now();
+
+            $linhas = $pdvs->map(fn ($p) => [
+                'id' => $p->id,
+                'nome' => $p->nome,
+                'serie_nfce' => $p->serie_nfce,
+                'numero_atual_nfce' => $p->numero_atual_nfce ?? 0,
+                'ativo' => (int) $p->ativo,
+                'created_at' => $agora,
+                'updated_at' => $agora,
+            ])->all();
+
+            DB::connection('sqlite_local')->transaction(function () use ($linhas) {
+                DB::connection('sqlite_local')->table('pdvs_cache')->delete();
+                DB::connection('sqlite_local')->table('pdvs_cache')->insert($linhas);
+            });
+
+            $this->salvarMeta('ultima_sincronizacao_pdvs', now()->toDateTimeString());
+
+            return ['sucesso' => true, 'pdvs_atualizados' => count($linhas)];
+        } catch (\Throwable $e) {
+            return $this->registrarFalha($e);
+        }
+    }
+
+    /**
+     * Direcao 1e: espelha os caixas ABERTOS no SQLite. Lista vazia e valida (nenhum caixa aberto):
+     * apaga o espelho, e assim um caixa fechado no servidor sai do PDV.
+     */
+    public function puxarCaixasAbertos(): array
+    {
+        try {
+            $caixas = Caixa::where('status', 'aberto')->get();
+            $agora = now();
+
+            $linhas = $caixas->map(fn ($c) => [
+                'id' => $c->id,
+                'operador_id' => $c->operador_id,
+                'pdv_id' => $c->pdv_id,
+                'data_abertura' => $c->data_abertura,
+                'valor_abertura' => $c->valor_abertura,
+                'status' => 'aberto',
+                'created_at' => $agora,
+                'updated_at' => $agora,
+            ])->all();
+
+            DB::connection('sqlite_local')->transaction(function () use ($linhas) {
+                DB::connection('sqlite_local')->table('caixas_cache')->delete();
+
+                if ($linhas) {
+                    DB::connection('sqlite_local')->table('caixas_cache')->insert($linhas);
+                }
+            });
+
+            return ['sucesso' => true, 'caixas_abertos' => count($linhas)];
+        } catch (\Throwable $e) {
+            return $this->registrarFalha($e);
+        }
+    }
+
+    // Marca o servidor como fora do ar quando o erro for de conexao
+    private function registrarFalha(\Throwable $e): array
+    {
+        if (CentralStatus::erroDeConexao($e)) {
+            CentralStatus::marcarFora();
+        }
+
+        return ['sucesso' => false, 'erro' => $e->getMessage()];
     }
     /**
      * Direcao 1b: puxa do MySQL central pro SQLite local (cadastro de clientes).
@@ -197,7 +281,7 @@ class SyncService
 
             return ['sucesso' => true, 'clientes_atualizados' => $clientes->count()];
         } catch (\Throwable $e) {
-            return ['sucesso' => false, 'erro' => $e->getMessage()];
+            return $this->registrarFalha($e);
         }
     }
 
@@ -206,6 +290,11 @@ class SyncService
      */
     public function enviarVendasPendentes(): array
     {
+        // Servidor fora do ar: as vendas ficam pendentes e sobem quando a conexão voltar
+        if (CentralStatus::fora()) {
+            return ['sucesso' => true, 'enviadas' => 0, 'falhas' => 0];
+        }
+
         $pendentes = DB::connection('sqlite_local')->table('vendas_pendentes')
             ->where('status', 'pendente_sync')
             ->orWhere('status', 'erro_sync')
@@ -286,6 +375,12 @@ class SyncService
 
                 $enviadas++;
             } catch (Exception $e) {
+                // Falha de conexão: não é erro da venda. Mantém pendente e não insiste nas outras
+                if (CentralStatus::erroDeConexao($e)) {
+                    CentralStatus::marcarFora();
+                    break;
+                }
+
                 DB::connection('sqlite_local')->table('vendas_pendentes')
                     ->where('id', $vendaLocal->id)
                     ->update([
@@ -306,12 +401,25 @@ class SyncService
      */
     public function sincronizarTudo(): array
     {
-        $catalogo = $this->puxarCatalogo();
-        $clientes = $this->puxarClientes();
-        $usuarios = $this->puxarUsuarios();
-        $vendas = $this->enviarVendasPendentes();
+        $resultado = [];
 
-        return ['catalogo' => $catalogo, 'clientes' => $clientes, 'usuarios' => $usuarios, 'vendas' => $vendas];
+        $passos = [
+            'catalogo' => 'puxarCatalogo',
+            'clientes' => 'puxarClientes',
+            'usuarios' => 'puxarUsuarios',
+            'pdvs'     => 'puxarPdvs',
+            'caixas'   => 'puxarCaixasAbertos',
+        ];
+
+        foreach ($passos as $chave => $metodo) {
+            $resultado[$chave] = CentralStatus::fora()
+                ? ['sucesso' => false, 'erro' => 'Servidor indisponível']
+                : $this->{$metodo}();
+        }
+
+        $resultado['vendas'] = $this->enviarVendasPendentes();
+
+        return $resultado;
     }
 
     protected function obterMeta(string $chave, string $default = null): ?string
