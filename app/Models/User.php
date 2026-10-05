@@ -24,7 +24,8 @@ use Illuminate\Support\Str;
     'permissoes_caixa',
     'codigo_caixa',
     'codigo_servidor',
-    
+    'permissoes_supervisor',
+
     ])]
 #[Hidden([
     'password', 
@@ -45,8 +46,24 @@ class User extends Authenticatable
             'acesso_fiscal'     => 'boolean',
             'acesso_supervisor' => 'boolean',
             'permissoes'        => 'array',
-            'permissoes_caixa'  => 'array'
+            'permissoes_caixa'  => 'array',
+            'permissoes_supervisor' => 'array',
         ];
+    }
+
+
+    public function nivelPermissaoSupervisor(string $acao): string
+    {
+        $nivel = $this->permissoes_supervisor[$acao] ?? 'libera';
+
+        return $nivel === 'nao_libera' ? 'nao_libera' : 'libera';
+    }
+
+    // Admin autoriza tudo; supervisor autoriza o que não foi restringido
+    public function supervisorLibera(string $acao): bool
+    {
+        return $this->isAdmin()
+            || ($this->acesso_supervisor && $this->nivelPermissaoSupervisor($acao) === 'libera');
     }
 
     public function nivelPermissao(string $modulo): string
@@ -95,7 +112,7 @@ class User extends Authenticatable
     {
         return $this->isAdmin() || $this->acesso_caixa || $this->acesso_supervisor;
     }
-    
+
     public function podeAcessarFiscal(): bool
     {
         return $this->isAdmin() || $this->acesso_fiscal;

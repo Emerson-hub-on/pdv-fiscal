@@ -162,8 +162,18 @@
 
         <p class="text-sm text-gray-500 mb-4" id="autorizacao-descricao"></p>
 
-        <label class="block text-sm font-medium mb-1">Código do supervisor</label>
-        <input type="text" inputmode="numeric" id="autorizacao-usuario" class="w-full border rounded px-3 py-2 mb-3">
+        <div class="grid grid-cols-3 gap-3 mb-3">
+            <div class="col-span-1">
+                <label class="block text-sm font-medium mb-1">Código</label>
+                <input type="text" inputmode="numeric" autocomplete="off" id="autorizacao-usuario"
+                       class="w-full border rounded px-3 py-2">
+            </div>
+            <div class="col-span-2">
+                <label class="block text-sm font-medium mb-1">Supervisor</label>
+                <input type="text" id="autorizacao-nome" readonly tabindex="-1" placeholder="—"
+                       class="w-full border border-gray-200 bg-gray-50 rounded px-3 py-2 text-gray-800">
+            </div>
+        </div>
 
         <label class="block text-sm font-medium mb-1">Senha</label>
         <input type="password" id="autorizacao-senha" class="w-full border rounded px-3 py-2 mb-4">
@@ -397,12 +407,51 @@ let indiceDropdownCancelamento = -1;
 let tipoDescontoEscolhido = null;
 let _handlerTipoDesconto = null;
 let produtoBalancaPendente = null;
-
+let timeoutNomeSupervisor;
+let ultimaBuscaSupervisor = 0;
 const inputBusca = document.getElementById('busca-produto');
 const inputBuscaModal = document.getElementById('busca-produto-modal');
 const linhasBuscaDiv = document.getElementById('linhas-busca-produto');
 
 
+
+function definirNomeSupervisor(texto, erro = false) {
+    const campo = document.getElementById('autorizacao-nome');
+    campo.value = texto;
+    campo.classList.toggle('text-red-600', erro);
+    campo.classList.toggle('text-gray-800', !erro);
+}
+
+async function buscarNomeSupervisor() {
+    const codigo = document.getElementById('autorizacao-usuario').value.trim();
+    const busca = ++ultimaBuscaSupervisor;
+
+    if (!/^\d+$/.test(codigo)) {
+        definirNomeSupervisor('');
+        return;
+    }
+
+    try {
+        const url = `{{ route('supervisor.usuario') }}?codigo=${encodeURIComponent(codigo)}`;
+        const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        const dados = await resp.json();
+
+        if (busca !== ultimaBuscaSupervisor) return; // chegou uma resposta mais nova
+
+        if (dados.nome) {
+            definirNomeSupervisor(dados.nome);
+        } else {
+            definirNomeSupervisor(dados.aviso || 'Supervisor não encontrado', true);
+        }
+    } catch (e) {
+        if (busca === ultimaBuscaSupervisor) definirNomeSupervisor('');
+    }
+}
+
+document.getElementById('autorizacao-usuario').addEventListener('input', () => {
+    clearTimeout(timeoutNomeSupervisor);
+    timeoutNomeSupervisor = setTimeout(buscarNomeSupervisor, 250);
+});
 
 
 function abrirModalBalanca(produto, variante) {
@@ -1276,12 +1325,22 @@ function abrirModalLimparPdv() {
     solicitarAutorizacao('limpar_pdv', 'Autorização necessária para cancelar o cupom (limpar todos os itens).');
 }
 
-function abrirModalDescontoGlobal() {    
-    if (carrinho.length === 0) {        
-        alert('Adicione um item ao carrinho primeiro.');        
-        return;    
-    }    
-    solicitarAutorizacao('global', 'Autorização necessária para aplicar desconto geral.');
+function abrirModalDescontoGlobal() {
+    tipoDescontoPendente = 'global';
+
+    // Operador liberado para o desconto geral: segue direto, sem pedir supervisor
+    if (liberacoes.desconto_global) {
+        abrirEscolhaTipoDesconto();
+        return;
+    }
+
+    document.getElementById('autorizacao-descricao').innerText = 'Autorização necessária para aplicar desconto geral.';
+    document.getElementById('autorizacao-usuario').value = '';
+    definirNomeSupervisor('');
+    document.getElementById('autorizacao-senha').value = '';
+    document.getElementById('autorizacao-erro').classList.add('hidden');
+    document.getElementById('modal-autorizacao').classList.remove('hidden');
+    document.getElementById('modal-autorizacao').classList.add('flex');
 }
 
 
@@ -1344,13 +1403,13 @@ function fecharModalDescontoGlobal() {
 function abrirModalAutorizacao(descricao) {
     document.getElementById('autorizacao-descricao').innerText = descricao;
     document.getElementById('autorizacao-usuario').value = '';
+    definirNomeSupervisor('');
     document.getElementById('autorizacao-senha').value = '';
     document.getElementById('autorizacao-erro').classList.add('hidden');
 
     document.getElementById('modal-autorizacao').classList.remove('hidden');
     document.getElementById('modal-autorizacao').classList.add('flex');
 }
-
 
 async function confirmarAutorizacao() {
     const usuario = document.getElementById('autorizacao-usuario').value;
@@ -1380,7 +1439,7 @@ async function confirmarAutorizacao() {
         const resultado = await resp.json();
 
         if (!resultado.autorizado) {
-            erroP.innerText = 'Usuário ou senha do supervisor inválidos.';
+            erroP.innerText = resultado.motivo || 'Código ou senha do supervisor inválidos.';
             erroP.classList.remove('hidden');
             return;
         }

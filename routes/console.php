@@ -10,5 +10,14 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::call(function () {
-    (new SyncService())->sincronizarTudo();
-})->everyMinute()->name('sincronizar-pdv')->withoutOverlapping();
+    $resultado = (new SyncService())->sincronizarTudo();
+
+    // O retorno antes era descartado: erros de cada parte passam a ir para o log
+    foreach (['catalogo', 'clientes', 'usuarios'] as $parte) {
+        if (!($resultado[$parte]['sucesso'] ?? false)) {
+            Log::warning("Sincronização falhou: {$parte}", [
+                'erro' => $resultado[$parte]['erro'] ?? 'sem mensagem',
+            ]);
+        }
+    }
+})->everyMinute()->name('sincronizar-pdv')->withoutOverlapping(5);

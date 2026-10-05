@@ -26,10 +26,18 @@ class UsuarioController extends Controller
 
     public function permissoes(string $perfil, User $usuario)
     {
-        abort_unless(in_array($perfil, ['fiscal', 'caixa'], true), 404); // permissões só existem para Fiscal e Caixa
+        abort_unless(in_array($perfil, ['fiscal', 'caixa', 'supervisor'], true), 404);
 
         $cfg = $this->cfg($perfil);
         $this->garantirDoPerfil($usuario, $cfg);
+
+        if ($perfil === 'supervisor') {
+            $acoes  = config('permissoes.caixa.acoes'); // mesmas ações do caixa
+            $niveis = config('permissoes.supervisor.niveis');
+            $atuais = collect($acoes)->mapWithKeys(fn ($a, $chave) => [$chave => $usuario->nivelPermissaoSupervisor($chave)]);
+
+            return view('usuarios.permissoes_supervisor', compact('perfil', 'cfg', 'usuario', 'acoes', 'niveis', 'atuais'));
+        }
 
         if ($perfil === 'caixa') {
             $acoes  = config('permissoes.caixa.acoes');
@@ -48,10 +56,32 @@ class UsuarioController extends Controller
 
     public function salvarPermissoes(Request $request, string $perfil, User $usuario)
     {
-        abort_unless(in_array($perfil, ['fiscal', 'caixa'], true), 404);
+        abort_unless(in_array($perfil, ['fiscal', 'caixa', 'supervisor'], true), 404);
 
         $cfg = $this->cfg($perfil);
         $this->garantirDoPerfil($usuario, $cfg);
+
+        if ($perfil === 'supervisor') {
+            $request->validate([
+                'permissoes'   => ['required', 'array'],
+                'permissoes.*' => [Rule::in(array_keys(config('permissoes.supervisor.niveis')))],
+            ]);
+
+            // Só guarda o que foge do padrão (libera tudo)
+            $restricoes = [];
+            foreach (array_keys(config('permissoes.caixa.acoes')) as $acao) {
+                $nivel = $request->input("permissoes.{$acao}", 'libera');
+
+                if ($nivel !== 'libera') {
+                    $restricoes[$acao] = $nivel;
+                }
+            }
+
+            $usuario->update(['permissoes_supervisor' => $restricoes ?: null]);
+
+            return redirect()->route('usuarios.index', $perfil)
+                ->with('sucesso', "Permissões de {$usuario->name} atualizadas.");
+        }
 
         if ($perfil === 'caixa') {
             $request->validate([
@@ -95,7 +125,7 @@ class UsuarioController extends Controller
         return redirect()->route('usuarios.index', $perfil)
             ->with('sucesso', "Permissões de {$usuario->name} atualizadas.");
     }
-
+    
     private function cfg(string $perfil): array
     {
         return self::PERFIS[$perfil] ?? abort(404);

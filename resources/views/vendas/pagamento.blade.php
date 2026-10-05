@@ -579,7 +579,7 @@ async function confirmarAutorizacao() {
         });
         const resultado = await resp.json();
         if (!resultado.autorizado) {
-            erroP.innerText = 'Usuário ou senha do supervisor inválidos.';
+            erroP.innerText = resultado.motivo || 'Código ou senha do supervisor inválidos.';
             erroP.classList.remove('hidden');
             return;
         }

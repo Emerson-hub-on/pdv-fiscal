@@ -376,7 +376,10 @@ function toggleCadastros() {
                     `Sincronização concluída!\n` +
                     `Produtos atualizados: ${resultado.produtos_atualizados}\n` +
                     `Vendas enviadas: ${resultado.vendas_enviadas}` +
-                    (resultado.vendas_falhas > 0 ? `\nVendas com falha: ${resultado.vendas_falhas}` : '')
+                    (resultado.vendas_falhas > 0 ? `\nVendas com falha: ${resultado.vendas_falhas}` : '') +
+                    (resultado.usuarios_ok
+                        ? `\nUsuários atualizados: ${resultado.usuarios_atualizados}`
+                        : `\nFalha ao sincronizar usuários: ${resultado.usuarios_erro}`)
                 );
             } else {
                 alert('Erro ao sincronizar: ' + resultado.erro);

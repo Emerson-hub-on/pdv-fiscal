@@ -41,7 +41,7 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
     ->middleware('throttle:60,1')
     ->name('auth.usuario');
 
-    
+
 Route::middleware('auth')->group(function () {
 
     // =====================================================================
@@ -71,6 +71,9 @@ Route::middleware('auth')->group(function () {
         Route::post('supervisor/autorizar', [SupervisorController::class, 'autorizar'])
             ->middleware('throttle:10,1')
             ->name('supervisor.autorizar');
+        Route::get('supervisor/usuario', [SupervisorController::class, 'nomePorCodigo'])
+            ->middleware('throttle:60,1')
+            ->name('supervisor.usuario');
 
         // Endpoints JSON usados pelo modal "Adicionar consumidor" no caixa
         Route::get('/clientes/buscar', [ClienteController::class, 'buscar'])->name('clientes.buscar');

@@ -33,5 +33,13 @@ return [
         ],
     ],
 
+        // Supervisor: quais ações do caixa ele pode autorizar (padrão: todas)
+    'supervisor' => [
+        'niveis' => [
+            'libera'     => 'Libera',
+            'nao_libera' => 'Não libera',
+        ],
+    ],
+
     'acao'     => 'nullable|string|in:desconto_item,desconto_global,cancelar_item,cancelar_cupom,cancelar_nfce',
 ];

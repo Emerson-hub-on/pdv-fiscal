@@ -137,6 +137,7 @@ class SyncService
                 'acesso_supervisor' => (int) $u->acesso_supervisor,
                 'permissoes' => $u->getRawOriginal('permissoes'),
                 'permissoes_caixa' => $u->getRawOriginal('permissoes_caixa'),
+                'permissoes_supervisor' => $u->getRawOriginal('permissoes_supervisor'),
                 'created_at' => now(),
                 'updated_at' => now(),
             ])->all();
