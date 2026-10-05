@@ -93,9 +93,9 @@ class User extends Authenticatable
 
     public function podeAcessarCaixa(): bool
     {
-        return $this->isAdmin() || $this->acesso_caixa;
+        return $this->isAdmin() || $this->acesso_caixa || $this->acesso_supervisor;
     }
-
+    
     public function podeAcessarFiscal(): bool
     {
         return $this->isAdmin() || $this->acesso_fiscal;
