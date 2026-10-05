@@ -19,10 +19,10 @@ class UsuarioCache
         );
     }
 
-    public static function porUsername(string $username): ?User
+    public static function porCodigo(int $codigo): ?User
     {
         return self::hidratar(
-            DB::connection('sqlite_local')->table('usuarios_cache')->where('username', $username)->first()
+            DB::connection('sqlite_local')->table('usuarios_cache')->where('codigo', $codigo)->first()
         );
     }
 
@@ -35,6 +35,7 @@ class UsuarioCache
         }
 
         $atributos = (array) $linha;
+        $atributos['codigo_caixa'] = $atributos['codigo']; // o model conhece a coluna do central
         $atributos['remember_token'] = null; // o cache não guarda; evita erro em logout/strict mode
 
         return (new User)->newFromBuilder($atributos);

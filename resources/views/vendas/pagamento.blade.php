@@ -163,8 +163,8 @@
             <button onclick="fecharModalAutorizacao()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
         </div>
         <p class="text-sm text-gray-500 mb-4" id="autorizacao-descricao"></p>
-        <label class="block text-sm font-medium mb-1">Usuário</label>
-        <input type="text" id="autorizacao-usuario" class="w-full border rounded px-3 py-2 mb-3">
+        <label class="block text-sm font-medium mb-1">Código do supervisor</label>
+        <input type="text" inputmode="numeric" id="autorizacao-usuario" class="w-full border rounded px-3 py-2 mb-3">
         <label class="block text-sm font-medium mb-1">Senha</label>
         <input type="password" id="autorizacao-senha" class="w-full border rounded px-3 py-2 mb-4">
         <p id="autorizacao-erro" class="text-red-600 text-sm mb-3 hidden"></p>
@@ -575,7 +575,7 @@ async function confirmarAutorizacao() {
         const resp = await fetch('{{ route("supervisor.autorizar") }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            body: JSON.stringify({ username: usuario, password: senha }),
+                        body: JSON.stringify({ codigo: usuario, password: senha, acao: 'desconto_global' }),
         });
         const resultado = await resp.json();
         if (!resultado.autorizado) {

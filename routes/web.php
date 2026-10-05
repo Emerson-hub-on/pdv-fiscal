@@ -37,7 +37,11 @@ Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
 Route::post('/login', [AuthController::class, 'login'])->name('auth.login.submit');
 Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
+Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
+    ->middleware('throttle:60,1')
+    ->name('auth.usuario');
 
+    
 Route::middleware('auth')->group(function () {
 
     // =====================================================================

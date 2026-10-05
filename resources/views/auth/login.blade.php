@@ -22,9 +22,13 @@
             @csrf
             <input type="hidden" name="modo" value="{{ $modo }}">
 
-            <label class="block text-sm font-medium mb-1">Usuário</label>
-            <input type="text" name="username" value="admin" required
-                   class="w-full border rounded px-3 py-2 mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Código</label>
+            <input type="text" name="codigo" inputmode="numeric" pattern="[0-9]*" required autofocus
+                value="{{ old('codigo') }}"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+            @error('codigo')
+                <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+            @enderror
 
             <label class="block text-sm font-medium mb-1">Senha</label>
             <input type="password" name="password" required

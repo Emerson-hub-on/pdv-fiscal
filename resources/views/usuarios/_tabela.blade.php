@@ -2,8 +2,8 @@
     <table class="w-full text-sm">
         <thead class="bg-gray-700 rounded-lg font-medium text-xs uppercase tracking-wide">
             <tr>
+                <th class="px-4 py-3 text-left font-medium text-amber-50">Código</th>
                 <th class="px-4 py-3 text-left font-medium text-amber-50">Nome</th>
-                <th class="px-4 py-3 text-left font-medium text-amber-50">Login</th>
                 <th class="px-4 py-3 text-left font-medium text-amber-50">Acessos</th>
                 <th class="px-4 py-3 text-left font-medium text-amber-50">Ações</th>
             </tr>
@@ -11,8 +11,9 @@
         <tbody class="divide-y divide-gray-100">
             @forelse ($usuarios as $usuario)
                 <tr class="hover:bg-gray-200 transition">
+                    <td class="px-4 py-3 text-gray-600 font-mono text-xs">{{ $usuario->{$cfg['codigo']} }}</td>
                     <td class="px-4 py-3 font-medium text-gray-800">{{ $usuario->name }}</td>
-                    <td class="px-4 py-3 text-gray-600 font-mono text-xs">{{ $usuario->username }}</td>
+
                     
                     <!-- Coluna Acessos -->
                     <td class="px-4 py-3">

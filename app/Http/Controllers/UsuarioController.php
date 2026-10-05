@@ -4,22 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
 
 class UsuarioController extends Controller
 {
     private const PERFIS = [
         'caixa' => [
-            'campo' => 'acesso_caixa', 'titulo' => 'Operadores de Caixa',
+            'campo' => 'acesso_caixa', 'codigo' => 'codigo_caixa', 'titulo' => 'Operadores de Caixa',
             'singular' => 'Operador de Caixa', 'sistema' => 'o caixa',
         ],
         'fiscal' => [
-            'campo' => 'acesso_fiscal', 'titulo' => 'Operadores Fiscais',
+            'campo' => 'acesso_fiscal', 'codigo' => 'codigo_servidor', 'titulo' => 'Operadores Fiscais',
             'singular' => 'Operador Fiscal', 'sistema' => 'o sistema de cadastros',
         ],
         'supervisor' => [
-            'campo' => 'acesso_supervisor', 'titulo' => 'Supervisores',
+            'campo' => 'acesso_supervisor', 'codigo' => 'codigo_caixa', 'titulo' => 'Supervisores',
             'singular' => 'Supervisor', 'sistema' => 'as autorizações do caixa',
         ],
     ];
@@ -132,48 +131,24 @@ class UsuarioController extends Controller
 
         $dados = $request->validate([
             'name'     => ['required', 'string', 'min:2', 'max:100'],
-            'password' => ['nullable', 'string', 'min:4', 'max:100'],
+            'password' => ['required', 'string', 'min:4', 'max:100'],
+        ], [
+            'password.required' => 'Informe a senha (mínimo de 4 caracteres).',
         ]);
 
-        $nome     = trim($dados['name']);
-        $username = User::normalizarUsername($nome);
-
-        if ($username === '') {
-            throw ValidationException::withMessages(['name' => 'Informe um nome com letras ou números.']);
-        }
-
-        $existente = User::where('username', $username)->first();
-
-        if ($existente) {
-            if ($existente->isAdmin()) {
-                throw ValidationException::withMessages(['name' => 'Esse nome é reservado ao administrador.']);
-            }
-
-            if ($existente->{$cfg['campo']}) {
-                throw ValidationException::withMessages(['name' => "{$existente->name} já está cadastrado como {$cfg['singular']}."]);
-            }
-
-            // Mesma pessoa em outro perfil: só acrescenta o acesso e mantém a senha atual
-            $existente->update([$cfg['campo'] => true]);
-
-            return redirect()->route('usuarios.index', $perfil)
-                ->with('sucesso', "{$existente->name} já estava cadastrado em outro perfil. O acesso como {$cfg['singular']} foi adicionado e a senha atual foi mantida.");
-        }
-
-        if (empty($dados['password'])) {
-            throw ValidationException::withMessages(['password' => 'Informe a senha (mínimo de 4 caracteres).']);
-        }
+        // Próximo código livre dentro do lado (caixa ou servidor)
+        $codigo = (int) User::max($cfg['codigo']) + 1;
 
         User::create([
-            'name'         => $nome,
-            'username'     => $username,
+            'name'         => trim($dados['name']),
             'tipo'         => 'operador',
             'password'     => $dados['password'],
             $cfg['campo']  => true,
+            $cfg['codigo'] => $codigo,
         ]);
 
         return redirect()->route('usuarios.index', $perfil)
-            ->with('sucesso', "{$cfg['singular']} cadastrado. Login: {$username}");
+            ->with('sucesso', "{$cfg['singular']} cadastrado. Código de acesso: {$codigo}");
     }
 
     public function edit(string $perfil, User $usuario)
@@ -194,14 +169,7 @@ class UsuarioController extends Controller
             'password' => ['nullable', 'string', 'min:4', 'max:100'],
         ]);
 
-        $nome     = trim($dados['name']);
-        $username = User::normalizarUsername($nome);
-
-        if ($username === '' || User::where('username', $username)->where('id', '!=', $usuario->id)->exists()) {
-            throw ValidationException::withMessages(['name' => 'Já existe um usuário com esse nome.']);
-        }
-
-        $atualizar = ['name' => $nome, 'username' => $username];
+        $atualizar = ['name' => trim($dados['name'])];
 
         if (!empty($dados['password'])) {
             $atualizar['password'] = $dados['password'];

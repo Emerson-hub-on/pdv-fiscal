@@ -22,6 +22,8 @@ use Illuminate\Support\Str;
     'acesso_supervisor', 
     'permissoes',
     'permissoes_caixa',
+    'codigo_caixa',
+    'codigo_servidor',
     
     ])]
 #[Hidden([
@@ -104,12 +106,4 @@ class User extends Authenticatable
         return $this->isAdmin() || (bool) $this->acesso_supervisor;
     }
 
-    /** "João da Silva" => "joao.da.silva" (o mesmo cálculo existe em JS no formulário) */
-    public static function normalizarUsername(string $valor): string
-    {
-        $valor = strtolower(trim(Str::ascii($valor)));
-        $valor = preg_replace('/\s+/', '.', $valor);
-
-        return trim(preg_replace('/[^a-z0-9._-]/', '', $valor), '.');
-    }
 }

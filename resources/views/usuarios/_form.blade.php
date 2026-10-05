@@ -14,17 +14,22 @@
     <div class="space-y-5">
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Nome <span class="text-red-500">*</span></label>
-            <input type="text" name="name" id="campo-nome" maxlength="100" required autocomplete="off"
+            <input type="text" name="name" maxlength="100" required autocomplete="off"
                    value="{{ old('name', $usuario->name ?? '') }}"
                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
-            <p class="text-xs text-gray-500 mt-1">
-                Login gerado: <span id="login-gerado" class="font-mono font-medium text-gray-700">—</span>
-            </p>
-            @unless ($usuario)
-                <p class="text-xs text-gray-400 mt-1">
-                    Se esta pessoa já estiver cadastrada em outro perfil, informe o mesmo nome: o acesso será adicionado e a senha atual mantida.
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Código de acesso</label>
+            @if ($usuario)
+                <input type="text" value="{{ $usuario->{$cfg['codigo']} }}" disabled
+                       class="w-full border border-gray-200 bg-gray-50 text-gray-500 font-mono rounded-lg px-3 py-2.5 text-sm">
+                <p class="text-xs text-gray-400 mt-1">Usado no login junto com a senha. Não pode ser alterado.</p>
+            @else
+                <p class="text-xs text-gray-500">
+                    Gerado automaticamente ao salvar. É o código que a pessoa digita no login, junto com a senha.
                 </p>
-            @endunless
+            @endif
         </div>
 
         <div>
@@ -48,22 +53,3 @@
         Cancelar
     </a>
 </div>
-
-<script>
-    // Mesma regra do User::normalizarUsername()
-    function normalizarUsername(valor) {
-        valor = valor.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-        valor = valor.replace(/\s+/g, '.').replace(/[^a-z0-9._-]/g, '');
-        return valor.replace(/^\.+|\.+$/g, '');
-    }
-
-    const campoNome = document.getElementById('campo-nome');
-    const loginGerado = document.getElementById('login-gerado');
-
-    function atualizarLogin() {
-        loginGerado.innerText = normalizarUsername(campoNome.value) || '—';
-    }
-
-    campoNome.addEventListener('input', atualizarLogin);
-    atualizarLogin();
-</script>

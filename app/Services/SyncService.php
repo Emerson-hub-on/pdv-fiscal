@@ -114,11 +114,12 @@ class SyncService
     public function puxarUsuarios(): array
     {
         try {
-            $usuarios = User::where(function ($q) {
-                $q->where('tipo', 'admin')
-                  ->orWhere('acesso_caixa', true)
-                  ->orWhere('acesso_supervisor', true);
-            })->get();
+            $usuarios = User::whereNotNull('codigo_caixa')
+                ->where(function ($q) {
+                    $q->where('tipo', 'admin')
+                      ->orWhere('acesso_caixa', true)
+                      ->orWhere('acesso_supervisor', true);
+                })->get();
 
             // Nunca esvazia o cache por causa de uma resposta vazia
             if ($usuarios->isEmpty()) {
@@ -127,8 +128,8 @@ class SyncService
 
             $linhas = $usuarios->map(fn ($u) => [
                 'id' => $u->id,
+                'codigo' => $u->codigo_caixa,
                 'name' => $u->name,
-                'username' => $u->username,
                 'tipo' => $u->tipo,
                 'password' => $u->getRawOriginal('password'),
                 'acesso_caixa' => (int) $u->acesso_caixa,
@@ -152,7 +153,6 @@ class SyncService
             return ['sucesso' => false, 'erro' => $e->getMessage()];
         }
     }
-
     /**
      * Direcao 1b: puxa do MySQL central pro SQLite local (cadastro de clientes).
      * Mesmo padrao do puxarCatalogo() - so traz o que mudou.

@@ -15,13 +15,13 @@ class SupervisorController extends Controller
     public function autorizar(Request $request)
     {
         $validado = $request->validate([
-            'username' => 'required|string',
+            'codigo'   => 'required|integer|min:1',
             'password' => 'required|string',
             'acao'     => 'nullable|string|in:desconto_item,desconto_global,cancelar_item,cancelar_cupom,cancelar_nfce',
         ]);
 
         // O caixa só consulta o SQLite local
-        $user = UsuarioCache::porUsername(User::normalizarUsername($validado['username']));
+        $user = UsuarioCache::porCodigo((int) $validado['codigo']);
 
         // Pode autorizar: administrador ou usuário cadastrado como Supervisor
         if (!$user || !$user->podeAutorizar() || !Hash::check($validado['password'], $user->password)) {

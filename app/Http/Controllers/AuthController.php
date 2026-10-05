@@ -25,30 +25,30 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $credenciais = $request->validate([
-            'username' => 'required|string',
+            'codigo'   => 'required|integer|min:1',
             'password' => 'required|string',
             'modo'     => 'required|in:admin,operador',
         ]);
 
-        // "admin" = sistema de cadastros/faturamento (servidor central, guard "web")
-        // "operador" = caixa (cache local do SQLite, guard "caixa")
+        // "admin" = sistema de cadastros/faturamento (servidor central, guard "web", codigo_servidor)
+        // "operador" = caixa (cache local do SQLite, guard "caixa", codigo_caixa)
         $modo = $credenciais['modo'];
         $guard = $modo === 'admin' ? 'web' : 'caixa';
-        $username = User::normalizarUsername($credenciais['username']);
+        $codigo = (int) $credenciais['codigo'];
 
         $usuario = $modo === 'admin'
-            ? User::where('username', $username)->first()
-            : $this->usuarioDoCaixa($username);
+            ? User::where('codigo_servidor', $codigo)->first()
+            : $this->usuarioDoCaixa($codigo);
 
         if (!$usuario || !Hash::check($credenciais['password'], $usuario->password)) {
-            return back()->withErrors(['username' => 'Usuário ou senha inválidos.'])->withInput($request->only('modo'));
+            return back()->withErrors(['codigo' => 'Código ou senha inválidos.'])->withInput($request->only('modo'));
         }
 
         $permitido = $modo === 'admin' ? $usuario->podeAcessarFiscal() : $usuario->podeAcessarCaixa();
 
         if (!$permitido) {
             return back()->withErrors([
-                'username' => $modo === 'admin'
+                'codigo' => $modo === 'admin'
                     ? 'Este usuário não tem acesso ao sistema de cadastros.'
                     : 'Este usuário não tem acesso ao caixa.',
             ]);
@@ -86,12 +86,12 @@ class AuthController extends Controller
     }
 
     // Primeira vez (cache vazio): tenta puxar os usuários do servidor uma única vez
-    private function usuarioDoCaixa(string $username): ?User
+    private function usuarioDoCaixa(int $codigo): ?User
     {
         if (UsuarioCache::vazio()) {
             (new SyncService())->puxarUsuarios();
         }
 
-        return UsuarioCache::porUsername($username);
+        return UsuarioCache::porCodigo($codigo);
     }
 }

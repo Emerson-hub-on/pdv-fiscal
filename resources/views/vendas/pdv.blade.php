@@ -162,8 +162,8 @@
 
         <p class="text-sm text-gray-500 mb-4" id="autorizacao-descricao"></p>
 
-        <label class="block text-sm font-medium mb-1">Usuário</label>
-        <input type="text" id="autorizacao-usuario" class="w-full border rounded px-3 py-2 mb-3">
+        <label class="block text-sm font-medium mb-1">Código do supervisor</label>
+        <input type="text" inputmode="numeric" id="autorizacao-usuario" class="w-full border rounded px-3 py-2 mb-3">
 
         <label class="block text-sm font-medium mb-1">Senha</label>
         <input type="password" id="autorizacao-senha" class="w-full border rounded px-3 py-2 mb-4">
@@ -1371,7 +1371,7 @@ async function confirmarAutorizacao() {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
             },
             body: JSON.stringify({
-                username: usuario,
+                codigo: usuario,
                 password: senha,
                 acao: chavePermissao[tipoDescontoPendente],
             }),
