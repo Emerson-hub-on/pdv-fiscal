@@ -16,6 +16,9 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use App\Models\CfopSaida;
 use App\Models\ProdutoVariante;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 
 
@@ -79,12 +82,10 @@ class NotaFiscalController extends Controller
     public function create()
     {
         $clientes = Cliente::ativos()->orderBy('nome')->get();
-        $usuarios = \App\Models\User::orderBy('name')->get();
         $crtEmpresa = Empresa::first()->crt;
 
         return view('notasfiscais.create', [
             'clientes'    => $clientes,
-            'usuarios'    => $usuarios,
             'crtEmpresa'  => $crtEmpresa,
             'notaFiscal'  => null,
         ]);
@@ -129,10 +130,9 @@ class NotaFiscalController extends Controller
 
         $notaFiscal->load('itens.produto', 'itens.tributacao', 'itens.ipi');
         $clientes = Cliente::ativos()->orderBy('nome')->get();
-        $usuarios = \App\Models\User::orderBy('name')->get();
         $crtEmpresa = Empresa::first()->crt;
 
-        return view('notasfiscais.edit', compact('notaFiscal', 'clientes', 'usuarios', 'crtEmpresa'));
+        return view('notasfiscais.edit', compact('notaFiscal', 'clientes', 'crtEmpresa'));
     }
 
     public function update(Request $request, NotaFiscal $notaFiscal)
@@ -168,6 +168,52 @@ class NotaFiscalController extends Controller
             ->with('sucesso', 'Nota fiscal atualizada com sucesso.');
     }
 
+    /** Confere a senha do operador escolhido e devolve um token que o servidor valida ao salvar a nota. */
+    public function autorizarOperador(Request $request)
+    {
+        $dados = $request->validate([
+            'operador_id' => ['required', 'integer'],
+            'password'    => ['required', 'string'],
+        ]);
+
+        $operador = \App\Models\User::operadoresDaNota()->whereKey($dados['operador_id'])->first();
+
+        if (!$operador || !Hash::check($dados['password'], $operador->password)) {
+            return response()->json(['message' => 'Senha incorreta.'], 403);
+        }
+
+        Log::info('Operador da NF-e autorizado com a própria senha', [
+            'operador_id' => $operador->id,
+            'por_usuario' => $request->user()->id,
+        ]);
+
+        $token = Crypt::encryptString(json_encode([
+            'operador_id' => $operador->id,
+            'por'         => $request->user()->id,
+            'exp'         => now()->addHours(2)->timestamp,
+        ]));
+
+        return response()->json(['token' => $token, 'operador' => $operador->name]);
+    }
+
+    private function tokenOperadorValido(string $token, int $operadorId): bool
+    {
+        if ($token === '') {
+            return false;
+        }
+
+        try {
+            $payload = json_decode(Crypt::decryptString($token), true);
+        } catch (\Throwable $e) {
+            return false;
+        }
+
+        return is_array($payload)
+            && (int) ($payload['operador_id'] ?? 0) === $operadorId
+            && (int) ($payload['por'] ?? 0) === (int) auth()->id()
+            && (int) ($payload['exp'] ?? 0) >= now()->timestamp;
+    }
+
 
     private function validarCabecalhoEItens(Request $request): array
     {
@@ -178,7 +224,28 @@ class NotaFiscalController extends Controller
             'motivo_ajuste'              => ['nullable', 'string', 'max:2'],
             'cfop_saida_id'              => ['required', 'exists:cfop_saida,id'],
             'forma_pagamento_id'         => ['required', 'exists:formas_pagamento,id'],
-            'operador_id'                => ['required', 'exists:users,id'],
+            'operador_token'             => ['nullable', 'string'],
+            'operador_id'                => ['required', function ($atributo, $valor, $fail) {
+                // Edição de nota antiga: manter o operador que já estava gravado não pede nada
+                $atual = request()->route('notaFiscal')?->operador_id;
+                if ($atual !== null && (int) $valor === (int) $atual) {
+                    return;
+                }
+
+                if (!\App\Models\User::operadoresDaNota()->whereKey($valor)->exists()) {
+                    $fail('Selecione um operador fiscal ou o administrador (ativos).');
+                    return;
+                }
+
+                // Quem está logado pode se escolher; qualquer outra pessoa precisa ter autorizado com a própria senha
+                if ((int) $valor === (int) auth()->id()) {
+                    return;
+                }
+
+                if (!$this->tokenOperadorValido((string) request('operador_token'), (int) $valor)) {
+                    $fail('O operador selecionado precisa autorizar com a própria senha.');
+                }
+            }],
             'informacoes_complementares' => ['nullable', 'string', 'max:2000'],
             'notas_referenciadas_json'   => ['nullable', 'string'],
             'itens_json'                 => ['required', 'string'],
@@ -488,6 +555,32 @@ class NotaFiscalController extends Controller
             'uf'       => $c->uf,
             'telefone' => $c->telefone,
         ]));
+    }
+
+
+    /**
+     * Busca de operadores para o modal da nota: só quem tem o tipo "fiscal".
+     * Sem termo: os 20 primeiros em ordem alfabética. Com termo: nome ou código.
+     */
+    public function buscarOperador(Request $request)
+    {
+        $termo = trim((string) $request->get('termo', ''));
+
+        $operadores = \App\Models\User::operadoresDaNota()
+            ->when($termo !== '', function ($q) use ($termo) {
+                $q->where(function ($q) use ($termo) {
+                    $q->where('name', 'like', "%{$termo}%");
+
+                    if (ctype_digit($termo)) {
+                        $q->orWhere('codigo', (int) $termo);
+                    }
+                });
+            })
+            ->orderBy('name')
+            ->limit(20)
+            ->get(['id', 'name', 'codigo']);
+
+        return response()->json($operadores);
     }
 
     /**

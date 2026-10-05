@@ -41,6 +41,25 @@ class User extends Authenticatable
         ];
     }
 
+
+    /** Pessoas ativas com acesso ativo a um tipo de operador (ex.: 'fiscal'). */
+    public function scopeComAcessoAtivo($query, string $slug)
+    {
+        return $query->where('ativo', true)
+            ->whereHas('acessos', fn ($q) => $q
+                ->where('ativo', true)
+                ->whereHas('tipo', fn ($t) => $t->where('slug', $slug)->where('ativo', true)));
+    }
+
+    /** Quem pode ser o operador de uma NF-e: operadores fiscais ativos e o administrador ativo. */
+    public function scopeOperadoresDaNota($query)
+    {
+        return $query->where(function ($q) {
+            $q->comAcessoAtivo('fiscal')
+            ->orWhere(fn ($admin) => $admin->where('is_admin', true)->where('ativo', true));
+        });
+    }
+
     public function acessos(): HasMany
     {
         return $this->hasMany(Acesso::class);
@@ -60,6 +79,8 @@ class User extends Authenticatable
 
         return array_filter($this->mapaAcessosCalculado, fn ($acesso) => $acesso['contexto'] === $contexto);
     }
+
+
 
     private function calcularMapaAcessos(): array
     {

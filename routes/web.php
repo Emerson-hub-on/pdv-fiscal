@@ -160,7 +160,11 @@ Route::middleware('auth')->group(function () {
                 ->name('notasfiscais.buscar-produto');
             Route::get('notasfiscais/buscar-cliente', [NotaFiscalController::class, 'buscarCliente'])
                 ->name('notasfiscais.buscar-cliente');
-
+            Route::get('notasfiscais/buscar-operador', [NotaFiscalController::class, 'buscarOperador'])
+                ->name('notasfiscais.buscar-operador');
+            Route::post('notasfiscais/autorizar-operador', [NotaFiscalController::class, 'autorizarOperador'])
+                ->middleware('throttle:10,1') // evita tentativa em massa de senha
+                ->name('notasfiscais.autorizar-operador');
             Route::resource('notasfiscais', NotaFiscalController::class)
                 ->parameters(['notasfiscais' => 'notaFiscal']);
             Route::post('notasfiscais/{notaFiscal}/itens', [NotaFiscalController::class, 'adicionarItem'])

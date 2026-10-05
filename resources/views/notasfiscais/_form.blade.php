@@ -1,13 +1,19 @@
 @php
     $ehEdicao = isset($notaFiscal) && $notaFiscal !== null;
 
+    $operadorAtual = old('operador_id')
+        ? \App\Models\User::find(old('operador_id'))
+        : ($ehEdicao
+            ? $notaFiscal->operador
+            : ((auth()->user()?->isAdmin() || auth()->user()?->temAcesso('fiscal')) ? auth()->user() : null));
+    
     $transportadorAtual = old('transportador_id')
-    ? \App\Models\Transportador::find(old('transportador_id'))
-    : ($ehEdicao ? $notaFiscal->transportador : null);
+        ? \App\Models\Transportador::find(old('transportador_id'))
+        : ($ehEdicao ? $notaFiscal->transportador : null);
 
     $veiculoAtual = old('veiculo_id')
-    ? \App\Models\Veiculo::with('transportador')->find(old('veiculo_id'))
-    : ($ehEdicao ? $notaFiscal->veiculo : null);
+        ? \App\Models\Veiculo::with('transportador')->find(old('veiculo_id'))
+        : ($ehEdicao ? $notaFiscal->veiculo : null);
 
     $ufClienteInicial = old('cliente_id')
         ? \App\Models\Cliente::find(old('cliente_id'))?->uf
@@ -217,16 +223,20 @@
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Operador</label>
-                <select name="operador_id" id="campo-operador" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                    @foreach ($usuarios as $usuario)
-                        <option value="{{ $usuario->id }}"
-                            @selected(old('operador_id', $ehEdicao ? $notaFiscal->operador_id : auth()->id()) == $usuario->id)>
-                            {{ $usuario->name }}
-                        </option>
-                    @endforeach
-                </select>
+                <input type="hidden" name="operador_id" id="campo-operador" value="{{ $operadorAtual?->id }}">
+                <button type="button" onclick="abrirModalOperador()"
+                        class="w-full text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
+                    <span id="texto-operador-selecionado">
+                        @if ($operadorAtual)
+                            {{ $operadorAtual->name }} — Cód. {{ $operadorAtual->codigo }}
+                        @else
+                            Selecionar operador...
+                        @endif
+                    </span>
+                </button>
                 @error('operador_id') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
+            <input type="hidden" name="operador_token" id="campo-operador-token" value="{{ old('operador_token') }}">
 
             <input type="hidden" name="natureza_operacao" id="campo-natureza" value="{{ $naturezaAtual }}">
             <input type="hidden" name="finalidade" id="campo-finalidade" value="{{ $finalidadeAtual }}">
@@ -590,6 +600,62 @@
     </div>
 </div>
 
+
+<!-- Modal de busca de operador -->
+<div id="modal-busca-operador" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+            <h2 class="text-lg font-bold text-white">Selecionar Operador</h2>
+            <button type="button" onclick="fecharModalOperador()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
+        </div>
+        <div class="p-6">
+            <input type="text" id="busca-operador-modal" autocomplete="off" placeholder="Buscar por nome ou código..."
+                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
+                        <th class="py-2 w-24">Código</th>
+                        <th class="py-2">Nome</th>
+                    </tr>
+                </thead>
+                <tbody id="linhas-busca-operador"></tbody>
+            </table>
+            <p class="text-xs text-gray-400 mt-3">Use ↑ ↓ para navegar e Enter para selecionar.</p>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal: o operador escolhido autoriza com a própria senha -->
+<div id="modal-autorizar-operador" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[60]">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold">Autorização do operador</h2>
+            <button type="button" onclick="cancelarAutorizacaoOperador()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        <p class="text-sm text-gray-500 mb-1">Para emitir a nota em nome de:</p>
+        <p id="autorizar-operador-nome" class="font-semibold text-gray-800 mb-4"></p>
+
+        <label class="block text-sm font-medium text-gray-700 mb-1">Senha do operador</label>
+        <input type="password" id="autorizar-operador-senha" autocomplete="off"
+               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2 focus:ring-2 focus:ring-slate-800 outline-none">
+
+        <p id="autorizar-operador-erro" class="text-red-600 text-sm mb-3 hidden"></p>
+
+        <div class="flex gap-2 mt-4">
+            <button type="button" onclick="cancelarAutorizacaoOperador()"
+                    class="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 py-2 rounded-lg text-sm font-medium">
+                Cancelar
+            </button>
+            <button type="button" onclick="confirmarAutorizacaoOperador(this)"
+                    class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-semibold">
+                Autorizar
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Modal de busca de Transportador -->
 <div id="modal-busca-transportador" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[60]">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
@@ -840,7 +906,188 @@ const campoTransportador       = document.getElementById('campo-transportador');
 let ufCliente = @json($ufClienteInicial);
 let veiculoDoTransportadorId = @json($veiculoAtual?->transportador_id);
 
+const usuarioLogadoId   = Number(@json(auth()->id()));
+const operadorOriginalId = @json($ehEdicao ? $notaFiscal->operador_id : null);
+let operadorPendente = null;
+
 const camposVolume = ['quantidade', 'especie', 'marca', 'numeracao', 'peso_liquido', 'peso_bruto'];
+
+
+let operadoresAtuais = [];
+let indiceOperador = -1;
+let timeoutBuscaOperador;
+let contadorBuscaOperador = 0;
+
+const inputBuscaOperador  = document.getElementById('busca-operador-modal');
+const linhasBuscaOperador = document.getElementById('linhas-busca-operador');
+
+
+function aplicarOperador(o, token) {
+    campoOperador.value = o.id;
+    document.getElementById('campo-operador-token').value = token;
+    document.getElementById('texto-operador-selecionado').innerText = `${o.name} — Cód. ${o.codigo}`;
+
+    // input oculto não dispara 'change': recalcula a trava do cabeçalho na mão
+    if (typeof atualizarTravaCabecalho === 'function') atualizarTravaCabecalho();
+}
+
+function abrirModalOperador() {
+    const modal = document.getElementById('modal-busca-operador');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    inputBuscaOperador.value = '';
+    inputBuscaOperador.focus();
+    buscarOperadores(''); // sem termo = 20 primeiros em ordem alfabética
+}
+
+function fecharModalOperador() {
+    const modal = document.getElementById('modal-busca-operador');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    operadoresAtuais = [];
+    indiceOperador = -1;
+}
+
+async function buscarOperadores(termo) {
+    const minhaBusca = ++contadorBuscaOperador;
+    let dados;
+
+    try {
+        dados = await requisicaoJson(`{{ route('notasfiscais.buscar-operador') }}?termo=${encodeURIComponent(termo)}`);
+    } catch (e) {
+        if (minhaBusca === contadorBuscaOperador) {
+            mostrarAviso('Falha ao buscar operadores:\n' + e.message, 'erro');
+            operadoresAtuais = [];
+            indiceOperador = -1;
+            renderizarOperadores();
+        }
+        return;
+    }
+
+    if (minhaBusca !== contadorBuscaOperador) return; // chegou uma busca mais nova
+
+    operadoresAtuais = dados;
+    indiceOperador = dados.length > 0 ? 0 : -1;
+    renderizarOperadores();
+}
+
+function cancelarAutorizacaoOperador() {
+    operadorPendente = null;
+    const modal = document.getElementById('modal-autorizar-operador');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+
+async function confirmarAutorizacaoOperador(botao) {
+    const senha = document.getElementById('autorizar-operador-senha').value;
+    const erroP = document.getElementById('autorizar-operador-erro');
+
+    if (!senha) {
+        erroP.innerText = 'Informe a senha do operador.';
+        erroP.classList.remove('hidden');
+        return;
+    }
+
+    await comCarregando(botao, 'Validando...', async () => {
+        try {
+            const resposta = await postJson('{{ route('notasfiscais.autorizar-operador') }}', {
+                operador_id: operadorPendente.id,
+                password: senha,
+            });
+
+            aplicarOperador(operadorPendente, resposta.token);
+            cancelarAutorizacaoOperador();
+        } catch (e) {
+            erroP.innerText = e.message;
+            erroP.classList.remove('hidden');
+            document.getElementById('autorizar-operador-senha').select();
+        }
+    });
+}
+
+document.getElementById('autorizar-operador-senha')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        confirmarAutorizacaoOperador(document.querySelector('#modal-autorizar-operador button.bg-blue-600'));
+    }
+    if (e.key === 'Escape') cancelarAutorizacaoOperador();
+});
+
+function renderizarOperadores() {
+    if (operadoresAtuais.length === 0) {
+        linhasBuscaOperador.innerHTML = '<tr><td colspan="2" class="p-3 text-sm text-gray-400 text-center">Nenhum operador encontrado.</td></tr>';
+        return;
+    }
+
+    linhasBuscaOperador.innerHTML = operadoresAtuais.map((o, index) => {
+        const destacado = index === indiceOperador;
+        return `
+            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
+                onclick="selecionarOperador(${index})">
+                <td class="py-3 font-mono text-sm ${destacado ? 'text-slate-300' : 'text-gray-500'}">${escaparHtml(String(o.codigo))}</td>
+                <td class="py-3 font-medium">${escaparHtml(o.name)}</td>
+            </tr>`;
+    }).join('');
+
+    linhasBuscaOperador.children[indiceOperador]?.scrollIntoView({ block: 'nearest' });
+}
+
+function selecionarOperador(index) {
+    const o = operadoresAtuais[index];
+    if (!o) return;
+
+    fecharModalOperador();
+
+    // já era o escolhido (com a autorização que ele tinha dado): nada a fazer
+    if (String(o.id) === String(campoOperador.value)) return;
+
+    // eu mesmo, ou o operador que a nota já tinha ao ser editada: sem senha
+    if (Number(o.id) === usuarioLogadoId || Number(o.id) === Number(operadorOriginalId)) {
+        aplicarOperador(o, '');
+        return;
+    }
+
+    // outra pessoa: ela precisa autorizar com a própria senha
+    abrirModalAutorizacaoOperador(o);
+}
+
+
+function abrirModalAutorizacaoOperador(o) {
+    operadorPendente = o;
+    document.getElementById('autorizar-operador-nome').innerText = `${o.name} — Cód. ${o.codigo}`;
+    document.getElementById('autorizar-operador-senha').value = '';
+    document.getElementById('autorizar-operador-erro').classList.add('hidden');
+
+    const modal = document.getElementById('modal-autorizar-operador');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    document.getElementById('autorizar-operador-senha').focus();
+}
+
+inputBuscaOperador?.addEventListener('input', () => {
+    clearTimeout(timeoutBuscaOperador);
+    timeoutBuscaOperador = setTimeout(() => buscarOperadores(inputBuscaOperador.value.trim()), 300);
+});
+
+inputBuscaOperador?.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { fecharModalOperador(); return; }
+    if (operadoresAtuais.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        indiceOperador = (indiceOperador + 1) % operadoresAtuais.length;
+        renderizarOperadores();
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        indiceOperador = (indiceOperador - 1 + operadoresAtuais.length) % operadoresAtuais.length;
+        renderizarOperadores();
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (indiceOperador >= 0) selecionarOperador(indiceOperador);
+    }
+});
+
 
 // Regra de obrigatoriedade: frete FOB ou operação interestadual (e só se há transporte)
 function veiculoObrigatorio() {
@@ -1344,6 +1591,8 @@ function renderizarListaPagamento() {
         </tr>
     `).join('');
 }
+
+
 
 
 function selecionarFormaPagamento(id) {
@@ -2251,6 +2500,17 @@ async function requisicaoJson(url, opcoes = {}) {
         });
     } catch (e) {
         throw new Error('Sem conexão com o servidor. Verifique se o sistema local está em execução.');
+    }
+
+    // Limite de tentativas por minuto (throttle do Laravel)
+    if (resp.status === 429) {
+        const limite = resp.headers.get('X-RateLimit-Limit');
+        const segundos = parseInt(resp.headers.get('Retry-After'), 10) || 60;
+        const espera = segundos >= 60 ? '1 minuto' : `${segundos} segundos`;
+
+        throw new Error(
+            `Você excedeu o número de ${limite ?? 'permitido de'} tentativas. Aguarde ${espera} para tentar novamente.`
+        );
     }
 
     const ehJson = (resp.headers.get('content-type') || '').includes('application/json');
