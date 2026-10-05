@@ -19,6 +19,38 @@
 CREATE DATABASE IF NOT EXISTS `pdv_fiscal` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
 USE `pdv_fiscal`;
 
+-- Copiando estrutura para tabela pdv_fiscal.acessos
+CREATE TABLE IF NOT EXISTS `acessos` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `tipo_operador_id` bigint unsigned NOT NULL,
+  `permissoes` json DEFAULT NULL,
+  `ativo` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `acessos_user_id_tipo_operador_id_unique` (`user_id`,`tipo_operador_id`),
+  KEY `acessos_tipo_operador_id_foreign` (`tipo_operador_id`),
+  CONSTRAINT `acessos_tipo_operador_id_foreign` FOREIGN KEY (`tipo_operador_id`) REFERENCES `tipos_operador` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `acessos_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.acessos: ~8 rows (aproximadamente)
+REPLACE INTO `acessos` (`id`, `user_id`, `tipo_operador_id`, `permissoes`, `ativo`, `created_at`, `updated_at`) VALUES
+	(1, 2, 3, '{"produtos": "consulta"}', 1, '2026-10-05 11:53:15', '2026-10-05 16:19:38'),
+	(2, 4, 1, NULL, 1, '2026-10-05 11:53:15', '2026-10-05 11:53:15'),
+	(3, 5, 1, NULL, 1, '2026-10-05 11:53:15', '2026-10-05 11:53:15'),
+	(4, 6, 2, NULL, 1, '2026-10-05 11:53:15', '2026-10-05 12:25:12'),
+	(5, 7, 2, NULL, 1, '2026-10-05 11:53:15', '2026-10-05 11:53:15'),
+	(6, 8, 2, NULL, 1, '2026-10-05 11:53:15', '2026-10-05 11:53:15'),
+	(7, 9, 2, NULL, 1, '2026-10-05 11:53:15', '2026-10-05 11:53:15'),
+	(8, 10, 3, NULL, 0, '2026-10-05 11:53:15', '2026-10-05 12:26:37'),
+	(9, 11, 1, NULL, 1, '2026-10-05 12:23:58', '2026-10-05 12:23:58'),
+	(10, 12, 2, NULL, 1, '2026-10-05 12:24:22', '2026-10-05 12:24:22'),
+	(11, 10, 1, NULL, 1, '2026-10-05 12:25:48', '2026-10-05 12:25:48'),
+	(12, 13, 1, NULL, 1, '2026-10-05 17:16:13', '2026-10-05 17:16:13'),
+	(13, 14, 2, '{"cancelar_nfce": "nao_libera"}', 1, '2026-10-05 17:16:31', '2026-10-05 17:17:54');
+
 -- Copiando estrutura para tabela pdv_fiscal.cache
 CREATE TABLE IF NOT EXISTS `cache` (
   `key` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -28,7 +60,18 @@ CREATE TABLE IF NOT EXISTS `cache` (
   KEY `cache_expiration_index` (`expiration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.cache: ~0 rows (aproximadamente)
+-- Copiando dados para a tabela pdv_fiscal.cache: ~2 rows (aproximadamente)
+REPLACE INTO `cache` (`key`, `value`, `expiration`) VALUES
+	('laravel-cache-1b6453892473a467d07372d45eb05abc2031647a', 'i:2;', 1791199272),
+	('laravel-cache-1b6453892473a467d07372d45eb05abc2031647a:timer', 'i:1791199272;', 1791199272),
+	('laravel-cache-356a192b7913b04c54574d18c28d46e6395428ab', 'i:1;', 1791221040),
+	('laravel-cache-356a192b7913b04c54574d18c28d46e6395428ab:timer', 'i:1791221040;', 1791221040),
+	('laravel-cache-5c785c036466adea360111aa28563bfd556b5fba', 'i:1;', 1791220949),
+	('laravel-cache-5c785c036466adea360111aa28563bfd556b5fba:timer', 'i:1791220949;', 1791220949),
+	('laravel-cache-bd307a3ec329e10a2cff8fb87480823da114f8f4', 'i:6;', 1791220712),
+	('laravel-cache-bd307a3ec329e10a2cff8fb87480823da114f8f4:timer', 'i:1791220712;', 1791220712),
+	('laravel-cache-da4b9237bacccdf19c0760cab7aec4a8359010b0', 'i:3;', 1791203021),
+	('laravel-cache-da4b9237bacccdf19c0760cab7aec4a8359010b0:timer', 'i:1791203021;', 1791203021);
 
 -- Copiando estrutura para tabela pdv_fiscal.cache_locks
 CREATE TABLE IF NOT EXISTS `cache_locks` (
@@ -60,7 +103,7 @@ CREATE TABLE IF NOT EXISTS `caixas` (
   KEY `caixas_pdv_id_foreign` (`pdv_id`),
   CONSTRAINT `caixas_operador_id_foreign` FOREIGN KEY (`operador_id`) REFERENCES `users` (`id`),
   CONSTRAINT `caixas_pdv_id_foreign` FOREIGN KEY (`pdv_id`) REFERENCES `pdvs` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Copiando dados para a tabela pdv_fiscal.caixas: ~9 rows (aproximadamente)
 REPLACE INTO `caixas` (`id`, `operador_id`, `pdv_id`, `data_abertura`, `valor_abertura`, `data_fechamento`, `valor_fechamento_informado`, `valor_fechamento_esperado`, `status`, `observacao`, `created_at`, `updated_at`) VALUES
@@ -72,7 +115,9 @@ REPLACE INTO `caixas` (`id`, `operador_id`, `pdv_id`, `data_abertura`, `valor_ab
 	(6, 1, NULL, '2026-08-01 01:27:18', 10.00, '2026-08-01 01:29:41', 10.00, 10.00, 'fechado', NULL, '2026-08-01 01:27:18', '2026-08-01 01:29:41'),
 	(7, 1, 1, '2026-08-01 01:29:46', 10.00, '2026-08-01 04:56:32', 10.00, 10.00, 'fechado', NULL, '2026-08-01 01:29:46', '2026-08-01 04:56:32'),
 	(8, 1, 1, '2026-08-01 04:56:46', 10.00, '2026-08-14 12:34:43', 300.00, 285.64, 'fechado', NULL, '2026-08-01 04:56:46', '2026-08-14 12:34:43'),
-	(9, 1, 1, '2026-08-14 12:34:56', 100.00, NULL, NULL, NULL, 'aberto', NULL, '2026-08-14 12:34:56', '2026-08-14 12:34:56');
+	(9, 1, 1, '2026-08-14 12:34:56', 100.00, NULL, NULL, NULL, 'aberto', NULL, '2026-08-14 12:34:56', '2026-08-14 12:34:56'),
+	(10, 4, 1, '2026-10-03 14:28:36', 2.00, NULL, NULL, NULL, 'aberto', NULL, '2026-10-03 14:28:36', '2026-10-03 14:28:36'),
+	(11, 13, 1, '2026-10-05 17:17:09', 2.00, NULL, NULL, NULL, 'aberto', NULL, '2026-10-05 17:17:09', '2026-10-05 17:17:09');
 
 -- Copiando estrutura para tabela pdv_fiscal.categorias
 CREATE TABLE IF NOT EXISTS `categorias` (
@@ -2723,7 +2768,7 @@ CREATE TABLE IF NOT EXISTS `formas_pagamento` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.formas_pagamento: ~5 rows (aproximadamente)
+-- Copiando dados para a tabela pdv_fiscal.formas_pagamento: ~6 rows (aproximadamente)
 REPLACE INTO `formas_pagamento` (`id`, `descricao`, `meio_pagamento`, `ind_pag`, `ordem`, `ativo`, `created_at`, `updated_at`) VALUES
 	(1, 'Dinheiro', '01', 0, 1, 1, '2026-09-24 01:42:43', '2026-10-02 12:52:31'),
 	(2, 'Pix', '17', 0, 2, 1, '2026-09-24 01:42:43', '2026-09-24 01:42:43'),
@@ -2859,9 +2904,9 @@ CREATE TABLE IF NOT EXISTS `migrations` (
   `migration` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `batch` int NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=82 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=107 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.migrations: ~58 rows (aproximadamente)
+-- Copiando dados para a tabela pdv_fiscal.migrations: ~90 rows (aproximadamente)
 REPLACE INTO `migrations` (`id`, `migration`, `batch`) VALUES
 	(1, '0001_01_01_000000_create_users_table', 1),
 	(2, '0001_01_01_000001_create_cache_table', 1),
@@ -2943,7 +2988,32 @@ REPLACE INTO `migrations` (`id`, `migration`, `batch`) VALUES
 	(78, '2026_10_02_131500_transportador_nfe', 55),
 	(79, '2026_10_02_131500_new_field_nota_fiscal', 56),
 	(80, '2026_10_02_131500_table_veiculo', 57),
-	(81, '2026_10_02_131500_valume_nfe', 58);
+	(81, '2026_10_02_131500_valume_nfe', 58),
+	(82, '2026_10_03_131500_alter_user', 59),
+	(83, '2026_10_03_131500_acesso_user', 60),
+	(84, '2026_10_03_131500_acesso_supervisor', 61),
+	(85, '2026_10_03_131500_acesso_caixa', 62),
+	(86, '2026_07_31_114732_create_produtos_cache_table', 63),
+	(87, '2026_07_31_114734_create_produto_variantes_cache_table', 63),
+	(88, '2026_07_31_114735_create_vendas_pendentes_table', 63),
+	(89, '2026_07_31_114737_create_sync_meta_table', 63),
+	(90, '2026_08_01_230122_add_pagamentos_to_vendas_pendentes_table', 63),
+	(91, '2026_08_01_232037_alter_forma_pagamento_nullable_in_vendas_pendentes', 63),
+	(92, '2026_08_01_232901_add_troco_to_vendas_pendentes_table', 63),
+	(93, '2026_08_02_000425_add_preco_custo_to_produtos_cache_table', 63),
+	(94, '2026_08_02_004109_add_desconto_to_vendas_pendentes_table', 63),
+	(95, '2026_08_20_131632_add_produto_balanca_to_produtos_cache_table', 63),
+	(96, '2026_08_25_000001_make_csosn_nullable_in_produtos_cache_table', 63),
+	(97, '2026_10_03_000001_create_usuarios_cache_table', 64),
+	(98, '2026_10_04_000001_troca_username_por_codigo_em_users', 65),
+	(99, '2026_10_04_000002_recria_usuarios_cache_com_codigo', 66),
+	(100, '2026_10_04_000003_add_permissoes_supervisor_to_users', 67),
+	(101, '2026_10_04_000004_add_permissoes_supervisor_to_usuarios_cache', 68),
+	(102, '2026_10_04_000005_cria_tipos_operador_e_acessos', 69),
+	(103, '2026_10_04_000006_preenche_acessos_a_partir_de_users', 69),
+	(104, '2026_10_04_000007_add_nome_plural_to_tipos_operador', 70),
+	(105, '2026_10_04_000008_recria_usuarios_cache_com_acessos', 71),
+	(106, '2026_10_04_000009_remove_colunas_antigas_de_users', 72);
 
 -- Copiando estrutura para tabela pdv_fiscal.ncms
 CREATE TABLE IF NOT EXISTS `ncms` (
@@ -13461,7 +13531,7 @@ CREATE TABLE IF NOT EXISTS `notas_fiscais` (
   CONSTRAINT `notas_fiscais_venda_id_foreign` FOREIGN KEY (`venda_id`) REFERENCES `vendas` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=47 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.notas_fiscais: ~20 rows (aproximadamente)
+-- Copiando dados para a tabela pdv_fiscal.notas_fiscais: ~40 rows (aproximadamente)
 REPLACE INTO `notas_fiscais` (`id`, `cliente_id`, `operador_id`, `serie_nfe_id`, `modelo`, `serie`, `numero`, `natureza_operacao`, `finalidade`, `motivo_ajuste`, `cfop_saida_id`, `forma_pagamento_id`, `tipo_operacao`, `origem_tipo`, `venda_id`, `status`, `chave_acesso`, `protocolo`, `protocolo_cancelamento`, `xml`, `motivo_cancelamento`, `motivo_rejeicao`, `emitida_em`, `cancelado_em`, `valor_produtos`, `valor_desconto`, `valor_frete`, `frete_por_item`, `mod_frete`, `transportador_id`, `veiculo_id`, `informacoes_complementares`, `notas_referenciadas`, `valor_total`, `created_at`, `updated_at`, `vol_quantidade`, `vol_especie`, `vol_marca`, `vol_numeracao`, `vol_peso_liquido`, `vol_peso_bruto`) VALUES
 	(1, 1, 1, 1, 55, 1, 7, 'Venda de mercadoria', 1, NULL, 2, 1, 'saida', 'manual', NULL, 'cancelada', '25260924057254000104550010000000071301316292', '325260000036305', '325260000036312', '<?xml version="1.0" encoding="UTF-8"?><nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe Id="NFe25260924057254000104550010000000071301316292" versao="4.00"><ide><cUF>25</cUF><cNF>30131629</cNF><natOp>Venda de mercadoria</natOp><mod>55</mod><serie>1</serie><nNF>7</nNF><dhEmi>2026-09-25T23:08:39-03:00</dhEmi><tpNF>1</tpNF><idDest>1</idDest><cMunFG>2504009</cMunFG><tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>2</cDV><tpAmb>2</tpAmb><finNFe>1</finNFe><indFinal>1</indFinal><indPres>9</indPres><indIntermed>0</indIntermed><procEmi>0</procEmi><verProc>1.0.0</verProc></ide><emit><CNPJ>24057254000104</CNPJ><xNome>R B LIMEIRA LTDA</xNome><xFant>GRANJA LETICIA</xFant><enderEmit><xLgr>Rua Jornalista Evandro Barros</xLgr><nro>246</nro><xBairro>Malvinas</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58433545</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderEmit><IE>162661940</IE><CRT>1</CRT></emit><dest><CPF>51083298062</CPF><xNome>NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL</xNome><enderDest><xLgr>RUA Teste</xLgr><nro>200</nro><xBairro>Teste</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58060200</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderDest><indIEDest>9</indIEDest></dest><det nItem="1"><prod><cProd>4</cProd><cEAN>SEM GTIN</cEAN><xProd>Arroz</xProd><NCM>10064000</NCM><CEST>0100100</CEST><CFOP>5102</CFOP><uCom>UN</uCom><qCom>1.0000</qCom><vUnCom>2.2500000000</vUnCom><vProd>2.25</vProd><cEANTrib>SEM GTIN</cEANTrib><uTrib>UN</uTrib><qTrib>1.0000</qTrib><vUnTrib>2.2500000000</vUnTrib><indTot>1</indTot></prod><imposto><vTotTrib>0.00</vTotTrib><ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS><PIS><PISOutr><CST>99</CST><vBC>0.00</vBC><pPIS>0.0000</pPIS><vPIS>0.00</vPIS></PISOutr></PIS><COFINS><COFINSOutr><CST>99</CST><vBC>0.00</vBC><pCOFINS>0.0000</pCOFINS><vCOFINS>0.00</vCOFINS></COFINSOutr></COFINS><IBSCBS><CST>000</CST><cClassTrib>000001</cClassTrib><gIBSCBS><vBC>2.25</vBC><gIBSUF><pIBSUF>0.1000</pIBSUF><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><pIBSMun>0.00</pIBSMun><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><gCBS><pCBS>0.9000</pCBS><vCBS>0.02</vCBS></gCBS></gIBSCBS></IBSCBS></imposto><vItem>2.25</vItem></det><total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>2.25</vProd><vFrete>0.00</vFrete><vSeg>0.00</vSeg><vDesc>0.00</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS><vOutro>0.00</vOutro><vNF>2.25</vNF></ICMSTot><IBSCBSTot><vBCIBSCBS>2.25</vBCIBSCBS><gIBS><gIBSUF><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gIBS><gCBS><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vCBS>0.02</vCBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gCBS><gMono><vIBSMono>0.00</vIBSMono><vCBSMono>0.00</vCBSMono><vIBSMonoReten>0.00</vIBSMonoReten><vCBSMonoReten>0.00</vCBSMonoReten><vIBSMonoRet>0.00</vIBSMonoRet><vCBSMonoRet>0.00</vCBSMonoRet></gMono></IBSCBSTot><vNFTot>2.25</vNFTot></total><transp><modFrete>9</modFrete></transp><pag><detPag><indPag>0</indPag><tPag>90</tPag><vPag>0.00</vPag></detPag></pag></infNFe><Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/><Reference URI="#NFe25260924057254000104550010000000071301316292"><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><DigestValue>Sx06dbt2cTA2yGHDxAXobqYKxxc=</DigestValue></Reference></SignedInfo><SignatureValue>rn0qjy4+smj68ImDOOMqUNutKnBYzOkLWFlBXRIzPB/Pq+PRDs8SFBuSWimnei/LamouNLGLDlpehoPTAcfbBbcKpIXDnmm9mOCN2PCveZQnsEk9quSt6KkDAO6Gi+1pOWWhRlGVh8BPQqqXnIqu4K5TkehXVzUyVKyUU++u0wEd0TxBw7lMAE+Pb5PC7O0Pqg/qaehT6JPn1W4lnbTk8HroR1dGfTuaCWGG3HHLLZhIPHKHwU8Oqu2s5yjT3xnp6p1xNZmwqK6aOGqspw68w+NquuaaKI0YtF0uRScDH3iGVj0sbmbaqWcniNG4UF8vpM/WpUDue9QmdIt6SDh6bg==</SignatureValue><KeyInfo><X509Data><X509Certificate>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</X509Certificate></X509Data></KeyInfo></Signature></NFe><protNFe versao="4.00"><infProt><tpAmb>2</tpAmb><verAplic>SVRS2609250804</verAplic><chNFe>25260924057254000104550010000000071301316292</chNFe><dhRecbto>2026-09-25T23:08:42-03:00</dhRecbto><nProt>325260000036305</nProt><digVal>Sx06dbt2cTA2yGHDxAXobqYKxxc=</digVal><cStat>100</cStat><xMotivo>Autorizado o uso da NF-e</xMotivo></infProt></protNFe></nfeProc>', 'Dados divergentes', NULL, '2026-09-26 02:08:40', '2026-09-26 12:26:13', 2.25, 0.00, 0.00, 0, 9, NULL, NULL, NULL, NULL, 2.25, '2026-09-10 19:06:36', '2026-09-26 12:26:13', NULL, NULL, NULL, NULL, NULL, NULL),
 	(2, 1, 1, 1, 55, 1, 5, 'Venda de mercadoria', 1, NULL, 2, 2, 'saida', 'manual', NULL, 'cancelada', '25260924057254000104550010000000051916297694', '325260000036301', '325260000036302', '<?xml version="1.0" encoding="UTF-8"?><nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe Id="NFe25260924057254000104550010000000051916297694" versao="4.00"><ide><cUF>25</cUF><cNF>91629769</cNF><natOp>Venda de mercadoria</natOp><mod>55</mod><serie>1</serie><nNF>5</nNF><dhEmi>2026-09-25T22:50:29-03:00</dhEmi><tpNF>1</tpNF><idDest>1</idDest><cMunFG>2504009</cMunFG><tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>4</cDV><tpAmb>2</tpAmb><finNFe>1</finNFe><indFinal>1</indFinal><indPres>9</indPres><indIntermed>0</indIntermed><procEmi>0</procEmi><verProc>1.0.0</verProc></ide><emit><CNPJ>24057254000104</CNPJ><xNome>R B LIMEIRA LTDA</xNome><xFant>GRANJA LETICIA</xFant><enderEmit><xLgr>Rua Jornalista Evandro Barros</xLgr><nro>246</nro><xBairro>Malvinas</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58433545</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderEmit><IE>162661940</IE><CRT>1</CRT></emit><dest><CPF>51083298062</CPF><xNome>NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL</xNome><enderDest><xLgr>RUA Teste</xLgr><nro>200</nro><xBairro>Teste</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58060200</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderDest><indIEDest>9</indIEDest></dest><det nItem="1"><prod><cProd>4</cProd><cEAN>7896012300916</cEAN><xProd>Arroz</xProd><NCM>10064000</NCM><CEST>0100100</CEST><CFOP>5102</CFOP><uCom>UN</uCom><qCom>1.0000</qCom><vUnCom>2.2500000000</vUnCom><vProd>2.25</vProd><cEANTrib>7896012300916</cEANTrib><uTrib>UN</uTrib><qTrib>1.0000</qTrib><vUnTrib>2.2500000000</vUnTrib><indTot>1</indTot></prod><imposto><vTotTrib>0.00</vTotTrib><ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS><IPI><cEnq>999</cEnq><IPITrib><CST>50</CST><vBC>2.25</vBC><pIPI>0.0000</pIPI><vIPI>0.00</vIPI></IPITrib></IPI><PIS><PISOutr><CST>99</CST><vBC>0.00</vBC><pPIS>0.0000</pPIS><vPIS>0.00</vPIS></PISOutr></PIS><COFINS><COFINSOutr><CST>99</CST><vBC>0.00</vBC><pCOFINS>0.0000</pCOFINS><vCOFINS>0.00</vCOFINS></COFINSOutr></COFINS></imposto></det><total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>2.25</vProd><vFrete>0.00</vFrete><vSeg>0.00</vSeg><vDesc>0.00</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS><vOutro>0.00</vOutro><vNF>2.25</vNF></ICMSTot></total><transp><modFrete>9</modFrete></transp><pag><detPag><indPag>0</indPag><tPag>90</tPag><vPag>0.00</vPag></detPag></pag></infNFe><Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/><Reference URI="#NFe25260924057254000104550010000000051916297694"><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><DigestValue>VOYPMQ+sQxN0UP0d50VwIFZbPPk=</DigestValue></Reference></SignedInfo><SignatureValue>HeX2QQQOee6Y77rzvMX8kTftZi1uc2fE9Ul4AzZYvlYLWlRlnM71ODcM2ICKCz+kAcByoe4khTd6s3urQTvqokP6xZLsDbj0ZsIkRK4hhTz62WNQHB735dQUSyZJKO6Tt7TWYutEetVxJKIM0FGUXwd48fp2mvNfG4yRNdzlZ912N0O070t71fmVMzg41GgsHNvfnMNb7RLV7hUoBeXY8LL3CVEO5mNW54R2xV7V0uZBJ5Nmmqc40NYhspADmdbtggx0Xwz49sucDjHMQb5878FJjAqgiHt4Yxtj/iEFtRPSMCeqC8CzofNUE4k7luCcR+r57XLclOuKb/nYVNkiNA==</SignatureValue><KeyInfo><X509Data><X509Certificate>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</X509Certificate></X509Data></KeyInfo></Signature></NFe><protNFe versao="4.00"><infProt><tpAmb>2</tpAmb><verAplic>SVRS2609250804</verAplic><chNFe>25260924057254000104550010000000051916297694</chNFe><dhRecbto>2026-09-25T22:50:31-03:00</dhRecbto><nProt>325260000036301</nProt><digVal>VOYPMQ+sQxN0UP0d50VwIFZbPPk=</digVal><cStat>100</cStat><xMotivo>Autorizado o uso da NF-e</xMotivo></infProt></protNFe></nfeProc>', 'Dados divergentes', 'Rejeitada pela SEFAZ: Rejeicao: Duplicidade de NF-e, com diferença na Chave de Acesso [chNFe:25260924057254000104550010000000041816501500]', '2026-09-26 01:50:29', '2026-09-26 02:01:30', 2.25, 0.00, 0.00, 0, 9, NULL, NULL, NULL, NULL, 2.25, '2026-09-10 19:09:33', '2026-09-26 02:01:30', NULL, NULL, NULL, NULL, NULL, NULL),
@@ -13553,7 +13623,7 @@ CREATE TABLE IF NOT EXISTS `nota_fiscal_itens` (
   CONSTRAINT `nota_fiscal_itens_tributacao_id_foreign` FOREIGN KEY (`tributacao_id`) REFERENCES `tributacoes` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=223 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.nota_fiscal_itens: ~40 rows (aproximadamente)
+-- Copiando dados para a tabela pdv_fiscal.nota_fiscal_itens: ~48 rows (aproximadamente)
 REPLACE INTO `nota_fiscal_itens` (`id`, `nota_fiscal_id`, `produto_id`, `produto_variante_id`, `descricao`, `ref_chave_acesso`, `ref_nitem`, `bc_icms_manual`, `valor_icms_manual`, `aliquota_icms_manual`, `valor_ipi_manual`, `aliquota_ipi_manual`, `ncm_id`, `cest_id`, `class_trib_ibs_cbs_id`, `tributacao_id`, `pis_cofins_id`, `ipi_id`, `quantidade`, `valor_unitario`, `valor_desconto`, `valor_outras_despesas`, `valor_frete`, `valor_total`, `created_at`, `updated_at`) VALUES
 	(30, 5, 2, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2143, NULL, 1, 3, 4, NULL, 1.000, 3.5000, 0.00, 0.00, 0.00, 3.50, '2026-09-24 22:25:01', '2026-09-24 22:25:01'),
 	(31, 5, 4, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2637, 601, 1, 1, 1, NULL, 1.000, 2.2500, 0.00, 0.00, 0.00, 2.25, '2026-09-24 22:25:01', '2026-09-24 22:25:01'),
@@ -13632,7 +13702,7 @@ CREATE TABLE IF NOT EXISTS `pdvs` (
 
 -- Copiando dados para a tabela pdv_fiscal.pdvs: ~2 rows (aproximadamente)
 REPLACE INTO `pdvs` (`id`, `nome`, `serie_nfce`, `numero_atual_nfce`, `csc`, `csc_id`, `ativo`, `created_at`, `updated_at`) VALUES
-	(1, 'Caixa 1', 1, 125, '8BFB5889-12B8-0068-B361-A61C5A772ED6', '000001', 1, '2026-07-31 19:47:17', '2026-10-01 23:05:16'),
+	(1, 'Caixa 1', 1, 126, '8BFB5889-12B8-0068-B361-A61C5A772ED6', '000001', 1, '2026-07-31 19:47:17', '2026-10-05 01:53:03'),
 	(2, 'Caixa 2', 2, 1, '8BFB5889-12B8-0068-B361-A61C5A772ED6', '000001', 0, '2026-07-31 20:43:15', '2026-08-01 05:02:08');
 
 -- Copiando estrutura para tabela pdv_fiscal.produtos
@@ -13703,6 +13773,34 @@ REPLACE INTO `produtos` (`id`, `nome`, `descricao`, `codigo_interno`, `codigo_ba
 	(8, 'Teste 2', NULL, '7', '0000000000007', 0, 'UN', 'UN', 0, 2.00, NULL, 0, 0, 49, 0, 1, '2026-09-06 14:24:33', '2026-09-06 14:42:28', NULL, NULL, NULL, 1, NULL, 1, 11, 1, NULL, NULL, NULL, 0, NULL, NULL),
 	(9, 'Teste 3', NULL, '8', '0000000000008', 0, 'UN', 'UN', 0, 3.00, NULL, 0, 0, 0, 0, 1, '2026-09-06 14:40:16', '2026-09-06 14:40:16', NULL, NULL, NULL, 1, NULL, 1, 11, 1, NULL, NULL, NULL, 0, NULL, NULL);
 
+-- Copiando estrutura para tabela pdv_fiscal.produtos_cache
+CREATE TABLE IF NOT EXISTS `produtos_cache` (
+  `id` bigint unsigned NOT NULL,
+  `nome` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `codigo_interno` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `codigo_barras` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ncm` varchar(8) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cest` varchar(7) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `cfop_padrao` varchar(4) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `unidade_comercial` varchar(6) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `unidade_tributavel` varchar(6) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `origem_mercadoria` tinyint unsigned NOT NULL DEFAULT '0',
+  `csosn` varchar(3) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `class_trib_ibs_cbs` varchar(6) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `preco_venda` decimal(12,2) NOT NULL,
+  `preco_custo` decimal(12,2) DEFAULT NULL,
+  `tem_variacao` tinyint(1) NOT NULL DEFAULT '0',
+  `produto_balanca` tinyint(1) NOT NULL DEFAULT '0',
+  `estoque` int NOT NULL DEFAULT '0',
+  `ativo` tinyint(1) NOT NULL DEFAULT '1',
+  `atualizado_em_origem` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.produtos_cache: ~0 rows (aproximadamente)
+
 -- Copiando estrutura para tabela pdv_fiscal.produto_variantes
 CREATE TABLE IF NOT EXISTS `produto_variantes` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -13721,8 +13819,23 @@ CREATE TABLE IF NOT EXISTS `produto_variantes` (
 
 -- Copiando dados para a tabela pdv_fiscal.produto_variantes: ~2 rows (aproximadamente)
 REPLACE INTO `produto_variantes` (`id`, `produto_id`, `cor`, `tamanho`, `sku`, `estoque`, `estoque_minimo`, `created_at`, `updated_at`) VALUES
-	(1, 4, 'BRANCO', '1', '27', 86, 0, '2026-08-22 00:34:43', '2026-10-03 01:21:20'),
+	(1, 4, 'BRANCO', '1', '27', 85, 0, '2026-08-22 00:34:43', '2026-10-03 01:21:20'),
 	(2, 4, 'INTEGRAL', '1', '27', 88, 0, '2026-08-22 00:34:43', '2026-10-02 23:39:55');
+
+-- Copiando estrutura para tabela pdv_fiscal.produto_variantes_cache
+CREATE TABLE IF NOT EXISTS `produto_variantes_cache` (
+  `id` bigint unsigned NOT NULL,
+  `produto_id` bigint unsigned NOT NULL,
+  `cor` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `tamanho` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `estoque` int NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `produto_variantes_cache_produto_id_index` (`produto_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.produto_variantes_cache: ~0 rows (aproximadamente)
 
 -- Copiando estrutura para tabela pdv_fiscal.series_nfe
 CREATE TABLE IF NOT EXISTS `series_nfe` (
@@ -13753,9 +13866,42 @@ CREATE TABLE IF NOT EXISTS `sessions` (
   KEY `sessions_last_activity_index` (`last_activity`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.sessions: ~1 rows (aproximadamente)
+-- Copiando dados para a tabela pdv_fiscal.sessions: ~2 rows (aproximadamente)
 REPLACE INTO `sessions` (`id`, `user_id`, `ip_address`, `user_agent`, `payload`, `last_activity`) VALUES
-	('OXtJzZ0heOtNpkbqDkBW04WutIA5vQU77fYnSEDk', 1, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJoWTJXYTdPSUNBQThIbE95S0tFd3I3bWdpM24ydnlFVk1UZUxlMzRZIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9ub3Rhc2Zpc2NhaXNcLzQ2XC9wcmV2aXN1YWxpemFyIiwicm91dGUiOiJub3Rhc2Zpc2NhaXMucHJldmlzdWFsaXphciJ9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX0sImxvZ2luX3dlYl81OWJhMzZhZGRjMmIyZjk0MDE1ODBmMDE0YzdmNThlYTRlMzA5ODlkIjoxLCJtb2RvIjoiYWRtaW4ifQ==', 1790990809);
+	('jKGExZrg1XRKU5ZsaeylXdxHkRBaL0mKYYeWap6B', 1, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJQSG9MRUxHQUNKampKcTdGSEJtbWc2UkdZUXh4WGwzWGppN0N1V2FIIiwidXJsIjp7ImludGVuZGVkIjoiaHR0cDpcL1wvMTI3LjAuMC4xOjgwMDBcL3VzdWFyaW9zXC9jYWl4YSJ9LCJfcHJldmlvdXMiOnsidXJsIjoiaHR0cDpcL1wvMTI3LjAuMC4xOjgwMDBcL2xvZ2luXC91c3VhcmlvP2NvZGlnbz0xNCZtb2RvPW9wZXJhZG9yIiwicm91dGUiOiJhdXRoLnVzdWFyaW8ifSwiX2ZsYXNoIjp7Im9sZCI6W10sIm5ldyI6W119LCJsb2dpbl93ZWJfNTliYTM2YWRkYzJiMmY5NDAxNTgwZjAxNGM3ZjU4ZWE0ZTMwOTg5ZCI6MSwibW9kbyI6Im9wZXJhZG9yIiwibG9naW5fY2FpeGFfNTliYTM2YWRkYzJiMmY5NDAxNTgwZjAxNGM3ZjU4ZWE0ZTMwOTg5ZCI6MTQsImF1dG9yaXphY2FvX3N1cGVydmlzb3IiOnsiY2FuY2VsYXJfbmZjZSI6eyJzdXBlcnZpc29yX2lkIjoxNCwiZXhwaXJhX2VtIjoxNzkxMjIxMjYzfX19', 1791220797),
+	('TbppCXC354NYIfIIbHnRrmdrI0IaYuW4Ftssdmy7', 1, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJGZ0FYNnhhY2tPMUxtMG1Da3hpR2pQdW5EbUMxUDhyZG5wZUFtUVM2IiwibG9naW5fY2FpeGFfNTliYTM2YWRkYzJiMmY5NDAxNTgwZjAxNGM3ZjU4ZWE0ZTMwOTg5ZCI6NCwibW9kbyI6Im9wZXJhZG9yIiwiX2ZsYXNoIjp7Im9sZCI6W10sIm5ldyI6W119LCJ1cmwiOnsiaW50ZW5kZWQiOiJodHRwOlwvXC8xMjcuMC4wLjE6ODAwMFwvdXN1YXJpb3NcL2NhaXhhIn0sIl9wcmV2aW91cyI6eyJ1cmwiOiJodHRwOlwvXC8xMjcuMC4wLjE6ODAwMFwvbm90YXNmaXNjYWlzXC9jcmVhdGUiLCJyb3V0ZSI6Im5vdGFzZmlzY2Fpcy5jcmVhdGUifSwibG9naW5fd2ViXzU5YmEzNmFkZGMyYjJmOTQwMTU4MGYwMTRjN2Y1OGVhNGUzMDk4OWQiOjF9', 1791223516);
+
+-- Copiando estrutura para tabela pdv_fiscal.sync_meta
+CREATE TABLE IF NOT EXISTS `sync_meta` (
+  `chave` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `valor` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`chave`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.sync_meta: ~0 rows (aproximadamente)
+
+-- Copiando estrutura para tabela pdv_fiscal.tipos_operador
+CREATE TABLE IF NOT EXISTS `tipos_operador` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nome` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nome_plural` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `contexto` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `permite_login` tinyint(1) NOT NULL DEFAULT '1',
+  `ativo` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `tipos_operador_slug_unique` (`slug`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.tipos_operador: ~3 rows (aproximadamente)
+REPLACE INTO `tipos_operador` (`id`, `slug`, `nome`, `nome_plural`, `contexto`, `permite_login`, `ativo`, `created_at`, `updated_at`) VALUES
+	(1, 'caixa', 'Operador de Caixa', 'Operadores de Caixa', 'caixa', 1, 1, '2026-10-05 11:53:15', '2026-10-05 11:53:15'),
+	(2, 'supervisor', 'Supervisor', 'Supervisores', 'caixa', 1, 1, '2026-10-05 11:53:15', '2026-10-05 11:53:15'),
+	(3, 'fiscal', 'Operador Fiscal', 'Operadores Fiscais', 'servidor', 1, 1, '2026-10-05 11:53:15', '2026-10-05 11:53:15');
 
 -- Copiando estrutura para tabela pdv_fiscal.transportadores
 CREATE TABLE IF NOT EXISTS `transportadores` (
@@ -13777,7 +13923,7 @@ CREATE TABLE IF NOT EXISTS `transportadores` (
   KEY `transportadores_nome_index` (`nome`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.transportadores: ~0 rows (aproximadamente)
+-- Copiando dados para a tabela pdv_fiscal.transportadores: ~2 rows (aproximadamente)
 REPLACE INTO `transportadores` (`id`, `tipo_pessoa`, `documento`, `nome`, `ie`, `logradouro`, `numero`, `bairro`, `municipio`, `uf`, `ativo`, `created_at`, `updated_at`) VALUES
 	(1, 'F', '90651080096', 'Motorista Teste', NULL, 'Rua Teste', '123', 'Bairro Teste', 'Campina Grande', 'PB', 1, '2026-10-02 23:36:48', '2026-10-02 23:36:48'),
 	(2, 'J', '49746070000182', 'Transportadora Teste', NULL, 'Rua Teste 2', 'S/N', 'GURIRI NORTE', 'SAO MATEUS', 'ES', 1, '2026-10-02 23:38:10', '2026-10-02 23:38:10');
@@ -13819,22 +13965,56 @@ REPLACE INTO `tributacoes` (`id`, `descricao`, `crt`, `cfop`, `csosn`, `cst_icms
 CREATE TABLE IF NOT EXISTS `users` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `username` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `tipo` enum('admin','operador') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'operador',
+  `codigo` int unsigned NOT NULL,
   `email` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `email_verified_at` timestamp NULL DEFAULT NULL,
   `password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_admin` tinyint(1) NOT NULL DEFAULT '0',
+  `ativo` tinyint(1) NOT NULL DEFAULT '1',
   `remember_token` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `users_username_unique` (`username`),
+  UNIQUE KEY `users_codigo_unique` (`codigo`),
   UNIQUE KEY `users_email_unique` (`email`)
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.users: ~14 rows (aproximadamente)
+REPLACE INTO `users` (`id`, `name`, `codigo`, `email`, `email_verified_at`, `password`, `is_admin`, `ativo`, `remember_token`, `created_at`, `updated_at`) VALUES
+	(1, 'Administrador', 1, NULL, NULL, '$2y$12$Ews791ogdoixwysDuSwj/eT/0yJx/4tdNJznmtpO5UVZfNGFsWA4a', 1, 1, NULL, '2026-07-31 03:28:13', '2026-07-31 03:28:13'),
+	(2, 'Operador Fiscal', 2, NULL, NULL, '$2y$12$abaCGuO1.JsUilSVV6gZFesOqqhFbEJ9vjfA1eUBDj9vw71ck6VF.', 0, 1, NULL, '2026-10-03 12:28:52', '2026-10-03 15:13:01'),
+	(3, 'Supervisor Teste', 3, NULL, NULL, '$2y$12$QEZR5qQopHv1ggAB7.VcVu4PDHXtzkJk8qwwf8mZHDvqbbUlwExFW', 0, 1, NULL, '2026-10-03 14:26:47', '2026-10-05 01:12:05'),
+	(4, 'Operador de Caixa', 4, NULL, NULL, '$2y$12$hWusM8SXWQlJRumytzrtR.lQcW8VY1hU6au.SuHy6CyvgsK8mTc/6', 0, 1, NULL, '2026-10-03 14:27:40', '2026-10-03 15:49:36'),
+	(5, 'Operador de caixa 2', 5, NULL, NULL, '$2y$12$lDx5JipzCVBeFDDBh6aJy.JZEsC8MwyXDij0nQFuH8w/BO3ZFiAxq', 0, 1, NULL, '2026-10-05 01:11:30', '2026-10-05 01:11:30'),
+	(6, 'Supervisor Teste 2', 6, NULL, NULL, '$2y$12$GMfMyCu.x5JWpEA4QH10E.on57FtAkJEs9/hdQyYza/kD7nv89Xsi', 0, 1, NULL, '2026-10-05 01:11:47', '2026-10-05 01:33:42'),
+	(7, 'Supervisor 1', 7, NULL, NULL, '$2y$12$T3wx9rct7hciyvd.jFQZRuFSSreluz831zQndwBAirFy.NCGwg2K2', 0, 1, NULL, '2026-10-05 01:47:03', '2026-10-05 01:47:03'),
+	(8, 'Supervisor 7', 8, NULL, NULL, '$2y$12$fWLsRUGesZA8ui3ZwFtpt.9LfZzQ3J9OFC2YLNnpkul8mIZt899Gq', 0, 1, NULL, '2026-10-05 01:47:39', '2026-10-05 11:19:03'),
+	(9, 'Supervisor caixa', 9, NULL, NULL, '$2y$12$DcBI2rDTHGsvC5wTwLfxW.xQtDqTVTErSO3ZUbbACrx7vxt84BoG6', 0, 1, NULL, '2026-10-05 11:21:12', '2026-10-05 11:21:12'),
+	(10, 'Operador Fiscal', 10, NULL, NULL, '$2y$12$YY1wKpRKyDxgF7IDA.XUmuDc4SPdI.Fmnrfpi0fbxs.5OgnnAURMO', 0, 1, NULL, '2026-10-05 11:26:53', '2026-10-05 11:26:53'),
+	(11, 'Operador de Caixa 10', 11, NULL, NULL, '$2y$12$s4iYVVNSvWYwW3aGU8quGullphtkm6/zbL0ZLqgA/cj.45z.6fQai', 0, 1, NULL, '2026-10-05 12:23:58', '2026-10-05 12:23:58'),
+	(12, 'Supervisor 10', 12, NULL, NULL, '$2y$12$Jwk7L.W4nxVR72iYi5m.we2DAVKGcrGg2nimMvl8FCgHesYV6JH3u', 0, 1, NULL, '2026-10-05 12:24:22', '2026-10-05 12:24:22'),
+	(13, 'Operador de caixa novo', 13, NULL, NULL, '$2y$12$vFSvnsqiBGon46iFnjUsCuhESNqyCftqBQfFK.Oai3CAjheEELY0C', 0, 1, NULL, '2026-10-05 17:16:13', '2026-10-05 17:16:13'),
+	(14, 'Supervisor novo', 14, NULL, NULL, '$2y$12$RnahwKs3I8Wo0vNVGZBtKOjEpdgo5z./icE58LynxNN4a/Gume0kS', 0, 1, NULL, '2026-10-05 17:16:31', '2026-10-05 17:16:31');
+
+-- Copiando estrutura para tabela pdv_fiscal.veiculos
+CREATE TABLE IF NOT EXISTS `veiculos` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `transportador_id` bigint unsigned DEFAULT NULL,
+  `placa` varchar(7) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `uf` char(2) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `rntrc` varchar(8) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ativo` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `veiculos_placa_unique` (`placa`),
+  KEY `veiculos_transportador_id_foreign` (`transportador_id`),
+  CONSTRAINT `veiculos_transportador_id_foreign` FOREIGN KEY (`transportador_id`) REFERENCES `transportadores` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.users: ~1 rows (aproximadamente)
-REPLACE INTO `users` (`id`, `name`, `username`, `tipo`, `email`, `email_verified_at`, `password`, `remember_token`, `created_at`, `updated_at`) VALUES
-	(1, 'Administrador', 'admin', 'admin', NULL, NULL, '$2y$12$Ews791ogdoixwysDuSwj/eT/0yJx/4tdNJznmtpO5UVZfNGFsWA4a', NULL, '2026-07-31 03:28:13', '2026-07-31 03:28:13');
+-- Copiando dados para a tabela pdv_fiscal.veiculos: ~0 rows (aproximadamente)
+REPLACE INTO `veiculos` (`id`, `transportador_id`, `placa`, `uf`, `rntrc`, `ativo`, `created_at`, `updated_at`) VALUES
+	(1, 1, 'ABC1D38', 'PB', NULL, 1, '2026-10-03 01:18:49', '2026-10-03 01:18:49');
 
 -- Copiando estrutura para tabela pdv_fiscal.vendas
 CREATE TABLE IF NOT EXISTS `vendas` (
@@ -13869,7 +14049,7 @@ CREATE TABLE IF NOT EXISTS `vendas` (
   KEY `vendas_operador_id_foreign` (`operador_id`),
   CONSTRAINT `vendas_caixa_id_foreign` FOREIGN KEY (`caixa_id`) REFERENCES `caixas` (`id`),
   CONSTRAINT `vendas_operador_id_foreign` FOREIGN KEY (`operador_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=178 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=179 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Copiando dados para a tabela pdv_fiscal.vendas: ~174 rows (aproximadamente)
 REPLACE INTO `vendas` (`id`, `uuid`, `caixa_id`, `cliente_id`, `cpf_na_nota`, `operador_id`, `total`, `desconto`, `troco`, `forma_pagamento`, `status`, `chave_nfe`, `protocolo_nfe`, `emitida_em`, `numero_nfce`, `tp_emis`, `dh_cont`, `x_just`, `xml_contingencia`, `serie_nfce`, `motivo_cancelamento`, `motivo_rejeicao`, `ultimo_arquivo_xml`, `created_at`, `updated_at`) VALUES
@@ -14049,7 +14229,32 @@ REPLACE INTO `vendas` (`id`, `uuid`, `caixa_id`, `cliente_id`, `cpf_na_nota`, `o
 	(174, 'e164c757-2acf-4c78-a0ac-6db69bf52adc', 9, NULL, NULL, 1, 2.00, 0.00, 0.00, NULL, 'emitida', '25260924057254000104650010000001221241898201', '325260000039967', '2026-09-06 14:42:40', 122, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/09/06/25260924057254000104650010000001221241898201-nfe.xml', '2026-09-06 14:25:41', '2026-09-06 14:42:40'),
 	(175, '7c031f3f-c4c5-49b8-aa1e-4f5a81995b5e', 9, NULL, NULL, 1, 2.25, 0.00, 0.75, NULL, 'emitida', '25260924057254000104650010000001231416557588', '325260000042437', '2026-09-26 19:09:58', 123, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\pdv-fiscal\\storage\\app/XML_nfce/26/09/26/25260924057254000104650010000001231416557588-nfe.xml', '2026-09-26 19:09:57', '2026-09-26 19:09:58'),
 	(176, '54995176-75a8-413b-b04a-5e6f89868942', 9, NULL, NULL, 1, 2.00, 0.00, 0.00, NULL, 'emitida', '25260924057254000104650010000001249992261653', '325260000043229', '2026-09-30 16:46:09', 124, 9, '2026-09-30 16:39:41', 'Falha de conectividade com a internet no momento da emissão.', '<?xml version="1.0"?><NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe Id="NFe25260924057254000104650010000001249992261653" versao="4.00"><ide><cUF>25</cUF><cNF>99226165</cNF><natOp>Venda de mercadoria</natOp><mod>65</mod><serie>1</serie><nNF>124</nNF><dhEmi>2026-09-30T13:39:41-03:00</dhEmi><tpNF>1</tpNF><idDest>1</idDest><cMunFG>2504009</cMunFG><tpImp>4</tpImp><tpEmis>9</tpEmis><cDV>3</cDV><tpAmb>2</tpAmb><finNFe>1</finNFe><indFinal>1</indFinal><indPres>1</indPres><procEmi>0</procEmi><verProc>1.0.0</verProc><dhCont>2026-09-30T13:39:41-03:00</dhCont><xJust>Falha de conectividade com a internet no momento da emiss&#xE3;o.</xJust></ide><emit><CNPJ>24057254000104</CNPJ><xNome>R B LIMEIRA LTDA</xNome><xFant>GRANJA LETICIA</xFant><enderEmit><xLgr>Rua Jornalista Evandro Barros</xLgr><nro>246</nro><xBairro>Malvinas</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58433545</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderEmit><IE>162661940</IE><CRT>1</CRT></emit><det nItem="1"><prod><cProd>5</cProd><cEAN>SEM GTIN</cEAN><xProd>NOTA FISCAL EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL</xProd><NCM>00000000</NCM><CFOP>5102</CFOP><uCom>KG</uCom><qCom>1.0000</qCom><vUnCom>2.0000000000</vUnCom><vProd>2.00</vProd><cEANTrib>SEM GTIN</cEANTrib><uTrib>KG</uTrib><qTrib>1.0000</qTrib><vUnTrib>2.0000000000</vUnTrib><indTot>1</indTot></prod><imposto><vTotTrib>0.00</vTotTrib><ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS><PIS><PISOutr><CST>99</CST><vBC>0.00</vBC><pPIS>0.0000</pPIS><vPIS>0.00</vPIS></PISOutr></PIS><COFINS><COFINSOutr><CST>99</CST><vBC>0.00</vBC><pCOFINS>0.0000</pCOFINS><vCOFINS>0.00</vCOFINS></COFINSOutr></COFINS><IBSCBS><CST>000</CST><cClassTrib>000001</cClassTrib><gIBSCBS><vBC>2.00</vBC><gIBSUF><pIBSUF>0.1000</pIBSUF><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><pIBSMun>0.00</pIBSMun><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><gCBS><pCBS>0.9000</pCBS><vCBS>0.02</vCBS></gCBS></gIBSCBS></IBSCBS></imposto><vItem>2.00</vItem></det><total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>2.00</vProd><vFrete>0.00</vFrete><vSeg>0.00</vSeg><vDesc>0.00</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS><vOutro>0.00</vOutro><vNF>2.00</vNF></ICMSTot><IBSCBSTot><vBCIBSCBS>2.00</vBCIBSCBS><gIBS><gIBSUF><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gIBS><gCBS><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vCBS>0.02</vCBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gCBS><gMono><vIBSMono>0.00</vIBSMono><vCBSMono>0.00</vCBSMono><vIBSMonoReten>0.00</vIBSMonoReten><vCBSMonoReten>0.00</vCBSMonoReten><vIBSMonoRet>0.00</vIBSMonoRet><vCBSMonoRet>0.00</vCBSMonoRet></gMono></IBSCBSTot><vNFTot>2.00</vNFTot></total><transp><modFrete>9</modFrete></transp><pag><detPag><indPag>0</indPag><tPag>01</tPag><vPag>2.00</vPag></detPag><vTroco>0.00</vTroco></pag></infNFe><infNFeSupl><qrCode>http://www.sefaz.pb.gov.br/nfcehom?p=25260924057254000104650010000001249992261653|3|2|30|2.00|||prOYppPT5LkNLjNhit/aZHbo1V2TsZnTyE74DlSdc+pK2TDyJZIt6Yl5MwEbPh6p5rHiSqvxDRA2zqTSHHrnBq0Pj0ZVqpS/BE5abLC/ReEWPjVVlqhARlVxG6I5mpKVF9GFFB+p4PTNMT+yGpD2Z9sEcqriBMRT7j14PBrNcAHcs6dAVv+RyPPmhoRmPo4+fjezsvfTQIaTilXgByXrBE0XGtSOFo8sP8biNbsyWIG9WB9EMvRoTafOjp7ILQshceSIR35rk1uA4b2zXLE0cTFhrBAJFfHuBK9mIZepbZQc3MRYhBL8uJn4NK08k0DUVTrR/ff9BeKBtZmObnzfHw==</qrCode><urlChave>www.sefaz.pb.gov.br/nfcehom</urlChave></infNFeSupl><Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/><Reference URI="#NFe25260924057254000104650010000001249992261653"><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><DigestValue>2e5gwDpSbcEdO2ffzQnpE5ouePU=</DigestValue></Reference></SignedInfo><SignatureValue>o+7rB8tJuXJ/28X7kACjIeu3Ybzg85VW5vUYLJbDRUEsnC1k5CZzRbk9QFtIEww5XArCEXOxGpsi7ufJx5nOsSOXzUpkzvUgSZDMOtc63BDyvRqmTqHHHNSgkqIrhTFgVOm1tefKnVM8DSNmJSCg255H5m8qcnfoy5Bcq0LFKxf4Yd7KVdP7wyXxJY4pxyencpZokBJazMe0QrOs7q4tz32kDzTptv4XtexiYL2mrfPjDE1O6hVYAHoyYVwqus63qyndvUUxGcdEMa/fnJ5Cl5iHccmE8UMCOOeuXF7xXe5gSHnwnHITL0PxRJVetdSNHVIrfRIaS7xZCMWAFCwO8w==</SignatureValue><KeyInfo><X509Data><X509Certificate>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</X509Certificate></X509Data></KeyInfo></Signature></NFe>', 1, NULL, NULL, 'C:\\pdv-fiscal\\storage\\app/XML_nfce/26/09/30/25260924057254000104650010000001249992261653-nfe.xml', '2026-09-30 16:39:20', '2026-09-30 16:46:09'),
-	(177, '95727516-b7ee-4adb-8bbf-ed18fc14b13f', 9, NULL, NULL, 1, 9.75, 0.00, 0.00, NULL, 'emitida', '25261024057254000104650010000001251150079544', '325260000043816', '2026-10-01 23:09:56', 125, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\pdv-fiscal\\storage\\app/XML_nfce/26/10/01/25261024057254000104650010000001251150079544-nfe.xml', '2026-10-01 23:05:16', '2026-10-01 23:09:56');
+	(177, '95727516-b7ee-4adb-8bbf-ed18fc14b13f', 9, NULL, NULL, 1, 9.75, 0.00, 0.00, NULL, 'emitida', '25261024057254000104650010000001251150079544', '325260000043816', '2026-10-01 23:09:56', 125, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\pdv-fiscal\\storage\\app/XML_nfce/26/10/01/25261024057254000104650010000001251150079544-nfe.xml', '2026-10-01 23:05:16', '2026-10-01 23:09:56'),
+	(178, 'f59e56aa-00f4-4001-b595-d28946fbd245', 9, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25261024057254000104650010000001261154802990', '325260000044270', '2026-10-05 01:53:06', 126, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\pdv-fiscal\\storage\\app/XML_nfce/26/10/04/25261024057254000104650010000001261154802990-nfe.xml', '2026-10-05 01:53:03', '2026-10-05 01:53:06');
+
+-- Copiando estrutura para tabela pdv_fiscal.vendas_pendentes
+CREATE TABLE IF NOT EXISTS `vendas_pendentes` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `uuid` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `caixa_id_central` bigint unsigned DEFAULT NULL,
+  `operador_id_central` bigint unsigned NOT NULL,
+  `total` decimal(12,2) NOT NULL,
+  `desconto` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `troco` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `forma_pagamento` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `pagamentos` json DEFAULT NULL,
+  `itens` json NOT NULL,
+  `status` enum('pendente_sync','sincronizada','erro_sync') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pendente_sync',
+  `erro_sync_mensagem` text COLLATE utf8mb4_unicode_ci,
+  `vendida_em` timestamp NOT NULL,
+  `sincronizada_em` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `vendas_pendentes_uuid_unique` (`uuid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.vendas_pendentes: ~0 rows (aproximadamente)
 
 -- Copiando estrutura para tabela pdv_fiscal.venda_itens
 CREATE TABLE IF NOT EXISTS `venda_itens` (
@@ -14070,7 +14275,7 @@ CREATE TABLE IF NOT EXISTS `venda_itens` (
   CONSTRAINT `venda_itens_produto_id_foreign` FOREIGN KEY (`produto_id`) REFERENCES `produtos` (`id`),
   CONSTRAINT `venda_itens_produto_variante_id_foreign` FOREIGN KEY (`produto_variante_id`) REFERENCES `produto_variantes` (`id`),
   CONSTRAINT `venda_itens_venda_id_foreign` FOREIGN KEY (`venda_id`) REFERENCES `vendas` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=186 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=187 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Copiando dados para a tabela pdv_fiscal.venda_itens: ~180 rows (aproximadamente)
 REPLACE INTO `venda_itens` (`id`, `venda_id`, `produto_id`, `produto_variante_id`, `quantidade`, `preco_unitario`, `desconto`, `subtotal`, `created_at`, `updated_at`) VALUES
@@ -14258,7 +14463,8 @@ REPLACE INTO `venda_itens` (`id`, `venda_id`, `produto_id`, `produto_variante_id
 	(182, 176, 5, NULL, 1, 2.00, 0.00, 2.00, '2026-09-30 16:39:20', '2026-09-30 16:39:20'),
 	(183, 177, 1, NULL, 1, 4.00, 0.00, 4.00, '2026-10-01 23:05:16', '2026-10-01 23:05:16'),
 	(184, 177, 2, NULL, 1, 3.50, 0.00, 3.50, '2026-10-01 23:05:16', '2026-10-01 23:05:16'),
-	(185, 177, 4, 1, 1, 2.25, 0.00, 2.25, '2026-10-01 23:05:16', '2026-10-01 23:05:16');
+	(185, 177, 4, 1, 1, 2.25, 0.00, 2.25, '2026-10-01 23:05:16', '2026-10-01 23:05:16'),
+	(186, 178, 4, 1, 1, 2.25, 0.00, 2.25, '2026-10-05 01:53:03', '2026-10-05 01:53:03');
 
 -- Copiando estrutura para tabela pdv_fiscal.venda_pagamentos
 CREATE TABLE IF NOT EXISTS `venda_pagamentos` (
@@ -14271,7 +14477,7 @@ CREATE TABLE IF NOT EXISTS `venda_pagamentos` (
   PRIMARY KEY (`id`),
   KEY `venda_pagamentos_venda_id_foreign` (`venda_id`),
   CONSTRAINT `venda_pagamentos_venda_id_foreign` FOREIGN KEY (`venda_id`) REFERENCES `vendas` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=105 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=106 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Copiando dados para a tabela pdv_fiscal.venda_pagamentos: ~101 rows (aproximadamente)
 REPLACE INTO `venda_pagamentos` (`id`, `venda_id`, `forma_pagamento`, `valor`, `created_at`, `updated_at`) VALUES
@@ -14378,7 +14584,8 @@ REPLACE INTO `venda_pagamentos` (`id`, `venda_id`, `forma_pagamento`, `valor`, `
 	(101, 174, 'dinheiro', 2.00, '2026-09-06 14:25:41', '2026-09-06 14:25:41'),
 	(102, 175, 'dinheiro', 3.00, '2026-09-26 19:09:57', '2026-09-26 19:09:57'),
 	(103, 176, 'dinheiro', 2.00, '2026-09-30 16:39:20', '2026-09-30 16:39:20'),
-	(104, 177, 'dinheiro', 9.75, '2026-10-01 23:05:16', '2026-10-01 23:05:16');
+	(104, 177, 'dinheiro', 9.75, '2026-10-01 23:05:16', '2026-10-01 23:05:16'),
+	(105, 178, 'dinheiro', 2.25, '2026-10-05 01:53:03', '2026-10-05 01:53:03');
 
 /*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
