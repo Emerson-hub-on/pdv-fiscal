@@ -63,6 +63,27 @@ class AuthController extends Controller
             : redirect()->route('caixa.abrir-form');
     }
 
+        // Mostra o nome do usuário na tela de login assim que o código é digitado
+    public function nomePorCodigo(Request $request)
+    {
+        $dados = $request->validate([
+            'codigo' => 'required|integer|min:1',
+            'modo'   => 'required|in:admin,operador',
+        ]);
+
+        $codigo = (int) $dados['codigo'];
+
+        $usuario = $dados['modo'] === 'admin'
+            ? User::where('codigo_servidor', $codigo)->first()
+            : UsuarioCache::porCodigo($codigo); // caixa: só o SQLite local
+
+        $permitido = $usuario && ($dados['modo'] === 'admin'
+            ? $usuario->podeAcessarFiscal()
+            : $usuario->podeAcessarCaixa());
+
+        return response()->json(['nome' => $permitido ? $usuario->name : null]);
+    }
+
     public function logout(Request $request)
     {
         // "contexto" vem do formulário de sair: caixa | admin. Sem ele, sai de tudo.
