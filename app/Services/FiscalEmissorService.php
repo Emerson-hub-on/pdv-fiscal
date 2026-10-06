@@ -31,19 +31,10 @@ public function emitir(Venda $venda): array
         $venda->load('itens.produto.ncm', 'itens.produto.tributacao', 'itens.variante', 'caixa.pdv', 'cliente');
         $pdv = $venda->caixa->pdv;
 
-        if ($venda->numero_nfce) {
-            $numero = $venda->numero_nfce;
-            $serie = $venda->serie_nfce;
-        } else {
-            $numero = $pdv->numero_atual_nfce + 1;
-            $serie = $pdv->serie_nfce;
-
-            $pdv->update(['numero_atual_nfce' => $numero]);
-            $venda->update(['numero_nfce' => $numero, 'serie_nfce' => $serie]);
-        }
+        [$numero, $serie] = $this->reservarNumero($venda, $pdv);
 
         try {
-            $this->nfeService = new NfeService($pdv);
+            $this->nfeService = $this->criarNfeService($pdv);
             $empresa = $this->nfeService->empresa();
             $tools = $this->nfeService->tools();
         } catch (\Throwable $e) {
@@ -140,6 +131,29 @@ public function emitir(Venda $venda): array
         }
 
         return $this->processarResposta($resposta, $venda, $xmlAssinado);
+    }
+
+        /**
+     * Reserva o número da NFC-e. O emissor local sobrescreve para usar o contador do SQLite.
+     */
+    protected function reservarNumero($venda, $pdv): array
+    {
+        if ($venda->numero_nfce) {
+            return [$venda->numero_nfce, $venda->serie_nfce];
+        }
+
+        $numero = $pdv->numero_atual_nfce + 1;
+        $serie = $pdv->serie_nfce;
+
+        $pdv->update(['numero_atual_nfce' => $numero]);
+        $venda->update(['numero_nfce' => $numero, 'serie_nfce' => $serie]);
+
+        return [$numero, $serie];
+    }
+
+    protected function criarNfeService($pdv): NfeService
+    {
+        return new NfeService($pdv);
     }
 
     /**
