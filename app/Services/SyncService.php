@@ -10,6 +10,8 @@ use App\Support\CentralStatus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Models\User;
+use App\Models\Empresa;
+use Illuminate\Support\Facades\Crypt;
 use Exception;
 
 class SyncService
@@ -18,13 +20,74 @@ class SyncService
      * Direcao 1: puxa do MySQL central pro SQLite local (catalogo de produtos).
      * So traz o que mudou desde a ultima sincronizacao - e reconcilia exclusoes.
      */
+
+        /**
+     * Direcao 1f: copia os dados da empresa e o certificado para o SQLite (cifrados com a APP_KEY).
+     */
+    public function puxarEmpresa(): array
+    {
+        try {
+            $empresa = Empresa::first();
+
+            if (!$empresa) {
+                return ['sucesso' => true, 'empresa' => false];
+            }
+
+            $ultimaSync = $this->obterMeta('ultima_sincronizacao_empresa', '1970-01-01 00:00:00');
+            $existeLocal = DB::connection('sqlite_local')->table('empresa_cache')->exists();
+
+            if ($existeLocal && $empresa->updated_at->lte($ultimaSync)) {
+                return ['sucesso' => true, 'empresa' => false]; // sem mudanças
+            }
+
+            DB::connection('sqlite_local')->table('empresa_cache')->updateOrInsert(
+                ['id' => 1],
+                [
+                    'cnpj' => $empresa->cnpj,
+                    'razao_social' => $empresa->razao_social,
+                    'nome_fantasia' => $empresa->nome_fantasia,
+                    'ie' => $empresa->ie,
+                    'im' => $empresa->im,
+                    'crt' => $empresa->crt,
+                    'logradouro' => $empresa->logradouro,
+                    'numero' => $empresa->numero,
+                    'complemento' => $empresa->complemento,
+                    'bairro' => $empresa->bairro,
+                    'cep' => $empresa->cep,
+                    'municipio' => $empresa->municipio,
+                    'cod_municipio' => $empresa->cod_municipio,
+                    'uf' => $empresa->uf,
+                    'ambiente' => (int) $empresa->ambiente,
+                    'certificado' => $empresa->certificado_base64 ? Crypt::encryptString($empresa->certificado_base64) : null,
+                    'certificado_senha' => $empresa->certificado_senha ? Crypt::encryptString($empresa->certificado_senha) : null,
+                    'certificado_validade' => $empresa->certificado_validade?->format('Y-m-d'),
+                    'updated_at' => now(),
+                ]
+            );
+
+            $this->salvarMeta('ultima_sincronizacao_empresa', now()->toDateTimeString());
+
+            return ['sucesso' => true, 'empresa' => true];
+        } catch (\Throwable $e) {
+            return $this->registrarFalha($e);
+        }
+    }
+
+
     public function puxarCatalogo(): array
     {
         try {
             $ultimaSync = $this->obterMeta('ultima_sincronizacao_produtos', '1970-01-01 00:00:00');
 
-            $produtos = Produto::with(['ncm', 'cest', 'tributacao', 'classificacaoTributaria', 'variantes'])
-                ->where('updated_at', '>', $ultimaSync)
+            $produtos = Produto::with(['ncm', 'cest', 'tributacao', 'pisCofins', 'classificacaoTributaria', 'variantes'])
+                ->where(function ($q) use ($ultimaSync) {
+                    $q->where('updated_at', '>', $ultimaSync)
+                      ->orWhereHas('tributacao', fn ($t) => $t->where('updated_at', '>', $ultimaSync))
+                      ->orWhereHas('pisCofins', fn ($t) => $t->where('updated_at', '>', $ultimaSync))
+                      ->orWhereHas('classificacaoTributaria', fn ($t) => $t->where('updated_at', '>', $ultimaSync))
+                      ->orWhereHas('ncm', fn ($t) => $t->where('updated_at', '>', $ultimaSync))
+                      ->orWhereHas('cest', fn ($t) => $t->where('updated_at', '>', $ultimaSync));
+                })
                 ->get();
 
             foreach ($produtos as $produto) {
@@ -42,6 +105,14 @@ class SyncService
                         'unidade_tributavel' => $produto->unidade_tributavel,
                         'origem_mercadoria' => $produto->origem_mercadoria,
                         'csosn' => $produto->tributacao?->csosn,
+                        'cst_icms' => $produto->tributacao?->cst_icms,
+                        'aliquota_icms' => $produto->tributacao?->aliquota_icms,
+                        'pis_cofins_cst' => $produto->pisCofins?->codigo,
+                        'aliquota_pis' => $produto->pisCofins?->aliquota_pis,
+                        'aliquota_cofins' => $produto->pisCofins?->aliquota_cofins,
+                        'class_trib_cst' => $produto->classificacaoTributaria?->cst_codigo,
+                        'percentual_reducao_ibs' => $produto->classificacaoTributaria?->percentual_reducao_ibs,
+                        'percentual_reducao_cbs' => $produto->classificacaoTributaria?->percentual_reducao_cbs,
                         'class_trib_ibs_cbs' => $produto->classificacaoTributaria?->codigo,
                         'preco_venda' => $produto->preco_venda,
                         'preco_custo' => $produto->preco_custo,
@@ -181,6 +252,8 @@ class SyncService
                 'serie_nfce' => $p->serie_nfce,
                 'numero_atual_nfce' => $p->numero_atual_nfce ?? 0,
                 'ativo' => (int) $p->ativo,
+                'csc' => $p->csc ? Crypt::encryptString($p->csc) : null,
+                'csc_id' => $p->csc_id,
                 'created_at' => $agora,
                 'updated_at' => $agora,
             ])->all();
@@ -378,6 +451,7 @@ class SyncService
                         'cpf_cnpj' => $cliente->cpf_cnpj,
                         'indicador_ie' => $cliente->indicador_ie,
                         'ie' => $cliente->ie,
+                        'email' => $cliente->email,
                         'cep' => $cliente->cep,
                         'logradouro' => $cliente->logradouro,
                         'numero' => $cliente->numero,
@@ -527,10 +601,12 @@ class SyncService
 
         $passos = [
             'caixas'   => 'sincronizarCaixas',
+            'empresa'  => 'puxarEmpresa',
             'catalogo' => 'puxarCatalogo',
             'clientes' => 'puxarClientes',
             'usuarios' => 'puxarUsuarios',
             'pdvs'     => 'puxarPdvs',
+
         ];
 
         foreach ($passos as $chave => $metodo) {
