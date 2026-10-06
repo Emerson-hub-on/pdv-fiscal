@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 class EmitirNfceLocal extends Command
 {
-    protected $signature = 'nfce:emitir-local {uuid : uuid da venda em vendas_pendentes}';
+    protected $signature = 'nfce:emitir-local {uuid : uuid da venda em vendas_pendentes} {--forcar : Emite mesmo que o servidor já tenha recebido a venda}';
 
     protected $description = 'Emite (ou reenvia) a NFC-e de uma venda do caixa SEM usar o servidor. Somente homologação.';
 
@@ -32,7 +32,7 @@ class EmitirNfceLocal extends Command
         $uuid = $this->argument('uuid');
 
         try {
-            $resultado = (new EmissorLocalService())->emitirLocal($uuid);
+                        $resultado = (new EmissorLocalService())->emitirLocal($uuid, (bool) $this->option('forcar'));
 
             $this->info("NFC-e autorizada. Chave: {$resultado['chave']} | Protocolo: {$resultado['protocolo']}");
         } catch (\Throwable $e) {

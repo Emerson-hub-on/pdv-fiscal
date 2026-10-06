@@ -12,7 +12,7 @@ class EmissorLocalService extends FiscalEmissorService
      * Emite (ou reenvia, se já estiver em contingência) a NFC-e de uma venda do SQLite,
      * sem consultar o MySQL central.
      */
-    public function emitirLocal(string $uuid): array
+    public function emitirLocal(string $uuid, bool $forcar = false): array
     {
         $venda = VendaLocal::carregar($uuid);
 
@@ -24,6 +24,11 @@ class EmissorLocalService extends FiscalEmissorService
             throw new Exception('Esta venda foi cancelada e não será emitida.');
         }
 
+        // Venda que o servidor já recebeu: ele pode tê-la emitido por conta própria, e emitir aqui duplicaria a nota
+        if ($venda->status_sync === 'sincronizada' && !$forcar) {
+            throw new Exception('Esta venda já foi enviada ao servidor, que pode tê-la emitido. Emitir aqui também pode duplicar a NFC-e. Use --forcar apenas em homologação.');
+        }
+
         return $this->emitir($venda);
     }
 
@@ -33,8 +38,8 @@ class EmissorLocalService extends FiscalEmissorService
     }
 
     /**
-     * Numeração a partir do contador local (numeracao_nfce). Na primeira vez, ou se a série
-     * mudou, parte do último número que o servidor informou para este PDV.
+     * Numeração a partir do contador local (numeracao_nfce), sempre respeitando o último
+     * número que o servidor informou para este PDV (espelho). Pega o maior dos dois.
      */
     protected function reservarNumero($venda, $pdv): array
     {
@@ -48,9 +53,10 @@ class EmissorLocalService extends FiscalEmissorService
         return $db->transaction(function () use ($db, $venda, $pdv, $serie) {
             $contador = $db->table('numeracao_nfce')->where('pdv_id', $pdv->id)->first();
 
-            $ultimo = (!$contador || $contador->serie !== $serie)
-                ? (int) $pdv->numero_atual_nfce
-                : (int) $contador->ultimo_numero;
+            $ultimo = max(
+                (int) $pdv->numero_atual_nfce,
+                ($contador && $contador->serie === $serie) ? (int) $contador->ultimo_numero : 0
+            );
 
             $numero = $ultimo + 1;
 

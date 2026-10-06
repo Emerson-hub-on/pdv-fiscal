@@ -12,7 +12,7 @@
         <div>
             <h1 class="text-xl font-bold text-white tracking-tight">{{ $caixa->pdv->nome }}</h1>
             <p class="text-xs text-slate-400 mt-0.5">
-                Série {{ $caixa->pdv->serie_nfce }} · Próxima NFC-e nº {{ $caixa->pdv->numero_atual_nfce + 1 }}
+                Série {{ $caixa->pdv->serie_nfce }} · Próxima NFC-e nº {{ $caixa->pdv->proximoNumeroNfce() }}
             </p>
         </div>
         <div class="flex gap-2">
