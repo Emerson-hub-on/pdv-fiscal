@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Venda;
 use App\Services\FiscalEmissorService;
 use App\Services\SyncService;
+use App\Support\CentralStatus;
 use Illuminate\Support\Facades\DB;
 use Exception;
 
@@ -72,7 +73,7 @@ class FiscalController extends Controller
      */
     protected function buscarVendaPorUuid(string $uuid): ?array
     {
-        $venda = Venda::where('uuid', $uuid)->with('itens.produto', 'pagamentos')->first();
+        $venda = $this->vendaCentral($uuid);
 
         if ($venda) {
             return [
@@ -97,12 +98,13 @@ class FiscalController extends Controller
 
         $itensLocais = collect(json_decode($vendaLocal->itens, true))->map(function ($item) {
             $produto = DB::connection('sqlite_local')->table('produtos_cache')
-                ->where('id', $item['produto_id'])->first();
+                ->where('id', $item['produto_id'])->first()
+                ?? (object) ['nome' => 'Produto #' . $item['produto_id']];
 
             return (object) [
                 'produto' => $produto,
                 'quantidade' => $item['quantidade'],
-                'subtotal' => $item['preco_unitario'] * $item['quantidade'],
+                'subtotal' => ($item['preco_unitario'] * $item['quantidade']) - ($item['desconto'] ?? 0),
             ];
         });
 
@@ -120,5 +122,28 @@ class FiscalController extends Controller
             'status' => 'aguardando_sincronizacao',
             'chave_nfe' => null,
         ];
+    }
+
+    /**
+     * Venda no servidor central. Servidor fora do ar não é "venda não encontrada":
+     * devolve null e quem chama segue para o SQLite.
+     */
+    private function vendaCentral(string $uuid): ?Venda
+    {
+        if (CentralStatus::fora()) {
+            return null;
+        }
+
+        try {
+            return Venda::where('uuid', $uuid)->with('itens.produto', 'pagamentos')->first();
+        } catch (\Throwable $e) {
+            if (CentralStatus::erroDeConexao($e)) {
+                CentralStatus::marcarFora();
+
+                return null;
+            }
+
+            throw $e;
+        }
     }
 }

@@ -321,19 +321,24 @@ class VendaController extends Controller
                 try {
                     (new SyncService())->enviarVendasPendentes();
 
-                    $vendaCentral = \App\Models\Venda::where('uuid', $uuid)->first();
+                    // A sincronização pode ter descoberto que o servidor está fora: não insiste na emissão
+                    if (CentralStatus::fora()) {
+                        $emissao['erro'] = 'Servidor indisponível: a venda foi salva no caixa e será enviada quando a conexão voltar.';
+                    } else {
+                        $vendaCentral = \App\Models\Venda::where('uuid', $uuid)->first();
 
-                    if ($vendaCentral) {
-                        try {
-                            $resultado = (new \App\Services\FiscalEmissorService())->emitir($vendaCentral);
-                            $emissao = ['sucesso' => true, 'contingencia' => false, 'chave' => $resultado['chave']];
-                        } catch (\Exception $e) {
-                            $vendaCentral->refresh();
-                            $emissao = [
-                                'sucesso' => false,
-                                'contingencia' => $vendaCentral->status === 'contingencia',
-                                'erro' => $e->getMessage(),
-                            ];
+                        if ($vendaCentral) {
+                            try {
+                                $resultado = (new \App\Services\FiscalEmissorService())->emitir($vendaCentral);
+                                $emissao = ['sucesso' => true, 'contingencia' => false, 'chave' => $resultado['chave']];
+                            } catch (\Exception $e) {
+                                $vendaCentral->refresh();
+                                $emissao = [
+                                    'sucesso' => false,
+                                    'contingencia' => $vendaCentral->status === 'contingencia',
+                                    'erro' => $e->getMessage(),
+                                ];
+                            }
                         }
                     }
                 } catch (\Throwable $e) {
@@ -350,6 +355,7 @@ class VendaController extends Controller
                 'venda_uuid' => $uuid,
                 'total' => $totalComDesconto,
                 'emissao' => $emissao,
+                'offline' => CentralStatus::fora(),
             ]);
         } catch (\Exception $e) {
             return response()->json(['erro' => $e->getMessage()], 422);
