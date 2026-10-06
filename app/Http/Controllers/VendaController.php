@@ -10,6 +10,8 @@ use App\Support\AutorizacaoSupervisor;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Services\EmissorLocalService;
+use App\Support\EmissaoLocal;
 
 
 class VendaController extends Controller
@@ -175,6 +177,25 @@ class VendaController extends Controller
  
         return $dentroDoPrazo ? (float) $produto->preco_atacado : (float) $produto->preco_venda;
     }
+
+    // Emite a NFC-e da venda pelo emissor local. A contingência (tpEmis 9) também termina em exceção, mas o documento já é válido.
+    private function emitirNoCaixa(string $uuid): array
+    {
+        try {
+            $resultado = (new EmissorLocalService())->emitirLocal($uuid);
+
+            return ['sucesso' => true, 'contingencia' => false, 'chave' => $resultado['chave']];
+        } catch (\Throwable $e) {
+            $situacao = DB::connection('sqlite_local')->table('vendas_pendentes')
+                ->where('uuid', $uuid)->value('status_fiscal');
+
+            return [
+                'sucesso' => false,
+                'contingencia' => $situacao === 'contingencia',
+                'erro' => $e->getMessage(),
+            ];
+        }
+    }
  
     public function finalizar(Request $request)
     {
@@ -314,14 +335,19 @@ class VendaController extends Controller
 
             $emissao = ['sucesso' => false, 'contingencia' => false, 'erro' => null];
 
-            if (CentralStatus::fora()) {
-                // Servidor fora do ar: a venda fica no caixa e sobe pelo agendador quando a conexão voltar
+            if (EmissaoLocal::ativa()) {
+                // O caixa emite a NFC-e sozinho, sem depender do servidor
+                $emissao = $this->emitirNoCaixa($uuid);
+
+                // Depois tenta enviar a venda (já com a situação fiscal) ao servidor
+                (new SyncService())->enviarSePossivel();
+            } elseif (CentralStatus::fora()) {
+                // PDV ainda emitindo pelo servidor e ele está fora: a venda fica no caixa
                 $emissao['erro'] = 'Servidor indisponível: a venda foi salva no caixa e será enviada quando a conexão voltar.';
             } else {
                 try {
                     (new SyncService())->enviarVendasPendentes();
 
-                    // A sincronização pode ter descoberto que o servidor está fora: não insiste na emissão
                     if (CentralStatus::fora()) {
                         $emissao['erro'] = 'Servidor indisponível: a venda foi salva no caixa e será enviada quando a conexão voltar.';
                     } else {
@@ -346,7 +372,6 @@ class VendaController extends Controller
                         CentralStatus::marcarFora();
                         $emissao['erro'] = 'Servidor indisponível: a venda foi salva no caixa e será enviada quando a conexão voltar.';
                     }
-                    // Nem a sincronização rolou - venda fica local, o scheduler tenta depois
                 }
             }
 

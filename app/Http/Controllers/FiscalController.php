@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Venda;
+use App\Services\EmissorLocalService;
 use App\Services\FiscalEmissorService;
 use App\Services\SyncService;
 use App\Support\CentralStatus;
+use App\Support\EmissaoLocal;
 use Illuminate\Support\Facades\DB;
 use Exception;
 
@@ -24,6 +26,11 @@ class FiscalController extends Controller
 
     public function emitir(string $uuid)
     {
+        // PDV que emite pelo caixa: tudo acontece no SQLite
+        if (EmissaoLocal::ativa()) {
+            return $this->emitirPeloCaixa($uuid);
+        }
+
         $dados = $this->buscarVendaPorUuid($uuid);
 
         if (!$dados) {
@@ -67,12 +74,50 @@ class FiscalController extends Controller
         }
     }
 
+    private function emitirPeloCaixa(string $uuid)
+    {
+        $venda = DB::connection('sqlite_local')->table('vendas_pendentes')->where('uuid', $uuid)->first();
+
+        if (!$venda) {
+            return response()->json(['sucesso' => false, 'erro' => 'Venda não encontrada.'], 404);
+        }
+
+        if ($venda->status_fiscal === 'emitida') {
+            return response()->json(['sucesso' => true, 'ja_emitida' => true, 'chave' => $venda->chave_nfe]);
+        }
+
+        try {
+            $resultado = (new EmissorLocalService())->emitirLocal($uuid);
+            $resposta = ['sucesso' => true, 'chave' => $resultado['chave']];
+        } catch (\Throwable $e) {
+            $situacao = DB::connection('sqlite_local')->table('vendas_pendentes')
+                ->where('uuid', $uuid)->value('status_fiscal');
+
+            $resposta = [
+                'sucesso' => false,
+                'contingencia' => $situacao === 'contingencia',
+                'erro' => $e->getMessage(),
+            ];
+        }
+
+        (new SyncService())->enviarSePossivel();
+
+        return response()->json($resposta);
+    }
+
     /**
-     * Busca a venda pelo UUID, primeiro no central (MySQL), depois no local (SQLite).
+     * Busca a venda pelo UUID. Com a emissão local ativa, o SQLite é a fonte da verdade;
+     * senão procura primeiro no central (MySQL) e depois no local.
      * Retorna um formato unificado pra view conseguir exibir os dois casos.
      */
     protected function buscarVendaPorUuid(string $uuid): ?array
     {
+        $vendaLocal = DB::connection('sqlite_local')->table('vendas_pendentes')->where('uuid', $uuid)->first();
+
+        if ($vendaLocal && EmissaoLocal::ativa()) {
+            return $this->dadosDaVendaLocal($vendaLocal, true);
+        }
+
         $venda = $this->vendaCentral($uuid);
 
         if ($venda) {
@@ -89,13 +134,11 @@ class FiscalController extends Controller
             ];
         }
 
-        $vendaLocal = DB::connection('sqlite_local')->table('vendas_pendentes')
-            ->where('uuid', $uuid)->first();
+        return $vendaLocal ? $this->dadosDaVendaLocal($vendaLocal, false) : null;
+    }
 
-        if (!$vendaLocal) {
-            return null;
-        }
-
+    private function dadosDaVendaLocal(object $vendaLocal, bool $emissaoLocal): array
+    {
         $itensLocais = collect(json_decode($vendaLocal->itens, true))->map(function ($item) {
             $produto = DB::connection('sqlite_local')->table('produtos_cache')
                 ->where('id', $item['produto_id'])->first()
@@ -109,7 +152,15 @@ class FiscalController extends Controller
         });
 
         $pagamentosLocais = collect(json_decode($vendaLocal->pagamentos, true) ?? [])
-            ->map(fn($p) => (object) $p);
+            ->map(fn ($p) => (object) $p);
+
+        $status = $emissaoLocal
+            ? match ($vendaLocal->status_fiscal) {
+                'emitida' => 'emitida',
+                'contingencia' => 'contingencia',
+                default => 'pendente',
+            }
+            : 'aguardando_sincronizacao';
 
         return [
             'origem' => 'local',
@@ -119,8 +170,8 @@ class FiscalController extends Controller
             'troco' => $vendaLocal->troco ?? 0,
             'desconto' => $vendaLocal->desconto ?? 0,
             'total' => $vendaLocal->total,
-            'status' => 'aguardando_sincronizacao',
-            'chave_nfe' => null,
+            'status' => $status,
+            'chave_nfe' => $vendaLocal->chave_nfe,
         ];
     }
 

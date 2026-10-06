@@ -12,6 +12,7 @@ class Pdv extends Model
 
     protected $casts = [
         'ativo' => 'boolean',
+        'emissao_local' => 'boolean',
     ];
 
     public function caixas()

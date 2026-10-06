@@ -13,5 +13,10 @@ class NfeServiceLocal extends NfeService
         $this->empresa = DadosFiscaisLocais::empresa();
         $this->pdv = $pdv;
         $this->tools = $this->criarTools();
+
+        // No balcão, não vale esperar muito pela SEFAZ antes de seguir em contingência
+        if (method_exists($this->tools, 'setSoapTimeout')) {
+            $this->tools->setSoapTimeout(10);
+        }
     }
 }

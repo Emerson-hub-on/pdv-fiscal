@@ -252,6 +252,7 @@ class SyncService
                 'serie_nfce' => $p->serie_nfce,
                 'numero_atual_nfce' => $p->numero_atual_nfce ?? 0,
                 'ativo' => (int) $p->ativo,
+                'emissao_local' => (int) $p->emissao_local,
                 'csc' => $p->csc ? Crypt::encryptString($p->csc) : null,
                 'csc_id' => $p->csc_id,
                 'created_at' => $agora,
@@ -349,6 +350,51 @@ class SyncService
         }
 
         return ['sucesso' => true, 'enviados' => $enviados, 'falhas' => $falhas];
+    }
+
+        /**
+     * Informa ao servidor o último número de NFC-e usado pelo caixa em cada PDV (nunca diminui o contador do servidor).
+     */
+    public function enviarNumeracao(): array
+    {
+        if (CentralStatus::fora()) {
+            return ['sucesso' => true, 'atualizados' => 0];
+        }
+
+        try {
+            $atualizados = 0;
+
+            foreach (DB::connection('sqlite_local')->table('numeracao_nfce')->get() as $n) {
+                $atualizados += Pdv::where('id', $n->pdv_id)
+                    ->where('serie_nfce', $n->serie)
+                    ->where('numero_atual_nfce', '<', $n->ultimo_numero)
+                    ->update(['numero_atual_nfce' => $n->ultimo_numero]);
+            }
+
+            return ['sucesso' => true, 'atualizados' => $atualizados];
+        } catch (\Throwable $e) {
+            return $this->registrarFalha($e);
+        }
+    }
+
+    /**
+     * Depois de uma venda ou emissão: tenta enviar ao servidor sem atrapalhar o operador se ele estiver fora.
+     */
+    public function enviarSePossivel(): void
+    {
+        if (CentralStatus::fora()) {
+            return;
+        }
+
+        try {
+            $this->enviarCaixas();
+            $this->enviarVendasPendentes();
+            $this->enviarNumeracao();
+        } catch (\Throwable $e) {
+            if (CentralStatus::erroDeConexao($e)) {
+                CentralStatus::marcarFora();
+            }
+        }
     }
 
     /**
@@ -477,7 +523,7 @@ class SyncService
     /**
      * Direcao 2: sobe vendas pendentes do SQLite local pro MySQL central.
      */
-    public function enviarVendasPendentes(): array
+       public function enviarVendasPendentes(): array
     {
         // Servidor fora do ar: as vendas ficam pendentes e sobem quando a conexão voltar
         if (CentralStatus::fora()) {
@@ -485,8 +531,11 @@ class SyncService
         }
 
         $pendentes = DB::connection('sqlite_local')->table('vendas_pendentes')
-            ->where('status', 'pendente_sync')
-            ->orWhere('status', 'erro_sync')
+            ->where(function ($q) {
+                $q->whereIn('status', ['pendente_sync', 'erro_sync'])
+                  ->orWhere('fiscal_sync_pendente', true);
+            })
+            ->where('status', '!=', 'cancelada')
             ->get();
 
         $enviadas = 0;
@@ -500,9 +549,9 @@ class SyncService
                     DB::transaction(function () use ($vendaLocal) {
                         $itens = json_decode($vendaLocal->itens, true);
                         $pagamentos = json_decode($vendaLocal->pagamentos, true) ?? [];
-                        
+
                         $caixaId = $vendaLocal->caixa_id_central
-                        ?? Caixa::where('uuid', $vendaLocal->caixa_uuid)->value('id');
+                            ?? Caixa::where('uuid', $vendaLocal->caixa_uuid)->value('id');
 
                         if (!$caixaId) {
                             throw new Exception('O caixa desta venda ainda não foi sincronizado com o servidor.');
@@ -518,10 +567,9 @@ class SyncService
                             'troco' => $vendaLocal->troco,
                             'desconto' => $vendaLocal->desconto,
                             'forma_pagamento' => $vendaLocal->forma_pagamento,
-                            'status' => 'pendente',
                             'created_at' => $vendaLocal->vendida_em,
                             'updated_at' => now(),
-                        ]);
+                        ] + $this->camposFiscaisParaCentral($vendaLocal));
 
                         foreach ($itens as $item) {
                             if (!empty($item['produto_variante_id'])) {
@@ -559,6 +607,12 @@ class SyncService
                             ]);
                         }
                     });
+                } elseif ($vendaLocal->fiscal_sync_pendente) {
+                    // A venda já está no servidor: só atualiza a situação fiscal (nunca por cima de uma cancelada)
+                    DB::table('vendas')
+                        ->where('uuid', $vendaLocal->uuid)
+                        ->where('status', '!=', 'cancelada')
+                        ->update($this->camposFiscaisParaCentral($vendaLocal) + ['updated_at' => now()]);
                 }
 
                 DB::connection('sqlite_local')->table('vendas_pendentes')
@@ -566,6 +620,7 @@ class SyncService
                     ->update([
                         'status' => 'sincronizada',
                         'sincronizada_em' => now(),
+                        'fiscal_sync_pendente' => false,
                         'updated_at' => now(),
                     ]);
 
@@ -592,6 +647,35 @@ class SyncService
         return ['sucesso' => true, 'enviadas' => $enviadas, 'falhas' => $falhas];
     }
 
+    // Situação fiscal da venda no formato da tabela vendas do servidor
+    private function camposFiscaisParaCentral(object $v): array
+    {
+        $xml = null;
+
+        if ($v->status_fiscal === 'emitida' && $v->ultimo_arquivo_xml && is_file($v->ultimo_arquivo_xml)) {
+            $xml = file_get_contents($v->ultimo_arquivo_xml);
+        }
+
+        return [
+            'status' => match ($v->status_fiscal) {
+                'emitida' => 'emitida',
+                'contingencia' => 'contingencia',
+                default => 'pendente',
+            },
+            'numero_nfce' => $v->numero_nfce,
+            'serie_nfce' => $v->serie_nfce,
+            'chave_nfe' => $v->chave_nfe,
+            'protocolo_nfe' => $v->protocolo_nfe,
+            'tp_emis' => $v->tp_emis,
+            'dh_cont' => $v->dh_cont,
+            'x_just' => $v->x_just,
+            'xml_contingencia' => $v->xml_contingencia,
+            'motivo_rejeicao' => $v->motivo_rejeicao,
+            'emitida_em' => $v->emitida_em,
+            'xml_nfce' => $xml,
+        ];
+    }
+
     /**
      * Roda os dois sentidos de uma vez. Chamado pelo scheduler ou manualmente.
      */
@@ -616,6 +700,7 @@ class SyncService
         }
 
         $resultado['vendas'] = $this->enviarVendasPendentes();
+        $resultado['numeracao'] = $this->enviarNumeracao();
 
         return $resultado;
     }

@@ -67,12 +67,22 @@ class VendaLocal extends Venda
     }
 
     // Grava no SQLite. O "status" do emissor é a coluna status_fiscal.
+    // Grava no SQLite. O "status" do emissor é a coluna status_fiscal.
     public function update(array $attributes = [], array $options = [])
     {
         $colunas = [];
 
         foreach ($attributes as $chave => $valor) {
             $colunas[$chave === 'status' ? 'status_fiscal' : $chave] = $valor;
+        }
+
+        $camposFiscais = [
+            'status_fiscal', 'numero_nfce', 'serie_nfce', 'chave_nfe', 'protocolo_nfe', 'tp_emis',
+            'dh_cont', 'x_just', 'xml_contingencia', 'ultimo_arquivo_xml', 'motivo_rejeicao', 'emitida_em',
+        ];
+
+        if (array_intersect(array_keys($colunas), $camposFiscais)) {
+            $colunas['fiscal_sync_pendente'] = true;
         }
 
         DB::connection('sqlite_local')->table('vendas_pendentes')

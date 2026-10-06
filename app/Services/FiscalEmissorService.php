@@ -30,6 +30,7 @@ public function emitir(Venda $venda): array
     {
         $venda->load('itens.produto.ncm', 'itens.produto.tributacao', 'itens.variante', 'caixa.pdv', 'cliente');
         $pdv = $venda->caixa->pdv;
+        $this->garantirEmissaoPermitida($pdv);
 
         [$numero, $serie] = $this->reservarNumero($venda, $pdv);
 
@@ -61,6 +62,11 @@ public function emitir(Venda $venda): array
             }
 
             return $this->processarResposta($resposta, $venda, $xmlAssinado);
+        }
+
+        // A SEFAZ acabou de falhar: emite direto em contingência, sem esperar outro tempo limite
+        if ($this->sefazEmContingencia()) {
+            return $this->entrarEmContingenciaSefaz($venda, $pdv, $empresa, $numero, 'SEFAZ indisponível (modo contingência ativo no caixa)');
         }
 
         // PASSO 1: montar e assinar o XML - falha aqui e problema de DADOS, nao de conexao
@@ -126,8 +132,10 @@ public function emitir(Venda $venda): array
 
                 throw new Exception("XML rejeitado por schema/dados (NFC-e nº {$numero}): " . $e->getMessage());
             }
+            $this->registrarSefazFora();
 
             return $this->entrarEmContingenciaSefaz($venda, $pdv, $empresa, $numero, $e->getMessage());
+
         }
 
         return $this->processarResposta($resposta, $venda, $xmlAssinado);
@@ -149,6 +157,26 @@ public function emitir(Venda $venda): array
         $venda->update(['numero_nfce' => $numero, 'serie_nfce' => $serie]);
 
         return [$numero, $serie];
+    }
+
+        /**
+     * Trava: um PDV que emite pelo caixa não pode ter número alocado pelo servidor.
+     * O emissor do caixa sobrescreve este método.
+     */
+    protected function garantirEmissaoPermitida($pdv): void
+    {
+        if (!empty($pdv->emissao_local)) {
+            throw new Exception("O PDV {$pdv->nome} emite NFC-e pelo caixa. O servidor não pode emitir por ele (evita número duplicado).");
+        }
+    }
+
+    protected function sefazEmContingencia(): bool
+    {
+        return false;
+    }
+
+    protected function registrarSefazFora(): void
+    {
     }
 
     protected function criarNfeService($pdv): NfeService

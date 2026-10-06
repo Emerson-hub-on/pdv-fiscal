@@ -3,11 +3,16 @@
 namespace App\Services;
 
 use App\Models\VendaLocal;
+use App\Support\EmissaoLocal;
 use Exception;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class EmissorLocalService extends FiscalEmissorService
 {
+    private const CHAVE_SEFAZ_FORA = 'sefaz_fora_do_ar';
+    private const SEGUNDOS_SEFAZ_FORA = 60;
+
     /**
      * Emite (ou reenvia, se já estiver em contingência) a NFC-e de uma venda do SQLite,
      * sem consultar o MySQL central.
@@ -24,8 +29,8 @@ class EmissorLocalService extends FiscalEmissorService
             throw new Exception('Esta venda foi cancelada e não será emitida.');
         }
 
-        // Venda que o servidor já recebeu: ele pode tê-la emitido por conta própria, e emitir aqui duplicaria a nota
-        if ($venda->status_sync === 'sincronizada' && !$forcar) {
+        // Com o PDV assumido pelo caixa, o servidor não emite mais por ele (trava), então não há risco de duplicar
+        if ($venda->status_sync === 'sincronizada' && !$forcar && !EmissaoLocal::ativa()) {
             throw new Exception('Esta venda já foi enviada ao servidor, que pode tê-la emitido. Emitir aqui também pode duplicar a NFC-e. Use --forcar apenas em homologação.');
         }
 
@@ -35,6 +40,22 @@ class EmissorLocalService extends FiscalEmissorService
     protected function criarNfeService($pdv): NfeService
     {
         return new NfeServiceLocal($pdv);
+    }
+
+    // O caixa é o dono da numeração: não há trava aqui
+    protected function garantirEmissaoPermitida($pdv): void
+    {
+    }
+
+    // Depois de uma falha de conexão com a SEFAZ, as próximas vendas já saem em contingência
+    protected function sefazEmContingencia(): bool
+    {
+        return Cache::store('file')->has(self::CHAVE_SEFAZ_FORA);
+    }
+
+    protected function registrarSefazFora(): void
+    {
+        Cache::store('file')->put(self::CHAVE_SEFAZ_FORA, true, self::SEGUNDOS_SEFAZ_FORA);
     }
 
     /**
