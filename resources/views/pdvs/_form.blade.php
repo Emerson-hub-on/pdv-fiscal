@@ -17,6 +17,18 @@
                class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
     </div>
 
+    <div class="col-span-2">
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+            Computador (nome)
+            <span class="text-xs text-gray-400 font-normal">
+                (opcional; restringe este PDV a um único PC. Para descobrir o nome, rode <code>hostname</code> no cmd do computador)
+            </span>
+        </label>
+        <input type="text" name="maquina" value="{{ old('maquina', $pdv->maquina ?? '') }}"
+               placeholder="Ex.: CAIXA01-PC" style="text-transform: uppercase"
+               class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+    </div>
+
     <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Série NFC-e <span class="text-red-500">*</span></label>
         <input type="number" name="serie_nfce" value="{{ old('serie_nfce', $pdv->serie_nfce ?? 1) }}" required

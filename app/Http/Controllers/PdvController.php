@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Caixa;
 use App\Models\Pdv;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class PdvController extends Controller
 {
@@ -41,6 +43,12 @@ class PdvController extends Controller
 
     public function toggleAtivo(Pdv $pdv)
     {
+        // Só barra a inativação; reativar é sempre permitido
+        if ($pdv->ativo && Caixa::where('pdv_id', $pdv->id)->where('status', 'aberto')->exists()) {
+            return redirect()->route('pdvs.index')
+                ->withErrors(['pdv' => 'Este PDV tem caixa aberto. Feche o caixa antes de inativá-lo.']);
+        }
+
         $pdv->update(['ativo' => !$pdv->ativo]);
 
         return redirect()->route('pdvs.index')
@@ -49,8 +57,12 @@ class PdvController extends Controller
 
     private function validarPdv(Request $request, $idAtual = null): array
     {
+        $maquina = strtoupper(trim((string) $request->input('maquina')));
+        $request->merge(['maquina' => $maquina !== '' ? $maquina : null]);
+
         return $request->validate([
             'nome' => 'required|string|max:100',
+            'maquina' => ['nullable', 'string', 'max:60', 'regex:/^[A-Z0-9._-]+$/', Rule::unique('pdvs', 'maquina')->ignore($idAtual)],
             'serie_nfce' => 'required|integer|min:1|unique:pdvs,serie_nfce,' . $idAtual,
             'numero_atual_nfce' => 'required|integer|min:0',
             'csc' => 'required|string|max:100',

@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use App\Support\Maquina;
 
 class CaixaController extends Controller
 {
@@ -26,12 +27,17 @@ class CaixaController extends Controller
             return redirect()->route('vendas.pdv');
         }
 
-        $pdvs = PdvCache::where('ativo', true)->orderBy('id')->get();
-
+        $pdvs = PdvCache::where('ativo', true)
+            ->where(fn ($q) => $q->whereNull('maquina')->orWhere('maquina', Maquina::nome()))
+            ->orderBy('id')
+            ->get();
 
         if ($pdvs->isEmpty() && !CentralStatus::fora()) {
             (new SyncService())->puxarPdvs();
-            $pdvs = PdvCache::where('ativo', true)->orderBy('id')->get();
+            $pdvs = PdvCache::where('ativo', true)
+                ->where(fn ($q) => $q->whereNull('maquina')->orWhere('maquina', Maquina::nome()))
+                ->orderBy('id')
+                ->get();
         }
 
         if ($pdvs->isEmpty()) {
@@ -49,6 +55,11 @@ class CaixaController extends Controller
             'valor_abertura' => 'required|numeric|min:0',
             'pdv_id' => ['required', Rule::exists('sqlite_local.pdvs_cache', 'id')->where('ativo', 1)],
         ]);
+
+        $pdv = PdvCache::where('ativo', true)->find($validado['pdv_id']);
+        if ($pdv?->maquina && $pdv->maquina !== Maquina::nome()) {
+            return back()->withErrors(['pdv_id' => 'Este PDV é restrito a outro computador.'])->withInput();
+        }
 
         if (CaixaLocal::aberto(Auth::id())) {
             return redirect()->route('vendas.pdv');
@@ -68,7 +79,6 @@ class CaixaController extends Controller
             'sync_pendente' => true,
         ]);
 
-        // Sobe para o servidor agora; se ele estiver fora do ar, fica pendente e o agendador envia depois
         (new SyncService())->enviarCaixas();
 
         return redirect()->route('vendas.pdv')->with('sucesso', 'Caixa aberto com sucesso.');

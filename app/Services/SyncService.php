@@ -255,6 +255,7 @@ class SyncService
                 'emissao_local' => (int) $p->emissao_local,
                 'csc' => $p->csc ? Crypt::encryptString($p->csc) : null,
                 'csc_id' => $p->csc_id,
+                'maquina' => $p->maquina,
                 'created_at' => $agora,
                 'updated_at' => $agora,
             ])->all();
