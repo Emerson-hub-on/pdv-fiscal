@@ -41,7 +41,7 @@ class CaixaController extends Controller
         }
 
         if ($pdvs->isEmpty()) {
-            abort(503, 'Os dados do PDV ainda não foram sincronizados. Conecte ao servidor e tente novamente.');
+            abort(503, 'Nenhum PDV disponível para este computador (' . \App\Support\Maquina::nome() . '). Confira o nome do computador no cadastro do PDV e sincronize novamente.');
         }
 
         $ocupados = CaixaLocal::where('status', 'aberto')->pluck('pdv_id')->all();

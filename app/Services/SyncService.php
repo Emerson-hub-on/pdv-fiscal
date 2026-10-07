@@ -13,6 +13,8 @@ use App\Models\User;
 use App\Models\Empresa;
 use Illuminate\Support\Facades\Crypt;
 use Exception;
+use App\Support\Maquina;
+
 
 class SyncService
 {
@@ -24,6 +26,15 @@ class SyncService
         /**
      * Direcao 1f: copia os dados da empresa e o certificado para o SQLite (cifrados com a APP_KEY).
      */
+
+    // PDVs que este computador pode usar: sem restrição ou vinculados ao nome desta máquina
+    private function pdvsDestaMaquina()
+    {
+        return Pdv::where(function ($q) {
+            $q->whereNull('maquina')->orWhere('maquina', Maquina::nome());
+        });
+    }
+
     public function puxarEmpresa(): array
     {
         try {
@@ -238,12 +249,8 @@ class SyncService
     public function puxarPdvs(): array
     {
         try {
-            $pdvs = Pdv::all();
-
-            if ($pdvs->isEmpty()) {
-                return ['sucesso' => true, 'pdvs_atualizados' => 0];
-            }
-
+            // 1. Busca usando o escopo da máquina atual e já traz o get()
+            $pdvs = $this->pdvsDestaMaquina()->get();
             $agora = now();
 
             $linhas = $pdvs->map(fn ($p) => [
@@ -255,14 +262,16 @@ class SyncService
                 'emissao_local' => (int) $p->emissao_local,
                 'csc' => $p->csc ? Crypt::encryptString($p->csc) : null,
                 'csc_id' => $p->csc_id,
-                'maquina' => $p->maquina,
+                'maquina' => $p->maquina, // <-- Garante que a coluna 'maquina' é mapeada corretamente
                 'created_at' => $agora,
                 'updated_at' => $agora,
             ])->all();
 
             DB::connection('sqlite_local')->transaction(function () use ($linhas) {
                 DB::connection('sqlite_local')->table('pdvs_cache')->delete();
-                DB::connection('sqlite_local')->table('pdvs_cache')->insert($linhas);
+                if (!empty($linhas)) {
+                    DB::connection('sqlite_local')->table('pdvs_cache')->insert($linhas);
+                }
             });
 
             $this->salvarMeta('ultima_sincronizacao_pdvs', now()->toDateTimeString());
@@ -408,7 +417,9 @@ class SyncService
             $local = DB::connection('sqlite_local');
             $agora = now();
 
-            foreach (Caixa::where('status', 'aberto')->get() as $c) {
+            $pdvsPermitidos = $this->pdvsDestaMaquina()->pluck('id');
+
+            foreach (Caixa::where('status', 'aberto')->whereIn('pdv_id', $pdvsPermitidos)->get() as $c) {
                 if ($local->table('caixas_local')->where('uuid', $c->uuid)->exists()) {
                     continue;
                 }
