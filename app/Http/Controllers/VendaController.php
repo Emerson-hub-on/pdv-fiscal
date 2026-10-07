@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Services\EmissorLocalService;
 use App\Support\EmissaoLocal;
+use App\Models\PdvCache;
 
 
 class VendaController extends Controller
@@ -43,7 +44,11 @@ class VendaController extends Controller
         $descontoGlobalInicial = $carrinhoSalvo['desconto_global'] ?? 0;
         $liberacoes = $this->liberacoesDoOperador();
 
-        return view('vendas.pdv', compact('caixa', 'itensIniciais', 'descontoGlobalInicial', 'liberacoes'));
+        $pdvInativo = $this->pdvInativo($caixa);
+
+        return view('vendas.pdv', compact('caixa', 'itensIniciais', 'descontoGlobalInicial', 'liberacoes', 'pdvInativo'));
+        
+        
     }
 
 /**
@@ -176,6 +181,14 @@ class VendaController extends Controller
             && $hoje <= $produto->atacado_data_fim;
  
         return $dentroDoPrazo ? (float) $produto->preco_atacado : (float) $produto->preco_venda;
+    }
+
+    // PDV do caixa foi inativado no servidor (já sincronizado para o cache local)
+    private function pdvInativo(CaixaLocal $caixa): bool
+    {
+        $pdv = PdvCache::find($caixa->pdv_id);
+
+        return $pdv && !$pdv->ativo;
     }
 
     // Emite a NFC-e da venda pelo emissor local. A contingência (tpEmis 9) também termina em exceção, mas o documento já é válido.
@@ -335,7 +348,7 @@ class VendaController extends Controller
 
             $emissao = ['sucesso' => false, 'contingencia' => false, 'erro' => null];
 
-            if (EmissaoLocal::ativa()) {
+            if (EmissaoLocal::ativa((int) $caixa->pdv_id)) {
                 // O caixa emite a NFC-e sozinho, sem depender do servidor
                 $emissao = $this->emitirNoCaixa($uuid);
 

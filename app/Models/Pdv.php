@@ -7,7 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 class Pdv extends Model
 {
     protected $fillable = [
-        'nome', 'serie_nfce', 'numero_atual_nfce', 'csc', 'csc_id', 'ativo',
+        'nome', 
+        'serie_nfce', 
+        'numero_atual_nfce', 
+        'maquina',
+        'csc', 
+        'csc_id', 
+        'ativo',
     ];
 
     protected $casts = [

@@ -4,6 +4,16 @@
 @section('body-class', 'sem-sidebar conteudo-largo')
 
 @section('conteudo')
+
+@if (!empty($pdvInativo))
+    <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+        <strong>Este PDV foi inativado no servidor.</strong>
+        Novas vendas estão bloqueadas. Feche o caixa; contingências (F1) e cancelamentos continuam disponíveis.
+        {{-- AJUSTE: use o nome real da rota que abre a tela de fechamento --}}
+        <a href="{{ route('caixa.fechar-form') }}" class="underline font-semibold ml-1">Fechar caixa</a>
+    </div>
+@endif
+
 <div class="h-screen flex flex-col overflow-hidden">
 
 <div class="bg-linear-to-r from-slate-800 via-slate-900 to-slate-900

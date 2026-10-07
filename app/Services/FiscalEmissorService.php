@@ -150,13 +150,22 @@ public function emitir(Venda $venda): array
             return [$venda->numero_nfce, $venda->serie_nfce];
         }
 
-        $numero = $pdv->numero_atual_nfce + 1;
-        $serie = $pdv->serie_nfce;
+        return DB::transaction(function () use ($venda, $pdv) {
+            $pdvTravado = Pdv::whereKey($pdv->id)->lockForUpdate()->firstOrFail();
+            $serie = $pdvTravado->serie_nfce;
 
-        $pdv->update(['numero_atual_nfce' => $numero]);
-        $venda->update(['numero_nfce' => $numero, 'serie_nfce' => $serie]);
+            $maiorGravado = (int) Venda::whereHas('caixa', fn ($q) => $q->where('pdv_id', $pdvTravado->id))
+                ->where('serie_nfce', $serie)
+                ->max('numero_nfce');
 
-        return [$numero, $serie];
+            $numero = max((int) $pdvTravado->numero_atual_nfce, $maiorGravado) + 1;
+
+            $pdvTravado->update(['numero_atual_nfce' => $numero]);
+            $venda->update(['numero_nfce' => $numero, 'serie_nfce' => $serie]);
+            $pdv->numero_atual_nfce = $numero;
+
+            return [$numero, $serie];
+        });
     }
 
         /**

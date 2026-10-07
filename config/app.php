@@ -12,7 +12,6 @@ return [
     | other UI elements where an application name needs to be displayed.
     |
     */
-    'pdv_id' => env('PDV_ID', 1),
     'prazo_cancelamento_minutos' => env('PRAZO_CANCELAMENTO_MINUTOS', 30),
 
 

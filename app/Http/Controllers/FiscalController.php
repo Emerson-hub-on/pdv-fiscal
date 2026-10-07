@@ -9,6 +9,7 @@ use App\Services\SyncService;
 use App\Support\CentralStatus;
 use App\Support\EmissaoLocal;
 use Illuminate\Support\Facades\DB;
+use App\Models\CaixaLocal;
 use Exception;
 
 class FiscalController extends Controller
@@ -26,8 +27,10 @@ class FiscalController extends Controller
 
     public function emitir(string $uuid)
     {
+        $vendaLocal = DB::connection('sqlite_local')->table('vendas_pendentes')->where('uuid', $uuid)->first();
+
         // PDV que emite pelo caixa: tudo acontece no SQLite
-        if (EmissaoLocal::ativa()) {
+        if (EmissaoLocal::ativa($this->pdvIdDaVenda($vendaLocal))) {
             return $this->emitirPeloCaixa($uuid);
         }
 
@@ -105,6 +108,18 @@ class FiscalController extends Controller
         return response()->json($resposta);
     }
 
+    // PDV do caixa em que a venda foi feita (null se não achar: cai no PDV do caixa aberto)
+    private function pdvIdDaVenda(?object $vendaLocal): ?int
+    {
+        if (!$vendaLocal || empty($vendaLocal->caixa_uuid)) {
+            return null;
+        }
+
+        $pdvId = CaixaLocal::where('uuid', $vendaLocal->caixa_uuid)->value('pdv_id');
+
+        return $pdvId ? (int) $pdvId : null;
+    }
+
     /**
      * Busca a venda pelo UUID. Com a emissão local ativa, o SQLite é a fonte da verdade;
      * senão procura primeiro no central (MySQL) e depois no local.
@@ -114,7 +129,7 @@ class FiscalController extends Controller
     {
         $vendaLocal = DB::connection('sqlite_local')->table('vendas_pendentes')->where('uuid', $uuid)->first();
 
-        if ($vendaLocal && EmissaoLocal::ativa()) {
+        if ($vendaLocal && EmissaoLocal::ativa($this->pdvIdDaVenda($vendaLocal))) {
             return $this->dadosDaVendaLocal($vendaLocal, true);
         }
 

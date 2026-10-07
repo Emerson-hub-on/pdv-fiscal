@@ -29,8 +29,9 @@ class EmissorLocalService extends FiscalEmissorService
             throw new Exception('Esta venda foi cancelada e não será emitida.');
         }
 
-        // Com o PDV emitindo pelo caixa, o servidor não emite mais por ele (trava), então não há risco de duplicar
-        if ($venda->status_sync === 'sincronizada' && !$forcar && !EmissaoLocal::ativa()) {
+       $pdvId = $venda->caixa->pdv->id ?? null;
+
+        if ($venda->status_sync === 'sincronizada' && !$forcar && !EmissaoLocal::ativa($pdvId ? (int) $pdvId : null)) {
             throw new Exception('Esta venda já foi enviada ao servidor, que pode tê-la emitido. Emitir aqui também pode duplicar a NFC-e. Use --forcar apenas em homologação.');
         }
 
