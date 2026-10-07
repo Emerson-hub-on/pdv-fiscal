@@ -9,6 +9,7 @@ use App\Support\CentralStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class CaixaController extends Controller
 {
@@ -16,7 +17,6 @@ class CaixaController extends Controller
     {
         $caixa = CaixaLocal::aberto(Auth::id());
 
-        // Caixa aberto no servidor por outro caminho (ou em outra máquina): traz para cá
         if (!$caixa && !CentralStatus::fora()) {
             (new SyncService())->puxarCaixasAbertos();
             $caixa = CaixaLocal::aberto(Auth::id());
@@ -26,24 +26,36 @@ class CaixaController extends Controller
             return redirect()->route('vendas.pdv');
         }
 
-        $pdv = $this->pdvDestaMaquina();
+        $pdvs = PdvCache::where('ativo', true)->orderBy('id')->get();
 
-        if (!$pdv) {
+
+        if ($pdvs->isEmpty() && !CentralStatus::fora()) {
+            (new SyncService())->puxarPdvs();
+            $pdvs = PdvCache::where('ativo', true)->orderBy('id')->get();
+        }
+
+        if ($pdvs->isEmpty()) {
             abort(503, 'Os dados do PDV ainda não foram sincronizados. Conecte ao servidor e tente novamente.');
         }
 
-        return view('caixa.abrir', compact('pdv'));
+        $ocupados = CaixaLocal::where('status', 'aberto')->pluck('pdv_id')->all();
+
+        return view('caixa.abrir', compact('pdvs', 'ocupados'));
     }
 
     public function abrir(Request $request)
     {
         $validado = $request->validate([
             'valor_abertura' => 'required|numeric|min:0',
-            'pdv_id' => 'required|exists:sqlite_local.pdvs_cache,id',
+            'pdv_id' => ['required', Rule::exists('sqlite_local.pdvs_cache', 'id')->where('ativo', 1)],
         ]);
 
         if (CaixaLocal::aberto(Auth::id())) {
             return redirect()->route('vendas.pdv');
+        }
+
+        if (CaixaLocal::where('pdv_id', $validado['pdv_id'])->where('status', 'aberto')->exists()) {
+            return back()->withErrors(['pdv_id' => 'Este PDV já tem um caixa aberto.'])->withInput();
         }
 
         CaixaLocal::create([
@@ -111,17 +123,5 @@ class CaixaController extends Controller
         return redirect()->route('auth.escolha')->with('sucesso', $mensagem);
     }
 
-    // PDV desta máquina, do espelho local (tenta sincronizar uma vez se ainda não existir)
-    private function pdvDestaMaquina(): ?PdvCache
-    {
-        $id = config('app.pdv_id');
-        $pdv = PdvCache::find($id);
 
-        if (!$pdv && !CentralStatus::fora()) {
-            (new SyncService())->puxarPdvs();
-            $pdv = PdvCache::find($id);
-        }
-
-        return $pdv;
-    }
 }
