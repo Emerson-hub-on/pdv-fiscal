@@ -569,7 +569,7 @@ class SyncService
                             'forma_pagamento' => $vendaLocal->forma_pagamento,
                             'created_at' => $vendaLocal->vendida_em,
                             'updated_at' => now(),
-                        ] + $this->camposFiscaisParaCentral($vendaLocal));
+                        ] + $this->camposFiscaisParaCentral($vendaLocal, true));
 
                         foreach ($itens as $item) {
                             if (!empty($item['produto_variante_id'])) {
@@ -612,7 +612,7 @@ class SyncService
                     DB::table('vendas')
                         ->where('uuid', $vendaLocal->uuid)
                         ->where('status', '!=', 'cancelada')
-                        ->update($this->camposFiscaisParaCentral($vendaLocal) + ['updated_at' => now()]);
+                        ->update($this->camposFiscaisParaCentral($vendaLocal, false) + ['updated_at' => now()]);
                 }
 
                 DB::connection('sqlite_local')->table('vendas_pendentes')
@@ -621,6 +621,7 @@ class SyncService
                         'status' => 'sincronizada',
                         'sincronizada_em' => now(),
                         'fiscal_sync_pendente' => false,
+                        'erro_sync_mensagem' => null,
                         'updated_at' => now(),
                     ]);
 
@@ -636,7 +637,8 @@ class SyncService
                     ->where('id', $vendaLocal->id)
                     ->update([
                         'status' => 'erro_sync',
-                        'erro_sync_mensagem' => $e->getMessage(),
+                        // Limitar a mensagem de erro para não estourar o campo no SQLite (500 caracteres)
+                        'erro_sync_mensagem' => mb_substr($e->getMessage(), 0, 500),
                         'updated_at' => now(),
                     ]);
 
@@ -648,7 +650,8 @@ class SyncService
     }
 
     // Situação fiscal da venda no formato da tabela vendas do servidor
-    private function camposFiscaisParaCentral(object $v): array
+    // Situação fiscal da venda no formato da tabela vendas do servidor
+    private function camposFiscaisParaCentral(object $v, bool $inclusao): array
     {
         $xml = null;
 
@@ -656,7 +659,7 @@ class SyncService
             $xml = file_get_contents($v->ultimo_arquivo_xml);
         }
 
-        return [
+        $campos = [
             'status' => match ($v->status_fiscal) {
                 'emitida' => 'emitida',
                 'contingencia' => 'contingencia',
@@ -674,6 +677,23 @@ class SyncService
             'emitida_em' => $v->emitida_em,
             'xml_nfce' => $xml,
         ];
+
+        // tp_emis é obrigatório no servidor: a emissão normal é tpEmis 1
+        if ($campos['tp_emis'] === null && $v->status_fiscal === 'emitida') {
+            $campos['tp_emis'] = 1;
+        }
+
+        // Na inclusão, o que está vazio fica de fora e o servidor usa o padrão da coluna
+        if ($inclusao) {
+            return array_filter($campos, fn ($valor) => $valor !== null);
+        }
+
+        // Na atualização, nunca manda tp_emis nulo
+        if ($campos['tp_emis'] === null) {
+            unset($campos['tp_emis']);
+        }
+
+        return $campos;
     }
 
     /**

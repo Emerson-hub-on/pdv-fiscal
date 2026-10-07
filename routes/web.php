@@ -30,6 +30,7 @@ use App\Http\Controllers\InutilizacaoNfeController;
 use App\Http\Controllers\TransportadorController;
 use App\Http\Controllers\VeiculoController;
 use App\Http\Controllers\UsuarioController;
+use App\Http\Controllers\PdvEmissaoController;
 
 
 
@@ -219,6 +220,15 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
             Route::post('veiculos/{veiculo}/toggle-ativo', [VeiculoController::class, 'toggleAtivo'])
                 ->name('veiculos.toggleAtivo');
         });
+    });
+
+    // =====================================================================
+    // EMISSÃO DE PDV — Exclusivo para Administradores
+    // =====================================================================
+    Route::middleware(['auth:web', 'acesso:admin'])->group(function () {
+        Route::get('pdvs/{pdv}/emissao', [PdvEmissaoController::class, 'mostrar'])->name('pdvs.emissao');
+        Route::post('pdvs/{pdv}/emissao/servidor', [PdvEmissaoController::class, 'passarParaServidor'])->name('pdvs.emissao.servidor');
+        Route::post('pdvs/{pdv}/emissao/caixa', [PdvEmissaoController::class, 'devolverAoCaixa'])->name('pdvs.emissao.caixa');
     });
 
     // =====================================================================

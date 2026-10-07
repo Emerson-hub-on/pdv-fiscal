@@ -14,6 +14,11 @@
             <p class="text-xs text-slate-400 mt-0.5">
                 Série {{ $caixa->pdv->serie_nfce }} · Próxima NFC-e nº {{ $caixa->pdv->proximoNumeroNfce() }}
             </p>
+            @unless ($caixa->pdv->emissao_local)
+                <span class="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-400/20 text-amber-300">
+                    Emissão pelo servidor (modo de emergência)
+                </span>
+            @endunless
         </div>
         <div class="flex gap-2">
             <button id="btn-sincronizar" onclick="sincronizarAgora()"
@@ -24,6 +29,7 @@
                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
                 Fechar Caixa
             </a>
+
         </div>
     </div>
 
@@ -983,7 +989,7 @@ async function carregarContingencias() {
                     <input type="checkbox" class="check-contingencia" value="${v.id}" onclick="event.stopPropagation()">
                     <div>
                         <p class="text-sm font-medium">
-                            NFC-e nº ${v.numero_nfce ?? '-'} (série ${v.serie_nfce ?? '-'}) — R$ ${Number(v.total).toFixed(2)}
+                            Venda #${v.id} — NFC-e nº ${v.numero_nfce ?? '-'} (série ${v.serie_nfce ?? '-'}) — R$ ${Number(v.total).toFixed(2)}
                         </p>
                         <p class="text-xs text-gray-400">${v.criada_em}</p>
                         ${v.chave_nfe ? `<p class="text-xs text-gray-400 break-all">Chave: ${v.chave_nfe}</p>` : ''}

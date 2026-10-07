@@ -29,7 +29,7 @@ class EmissorLocalService extends FiscalEmissorService
             throw new Exception('Esta venda foi cancelada e não será emitida.');
         }
 
-        // Com o PDV assumido pelo caixa, o servidor não emite mais por ele (trava), então não há risco de duplicar
+        // Com o PDV emitindo pelo caixa, o servidor não emite mais por ele (trava), então não há risco de duplicar
         if ($venda->status_sync === 'sincronizada' && !$forcar && !EmissaoLocal::ativa()) {
             throw new Exception('Esta venda já foi enviada ao servidor, que pode tê-la emitido. Emitir aqui também pode duplicar a NFC-e. Use --forcar apenas em homologação.');
         }
@@ -59,8 +59,8 @@ class EmissorLocalService extends FiscalEmissorService
     }
 
     /**
-     * Numeração a partir do contador local (numeracao_nfce), sempre respeitando o último
-     * número que o servidor informou para este PDV (espelho). Pega o maior dos dois.
+     * Numeração: o maior entre o último número que o servidor conhece (espelho), o contador local
+     * e, se o banco local não tem o contador (banco novo ou restaurado), o maior número já gravado em XML.
      */
     protected function reservarNumero($venda, $pdv): array
     {
@@ -74,12 +74,16 @@ class EmissorLocalService extends FiscalEmissorService
         return $db->transaction(function () use ($db, $venda, $pdv, $serie) {
             $contador = $db->table('numeracao_nfce')->where('pdv_id', $pdv->id)->first();
 
-            $ultimo = max(
-                (int) $pdv->numero_atual_nfce,
-                ($contador && $contador->serie === $serie) ? (int) $contador->ultimo_numero : 0
-            );
+            if ($contador && $contador->serie === $serie) {
+                $ultimoLocal = (int) $contador->ultimo_numero;
+            } else {
+                $empresa = $db->table('empresa_cache')->first(['cnpj', 'ambiente']);
+                $ultimoLocal = $empresa
+                    ? $this->ultimoNumeroEmitidoEmDisco($serie, (string) $empresa->cnpj, (int) $empresa->ambiente)
+                    : 0;
+            }
 
-            $numero = $ultimo + 1;
+            $numero = max((int) $pdv->numero_atual_nfce, $ultimoLocal) + 1;
 
             $db->table('numeracao_nfce')->updateOrInsert(
                 ['pdv_id' => $pdv->id],
@@ -90,5 +94,47 @@ class EmissorLocalService extends FiscalEmissorService
 
             return [$numero, $serie];
         });
+    }
+
+    /**
+     * Maior número de NFC-e já gravado em XML nesta máquina para a série, CNPJ e ambiente.
+     * Os XMLs ficam fora do SQLite, então sobrevivem à perda do banco.
+     */
+    private function ultimoNumeroEmitidoEmDisco(string $serie, string $cnpj, int $ambiente): int
+    {
+        $pasta = storage_path('app/XML_nfce');
+
+        if (!is_dir($pasta)) {
+            return 0;
+        }
+
+        $serie = str_pad($serie, 3, '0', STR_PAD_LEFT);
+        $maior = 0;
+
+        $arquivos = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($pasta, \FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($arquivos as $arquivo) {
+            // O nome do arquivo começa pela chave de acesso (44 dígitos)
+            if (!preg_match('/^(\d{44})/', $arquivo->getFilename(), $m)) {
+                continue;
+            }
+
+            $chave = $m[1];
+
+            if (substr($chave, 6, 14) !== $cnpj || substr($chave, 20, 2) !== '65' || substr($chave, 22, 3) !== $serie) {
+                continue;
+            }
+
+            // A chave não traz o ambiente: confere dentro do XML para não misturar homologação e produção
+            if (!str_contains(file_get_contents($arquivo->getPathname()), "<tpAmb>{$ambiente}</tpAmb>")) {
+                continue;
+            }
+
+            $maior = max($maior, (int) substr($chave, 25, 9));
+        }
+
+        return $maior;
     }
 }

@@ -29,9 +29,15 @@
                             {{ $pdv->ativo ? 'Ativo' : 'Inativo' }}
                         </span>
                     </td>
-                    <td class="p-3 flex gap-2">
+                    <td class="p-3 flex items-center gap-2">
                         <a href="{{ route('pdvs.edit', $pdv) }}" class="text-blue-600 hover:underline">Editar</a>
-                        <form action="{{ route('pdvs.toggle-ativo', $pdv) }}" method="POST">
+
+                        {{-- Inserido aqui para aparecer apenas para administradores --}}
+                        @if (auth()->user()?->isAdmin())
+                            <a href="{{ route('pdvs.emissao', $pdv) }}" class="text-indigo-600 hover:underline">Emissão de NFC-e</a>
+                        @endif
+
+                        <form action="{{ route('pdvs.toggle-ativo', $pdv) }}" method="POST" class="inline">
                             @csrf @method('PATCH')
                             <button class="text-orange-600 hover:underline">
                                 {{ $pdv->ativo ? 'Inativar' : 'Reativar' }}
