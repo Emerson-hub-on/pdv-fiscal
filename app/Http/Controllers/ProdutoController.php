@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Produto;
+use App\Models\ProdutoVariante;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
@@ -14,7 +15,7 @@ class ProdutoController extends Controller
         $filtro = $request->get('status', 'ativos'); // ativos | inativos | todos
         $ordenarPor = $request->get('ordenar', 'nome'); // nome | codigo
         $busca = $request->get('busca');
-        $tipoBusca = $request->get('tipo_busca', 'nome'); // nome | codigo_interno | codigo_barras
+        $tipoBusca = $request->get('tipo_busca', 'nome'); // nome | codigo_interno | codigo_barras | referencia
 
         $produtos = $this->consultarProdutos($request, $filtro, $ordenarPor, $busca, $tipoBusca)
             ->paginate(20)
@@ -36,6 +37,7 @@ class ProdutoController extends Controller
                 $coluna = match ($tipoBusca) {
                     'codigo_interno' => 'codigo_interno',
                     'codigo_barras' => 'codigo_barras',
+                    'referencia' => 'referencia',
                     default => 'nome',
                 };
                 $q->where($coluna, 'like', "%{$busca}%");
@@ -67,7 +69,8 @@ class ProdutoController extends Controller
     
         $existe = Produto::where('codigo_barras', $codigo)
             ->when($excluirId, fn ($q) => $q->where('id', '!=', $excluirId))
-            ->exists();
+            ->exists()
+            || ProdutoVariante::where('codigo_barras', $codigo)->exists();
     
         return response()->json(['duplicado' => $existe, 'codigo_normalizado' => $codigo]);
     }
@@ -128,6 +131,7 @@ class ProdutoController extends Controller
     {   
         $this->resolverCodigoBarras($request);
         $validado = $this->validarProduto($request);
+        $this->validarVariantes($request);
 
         $produto = Produto::create($validado);
 
@@ -147,6 +151,7 @@ class ProdutoController extends Controller
     {   
         $this->resolverCodigoBarras($request, $produto);
         $validado = $this->validarProduto($request, $produto->id);
+        $this->validarVariantes($request);
 
         $produto->update($validado);
 
@@ -170,16 +175,35 @@ class ProdutoController extends Controller
             continue; // ignora linha vazia
         }
 
+        $idLinha = $linha['id'] ?: null;
+        $codigoDigitado = $linha['codigo_barras'] ?? null;
+        $codigoInterno = $idLinha ? ProdutoVariante::codigoInternoPara((int) $idLinha) : null;
+
+        // EAN real só quando o operador digitou algo diferente do código interno
+        // da própria variação. Em branco = fallback (gerado a partir do id).
+        $ehEanReal = $codigoDigitado !== null && $codigoDigitado !== $codigoInterno;
+
         $variante = $produto->variantes()->updateOrCreate(
-            ['id' => $linha['id'] ?: null],
+            ['id' => $idLinha],
             [
                 'cor' => $linha['cor'] ?? null,
                 'tamanho' => $linha['tamanho'] ?? null,
                 'sku' => $linha['sku'] ?? null,
+                'codigo_barras' => $ehEanReal ? $codigoDigitado : $codigoInterno,
+                'codigo_barras_valido' => $ehEanReal,
                 'estoque' => $linha['estoque'] ?? 0,
                 'estoque_minimo' => $linha['estoque_minimo'] ?? 0,
             ]
         );
+
+        // Variação nova: o id só existe depois do insert, então o código interno
+        // é gravado logo em seguida.
+        if ($variante->codigo_barras === null) {
+            $variante->update([
+                'codigo_barras' => ProdutoVariante::codigoInternoPara($variante->id),
+                'codigo_barras_valido' => false,
+            ]);
+        }
 
         $idsEnviados[] = $variante->id;
     }
@@ -196,6 +220,73 @@ class ProdutoController extends Controller
 
         return redirect()->route('produtos.index')
             ->with('sucesso', $produto->ativo ? 'Produto reativado.' : 'Produto inativado.');
+    }
+
+    /**
+     * Valida o código de barras de cada variação (quando o produto tem variação).
+     *
+     * O EAN da variação é opcional: em branco, o sistema gera um código interno
+     * único (ver ProdutoVariante::codigoInternoPara()). Se preenchido, precisa ser
+     * um GTIN real (8/12/13/14 dígitos, dígito verificador correto) e único
+     * entre produtos e variações.
+     */
+    private function validarVariantes(Request $request): void
+    {
+        if (! $request->boolean('tem_variacao')) {
+            return;
+        }
+
+        $linhas = $request->input('variantes', []);
+
+        $request->validate([
+            'variantes' => 'nullable|array',
+            'variantes.*.codigo_barras' => [
+                'nullable', 'string', 'max:50',
+                function ($attribute, $value, $fail) use ($linhas) {
+                    $indice = explode('.', $attribute)[1];
+                    $linha = $linhas[$indice] ?? [];
+                    $nome = trim(($linha['cor'] ?? '') . ' / ' . ($linha['tamanho'] ?? ''), ' /') ?: 'sem nome';
+                    $rotulo = "Variação {$nome}";
+
+                    $idVariante = $linha['id'] ?? null;
+
+                    // Reenvio do próprio código interno gerado: não é EAN digitado.
+                    if ($idVariante && $value === ProdutoVariante::codigoInternoPara((int) $idVariante)) {
+                        return;
+                    }
+
+                    if (! ctype_digit($value)) {
+                        $fail("{$rotulo}: o código de barras deve conter apenas números.");
+                        return;
+                    }
+
+                    if (! in_array(strlen($value), [8, 12, 13, 14], true)) {
+                        $fail("{$rotulo}: um EAN/GTIN real tem 8, 12, 13 ou 14 dígitos.");
+                        return;
+                    }
+
+                    if (! self::gtinChecksumValido($value)) {
+                        $fail("{$rotulo}: o dígito verificador não confere com um EAN/GTIN real.");
+                        return;
+                    }
+
+                    $repetidos = collect($linhas)->pluck('codigo_barras')->filter(fn ($c) => $c === $value)->count();
+                    if ($repetidos > 1) {
+                        $fail("{$rotulo}: este código de barras está repetido em outra linha.");
+                        return;
+                    }
+
+                    $emUso = ProdutoVariante::where('codigo_barras', $value)
+                            ->when($idVariante, fn ($q) => $q->where('id', '!=', $idVariante))
+                            ->exists()
+                        || Produto::where('codigo_barras', $value)->exists();
+
+                    if ($emUso) {
+                        $fail("{$rotulo}: este código de barras já está cadastrado em outro produto ou variação.");
+                    }
+                },
+            ],
+        ]);
     }
 
     private function validarProduto(Request $request, $idAtual = null): array
@@ -240,9 +331,15 @@ class ProdutoController extends Controller
                     if (ctype_digit($value) && ! self::gtinChecksumValido($value)) {
                         $fail('Código de barras inválido: o dígito verificador não confere com um EAN/GTIN real. Confira o número impresso na embalagem ou deixe o campo em branco.');
                     }
+
+                    // Cada EAN identifica um único item: não pode já existir numa variação.
+                    if (ProdutoVariante::where('codigo_barras', $value)->exists()) {
+                        $fail('Este código de barras já está em uso em uma variação de outro produto.');
+                    }
                 },
             ],
             'codigo_barras_valido' => 'boolean',
+            'referencia' => 'nullable|string|max:100',
             'ncm_id' => 'required|exists:ncms,id',
             'cest_id' => 'nullable|exists:cests,id',
             'class_trib_ibs_cbs_id' => 'nullable|exists:classificacoes_tributarias,id',

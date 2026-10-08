@@ -15,6 +15,7 @@ class Produto extends Model
         'grupo_id',
         'codigo_interno', 
         'codigo_barras',
+        'referencia',
         'ncm_id', 
         'cest_id',
         'unidade_comercial',

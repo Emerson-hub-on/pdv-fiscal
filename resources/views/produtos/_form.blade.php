@@ -92,22 +92,32 @@
                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
         </div>
 
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Código de barras (EAN)</label>
-            <input type="text" name="codigo_barras" value="{{ old('codigo_barras', $produto->codigo_barras ?? '') }}"
-                   placeholder="Deixe em branco se não tiver"
-                   class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
-        </div>
+        <div class="col-span-2 grid grid-cols-3 gap-5 items-end">
 
-        <div>
-            <label class="block text-sm font-medium mb-1">
-                Código interno *
-                <span class="text-xs text-gray-400 font-normal">(gerado automaticamente)</span>
-            </label>
-            <input type="text" name="codigo_interno"
-                value="{{ old('codigo_interno', $produto->codigo_interno ?? $proximoCodigo ?? '') }}"
-                readonly
-                class="w-full border rounded px-3 py-2 bg-gray-50 text-gray-500 cursor-not-allowed">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Código de barras (EAN)</label>
+                <input type="text" name="codigo_barras" value="{{ old('codigo_barras', $produto->codigo_barras ?? '') }}"
+                       placeholder="Deixe em branco se não tiver"
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1">
+                    Código interno *
+                    <span class="text-xs text-gray-400 font-normal">(gerado automaticamente)</span>
+                </label>
+                <input type="text" name="codigo_interno"
+                    value="{{ old('codigo_interno', $produto->codigo_interno ?? $proximoCodigo ?? '') }}"
+                    readonly
+                    class="w-full border rounded px-3 py-2 bg-gray-50 text-gray-500 cursor-not-allowed">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Referência</label>
+                <input type="text" name="referencia" maxlength="100" value="{{ old('referencia', $produto->referencia ?? '') }}"
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+            </div>
+
         </div>
 
         <div class="col-span-2">
@@ -318,6 +328,7 @@
                             <th class="px-3 py-2 text-left">Cor</th>
                             <th class="px-3 py-2 text-left">Tamanho</th>
                             <th class="px-3 py-2 text-left">SKU</th>
+                            <th class="px-3 py-2 text-left">EAN</th>
                             <th class="px-3 py-2 text-left">Estoque</th>
                             <th class="px-3 py-2 text-left">Est. mín.</th>
                             <th class="px-3 py-2"></th>
@@ -712,7 +723,7 @@ function toggleVariacao(temVariacao) {
     document.getElementById('bloco-variantes').classList.toggle('hidden', !temVariacao);
 }
 
-function adicionarLinhaVariante(cor = '', tamanho = '', sku = '', estoque = 0, estoqueMinimo = 0, id = '') {
+function adicionarLinhaVariante(cor = '', tamanho = '', sku = '', estoque = 0, estoqueMinimo = 0, id = '', codigoBarras = '', codigoInterno = '') {
     const tbody = document.getElementById('linhas-variantes');
     const i = indiceVariante++;
     const tr = document.createElement('tr');
@@ -732,6 +743,12 @@ function adicionarLinhaVariante(cor = '', tamanho = '', sku = '', estoque = 0, e
                    class="w-full border border-gray-200 rounded px-2 py-1 text-sm">
         </td>
         <td class="px-3 py-2">
+            <input type="text" name="variantes[${i}][codigo_barras]" value="${codigoBarras}"
+                   inputmode="numeric" maxlength="14" placeholder="Em branco = automático"
+                   class="w-full min-w-[9rem] border border-gray-200 rounded px-2 py-1 text-sm">
+            ${codigoInterno ? `<p class="mt-1 text-xs text-gray-400">Código no caixa: <span class="font-mono text-gray-600">${codigoInterno}</span></p>` : ''}
+        </td>
+        <td class="px-3 py-2">
             <input type="number" name="variantes[${i}][estoque]" value="${estoque}"
                    class="w-20 border border-gray-200 rounded px-2 py-1 text-sm">
         </td>
@@ -748,21 +765,36 @@ function adicionarLinhaVariante(cor = '', tamanho = '', sku = '', estoque = 0, e
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    @if (isset($produto) && $produto->variantes->count())
-        @foreach ($produto->variantes as $variante)
-            adicionarLinhaVariante(
-                "{{ $variante->cor }}", "{{ $variante->tamanho }}", "{{ $variante->sku }}",
-                {{ $variante->estoque }}, {{ $variante->estoque_minimo }}, {{ $variante->id }}
-            );
-        @endforeach
-    @endif
+    // Se a validação falhou, reaproveita o que o operador digitou (old);
+    // senão, carrega as variações salvas no banco.
+    @php
+        $variantesIniciais = is_array(old('variantes'))
+            ? array_values(old('variantes'))
+            : ($produto
+                ? $produto->variantes->map(fn ($v) => [
+                    'id' => $v->id,
+                    'cor' => $v->cor,
+                    'tamanho' => $v->tamanho,
+                    'sku' => $v->sku,
+                    // EAN real aparece no campo; o código interno gerado aparece só como legenda
+                    'codigo_barras' => $v->codigo_barras_valido ? $v->codigo_barras : '',
+                    'codigo_interno' => $v->codigo_barras_valido ? '' : $v->codigo_barras,
+                    'estoque' => $v->estoque,
+                    'estoque_minimo' => $v->estoque_minimo,
+                ])->values()->all()
+                : []);
+    @endphp
+    @json($variantesIniciais).forEach(v => adicionarLinhaVariante(
+        v.cor ?? '', v.tamanho ?? '', v.sku ?? '',
+        v.estoque ?? 0, v.estoque_minimo ?? 0, v.id ?? '', v.codigo_barras ?? '', v.codigo_interno ?? ''
+    ));
 });
 
 
 document.addEventListener('DOMContentLoaded', () => {
     @if ($errors->has('ncm_id') || $errors->has('tributacao_id') || $errors->has('cest_id') || $errors->has('unidade_comercial') || $errors->has('unidade_tributavel') || $errors->has('origem_mercadoria') || $errors->has('class_trib_ibs_cbs_id'))
         trocarTab('fiscal');
-    @elseif ($errors->has('preco_venda') || $errors->has('preco_custo') || $errors->has('estoque'))
+    @elseif ($errors->has('preco_venda') || $errors->has('preco_custo') || $errors->has('estoque') || collect($errors->keys())->contains(fn ($k) => str_starts_with($k, 'variantes')))
         trocarTab('preco');
     @endif
 });
