@@ -59,6 +59,28 @@ class VendaController extends Controller
     {
         $termo = $request->get('termo', '');
 
+        // Codigo de barras de VARIACAO (EAN real ou codigo interno gerado, ex:
+        // 9900000000028): resolve direto pra variacao e devolve so ela, junto
+        // com o produto pai (preco e dados fiscais vem do pai).
+        if (ctype_digit($termo) && $termo !== '') {
+            $variante = DB::connection('sqlite_local')->table('produto_variantes_cache')
+                ->where('codigo_barras', $termo)
+                ->first();
+
+            if ($variante) {
+                $pai = DB::connection('sqlite_local')->table('produtos_cache')
+                    ->where('id', $variante->produto_id)
+                    ->where('ativo', true)
+                    ->first();
+
+                if ($pai) {
+                    $pai->variantes = [$variante];
+
+                    return response()->json([$pai]);
+                }
+            }
+        }
+
         // Se o termo e so digitos, tenta resolver por MATCH EXATO primeiro -
         // codigo interno, codigo de barras real, ou o fallback zero-padded de
         // 13 digitos (ex: termo "2" -> "0000000000002"). Isso e o que permite
@@ -92,7 +114,11 @@ class VendaController extends Controller
             ->where(function ($q) use ($termo) {
                 $q->where('nome', 'like', "%{$termo}%")
                   ->orWhere('codigo_interno', 'like', "%{$termo}%")
-                  ->orWhere('codigo_barras', 'like', "%{$termo}%");
+                  ->orWhere('codigo_barras', 'like', "%{$termo}%")
+                  // produtos cuja variacao tem esse codigo (busca parcial)
+                  ->orWhereIn('id', DB::connection('sqlite_local')->table('produto_variantes_cache')
+                      ->select('produto_id')
+                      ->where('codigo_barras', 'like', "%{$termo}%"));
             })
             ->limit(10)
             ->get();

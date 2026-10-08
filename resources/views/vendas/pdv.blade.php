@@ -865,7 +865,10 @@ async function buscarProduto(termo) {
     resultadosAtuais = [];
     produtos.forEach(p => {
         if (p.tem_variacao && p.variantes.length > 0) {
-            p.variantes.forEach(v => resultadosAtuais.push({ produto: p, variante: v }));
+            // Se o termo é o código de barras de uma variação, mostra só ela
+            // (senão, mostra todas as variações do produto, como antes)
+            const exatas = p.variantes.filter(v => v.codigo_barras && v.codigo_barras === termo);
+            (exatas.length ? exatas : p.variantes).forEach(v => resultadosAtuais.push({ produto: p, variante: v }));
         } else {
             resultadosAtuais.push({ produto: p, variante: null });
         }
@@ -913,7 +916,7 @@ function renderizarResultados() {
 
 linhasBuscaDiv.innerHTML = resultadosAtuais.map((op, index) => {
     const destacado = index === indiceSelecionado;
-    const codigo = op.produto.codigo_barras || op.produto.codigo_interno;
+    const codigo = op.variante?.codigo_barras || op.produto.codigo_barras || op.produto.codigo_interno;
     const nome = op.variante
         ? `${op.produto.nome} — ${op.variante.cor ?? ''} ${op.variante.tamanho ?? ''}`
         : op.produto.nome;

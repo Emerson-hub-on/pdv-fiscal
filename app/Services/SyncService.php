@@ -98,7 +98,8 @@ class SyncService
                       ->orWhereHas('pisCofins', fn ($t) => $t->where('updated_at', '>', $ultimaSync))
                       ->orWhereHas('classificacaoTributaria', fn ($t) => $t->where('updated_at', '>', $ultimaSync))
                       ->orWhereHas('ncm', fn ($t) => $t->where('updated_at', '>', $ultimaSync))
-                      ->orWhereHas('cest', fn ($t) => $t->where('updated_at', '>', $ultimaSync));
+                      ->orWhereHas('cest', fn ($t) => $t->where('updated_at', '>', $ultimaSync))
+                      ->orWhereHas('variantes', fn ($t) => $t->where('updated_at', '>', $ultimaSync));
                 })
                 ->get();
 
@@ -151,6 +152,9 @@ class SyncService
                                 'produto_id' => $variante->produto_id,
                                 'cor' => $variante->cor,
                                 'tamanho' => $variante->tamanho,
+                                'sku' => $variante->sku,
+                                'codigo_barras' => $variante->codigo_barras,
+                                'codigo_barras_valido' => $variante->codigo_barras_valido,
                                 'estoque' => $variante->estoque,
                                 'updated_at' => now(),
                             ]
@@ -180,6 +184,13 @@ class SyncService
             // Variantes órfãs (produto pai já não existe mais no central) também saem
             DB::connection('sqlite_local')->table('produto_variantes_cache')
                 ->whereNotIn('produto_id', $idsAtuaisCentral)
+                ->delete();
+
+            // Variante removida na tela do produto (ou "tem variação" desligado):
+            // o produto pai continua existindo, então o bloco acima não pega.
+            // Sem isso a variante apagada continua vendável no caixa.
+            DB::connection('sqlite_local')->table('produto_variantes_cache')
+                ->whereNotIn('id', DB::table('produto_variantes')->pluck('id'))
                 ->delete();
 
             $this->salvarMeta('ultima_sincronizacao_produtos', now()->toDateTimeString());
