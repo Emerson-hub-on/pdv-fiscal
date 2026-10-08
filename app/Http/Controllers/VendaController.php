@@ -38,6 +38,7 @@ class VendaController extends Controller
             AutorizacaoSupervisor::consumir('desconto_global');
         }
         AutorizacaoSupervisor::consumir('cancelar_nfce');
+        AutorizacaoSupervisor::consumir('inutilizar');
 
         $carrinhoSalvo = session('venda_carrinho');
         $itensIniciais = $carrinhoSalvo['itens'] ?? [];

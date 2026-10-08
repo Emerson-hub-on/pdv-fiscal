@@ -25,6 +25,8 @@ return [
             'cancelar_cupom'  => ['nome' => 'Cancelar cupom',   'descricao' => 'Limpar todos os itens da venda em andamento'],
             'desconto_item'   => ['nome' => 'Desconto no item', 'descricao' => 'Desconto aplicado em um item do carrinho (F4)'],
             'desconto_global' => ['nome' => 'Desconto geral',   'descricao' => 'Desconto no total da venda, na tela de pagamento (F5)'],
+            'inutilizar'      => ['nome' => 'Inutilizar numeração', 'descricao' => 'Inutilização de numeração de NFC-e (F2)'],
+            
         ],
 
         'niveis' => [
@@ -41,5 +43,5 @@ return [
         ],
     ],
 
-    'acao'     => 'nullable|string|in:desconto_item,desconto_global,cancelar_item,cancelar_cupom,cancelar_nfce',
+    'acao'     => 'nullable|string|in:desconto_item,desconto_global,cancelar_item,cancelar_cupom,cancelar_nfce,inutilizar',
 ];

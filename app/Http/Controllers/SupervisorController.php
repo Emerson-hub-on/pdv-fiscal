@@ -34,7 +34,7 @@ class SupervisorController extends Controller
         $validado = $request->validate([
             'codigo'   => 'required|integer|min:1',
             'password' => 'required|string',
-            'acao'     => 'required|string|in:desconto_item,desconto_global,cancelar_item,cancelar_cupom,cancelar_nfce',
+            'acao' => 'required|string|in:' . implode(',', array_keys(config('permissoes.caixa.acoes'))),
         ]);
 
         // O caixa só consulta o SQLite local

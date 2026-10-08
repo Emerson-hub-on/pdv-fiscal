@@ -451,6 +451,7 @@ const chavePermissao = {
     cancelar_item: 'cancelar_item',
     limpar_pdv: 'cancelar_cupom',
     cancelar_nfce: 'cancelar_nfce',
+    inutilizar: 'inutilizar',
 };
 let timeoutBusca;
 let indiceDropdownCancelamento = -1;
@@ -1186,6 +1187,15 @@ function atualizarMotivoLinha(id, motivo) {
 
 
 function abrirModalInutilizacao() {
+    solicitarAutorizacao('inutilizar', 'Autorização necessária para inutilizar uma numeração.');
+}
+
+function mostrarModalInutilizacao() {
+    document.getElementById('inut-numero-inicial').value = '';
+    document.getElementById('inut-numero-final').value = '';
+    document.getElementById('inut-justificativa').value = '';
+    document.getElementById('inut-erro').classList.add('hidden');
+
     document.getElementById('modal-inutilizacao').classList.remove('hidden');
     document.getElementById('modal-inutilizacao').classList.add('flex');
 }
@@ -1450,6 +1460,8 @@ function executarAcaoAutorizada() {
         executarLimparPdv();
     } else if (tipoDescontoPendente === 'cancelar_nfce') {
         abrirModalCancelamento();
+    } else if (tipoDescontoPendente === 'inutilizar') {
+        mostrarModalInutilizacao();
     }
 }
 
