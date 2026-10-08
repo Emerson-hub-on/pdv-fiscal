@@ -8,6 +8,9 @@ use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use App\Models\Venda;
+use App\Models\Pdv;
+use App\Support\DadosFiscaisLocais;
+use Illuminate\Support\Str;
 
 class EmissorLocalService extends FiscalEmissorService
 {
@@ -67,6 +70,95 @@ class EmissorLocalService extends FiscalEmissorService
     public function cancelarLocal(string $uuid, string $justificativa): array
     {
         return $this->cancelar(VendaLocal::carregar($uuid), $justificativa);
+    }
+
+    public function inutilizarLocal(int $pdvId, int $numeroInicial, int $numeroFinal, string $justificativa): array
+    {
+        $pdv = DadosFiscaisLocais::pdv($pdvId);
+
+        if (!$pdv) {
+            throw new Exception('PDV não encontrado no caixa. Sincronize com o servidor.');
+        }
+
+        // Número já autorizado (ou cancelado depois de autorizado) não pode ser inutilizado
+        $usados = DB::connection('sqlite_local')->table('vendas_pendentes')
+            ->where('serie_nfce', (string) $pdv->serie_nfce)
+            ->whereBetween('numero_nfce', [$numeroInicial, $numeroFinal])
+            ->whereIn('status_fiscal', ['emitida', 'cancelada'])
+            ->orderBy('numero_nfce')
+            ->pluck('numero_nfce');
+
+        if ($usados->isNotEmpty()) {
+            throw new Exception('A faixa inclui número(s) já autorizado(s) pela SEFAZ (' . $usados->implode(', ') . '). Só é possível inutilizar números que nunca foram autorizados.');
+        }
+
+        return $this->inutilizar($pdv, $numeroInicial, $numeroFinal, $justificativa);
+    }
+
+    // No caixa o registro fica no SQLite; o servidor recebe na sincronização
+    protected function registrarInutilizacao(Pdv $pdv, int $numeroInicial, int $numeroFinal, string $justificativa, bool $sucesso, ?string $nProt, ?string $xMotivo): void
+    {
+        $db = DB::connection('sqlite_local');
+        $serie = (string) $pdv->serie_nfce;
+
+        $db->table('inutilizacoes_local')->insert([
+            'uuid' => (string) Str::uuid(),
+            'pdv_id' => $pdv->id,
+            'serie' => $serie,
+            'numero_inicial' => $numeroInicial,
+            'numero_final' => $numeroFinal,
+            'justificativa' => $justificativa,
+            'status' => $sucesso ? 'sucesso' : 'erro',
+            'protocolo' => $nProt,
+            'motivo' => $xMotivo,
+            'operador_id' => auth()->id(),
+            'sync_pendente' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Os números inutilizados não podem ser reaproveitados: o contador passa do fim da faixa
+        if ($sucesso) {
+            $db->table('numeracao_nfce')
+                ->where('pdv_id', $pdv->id)
+                ->where('serie', $serie)
+                ->where('ultimo_numero', '<', $numeroFinal)
+                ->update(['ultimo_numero' => $numeroFinal, 'updated_at' => now()]);
+        }
+    }
+
+    // Vendas do caixa presas na faixa: cancela e devolve o estoque do caixa (o servidor recebe pela sincronização de vendas)
+    protected function cancelarVendasDaFaixa(Pdv $pdv, int $numeroInicial, int $numeroFinal, ?string $nProt): void
+    {
+        $db = DB::connection('sqlite_local');
+
+        $vendas = $db->table('vendas_pendentes')
+            ->whereIn('status_fiscal', ['contingencia', 'pendente'])
+            ->where('status', '!=', 'cancelada')
+            ->where('serie_nfce', (string) $pdv->serie_nfce)
+            ->whereBetween('numero_nfce', [$numeroInicial, $numeroFinal])
+            ->get();
+
+        foreach ($vendas as $v) {
+            $db->transaction(function () use ($db, $v, $nProt) {
+                foreach (json_decode($v->itens, true) ?? [] as $item) {
+                    if (!empty($item['produto_variante_id'])) {
+                        $db->table('produto_variantes_cache')->where('id', $item['produto_variante_id'])
+                            ->increment('estoque', $item['quantidade']);
+                    } else {
+                        $db->table('produtos_cache')->where('id', $item['produto_id'])
+                            ->increment('estoque', $item['quantidade']);
+                    }
+                }
+
+                $db->table('vendas_pendentes')->where('uuid', $v->uuid)->update([
+                    'status_fiscal' => 'cancelada',
+                    'motivo_cancelamento' => "Número inutilizado (protocolo {$nProt}). Venda não será emitida.",
+                    'fiscal_sync_pendente' => true,
+                    'updated_at' => now(),
+                ]);
+            });
+        }
     }
 
     // No caixa o estoque devolvido é o do SQLite; o servidor recebe o cancelamento na sincronização

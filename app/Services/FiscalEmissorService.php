@@ -16,6 +16,7 @@ use App\Models\Empresa;
 use Illuminate\Support\Facades\DB;
 use NFePHP\NFe\Complements;
 
+
 class FiscalEmissorService
 {
     protected NfeService $nfeService;
@@ -941,7 +942,7 @@ protected function montarTotais(Make $nfe, Venda $venda): void
 
     public function inutilizar(Pdv $pdv, int $numeroInicial, int $numeroFinal, string $justificativa): array
     {
-        $this->nfeService = new NfeService($pdv);
+        $this->nfeService = $this->criarNfeService($pdv);
         $tools = $this->nfeService->tools();
 
         $resposta = $tools->sefazInutiliza($pdv->serie_nfce, $numeroInicial, $numeroFinal, $justificativa);
@@ -957,6 +958,23 @@ protected function montarTotais(Make $nfe, Venda $venda): void
 
         $sucesso = $cStat === '102';
 
+        $this->registrarInutilizacao($pdv, $numeroInicial, $numeroFinal, $justificativa, $sucesso, $nProt, $xMotivo);
+
+        if (!$sucesso) {
+            throw new Exception('Falha na inutilização: ' . $xMotivo);
+        }
+
+        $this->salvarXmlInutilizacaoEmDisco($resposta, $idEvento);
+
+        // Cancela qualquer venda em contingencia/pendente que estava presa nessa faixa de numero,
+        // e estorna o estoque de cada item vendido nela
+        $this->cancelarVendasDaFaixa($pdv, $numeroInicial, $numeroFinal, $nProt);
+
+        return ['protocolo' => $nProt, 'motivo' => $xMotivo];
+    }
+
+    protected function registrarInutilizacao(Pdv $pdv, int $numeroInicial, int $numeroFinal, string $justificativa, bool $sucesso, ?string $nProt, ?string $xMotivo): void
+    {
         Inutilizacao::create([
             'pdv_id' => $pdv->id,
             'serie' => $pdv->serie_nfce,
@@ -968,15 +986,10 @@ protected function montarTotais(Make $nfe, Venda $venda): void
             'motivo' => $xMotivo,
             'operador_id' => auth()->id(),
         ]);
+    }
 
-        if (!$sucesso) {
-            throw new Exception('Falha na inutilização: ' . $xMotivo);
-        }
-
-        $this->salvarXmlInutilizacaoEmDisco($resposta, $idEvento);
-
-        // Cancela qualquer venda em contingencia/pendente que estava presa nessa faixa de numero,
-        // e estorna o estoque de cada item vendido nela
+    protected function cancelarVendasDaFaixa(Pdv $pdv, int $numeroInicial, int $numeroFinal, ?string $nProt): void
+    {
         $vendasAfetadas = Venda::whereIn('status', ['contingencia', 'pendente'])
             ->where('serie_nfce', $pdv->serie_nfce)
             ->whereHas('caixa', fn($q) => $q->where('pdv_id', $pdv->id))
@@ -1004,8 +1017,6 @@ protected function montarTotais(Make $nfe, Venda $venda): void
                 ]);
             });
         }
-
-        return ['protocolo' => $nProt, 'motivo' => $xMotivo];
     }
 
     /**
@@ -1033,7 +1044,7 @@ protected function montarTotais(Make $nfe, Venda $venda): void
         file_put_contents($arquivo, $resposta);
     }
 
-public function cancelar(Venda $venda, string $justificativa): array
+    public function cancelar(Venda $venda, string $justificativa): array
     {
         if ($venda->status !== 'emitida') {
             throw new Exception('Só é possível cancelar vendas com NFC-e já emitida.');
@@ -1041,7 +1052,6 @@ public function cancelar(Venda $venda, string $justificativa): array
 
         $pdv = $venda->caixa->pdv;
         
-        // Linha 1034 alterada para usar o criarNfeService
         $this->nfeService = $this->criarNfeService($pdv);
         $tools = $this->nfeService->tools();
 

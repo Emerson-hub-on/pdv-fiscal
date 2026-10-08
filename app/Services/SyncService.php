@@ -14,6 +14,7 @@ use App\Models\Empresa;
 use Illuminate\Support\Facades\Crypt;
 use Exception;
 use App\Support\Maquina;
+use App\Models\Inutilizacao;
 
 
 class SyncService
@@ -387,6 +388,43 @@ class SyncService
         }
     }
 
+    public function enviarInutilizacoes(): array
+    {
+        if (CentralStatus::fora()) {
+            return ['sucesso' => true, 'enviadas' => 0];
+        }
+
+        try {
+            $db = DB::connection('sqlite_local');
+            $enviadas = 0;
+
+            foreach ($db->table('inutilizacoes_local')->where('sync_pendente', true)->get() as $i) {
+                // Só o registro: as vendas presas na faixa sobem pelo envio de vendas (com a devolução de estoque)
+                Inutilizacao::firstOrCreate([
+                    'pdv_id' => $i->pdv_id,
+                    'serie' => $i->serie,
+                    'numero_inicial' => $i->numero_inicial,
+                    'numero_final' => $i->numero_final,
+                    'status' => $i->status,
+                    'protocolo' => $i->protocolo,
+                ], [
+                    'justificativa' => $i->justificativa,
+                    'motivo' => $i->motivo,
+                    'operador_id' => $i->operador_id,
+                ]);
+
+                $db->table('inutilizacoes_local')->where('id', $i->id)
+                    ->update(['sync_pendente' => false, 'updated_at' => now()]);
+
+                $enviadas++;
+            }
+
+            return ['sucesso' => true, 'enviadas' => $enviadas];
+        } catch (\Throwable $e) {
+            return $this->registrarFalha($e);
+        }
+    }
+
     /**
      * Depois de uma venda ou emissão: tenta enviar ao servidor sem atrapalhar o operador se ele estiver fora.
      */
@@ -399,6 +437,7 @@ class SyncService
         try {
             $this->enviarCaixas();
             $this->enviarVendasPendentes();
+            $this->enviarInutilizacoes();
             $this->enviarNumeracao();
         } catch (\Throwable $e) {
             if (CentralStatus::erroDeConexao($e)) {
@@ -753,6 +792,7 @@ class SyncService
         }
 
         $resultado['vendas'] = $this->enviarVendasPendentes();
+        $resultado['inutilizacoes'] = $this->enviarInutilizacoes();
         $resultado['numeracao'] = $this->enviarNumeracao();
 
         return $resultado;

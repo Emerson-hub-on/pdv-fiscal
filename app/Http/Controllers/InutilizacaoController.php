@@ -3,17 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\Pdv;
+use App\Services\EmissorLocalService;
 use App\Services\FiscalEmissorService;
+use App\Support\CentralStatus;
 use App\Support\EmissaoLocal;
 use Illuminate\Http\Request;
-use App\Support\CentralStatus;
 
 class InutilizacaoController extends Controller
 {
     public function executar(Request $request)
     {
         $validado = $request->validate([
-            'pdv_id' => 'nullable|integer|exists:pdvs,id',
+            'pdv_id' => 'nullable|integer',
             'numero_inicial' => 'required|integer|min:1',
             'numero_final' => 'required|integer|min:1|gte:numero_inicial',
             'justificativa' => 'required|string|min:15',
@@ -28,17 +29,25 @@ class InutilizacaoController extends Controller
             ], 422);
         }
 
-        $pdv = Pdv::findOrFail($pdvId);
-
         try {
-            $pdv = Pdv::findOrFail($pdvId);
+            if (EmissaoLocal::ativa((int) $pdvId)) {
+                // PDV que emite pelo caixa: tudo acontece no SQLite
+                $resultado = (new EmissorLocalService())->inutilizarLocal(
+                    (int) $pdvId,
+                    $validado['numero_inicial'],
+                    $validado['numero_final'],
+                    $validado['justificativa']
+                );
+            } else {
+                $pdv = Pdv::findOrFail($pdvId);
 
-            $resultado = (new FiscalEmissorService())->inutilizar(
-                $pdv,
-                $validado['numero_inicial'],
-                $validado['numero_final'],
-                $validado['justificativa']
-            );
+                $resultado = (new FiscalEmissorService())->inutilizar(
+                    $pdv,
+                    $validado['numero_inicial'],
+                    $validado['numero_final'],
+                    $validado['justificativa']
+                );
+            }
 
             return response()->json(['sucesso' => true, 'protocolo' => $resultado['protocolo']]);
         } catch (\Throwable $e) {
