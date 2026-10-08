@@ -52,27 +52,27 @@
                 class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
             Inutilizar <span class="opacity-60">F2</span>
         </button>
-<div class="relative">
-    <button onclick="toggleDropdownCancelamento()" id="btn-cancelamento-main"
-            class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
-        Cancelamento <span class="opacity-60">F3</span> ▾
-    </button>
-    <!-- Adicionado id no container do menu -->
-    <div id="dropdown-cancelamento" class="absolute hidden bg-slate-200 rounded-lg shadow-xl mt-2 w-52 overflow-hidden z-50 border border-white/10">
-        <button onclick="fecharDropdownCancelamento(); solicitarCancelamentoNfce();"
-                class="opcao-dropdown w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-700 hover:text-white transition" data-index="0">
-            Cancelar NFC-e
-        </button>
-        <button onclick="fecharDropdownCancelamento(); abrirModalCancelarItem();"
-                class="opcao-dropdown w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-700 hover:text-white transition border-t border-white/10" data-index="1">
-            Cancelar Item
-        </button>
-        <button onclick="fecharDropdownCancelamento(); abrirModalLimparPdv();"
-                class="opcao-dropdown w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-700 hover:text-white transition border-t border-white/10" data-index="2">
-            Cancelar Cupom
-        </button>
-    </div>
-</div>
+        <div class="relative">
+            <button onclick="toggleDropdownCancelamento()" id="btn-cancelamento-main"
+                    class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
+                Cancelamento <span class="opacity-60">F3</span> ▾
+            </button>
+            <!-- Adicionado id no container do menu -->
+            <div id="dropdown-cancelamento" class="absolute hidden bg-slate-200 rounded-lg shadow-xl mt-2 w-52 overflow-hidden z-50 border border-white/10">
+                <button onclick="fecharDropdownCancelamento(); solicitarCancelamentoNfce();"
+                        class="opcao-dropdown w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-700 hover:text-white transition" data-index="0">
+                    Cancelar NFC-e
+                </button>
+                <button onclick="fecharDropdownCancelamento(); abrirModalCancelarItem();"
+                        class="opcao-dropdown w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-700 hover:text-white transition border-t border-white/10" data-index="1">
+                    Cancelar Item
+                </button>
+                <button onclick="fecharDropdownCancelamento(); abrirModalLimparPdv();"
+                        class="opcao-dropdown w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-700 hover:text-white transition border-t border-white/10" data-index="2">
+                    Cancelar Cupom
+                </button>
+            </div>
+        </div>
 
         <button onclick="abrirModalDescontoItem()"
                 class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
@@ -141,27 +141,46 @@
 
 <!-- Modal de contingencias -->
 <div id="modal-contingencias" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded shadow-lg w-full max-w-2xl max-h-[80vh] overflow-y-auto p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold">Vendas em Contingência</h2>
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-4xl max-h-[85vh] flex flex-col">
+        <div class="flex justify-between items-start px-6 pt-5 pb-3">
+            <div>
+                <h2 class="text-lg font-bold">Vendas em Contingência</h2>
+                <p class="text-xs text-gray-400">Clique em uma venda para ver o motivo e os itens.</p>
+            </div>
             <button onclick="fecharModalContingencias()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
         </div>
 
-    <div class="flex justify-between items-center mb-3">
-        <label class="text-sm flex items-center gap-2">
-            <input type="checkbox" id="selecionar-todas" onchange="toggleTodas(this.checked)">
-            Selecionar todas
-        </label>
-        <div class="flex items-center gap-3">
-            <span id="progresso-emissao" class="text-sm text-gray-500 hidden"></span>
-            <button id="btn-emitir-selecionadas" onclick="emitirSelecionadas()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-semibold">
-                Emitir selecionadas
-            </button>
+        <div class="flex flex-wrap justify-between items-center gap-2 px-6 pb-3">
+            <label class="text-sm flex items-center gap-2">
+                <input type="checkbox" id="selecionar-todas" onchange="toggleTodas(this.checked)">
+                Selecionar todas
+            </label>
+            <div class="flex items-center gap-3">
+                <span id="progresso-emissao" class="text-sm text-gray-500 hidden"></span>
+                <button id="btn-emitir-selecionadas" onclick="emitirSelecionadas()"
+                        class="bg-gray-800 hover:bg-gray-700 text-white rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50">
+                    Emitir selecionadas
+                </button>
+            </div>
         </div>
-    </div>
 
-        <div id="lista-contingencias" class="space-y-2">
-            <p class="text-gray-400 text-sm">Carregando...</p>
+        <div class="overflow-y-auto border-t border-gray-100">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-700 text-amber-50 text-xs uppercase sticky top-0">
+                    <tr>
+                        <th class="w-10 px-4 py-2"></th>
+                        <th class="text-left px-4 py-2">Venda</th>
+                        <th class="text-left px-4 py-2">NFC-e</th>
+                        <th class="text-left px-4 py-2">Série</th>
+                        <th class="text-right px-4 py-2">Total</th>
+                        <th class="text-left px-4 py-2">Data</th>
+                        <th class="text-left px-4 py-2">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="lista-contingencias" class="divide-y divide-gray-100">
+                    <tr><td colspan="7" class="px-4 py-8 text-center text-gray-400">Carregando...</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -314,7 +333,7 @@
 
         <p id="inut-erro" class="text-red-600 text-sm mb-3 hidden"></p>
 
-        <button onclick="confirmarInutilizacao()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded font-semibold">
+        <button id="btn-inutilizar" onclick="confirmarInutilizacao()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded font-semibold disabled:opacity-50">
             Inutilizar
         </button>
     </div>
@@ -322,14 +341,29 @@
 
 <!-- Modal de cancelamento -->
 <div id="modal-cancelamento" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded shadow-lg w-full max-w-2xl max-h-[80vh] overflow-y-auto p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold">Cancelar NFC-e</h2>
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-4xl max-h-[85vh] flex flex-col">
+        <div class="flex justify-between items-start px-6 pt-5 pb-3">
+            <div>
+                <h2 class="text-lg font-bold">Cancelar NFC-e</h2>
+                <p class="text-xs text-gray-400">Últimas 20 vendas emitidas. Clique em uma para cancelar.</p>
+            </div>
             <button onclick="fecharModalCancelamento()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
         </div>
-        <p class="text-xs text-gray-400 mb-3">Últimas 20 vendas emitidas. Clique em uma para cancelar.</p>
-        <div id="lista-cancelamento" class="space-y-2">
-            <p class="text-gray-400 text-sm">Carregando...</p>
+
+        <div class="overflow-y-auto border-t border-gray-100">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-700 text-amber-50 text-xs uppercase sticky top-0">
+                    <tr>
+                        <th class="text-left px-4 py-2">NFC-e</th>
+                        <th class="text-right px-4 py-2">Total</th>
+                        <th class="text-left px-4 py-2">Data</th>
+                        <th class="text-right px-4 py-2 w-40"></th>
+                    </tr>
+                </thead>
+                <tbody id="lista-cancelamento" class="divide-y divide-gray-100">
+                    <tr><td colspan="4" class="px-4 py-8 text-center text-gray-400">Carregando...</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -981,6 +1015,35 @@ function fecharModalContingencias() {
     document.getElementById('modal-contingencias').classList.remove('flex');
 }
 
+function moedaBR(valor) {
+    return 'R$ ' + Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+
+const BADGE_CONTINGENCIA = '<span class="inline-flex items-center rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-medium">Contingência</span>';
+
+function definirStatusLinha(id, html) {
+    const linha = document.querySelector(`.check-contingencia[value="${id}"]`)?.closest('tr');
+    const celula = linha?.querySelector('.status-celula');
+    if (celula) celula.innerHTML = html;
+}
+
+function marcarLinhaNaFila(id) {
+    definirStatusLinha(id, '<span class="inline-flex items-center rounded-full bg-gray-100 text-gray-600 px-2 py-0.5 text-xs font-medium">Na fila</span>');
+}
+
+function marcarLinhaEmitindo(id) {
+    definirStatusLinha(id, `
+        <span class="inline-flex items-center gap-2 text-xs font-semibold text-blue-700 animate-pulse">
+            <span class="inline-block w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></span>
+            Emitindo venda...
+        </span>`);
+}
+
+function restaurarLinhaContingencia(id) {
+    definirStatusLinha(id, BADGE_CONTINGENCIA);
+}
+
 async function carregarContingencias() {
     const resp = await fetch('{{ route("contingencias.listar") }}');
     const vendas = await resp.json();
@@ -988,30 +1051,32 @@ async function carregarContingencias() {
     const container = document.getElementById('lista-contingencias');
 
     if (vendas.length === 0) {
-        container.innerHTML = '<p class="text-gray-400 text-sm">Nenhuma venda em contingência.</p>';
+        container.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-gray-400">Nenhuma venda em contingência.</td></tr>';
         return;
     }
 
     container.innerHTML = vendas.map(v => `
-        <div class="border rounded">
-            <div class="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50" onclick="toggleExpandir('${v.id}')">
-                <div class="flex items-center gap-3">
-                    <input type="checkbox" class="check-contingencia" value="${v.id}" onclick="event.stopPropagation()">
-                    <div>
-                        <p class="text-sm font-medium">
-                            Venda #${v.venda_id ?? v.id} — NFC-e nº ${v.numero_nfce ?? '-'} (série ${v.serie_nfce ?? '-'}) — R$ ${Number(v.total).toFixed(2)}
-                        </p>
-                        <p class="text-xs text-gray-400">${v.criada_em}</p>
-                        ${v.chave_nfe ? `<p class="text-xs text-gray-400 break-all">Chave: ${v.chave_nfe}</p>` : ''}
-                    </div>
-                </div>
-                <span class="text-gray-400 text-xs">▼</span>
-            </div>
-            <div id="detalhe-${v.id}" class="hidden border-t bg-gray-50 p-3 text-sm">
+        <tr class="hover:bg-gray-50 cursor-pointer" onclick="toggleExpandir('${v.id}')">
+            <td class="px-4 py-2" onclick="event.stopPropagation()">
+                <input type="checkbox" class="check-contingencia" value="${v.id}">
+            </td>
+            <td class="px-4 py-2">#${String(v.venda_id ?? v.id).split('-')[0]}</td>
+            <td class="px-4 py-2">${v.numero_nfce ?? '—'}</td>
+            <td class="px-4 py-2">${v.serie_nfce ?? '—'}</td>
+            <td class="px-4 py-2 text-right">${moedaBR(v.total)}</td>
+            <td class="px-4 py-2 text-gray-500">${v.criada_em}</td>
+            <td class="px-4 py-2 status-celula">
+                ${BADGE_CONTINGENCIA}
+            </td>
+        </tr>
+        <tr id="detalhe-${v.id}" class="hidden bg-gray-50">
+            <td></td>
+            <td colspan="6" class="px-4 py-3 text-sm">
                 <p class="text-red-600 mb-2"><strong>Motivo:</strong> ${v.motivo ?? 'Não informado'}</p>
                 <p class="text-gray-600"><strong>Itens:</strong> ${v.itens.join(', ')}</p>
-            </div>
-        </div>
+                ${v.chave_nfe ? `<p class="text-xs text-gray-400 break-all mt-2">Chave: ${v.chave_nfe}</p>` : ''}
+            </td>
+        </tr>
     `).join('');
 }
 
@@ -1020,7 +1085,9 @@ function toggleExpandir(id) {
 }
 
 function toggleTodas(marcado) {
-    document.querySelectorAll('.check-contingencia').forEach(cb => cb.checked = marcado);
+    document.querySelectorAll('.check-contingencia').forEach(cb => {
+        if (!cb.disabled) cb.checked = marcado;
+    });
 }
 
 async function emitirSelecionadas() {
@@ -1036,13 +1103,17 @@ async function emitirSelecionadas() {
 
     btn.disabled = true;
     progresso.classList.remove('hidden');
+    document.querySelectorAll('.check-contingencia').forEach(cb => cb.disabled = true);
+    ids.forEach(marcarLinhaNaFila);
 
     let sucesso = 0;
     let falha = 0;
+    const falhas = {};
 
     for (let i = 0; i < ids.length; i++) {
         const id = ids[i];
         progresso.innerText = `${i + 1} / ${ids.length} processando...`;
+        marcarLinhaEmitindo(id);
 
         try {
             const resp = await fetch(`/contingencias/${id}/reenviar`, {
@@ -1053,18 +1124,27 @@ async function emitirSelecionadas() {
                 },
             });
 
-            const resultado = await resp.json();
+            let resultado;
+            try {
+                resultado = await resp.json();
+            } catch (e) {
+                resultado = { sucesso: false, erro: `Resposta inesperada do servidor (HTTP ${resp.status}).` };
+            }
 
             if (resultado.sucesso) {
                 sucesso++;
                 marcarLinhaEmitida(id);
             } else {
                 falha++;
+                falhas[id] = resultado.erro;
+                restaurarLinhaContingencia(id);
                 atualizarMotivoLinha(id, resultado.erro);
             }
         } catch (e) {
             falha++;
-            atualizarMotivoLinha(id, 'Erro de conexão ao tentar emitir.');
+            falhas[id] = 'Erro de conexão ao tentar emitir.';
+            restaurarLinhaContingencia(id);
+            atualizarMotivoLinha(id, falhas[id]);
         }
 
         progresso.innerText = `${i + 1} / ${ids.length} — ${sucesso} emitida(s), ${falha} pendente(s)`;
@@ -1072,21 +1152,27 @@ async function emitirSelecionadas() {
 
     btn.disabled = false;
 
-    setTimeout(() => {
+    setTimeout(async () => {
         progresso.classList.add('hidden');
-        carregarContingencias(); // atualiza a lista, removendo as que foram emitidas
+        await carregarContingencias(); // atualiza a lista, removendo as que foram emitidas
+
+        // A lista recarregada recolhe os detalhes: reabre as que falharam, com o motivo
+        Object.entries(falhas).forEach(([id, erro]) => atualizarMotivoLinha(id, erro));
     }, 1500);
 }
 
 function marcarLinhaEmitida(id) {
-    const linha = document.querySelector(`.check-contingencia[value="${id}"]`)?.closest('.border');
-    if (linha) {
-        linha.classList.add('opacity-40');
-        linha.querySelector('.check-contingencia').disabled = true;
-        const status = document.createElement('span');
-        status.className = 'text-green-600 text-xs ml-2';
-        status.innerText = '✓ Emitida';
-        linha.querySelector('.flex.items-center.gap-3')?.appendChild(status);
+    const check = document.querySelector(`.check-contingencia[value="${id}"]`);
+    const linha = check?.closest('tr');
+    if (!linha) return;
+
+    linha.classList.add('opacity-40');
+    check.checked = false;
+    check.disabled = true;
+
+    const celula = linha.querySelector('.status-celula');
+    if (celula) {
+        celula.innerHTML = '<span class="inline-flex items-center rounded-full bg-green-100 text-green-700 px-2 py-0.5 text-xs font-medium">✓ Emitida</span>';
     }
 }
 
@@ -1114,6 +1200,9 @@ async function confirmarInutilizacao() {
     const numeroFinal = document.getElementById('inut-numero-final').value;
     const justificativa = document.getElementById('inut-justificativa').value;
     const erroP = document.getElementById('inut-erro');
+    const btn = document.getElementById('btn-inutilizar');
+
+    if (btn.disabled) return;
 
     erroP.classList.add('hidden');
 
@@ -1127,24 +1216,44 @@ async function confirmarInutilizacao() {
         return;
     }
 
-    const resp = await fetch('{{ route("inutilizacao.executar") }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-        },
-        body: JSON.stringify({ numero_inicial: numeroInicial, numero_final: numeroFinal, justificativa }),
-    });
+    btn.disabled = true;
+    btn.innerText = 'Inutilizando...';
+    btn.classList.add('animate-pulse');
 
-    const resultado = await resp.json();
+    try {
+        const resp = await fetch('{{ route("inutilizacao.executar") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            },
+            body: JSON.stringify({ numero_inicial: numeroInicial, numero_final: numeroFinal, justificativa }),
+        });
 
-    if (resultado.sucesso) {
-        alert('Numeração inutilizada com sucesso. Protocolo: ' + resultado.protocolo);
-        fecharModalInutilizacao();
-    } else {
-        erroP.innerText = resultado.erro;
+        let resultado;
+        try {
+            resultado = await resp.json();
+        } catch (e) {
+            resultado = { sucesso: false, erro: `Resposta inesperada do servidor (HTTP ${resp.status}). Veja storage/logs/laravel.log.` };
+        }
+
+        if (resultado.sucesso) {
+            alert('Numeração inutilizada com sucesso. Protocolo: ' + resultado.protocolo);
+            fecharModalInutilizacao();
+        } else {
+            const validacao = resultado.errors ? Object.values(resultado.errors).flat().join(' ') : null;
+            erroP.innerText = resultado.erro ?? validacao ?? resultado.message ?? 'Não foi possível inutilizar.';
+            erroP.classList.remove('hidden');
+        }
+    } catch (e) {
+        erroP.innerText = 'Erro de conexão ao tentar inutilizar.';
         erroP.classList.remove('hidden');
     }
+
+    btn.disabled = false;
+    btn.innerText = 'Inutilizar';
+    btn.classList.remove('animate-pulse');
 }
 
 
@@ -1166,38 +1275,39 @@ async function carregarVendasCancelamento() {
     const container = document.getElementById('lista-cancelamento');
 
     if (vendas.length === 0) {
-        container.innerHTML = '<p class="text-gray-400 text-sm">Nenhuma venda emitida encontrada.</p>';
+        container.innerHTML = '<tr><td colspan="4" class="px-4 py-8 text-center text-gray-400">Nenhuma venda emitida encontrada.</td></tr>';
         return;
     }
 
     container.innerHTML = vendas.map(v => `
-        <div class="border rounded">
-            <div class="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50" onclick="toggleExpandirCancelamento('${v.id}')">
-                <div>
-                    <p class="text-sm font-medium">NFC-e nº ${v.numero_nfce} — R$ ${Number(v.total).toFixed(2)}</p>
-                    <p class="text-xs text-gray-400">${v.criada_em}</p>
-                    <p class="text-xs text-gray-400 break-all">Chave: ${v.chave_nfe}</p>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span id="cancel-badge-${v.id}" class="hidden text-xs font-semibold text-blue-700 animate-pulse">Cancelando venda...</span>
-                    <span class="text-gray-400 text-xs">▼</span>
-                </div>
-            </div>
-            <div id="cancel-detalhe-${v.id}" class="hidden border-t bg-gray-50 p-3 text-sm">
-                <p class="text-gray-600 mb-2"><strong>Itens:</strong> ${v.itens.join(', ')}</p>
+        <tr class="hover:bg-gray-50 cursor-pointer" onclick="toggleExpandirCancelamento('${v.id}')">
+            <td class="px-4 py-2 font-medium">${v.numero_nfce ?? '—'}</td>
+            <td class="px-4 py-2 text-right">${moedaBR(v.total)}</td>
+            <td class="px-4 py-2 text-gray-500">${v.criada_em}</td>
+            <td class="px-4 py-2 text-right">
+                <span id="cancel-badge-${v.id}" class="hidden text-xs font-semibold text-blue-700 animate-pulse mr-2">Cancelando venda...</span>
+                <span class="text-gray-400 text-xs">▼</span>
+            </td>
+        </tr>
+        <tr id="cancel-detalhe-${v.id}" class="hidden bg-gray-50">
+            <td colspan="4" class="px-4 py-3 text-sm">
+                <p class="text-gray-600 mb-1"><strong>Itens:</strong> ${v.itens.join(', ')}</p>
+                <p class="text-xs text-gray-400 break-all mb-3">Chave: ${v.chave_nfe ?? '—'}</p>
+
                 <label class="block text-xs font-medium mb-1">Justificativa (mín. 15 caracteres)</label>
-                <textarea id="just-${v.id}" rows="2" class="w-full border rounded px-2 py-1 mb-2 text-sm"></textarea>
-                <p id="cancel-erro-${v.id}" class="text-red-600 text-xs mb-2 hidden"></p>
+                <textarea id="just-${v.id}" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-2 text-sm"></textarea>
+
                 <p id="cancel-erro-${v.id}" class="text-red-600 text-xs mb-2 hidden"></p>
                 <p id="cancel-status-${v.id}" class="hidden text-sm text-blue-700 font-medium mb-2">
                     <span class="inline-block w-4 h-4 mr-2 align-middle border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></span>Cancelando venda...
                 </p>
+
                 <button id="cancel-btn-${v.id}" onclick="confirmarCancelamento('${v.id}')"
-                        class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+                        class="border border-red-300 text-red-700 rounded-lg px-4 py-2 text-xs font-semibold hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed">
                     Confirmar cancelamento
                 </button>
-            </div>
-        </div>
+            </td>
+        </tr>
     `).join('');
 }
 

@@ -6,6 +6,7 @@ use App\Models\Pdv;
 use App\Services\FiscalEmissorService;
 use App\Support\EmissaoLocal;
 use Illuminate\Http\Request;
+use App\Support\CentralStatus;
 
 class InutilizacaoController extends Controller
 {
@@ -30,6 +31,8 @@ class InutilizacaoController extends Controller
         $pdv = Pdv::findOrFail($pdvId);
 
         try {
+            $pdv = Pdv::findOrFail($pdvId);
+
             $resultado = (new FiscalEmissorService())->inutilizar(
                 $pdv,
                 $validado['numero_inicial'],
@@ -38,8 +41,15 @@ class InutilizacaoController extends Controller
             );
 
             return response()->json(['sucesso' => true, 'protocolo' => $resultado['protocolo']]);
-        } catch (\Exception $e) {
-            return response()->json(['sucesso' => false, 'erro' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            if (CentralStatus::erroDeConexao($e)) {
+                CentralStatus::marcarFora();
+                $mensagem = 'Servidor central indisponível. A inutilização ainda depende do servidor.';
+            } else {
+                $mensagem = $e->getMessage();
+            }
+
+            return response()->json(['sucesso' => false, 'erro' => $mensagem]);
         }
     }
 }
