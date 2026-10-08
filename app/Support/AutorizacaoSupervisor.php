@@ -10,6 +10,7 @@ class AutorizacaoSupervisor
         'desconto_item'   => null,
         'desconto_global' => null,
         'cancelar_nfce'   => 10,
+        'inutilizar'      => 10,
     ];
 
     // Cancelar item e cancelar cupom não entram: só mexem no carrinho local,

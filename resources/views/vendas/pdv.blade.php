@@ -936,6 +936,10 @@ linhasBuscaDiv.innerHTML = resultadosAtuais.map((op, index) => {
 
 function selecionarResultado(index) {
     const op = resultadosAtuais[index];
+
+    // Guarda o multiplicador ANTES de fechar o modal
+    const quantidadeSelecionada = quantidadeMultiplicador;
+
     resultadosAtuais = [];
     indiceSelecionado = -1;
     fecharModalBusca();
@@ -943,17 +947,17 @@ function selecionarResultado(index) {
     if (op.produto.produto_balanca) {
         abrirModalBalanca(op.produto, op.variante);
     } else {
-        adicionarAoCarrinho(op.produto, op.variante);
+        adicionarAoCarrinho(op.produto, op.variante, quantidadeSelecionada);
     }
 }
 
 
-function adicionarAoCarrinho(produto, variante) {
+function adicionarAoCarrinho(produto, variante, quantidade = quantidadeMultiplicador) {
     const chaveBase = produto.id + '-' + (variante ? variante.id : '0');
     const existente = carrinho.find(i => i.chave === chaveBase && !i.cancelado);
 
     if (existente) {
-        existente.quantidade += quantidadeMultiplicador;
+        existente.quantidade += quantidade;
     } else {
         const chave = carrinho.some(i => i.chave === chaveBase)
             ? chaveBase + '-' + Date.now()
@@ -964,7 +968,7 @@ function adicionarAoCarrinho(produto, variante) {
             produto_variante_id: variante ? variante.id : null,
             nome: produto.nome + (variante ? ` — ${variante.cor ?? ''} ${variante.tamanho ?? ''}` : ''),
             preco: parseFloat(produto.preco_venda),
-            quantidade: quantidadeMultiplicador,
+            quantidade: quantidade,
         });
     }
 
