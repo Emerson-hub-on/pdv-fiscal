@@ -999,7 +999,7 @@ async function carregarContingencias() {
                     <input type="checkbox" class="check-contingencia" value="${v.id}" onclick="event.stopPropagation()">
                     <div>
                         <p class="text-sm font-medium">
-                            Venda #${String(v.id).split('-')[0]} — NFC-e nº ${v.numero_nfce ?? '-'} (série ${v.serie_nfce ?? '-'}) — R$ ${Number(v.total).toFixed(2)}
+                            Venda #${v.venda_id ?? v.id} — NFC-e nº ${v.numero_nfce ?? '-'} (série ${v.serie_nfce ?? '-'}) — R$ ${Number(v.total).toFixed(2)}
                         </p>
                         <p class="text-xs text-gray-400">${v.criada_em}</p>
                         ${v.chave_nfe ? `<p class="text-xs text-gray-400 break-all">Chave: ${v.chave_nfe}</p>` : ''}

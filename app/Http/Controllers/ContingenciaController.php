@@ -83,6 +83,7 @@ class ContingenciaController extends Controller
 
                 return [
                     'id' => $v->uuid, // no caixa, o identificador do reenvio é o uuid
+                    'venda_id' => $v->id,
                     'numero_nfce' => $v->numero_nfce,
                     'serie_nfce' => $v->serie_nfce,
                     'chave_nfe' => $v->chave_nfe,
