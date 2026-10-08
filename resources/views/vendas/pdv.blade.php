@@ -1630,7 +1630,6 @@ async function confirmarAutorizacao() {
     // Autorizado - fecha o modal de senha e executa a ação correspondente
     document.getElementById('modal-autorizacao').classList.add('hidden');
     document.getElementById('modal-autorizacao').classList.remove('flex');
-
     executarAcaoAutorizada();
 }
 
