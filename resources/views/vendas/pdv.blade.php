@@ -994,12 +994,12 @@ async function carregarContingencias() {
 
     container.innerHTML = vendas.map(v => `
         <div class="border rounded">
-            <div class="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50" onclick="toggleExpandir(${v.id})">
+            <div class="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50" onclick="toggleExpandir('${v.id}')">
                 <div class="flex items-center gap-3">
                     <input type="checkbox" class="check-contingencia" value="${v.id}" onclick="event.stopPropagation()">
                     <div>
                         <p class="text-sm font-medium">
-                            Venda #${v.id} — NFC-e nº ${v.numero_nfce ?? '-'} (série ${v.serie_nfce ?? '-'}) — R$ ${Number(v.total).toFixed(2)}
+                            Venda #${String(v.id).split('-')[0]} — NFC-e nº ${v.numero_nfce ?? '-'} (série ${v.serie_nfce ?? '-'}) — R$ ${Number(v.total).toFixed(2)}
                         </p>
                         <p class="text-xs text-gray-400">${v.criada_em}</p>
                         ${v.chave_nfe ? `<p class="text-xs text-gray-400 break-all">Chave: ${v.chave_nfe}</p>` : ''}
@@ -1172,7 +1172,7 @@ async function carregarVendasCancelamento() {
 
     container.innerHTML = vendas.map(v => `
         <div class="border rounded">
-            <div class="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50" onclick="toggleExpandirCancelamento(${v.id})">
+            <div class="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50" onclick="toggleExpandirCancelamento('${v.id}')">
                 <div>
                     <p class="text-sm font-medium">NFC-e nº ${v.numero_nfce} — R$ ${Number(v.total).toFixed(2)}</p>
                     <p class="text-xs text-gray-400">${v.criada_em}</p>
@@ -1185,7 +1185,7 @@ async function carregarVendasCancelamento() {
                 <label class="block text-xs font-medium mb-1">Justificativa (mín. 15 caracteres)</label>
                 <textarea id="just-${v.id}" rows="2" class="w-full border rounded px-2 py-1 mb-2 text-sm"></textarea>
                 <p id="cancel-erro-${v.id}" class="text-red-600 text-xs mb-2 hidden"></p>
-                <button onclick="confirmarCancelamento(${v.id})" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-xs font-semibold">
+                <button onclick="confirmarCancelamento('${v.id}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-xs font-semibold">
                     Confirmar cancelamento
                 </button>
             </div>

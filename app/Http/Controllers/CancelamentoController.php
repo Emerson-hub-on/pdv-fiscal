@@ -3,8 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Venda;
+use App\Services\EmissorLocalService;
 use App\Services\FiscalEmissorService;
+use App\Services\SyncService;
+use App\Support\AutorizacaoSupervisor;
+use App\Support\EmissaoLocal;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class CancelamentoController extends Controller
 {
@@ -12,6 +21,11 @@ class CancelamentoController extends Controller
     {
         $prazoMinutos = config('app.prazo_cancelamento_minutos', 30);
         $limite = now()->subMinutes($prazoMinutos);
+
+        // PDV que emite pelo caixa: as vendas estão no SQLite (vale com o servidor fora do ar)
+        if (EmissaoLocal::ativa()) {
+            return response()->json($this->listarLocal($limite));
+        }
 
         $vendas = Venda::where('status', 'emitida')
             ->where('emitida_em', '>=', $limite)
@@ -33,7 +47,7 @@ class CancelamentoController extends Controller
         return response()->json($vendas);
     }
 
-    public function cancelar(Request $request, Venda $venda)
+    public function cancelar(Request $request, string $venda)
     {
         $usuario = Auth::user();
         $liberado = $usuario->caixaLiberado('cancelar_nfce');
@@ -50,27 +64,78 @@ class CancelamentoController extends Controller
             'justificativa' => 'required|string|min:15',
         ]);
 
+        // Venda do caixa (SQLite): o identificador é o uuid
+        $local = Str::isUuid($venda);
+
         try {
             $supervisorId = $liberado ? null : AutorizacaoSupervisor::supervisorId('cancelar_nfce');
 
-            $resultado = (new FiscalEmissorService())->cancelar($venda, $validado['justificativa']);
+            if ($local) {
+                $resultado = (new EmissorLocalService())->cancelarLocal($venda, $validado['justificativa']);
+                $vendaRef = $venda;
+            } else {
+                $registro = Venda::findOrFail($venda);
+                $resultado = (new FiscalEmissorService())->cancelar($registro, $validado['justificativa']);
+
+                DB::connection('sqlite_local')->table('vendas_pendentes')
+                    ->where('uuid', $registro->uuid)
+                    ->update(['status' => 'cancelada', 'updated_at' => now()]);
+
+                $vendaRef = $registro->id;
+            }
 
             // Uso único: só gasta a autorização quando o cancelamento deu certo
             AutorizacaoSupervisor::consumir('cancelar_nfce');
-            \Illuminate\Support\Facades\DB::connection('sqlite_local')->table('vendas_pendentes')
-                ->where('uuid', $venda->uuid)
-                ->update(['status' => 'cancelada', 'updated_at' => now()]);
 
             Log::info('NFC-e cancelada', [
-                'venda_id'      => $venda->id,
+                'venda_id'      => $vendaRef,
                 'operador_id'   => $usuario->id,
                 'supervisor_id' => $supervisorId,
                 'liberado'      => $liberado,
+                'origem'        => $local ? 'caixa' : 'servidor',
             ]);
 
+            // Leva o cancelamento ao servidor assim que ele estiver disponível
+            if ($local) {
+                (new SyncService())->enviarSePossivel();
+            }
+
             return response()->json(['sucesso' => true, 'protocolo' => $resultado['protocolo']]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json(['sucesso' => false, 'erro' => $e->getMessage()]);
         }
+    }
+
+    private function listarLocal(Carbon $limite)
+    {
+        $db = DB::connection('sqlite_local');
+
+        return $db->table('vendas_pendentes')
+            ->where('status_fiscal', 'emitida')
+            ->where('status', '!=', 'cancelada')
+            ->where('emitida_em', '>=', $limite->format('Y-m-d H:i:s'))
+            ->orderByDesc('id')
+            ->limit(20)
+            ->get()
+            ->map(function ($v) use ($db) {
+                $itens = collect(json_decode($v->itens, true) ?? [])->map(function ($i) use ($db) {
+                    $nome = $db->table('produtos_cache')->where('id', $i['produto_id'])->value('nome')
+                        ?? 'Produto #' . $i['produto_id'];
+
+                    return $nome . ' x' . $i['quantidade'];
+                });
+
+                $data = $v->vendida_em ?? $v->created_at;
+
+                return [
+                    'id' => $v->uuid, // no caixa, o identificador do cancelamento é o uuid
+                    'numero_nfce' => $v->numero_nfce,
+                    'chave_nfe' => $v->chave_nfe,
+                    'total' => $v->total,
+                    'criada_em' => $data ? Carbon::parse($data)->format('d/m/Y H:i') : '',
+                    'itens' => $itens->values(),
+                ];
+            })
+            ->values();
     }
 }

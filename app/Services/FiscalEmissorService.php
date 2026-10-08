@@ -1033,14 +1033,16 @@ protected function montarTotais(Make $nfe, Venda $venda): void
         file_put_contents($arquivo, $resposta);
     }
 
-        public function cancelar(Venda $venda, string $justificativa): array
+public function cancelar(Venda $venda, string $justificativa): array
     {
         if ($venda->status !== 'emitida') {
             throw new Exception('Só é possível cancelar vendas com NFC-e já emitida.');
         }
 
         $pdv = $venda->caixa->pdv;
-        $this->nfeService = new NfeService($pdv);
+        
+        // Linha 1034 alterada para usar o criarNfeService
+        $this->nfeService = $this->criarNfeService($pdv);
         $tools = $this->nfeService->tools();
 
         $resposta = $tools->sefazCancela($venda->chave_nfe, $justificativa, $venda->protocolo_nfe);
@@ -1060,6 +1062,14 @@ protected function montarTotais(Make $nfe, Venda $venda): void
             throw new Exception('Falha no cancelamento: ' . $xMotivo);
         }
 
+        // Substituído o bloco DB::transaction direto pelo método protegido
+        $this->registrarCancelamento($venda, $nProt, $justificativa);
+
+        return ['protocolo' => $nProt, 'motivo' => $xMotivo];
+    }
+
+    protected function registrarCancelamento(Venda $venda, ?string $nProt, string $justificativa): void
+    {
         // Estorna o estoque de cada item, igual fizemos na inutilizacao
         DB::transaction(function () use ($venda, $nProt, $justificativa) {
             foreach ($venda->itens as $item) {
@@ -1079,7 +1089,5 @@ protected function montarTotais(Make $nfe, Venda $venda): void
                 'motivo_cancelamento' => "Cancelado pelo operador: {$justificativa} (protocolo cancelamento: {$nProt})",
             ]);
         });
-
-        return ['protocolo' => $nProt, 'motivo' => $xMotivo];
     }
 }

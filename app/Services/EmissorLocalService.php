@@ -7,6 +7,7 @@ use App\Support\EmissaoLocal;
 use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use App\Models\Venda;
 
 class EmissorLocalService extends FiscalEmissorService
 {
@@ -16,13 +17,17 @@ class EmissorLocalService extends FiscalEmissorService
     /**
      * Emite (ou reenvia, se já estiver em contingência) a NFC-e de uma venda do SQLite,
      * sem consultar o MySQL central.
-     */
+    */
     public function emitirLocal(string $uuid, bool $forcar = false): array
     {
         $venda = VendaLocal::carregar($uuid);
 
         if ($venda->status === 'emitida') {
             throw new Exception('Esta venda já tem NFC-e emitida.');
+        }
+        
+        if ($venda->status === 'cancelada') {
+            throw new Exception('Esta venda foi cancelada e não será emitida.');
         }
 
         if ($venda->status_sync === 'cancelada') {
@@ -57,6 +62,34 @@ class EmissorLocalService extends FiscalEmissorService
     protected function registrarSefazFora(): void
     {
         Cache::store('file')->put(self::CHAVE_SEFAZ_FORA, true, self::SEGUNDOS_SEFAZ_FORA);
+    }
+
+    public function cancelarLocal(string $uuid, string $justificativa): array
+    {
+        return $this->cancelar(VendaLocal::carregar($uuid), $justificativa);
+    }
+
+    // No caixa o estoque devolvido é o do SQLite; o servidor recebe o cancelamento na sincronização
+    protected function registrarCancelamento(Venda $venda, ?string $nProt, string $justificativa): void
+    {
+        $db = DB::connection('sqlite_local');
+
+        $db->transaction(function () use ($db, $venda, $nProt, $justificativa) {
+            foreach ($venda->itens as $item) {
+                if ($item->produto_variante_id) {
+                    $db->table('produto_variantes_cache')->where('id', $item->produto_variante_id)
+                        ->increment('estoque', $item->quantidade);
+                } else {
+                    $db->table('produtos_cache')->where('id', $item->produto_id)
+                        ->increment('estoque', $item->quantidade);
+                }
+            }
+
+            $venda->update([
+                'status' => 'cancelada',
+                'motivo_cancelamento' => "Cancelado pelo operador: {$justificativa} (protocolo cancelamento: {$nProt})",
+            ]);
+        });
     }
 
     /**

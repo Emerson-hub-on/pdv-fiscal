@@ -535,7 +535,7 @@ class SyncService
     /**
      * Direcao 2: sobe vendas pendentes do SQLite local pro MySQL central.
      */
-       public function enviarVendasPendentes(): array
+    public function enviarVendasPendentes(): array
     {
         // Servidor fora do ar: as vendas ficam pendentes e sobem quando a conexão voltar
         if (CentralStatus::fora()) {
@@ -545,7 +545,7 @@ class SyncService
         $pendentes = DB::connection('sqlite_local')->table('vendas_pendentes')
             ->where(function ($q) {
                 $q->whereIn('status', ['pendente_sync', 'erro_sync'])
-                  ->orWhere('fiscal_sync_pendente', true);
+                    ->orWhere('fiscal_sync_pendente', true);
             })
             ->where('status', '!=', 'cancelada')
             ->get();
@@ -584,16 +584,18 @@ class SyncService
                         ] + $this->camposFiscaisParaCentral($vendaLocal, true));
 
                         foreach ($itens as $item) {
-                            if (!empty($item['produto_variante_id'])) {
-                                DB::table('produto_variantes')
-                                    ->where('id', $item['produto_variante_id'])
-                                    ->lockForUpdate()
-                                    ->decrement('estoque', $item['quantidade']);
-                            } else {
-                                DB::table('produtos')
-                                    ->where('id', $item['produto_id'])
-                                    ->lockForUpdate()
-                                    ->decrement('estoque', $item['quantidade']);
+                            if ($vendaLocal->status_fiscal !== 'cancelada') {
+                                if (!empty($item['produto_variante_id'])) {
+                                    DB::table('produto_variantes')
+                                        ->where('id', $item['produto_variante_id'])
+                                        ->lockForUpdate()
+                                        ->decrement('estoque', $item['quantidade']);
+                                } else {
+                                    DB::table('produtos')
+                                        ->where('id', $item['produto_id'])
+                                        ->lockForUpdate()
+                                        ->decrement('estoque', $item['quantidade']);
+                                }
                             }
 
                             DB::table('venda_itens')->insert([
@@ -620,11 +622,26 @@ class SyncService
                         }
                     });
                 } elseif ($vendaLocal->fiscal_sync_pendente) {
-                    // A venda já está no servidor: só atualiza a situação fiscal (nunca por cima de uma cancelada)
-                    DB::table('vendas')
-                        ->where('uuid', $vendaLocal->uuid)
-                        ->where('status', '!=', 'cancelada')
-                        ->update($this->camposFiscaisParaCentral($vendaLocal, false) + ['updated_at' => now()]);
+                    DB::transaction(function () use ($vendaLocal) {
+                        // A venda já está no servidor: só atualiza a situação fiscal (nunca por cima de uma cancelada)
+                        $afetadas = DB::table('vendas')
+                            ->where('uuid', $vendaLocal->uuid)
+                            ->where('status', '!=', 'cancelada')
+                            ->update($this->camposFiscaisParaCentral($vendaLocal, false) + ['updated_at' => now()]);
+
+                        // Cancelada no caixa: devolve o estoque que o servidor baixou. Só na transição, para nunca devolver duas vezes.
+                        if ($afetadas && $vendaLocal->status_fiscal === 'cancelada') {
+                            foreach (json_decode($vendaLocal->itens, true) ?? [] as $item) {
+                                if (!empty($item['produto_variante_id'])) {
+                                    DB::table('produto_variantes')->where('id', $item['produto_variante_id'])
+                                        ->lockForUpdate()->increment('estoque', $item['quantidade']);
+                                } else {
+                                    DB::table('produtos')->where('id', $item['produto_id'])
+                                        ->lockForUpdate()->increment('estoque', $item['quantidade']);
+                                }
+                            }
+                        }
+                    });
                 }
 
                 DB::connection('sqlite_local')->table('vendas_pendentes')
@@ -662,18 +679,18 @@ class SyncService
     }
 
     // Situação fiscal da venda no formato da tabela vendas do servidor
-    // Situação fiscal da venda no formato da tabela vendas do servidor
     private function camposFiscaisParaCentral(object $v, bool $inclusao): array
     {
         $xml = null;
 
-        if ($v->status_fiscal === 'emitida' && $v->ultimo_arquivo_xml && is_file($v->ultimo_arquivo_xml)) {
+        if (in_array($v->status_fiscal, ['emitida', 'cancelada'], true) && $v->ultimo_arquivo_xml && is_file($v->ultimo_arquivo_xml)) {
             $xml = file_get_contents($v->ultimo_arquivo_xml);
         }
 
         $campos = [
             'status' => match ($v->status_fiscal) {
                 'emitida' => 'emitida',
+                'cancelada' => 'cancelada',
                 'contingencia' => 'contingencia',
                 default => 'pendente',
             },
@@ -690,8 +707,12 @@ class SyncService
             'xml_nfce' => $xml,
         ];
 
+        if ($v->status_fiscal === 'cancelada') {
+            $campos['motivo_cancelamento'] = $v->motivo_cancelamento ?? null;
+        }
+
         // tp_emis é obrigatório no servidor: a emissão normal é tpEmis 1
-        if ($campos['tp_emis'] === null && $v->status_fiscal === 'emitida') {
+        if ($campos['tp_emis'] === null && in_array($v->status_fiscal, ['emitida', 'cancelada'], true)) {
             $campos['tp_emis'] = 1;
         }
 

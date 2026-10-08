@@ -172,6 +172,7 @@ class FiscalController extends Controller
         $status = $emissaoLocal
             ? match ($vendaLocal->status_fiscal) {
                 'emitida' => 'emitida',
+                'cancelada' => 'cancelada',
                 'contingencia' => 'contingencia',
                 default => 'pendente',
             }
