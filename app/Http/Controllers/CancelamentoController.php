@@ -95,11 +95,6 @@ class CancelamentoController extends Controller
                 'origem'        => $local ? 'caixa' : 'servidor',
             ]);
 
-            // Leva o cancelamento ao servidor assim que ele estiver disponível
-            if ($local) {
-                (new SyncService())->enviarSePossivel();
-            }
-
             return response()->json(['sucesso' => true, 'protocolo' => $resultado['protocolo']]);
         } catch (\Throwable $e) {
             return response()->json(['sucesso' => false, 'erro' => $e->getMessage()]);

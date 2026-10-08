@@ -111,8 +111,6 @@ class ContingenciaController extends Controller
             $resposta = ['sucesso' => false, 'erro' => $e->getMessage()];
         }
 
-        (new SyncService())->enviarSePossivel();
-
         return response()->json($resposta);
     }
 }
