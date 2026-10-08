@@ -103,8 +103,6 @@ class FiscalController extends Controller
             ];
         }
 
-        (new SyncService())->enviarSePossivel();
-
         return response()->json($resposta);
     }
 
