@@ -1178,14 +1178,22 @@ async function carregarVendasCancelamento() {
                     <p class="text-xs text-gray-400">${v.criada_em}</p>
                     <p class="text-xs text-gray-400 break-all">Chave: ${v.chave_nfe}</p>
                 </div>
-                <span class="text-gray-400 text-xs">▼</span>
+                <div class="flex items-center gap-2">
+                    <span id="cancel-badge-${v.id}" class="hidden text-xs font-semibold text-blue-700 animate-pulse">Cancelando venda...</span>
+                    <span class="text-gray-400 text-xs">▼</span>
+                </div>
             </div>
             <div id="cancel-detalhe-${v.id}" class="hidden border-t bg-gray-50 p-3 text-sm">
                 <p class="text-gray-600 mb-2"><strong>Itens:</strong> ${v.itens.join(', ')}</p>
                 <label class="block text-xs font-medium mb-1">Justificativa (mín. 15 caracteres)</label>
                 <textarea id="just-${v.id}" rows="2" class="w-full border rounded px-2 py-1 mb-2 text-sm"></textarea>
                 <p id="cancel-erro-${v.id}" class="text-red-600 text-xs mb-2 hidden"></p>
-                <button onclick="confirmarCancelamento('${v.id}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-xs font-semibold">
+                <p id="cancel-erro-${v.id}" class="text-red-600 text-xs mb-2 hidden"></p>
+                <p id="cancel-status-${v.id}" class="hidden text-sm text-blue-700 font-medium mb-2">
+                    <span class="inline-block w-4 h-4 mr-2 align-middle border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></span>Cancelando venda...
+                </p>
+                <button id="cancel-btn-${v.id}" onclick="confirmarCancelamento('${v.id}')"
+                        class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
                     Confirmar cancelamento
                 </button>
             </div>
@@ -1198,8 +1206,16 @@ function toggleExpandirCancelamento(id) {
 }
 
 async function confirmarCancelamento(id) {
-    const justificativa = document.getElementById(`just-${id}`).value;
+    const campo = document.getElementById(`just-${id}`);
     const erroP = document.getElementById(`cancel-erro-${id}`);
+    const statusP = document.getElementById(`cancel-status-${id}`);
+    const badge = document.getElementById(`cancel-badge-${id}`);
+    const btn = document.getElementById(`cancel-btn-${id}`);
+
+    if (btn.disabled) return; // evita clique duplo
+
+    const justificativa = campo.value;
+    erroP.classList.add('hidden');
 
     if (justificativa.length < 15) {
         erroP.innerText = 'A justificativa precisa ter no mínimo 15 caracteres.';
@@ -1209,24 +1225,48 @@ async function confirmarCancelamento(id) {
 
     if (!confirm('Confirma o cancelamento desta NFC-e? Esta ação é irreversível.')) return;
 
-    const resp = await fetch(`/cancelamento/${id}/cancelar`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-        },
-        body: JSON.stringify({ justificativa }),
-    });
+    const ocupado = (sim) => {
+        btn.disabled = sim;
+        campo.disabled = sim;
+        btn.innerText = sim ? 'Cancelando...' : 'Confirmar cancelamento';
+        statusP.classList.toggle('hidden', !sim);
+        badge.classList.toggle('hidden', !sim);
+    };
 
-    const resultado = await resp.json();
+    ocupado(true);
 
-    if (resultado.sucesso) {
-        alert('NFC-e cancelada com sucesso. Protocolo: ' + resultado.protocolo);
-        carregarVendasCancelamento();
-    } else {
+    try {
+        const resp = await fetch(`/cancelamento/${id}/cancelar`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            },
+            body: JSON.stringify({ justificativa }),
+        });
+
+        let resultado;
+        try {
+            resultado = await resp.json();
+        } catch (e) {
+            resultado = { sucesso: false, erro: `Resposta inesperada do servidor (HTTP ${resp.status}).` };
+        }
+
+        if (resultado.sucesso) {
+            ocupado(false);
+            alert('NFC-e cancelada com sucesso. Protocolo: ' + resultado.protocolo);
+            carregarVendasCancelamento();
+            return;
+        }
+
         erroP.innerText = resultado.erro;
         erroP.classList.remove('hidden');
+    } catch (e) {
+        erroP.innerText = 'Erro de conexão ao tentar cancelar.';
+        erroP.classList.remove('hidden');
     }
+
+    ocupado(false);
 }
 
 
