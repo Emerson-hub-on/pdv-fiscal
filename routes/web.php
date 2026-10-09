@@ -143,7 +143,7 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
             Route::patch('pdvs/{pdv}/toggle-ativo', [PdvController::class, 'toggleAtivo'])->name('pdvs.toggle-ativo');
         });
 
-        // ---------------- CLIENTES ----------------
+        // ---------------- CLIENTES E FORNECEDORES ----------------
         Route::middleware('permissao:clientes')->group(function () {
             Route::get('/clientes', [ClienteController::class, 'index'])->name('clientes.index');
             Route::get('/clientes/criar', [ClienteController::class, 'create'])->name('clientes.create');
@@ -151,6 +151,15 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
             Route::get('/clientes/{cliente}/editar', [ClienteController::class, 'edit'])->name('clientes.edit');
             Route::put('/clientes/{cliente}', [ClienteController::class, 'update'])->name('clientes.update');
             Route::post('/clientes/{cliente}/toggle-ativo', [ClienteController::class, 'toggleAtivo'])->name('clientes.toggleAtivo');
+
+            // Rotas de Fornecedores
+            Route::get('fornecedores', [FornecedorController::class, 'index'])->name('fornecedores.index');
+            Route::get('fornecedores/criar', [FornecedorController::class, 'create'])->name('fornecedores.create');
+            Route::post('fornecedores/criar-rapido', [FornecedorController::class, 'criarRapido'])->name('fornecedores.rapido');
+            Route::post('fornecedores', [FornecedorController::class, 'store'])->name('fornecedores.store');
+            Route::get('fornecedores/{fornecedor}/editar', [FornecedorController::class, 'edit'])->name('fornecedores.edit');
+            Route::put('fornecedores/{fornecedor}', [FornecedorController::class, 'update'])->name('fornecedores.update');
+            Route::post('fornecedores/{fornecedor}/toggle-ativo', [FornecedorController::class, 'toggleAtivo'])->name('fornecedores.toggleAtivo');
         });
 
         // ---------------- NOTA FISCAL - SAÍDA (NF-e modelo 55) ----------------
@@ -167,8 +176,6 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::put('{entrada}', [EntradaNotaController::class, 'update'])->name('update');
                 Route::delete('{entrada}', [EntradaNotaController::class, 'destroy'])->name('destroy');
             });
-
-            Route::post('fornecedores/rapido', [FornecedorController::class, 'rapido'])->name('fornecedores.rapido');
 
             // IMPORTANTE: as buscas precisam vir ANTES do Route::resource, senão
             // "notasfiscais/buscar-produto" é capturado por "notasfiscais/{notaFiscal}".

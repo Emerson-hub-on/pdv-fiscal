@@ -9,10 +9,12 @@ class Fornecedor extends Model
     protected $table = 'fornecedores';
 
     protected $fillable = [
-        'cnpj_cpf', 'razao_social', 'nome_fantasia', 'ie',
-        'logradouro', 'numero', 'complemento', 'bairro', 'cep',
+        'tipo_pessoa', 'nome', 'nome_fantasia', 'cpf_cnpj',
+        'indicador_ie', 'ie',
+        'email', 'telefone',
+        'cep', 'logradouro', 'numero', 'complemento', 'bairro',
         'municipio', 'cod_municipio', 'uf',
-        'telefone', 'email', 'ativo',
+        'ativo',
     ];
 
     protected $casts = [
@@ -29,17 +31,24 @@ class Fornecedor extends Model
         return $query->where('ativo', true);
     }
 
+    /** Nome fantasia quando existir, senão o nome/razão social. */
     public function getNomeExibicaoAttribute(): string
     {
-        return $this->nome_fantasia ?: $this->razao_social;
+        return $this->nome_fantasia ?: $this->nome;
     }
 
-    public function getDocumentoFormatadoAttribute(): string
+    public function getCpfCnpjFormatadoAttribute(): string
     {
-        $d = $this->cnpj_cpf;
+        $d = (string) $this->cpf_cnpj;
 
         return strlen($d) === 14
             ? preg_replace('/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/', '$1.$2.$3/$4-$5', $d)
             : preg_replace('/(\d{3})(\d{3})(\d{3})(\d{2})/', '$1.$2.$3-$4', $d);
+    }
+
+    /** Mantido porque as telas da entrada de nota já usam este nome. */
+    public function getDocumentoFormatadoAttribute(): string
+    {
+        return $this->cpf_cnpj_formatado;
     }
 }

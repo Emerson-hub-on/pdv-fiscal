@@ -24,10 +24,14 @@ class EntradaNotaController extends Controller
                 $q->where(function ($w) use ($busca) {
                     $w->where('numero', 'like', "%{$busca}%")
                       ->orWhere('chave_acesso', 'like', "%{$busca}%")
-                      ->orWhereHas('fornecedor', function ($f) use ($busca) {
-                          $f->where('razao_social', 'like', "%{$busca}%")
+                        ->orWhereHas('fornecedor', function ($f) use ($busca) {
+                            $f->where('nome', 'like', "%{$busca}%")
                             ->orWhere('nome_fantasia', 'like', "%{$busca}%");
-                      });
+                            $digitos = preg_replace('/\D/', '', $busca);
+                            if ($digitos !== '') {
+                                $f->orWhere('cpf_cnpj', 'like', "%{$digitos}%");
+                            }
+                        });
                 });
             })
             ->orderByDesc('data_entrada')
@@ -118,7 +122,7 @@ class EntradaNotaController extends Controller
             })
             ->orderBy('nome')
             ->limit(15)
-            ->get(['id', 'nome', 'codigo_interno', 'codigo_barras', 'unidade_comercial', 'preco_custo']);
+            ->get(['id', 'nome', 'codigo_interno', 'codigo_barras', 'unidade_comercial', 'preco_custo', 'estoque']);
 
         return response()->json($produtos);
     }
@@ -145,7 +149,7 @@ class EntradaNotaController extends Controller
 
         return [
             'entrada'         => $entrada,
-            'fornecedores'    => Fornecedor::ativos()->orderBy('razao_social')->get(),
+            'fornecedores'    => Fornecedor::ativos()->orderBy('nome')->get(),
             'itens'           => $itens,
             'somenteLeitura'  => $entrada->exists && ! $entrada->isRascunho(),
         ];
