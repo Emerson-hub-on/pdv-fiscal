@@ -484,7 +484,7 @@ function buscarTributacao() {
                     ${i.observacao ? `<p class="text-xs text-gray-400">${i.observacao}</p>` : ''}
                 </td>
                 <td class="py-2 pr-4 font-mono">${i.cfop}</td>
-                <td class="py-2 pr-4 font-mono">0${i.csosn ?? i.cst_icms ?? '-'}</td>
+                <td class="py-2 pr-4 font-mono">${i.csosn ?? i.cst_icms ?? '-'}</td>
                 <td class="py-2">${i.aliquota_icms > 0 ? i.aliquota_icms + '%' : '-'}</td>
             </tr>
         `).join('');

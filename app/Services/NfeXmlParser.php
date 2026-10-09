@@ -86,8 +86,15 @@ class NfeXmlParser
             $ean = $this->v('n:prod/n:cEAN', $det);
             $vProd = (float) $this->v('n:prod/n:vProd', $det);
             $vDesc = (float) $this->v('n:prod/n:vDesc', $det);
+            $cst   = $this->v('n:imposto/n:ICMS/*/n:CST', $det);
+            $csosn = $this->v('n:imposto/n:ICMS/*/n:CSOSN', $det);
 
             $itens[] = [
+                'cfop'   => $this->v('n:prod/n:CFOP', $det),
+                'cst'    => $cst,
+                'csosn'  => $csosn,
+                'com_st' => in_array($cst, ['10', '30', '60', '70'], true)
+                || in_array($csosn, ['201', '202', '203', '500'], true),
                 'codigo'         => $this->v('n:prod/n:cProd', $det),
                 'ean'            => preg_match('/^\d{8,14}$/', $ean) ? $ean : '',
                 'descricao'      => $this->v('n:prod/n:xProd', $det),

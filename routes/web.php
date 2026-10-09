@@ -170,6 +170,8 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::get('produtos', [EntradaNotaController::class, 'buscarProdutos'])->name('produtos');
                 Route::post('importar-xml/analisar', [EntradaNotaController::class, 'analisarXml'])->name('importar-xml.analisar');
                 Route::post('importar-xml/produto', [ProdutoController::class, 'storeJson'])->middleware('permissao:produtos')->name('importar-xml.produto');
+                Route::post('importar-xml/opcoes', [EntradaNotaController::class, 'salvarOpcoesXml'])->middleware('permissao:produtos')->name('importar-xml.opcoes');
+                Route::post('importar-xml/cadastrar-pendentes', [EntradaNotaController::class, 'cadastrarPendentes'])->middleware('permissao:produtos')->name('importar-xml.cadastrar-pendentes');
                 Route::post('importar-xml/confirmar', [EntradaNotaController::class, 'confirmarImportacaoXml'])->name('importar-xml.confirmar');
 
                 Route::get('/', [EntradaNotaController::class, 'index'])->name('index');

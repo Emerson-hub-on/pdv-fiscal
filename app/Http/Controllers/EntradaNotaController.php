@@ -19,6 +19,7 @@ use Illuminate\Support\Str;
 use App\Models\Ncm;
 use App\Models\ProdutoVariante;
 use App\Models\Tributacao;
+use App\Models\Empresa;
 
 class EntradaNotaController extends Controller
 {
@@ -48,6 +49,102 @@ class EntradaNotaController extends Controller
             ->withQueryString();
 
         return view('notasfiscais.entrada.index', compact('entradas'));
+    }
+
+    public function salvarOpcoesXml(Request $request)
+    {
+        $d = $request->validate([
+            'tributacao_padrao_id'    => ['nullable', 'exists:tributacoes,id'],
+            'tributacao_st_padrao_id' => ['nullable', 'exists:tributacoes,id'],
+            'pis_cofins_padrao_id'    => ['nullable', 'exists:classificacoes_pis_cofins,id'],
+            'margem_padrao'           => ['nullable', 'numeric', 'min:0', 'max:1000'],
+        ]);
+
+        Empresa::atual()->forceFill([
+            'entrada_tributacao_padrao_id'    => $d['tributacao_padrao_id'] ?? null,
+            'entrada_tributacao_st_padrao_id' => $d['tributacao_st_padrao_id'] ?? null,
+            'entrada_pis_cofins_padrao_id'    => $d['pis_cofins_padrao_id'] ?? null,
+            'entrada_margem_padrao'           => $d['margem_padrao'] ?? 0,
+        ])->save();
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function cadastrarPendentes(Request $request)
+    {
+        $dados = $request->validate([
+            'token'     => ['required', 'string'],
+            'indices'   => ['required', 'array', 'min:1'],
+            'indices.*' => ['integer', 'min:0'],
+        ]);
+
+        $nfe = Cache::get('importar_xml:' . auth()->id() . ':' . $dados['token']);
+        if (! $nfe) {
+            return response()->json(['message' => 'A importação expirou. Envie o XML novamente.'], 422);
+        }
+
+        $empresa = Empresa::atual();
+
+        if (! $empresa->entrada_tributacao_padrao_id) {
+            return response()->json(['message' => 'Defina a "Tributação padrão" em Opções antes de cadastrar automaticamente.'], 422);
+        }
+        if ($empresa->crt == 3 && ! $empresa->entrada_pis_cofins_padrao_id) {
+            return response()->json(['message' => 'Defina o "PIS/COFINS padrão" em Opções (obrigatório no seu regime).'], 422);
+        }
+
+        $produtos = app(ProdutoController::class);
+        $margem = (float) $empresa->entrada_margem_padrao;
+        $criados = [];
+        $falhas = [];
+
+        foreach (array_unique($dados['indices']) as $indice) {
+            $item = $nfe['itens'][$indice] ?? null;
+            if (! $item) {
+                continue;
+            }
+
+            $ncm = $this->resolverNcm($item['ncm']);
+            if (! $ncm) {
+                $falhas[] = ['indice' => $indice, 'motivo' => "NCM {$item['ncm']} não cadastrado. Cadastre-o e use o botão de cadastro do item."];
+                continue;
+            }
+
+            $custo = $item['quantidade'] > 0 ? round($item['valor_total'] / $item['quantidade'], 2) : 0;
+            $unidade = strtoupper($item['unidade'] ?: 'UN');
+            $tributacaoId = ($item['com_st'] && $empresa->entrada_tributacao_st_padrao_id)
+                ? $empresa->entrada_tributacao_st_padrao_id
+                : $empresa->entrada_tributacao_padrao_id;
+
+            try {
+                $produto = $produtos->criarAPartirDeDados([
+                    'nome'               => mb_substr($item['descricao'], 0, 255),
+                    'codigo_barras'      => $item['ean'],
+                    'ncm_id'             => $ncm->id,
+                    'tributacao_id'      => $tributacaoId,
+                    'pis_cofins_id'      => $empresa->entrada_pis_cofins_padrao_id,
+                    'unidade_comercial'  => $unidade,
+                    'unidade_tributavel' => strtoupper($item['unidade_tributavel'] ?: $unidade),
+                    'origem_mercadoria'  => (int) ($item['origem'] ?: 0),
+                    'preco_custo'        => $custo,
+                    'preco_venda'        => round($custo * (1 + $margem / 100), 2),
+                    'estoque'            => 0,
+                    'estoque_minimo'     => 0,
+                    'produto_balanca'    => '0',
+                    'tem_preco_atacado'  => '0',
+                    'atacado_tem_prazo'  => '0',
+                ]);
+            } catch (ValidationException $e) {
+                $falhas[] = ['indice' => $indice, 'motivo' => collect($e->errors())->flatten()->implode(' ')];
+                continue;
+            }
+
+            $criados[] = [
+                'indice'  => $indice,
+                'produto' => $produto->only(['id', 'nome', 'codigo_interno', 'codigo_barras']),
+            ];
+        }
+
+        return response()->json(compact('criados', 'falhas'));
     }
 
     public function analisarXml(Request $request, NfeXmlParser $parser)

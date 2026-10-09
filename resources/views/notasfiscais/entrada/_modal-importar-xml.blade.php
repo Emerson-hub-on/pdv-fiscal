@@ -55,6 +55,10 @@
 
         <div class="px-6 py-4 border-t border-gray-100 flex items-center gap-3">
             <p id="contador-conferencia-xml" class="text-sm text-gray-500 mr-auto"></p>
+            <button type="button" id="btn-cadastrar-pendentes-xml" onclick="cadastrarPendentesXml()"
+                    class="hidden bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition disabled:opacity-50">
+                Cadastrar produtos não encontrados
+            </button>
             <p id="erro-conferencia-xml" class="hidden text-sm text-red-600 whitespace-pre-line"></p>
             <button type="button" onclick="cancelarConferenciaXml()"
                     class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition">Cancelar</button>
@@ -78,12 +82,6 @@
             <p id="assimilar-item-xml" class="text-sm text-gray-600 mb-4"></p>
 
             <div id="view-busca-xml">
-                @if (auth()->user()?->podeVer('produtos'))
-                    <button type="button" onclick="xmlMostrarCadastro()"
-                            class="mb-4 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition">
-                        + Cadastrar este produto no sistema
-                    </button>
-                @endif
                 <label class="block text-sm font-medium text-gray-700 mb-1">Produto no sistema</label>
                 <input type="text" id="busca-assimilar-xml" placeholder="Buscar por nome, referência ou código de barras..." autocomplete="off"
                        class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
@@ -311,7 +309,7 @@
                 <p id="erro-cadastro-xml" class="hidden text-sm text-red-600 mt-4 whitespace-pre-line"></p>
 
                 <div class="flex justify-end gap-2 mt-5">
-                    <button type="button" onclick="xmlMostrarBusca()"
+                    <button type="button" onclick="xmlVoltarBusca()"
                             class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition">Voltar à busca</button>
                     <button type="button" id="btn-salvar-produto-xml" onclick="xmlSalvarProduto()"
                             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition disabled:opacity-50">
@@ -322,19 +320,71 @@
             @endif
 
 <script>
+
+
 const XML_URLS = {
     analisar:  @json(route('entradas-nota.importar-xml.analisar')),
     confirmar: @json(route('entradas-nota.importar-xml.confirmar')),
     rapido: @json(route('entradas-nota.importar-xml.produto')),
     produtos:  @json(route('entradas-nota.produtos')),
+    pendentes: @json(route('entradas-nota.importar-xml.cadastrar-pendentes')),
 };
-
+const XML_CHAVE_AUTO = 'entrada_xml_auto_cadastro';
 let xmlImportacao = null;   // { token, nota, itens: [...] }
 let xmlItemAtual = null;    // índice do item sendo assimilado
 let xmlResultados = [];
 let xmlIndice = -1;
 let xmlTimeout;
+const XML_PODE_CADASTRAR = @json((bool) auth()->user()?->podeVer('produtos'));
 
+
+
+function xmlAutoCadastroAtivo() {
+    try { return localStorage.getItem(XML_CHAVE_AUTO) === '1'; } catch (e) { return false; }
+}
+
+function xmlDefinirAutoCadastro(ligado) {
+    try { localStorage.setItem(XML_CHAVE_AUTO, ligado ? '1' : '0'); } catch (e) {}
+    if (xmlImportacao) renderizarConferenciaXml();
+}
+
+const optAuto = document.getElementById('opt-auto-cadastro');
+if (optAuto) optAuto.checked = xmlAutoCadastroAtivo();
+
+async function cadastrarPendentesXml() {
+    const indices = xmlImportacao.itens.map((it, i) => it.produto ? null : i).filter(i => i !== null);
+    if (!indices.length) return;
+
+    if (!confirm(`Cadastrar ${indices.length} produto(s) automaticamente com os padrões definidos em Opções?`)) return;
+
+    const btn = document.getElementById('btn-cadastrar-pendentes-xml');
+    btn.disabled = true;
+    btn.textContent = 'Cadastrando...';
+    xmlLimparErro('erro-conferencia-xml');
+
+    try {
+        const r = await xmlRequisicao(XML_URLS.pendentes, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: xmlImportacao.token, indices }),
+        });
+
+        r.criados.forEach(c => {
+            xmlImportacao.itens[c.indice].produto = { ...c.produto, manual: true, auto: true };
+        });
+        renderizarConferenciaXml();
+
+        if (r.falhas.length) {
+            xmlErro('erro-conferencia-xml',
+                r.falhas.map(f => `Item ${f.indice + 1}: ${f.motivo}`).join('\n'));
+        }
+    } catch (e) {
+        xmlErro('erro-conferencia-xml', e.message);
+    } finally {
+        btn.disabled = false;
+        renderizarConferenciaXml();
+    }
+}
 // ---------- utilitários ----------
 function xmlEsc(v) {
     return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -452,12 +502,28 @@ function renderizarConferenciaXml() {
 
     document.getElementById('linhas-conferencia-xml').innerHTML = itens.map((item, i) => {
         const p = item.produto;
+
+        const botaoCadastrar = XML_PODE_CADASTRAR
+            ? `<button type="button" onclick="xmlAbrirCadastro(${i})"
+                       class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition">
+                   + Cadastrar produto no sistema</button>`
+            : '';
+
+        const titulo = p
+            ? (p.auto ? 'Cadastrado automaticamente'
+                : p.manual ? 'Assimilado manualmente'
+                : 'Cadastro encontrado: ' + xmlEsc(p.por))
+            : '';
+
         const celula = p
-            ? `<span class="text-green-700 font-medium">${p.manual ? 'Assimilado manualmente' : 'Cadastro encontrado: ' + xmlEsc(p.por)}</span>
+            ? `<span class="text-green-700 font-medium">${titulo}</span>
                <span class="block text-xs text-gray-500">${xmlEsc(p.nome)}</span>
                <button type="button" onclick="xmlAbrirAssimilar(${i})" class="text-xs text-blue-600 hover:underline">trocar</button>`
-            : `<button type="button" onclick="xmlAbrirAssimilar(${i})" class="text-red-600 font-medium hover:underline text-left">
-                   Cadastro não encontrado! (Clique aqui para assimilar)</button>`;
+            : `<div class="flex flex-col items-start gap-1.5">
+                   ${botaoCadastrar}
+                   <button type="button" onclick="xmlAbrirAssimilar(${i})" class="text-red-600 font-medium hover:underline text-left">
+                       Cadastro não encontrado! (Clique aqui para assimilar)</button>
+               </div>`;
 
         return `
             <tr class="border-b border-gray-100 align-top">
@@ -472,6 +538,10 @@ function renderizarConferenciaXml() {
     const pendentes = itens.filter(i => !i.produto).length;
     document.getElementById('contador-conferencia-xml').textContent =
         pendentes ? `${pendentes} de ${itens.length} item(ns) sem produto` : `Todos os ${itens.length} itens assimilados`;
+
+    const btnAuto = document.getElementById('btn-cadastrar-pendentes-xml');
+    btnAuto.classList.toggle('hidden', !(XML_PODE_CADASTRAR && xmlAutoCadastroAtivo() && pendentes > 0));
+    btnAuto.textContent = `Cadastrar produtos não encontrados (${pendentes})`;
 }
 
 function cancelarConferenciaXml() {
@@ -525,6 +595,28 @@ function xmlAbrirAssimilar(i) {
     xmlBuscar(inputBuscaXml.value);
     inputBuscaXml.focus();
     inputBuscaXml.select();
+}
+
+// Abre o modal direto na tela de cadastro (botão da conferência)
+function xmlAbrirCadastro(i) {
+    xmlItemAtual = i;
+    const item = xmlImportacao.itens[i];
+
+    document.getElementById('assimilar-item-xml').innerHTML =
+        `Item da nota: <strong>${xmlEsc(item.descricao)}</strong> — código de barras: ${xmlEsc(item.ean || '—')}`;
+
+    xmlAbrir('modal-assimilar-xml');
+    xmlMostrarCadastro();
+}
+
+// Volta do cadastro para a busca já com o item pesquisado
+function xmlVoltarBusca() {
+    const item = xmlImportacao.itens[xmlItemAtual];
+
+    xmlMostrarBusca();
+    if (!inputBuscaXml.value.trim()) inputBuscaXml.value = item.ean || item.descricao;
+    xmlBuscar(inputBuscaXml.value);
+    inputBuscaXml.focus();
 }
 
 function xmlFecharAssimilar() {

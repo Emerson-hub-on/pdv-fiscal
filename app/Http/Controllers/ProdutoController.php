@@ -147,19 +147,27 @@ class ProdutoController extends Controller
      */
     public function storeJson(Request $request): JsonResponse
     {
-        $request->merge([
-            'codigo_interno' => Produto::proximoCodigoInterno(),
-            'tem_variacao'   => '0',
-        ]);
-
-        $this->resolverCodigoBarras($request);
-        $validado = $this->validarProduto($request);
-
-        $produto = Produto::create($validado);
+        $produto = $this->criarAPartirDeDados($request->all());
 
         return response()->json($produto->only([
             'id', 'nome', 'codigo_interno', 'codigo_barras', 'unidade_comercial', 'preco_custo', 'estoque',
         ]));
+    }
+
+    /**
+     * Mesmas regras do store(), sem variações. Lança ValidationException se inválido.
+     */
+    public function criarAPartirDeDados(array $dados): Produto
+    {
+        $request = Request::create('/', 'POST', array_merge($dados, [
+            'codigo_interno' => Produto::proximoCodigoInterno(),
+            'tem_variacao'   => '0',
+        ]));
+
+        $this->resolverCodigoBarras($request);
+        $validado = $this->validarProduto($request);
+
+        return Produto::create($validado);
     }
 
     public function edit(Produto $produto)
