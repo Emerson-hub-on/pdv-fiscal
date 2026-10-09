@@ -169,6 +169,11 @@
                         class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                             Saída
                         </a>
+
+                        <a href="{{ route('entradas-nota.index') }}"
+                        class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition border-t border-white/10">
+                            Entrada
+                        </a>
                         
                         <a href="{{ route('series-nfe.index') }}"
                         class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition border-t border-white/10">
@@ -204,6 +209,7 @@
                     'empresa'  => ['Cadastros', 'Empresa'],
                     'pdvs'     => ['Cadastros', 'PDVs'],
                     'notasfiscais' => ['Faturamento', 'Nota Fiscal - Saída'],
+                    'entradas-nota' => ['Faturamento', 'Nota Fiscal - Entrada'],
                     'series-nfe' => ['Faturamento', 'Séries de NF-e'],
                     'transportadores' => ['Cadastros', 'Transportadoras'],
                     'veiculos' => ['Cadastros', 'Veículos'],

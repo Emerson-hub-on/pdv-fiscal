@@ -31,6 +31,8 @@ use App\Http\Controllers\TransportadorController;
 use App\Http\Controllers\VeiculoController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\PdvEmissaoController;
+use App\Http\Controllers\EntradaNotaController;
+use App\Http\Controllers\FornecedorController;
 
 
 
@@ -153,6 +155,21 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
 
         // ---------------- NOTA FISCAL - SAÍDA (NF-e modelo 55) ----------------
         Route::middleware('permissao:notas')->group(function () {
+
+            // ---------------- FATURAMENTO - ENTRADAS DE NOTA ----------------
+            Route::prefix('faturamento/entradas-nota')->name('entradas-nota.')->group(function () {
+                Route::get('produtos', [EntradaNotaController::class, 'buscarProdutos'])->name('produtos');
+
+                Route::get('/', [EntradaNotaController::class, 'index'])->name('index');
+                Route::get('criar', [EntradaNotaController::class, 'create'])->name('create');
+                Route::post('/', [EntradaNotaController::class, 'store'])->name('store');
+                Route::get('{entrada}/editar', [EntradaNotaController::class, 'edit'])->name('edit');
+                Route::put('{entrada}', [EntradaNotaController::class, 'update'])->name('update');
+                Route::delete('{entrada}', [EntradaNotaController::class, 'destroy'])->name('destroy');
+            });
+
+            Route::post('fornecedores/rapido', [FornecedorController::class, 'rapido'])->name('fornecedores.rapido');
+
             // IMPORTANTE: as buscas precisam vir ANTES do Route::resource, senão
             // "notasfiscais/buscar-produto" é capturado por "notasfiscais/{notaFiscal}".
             Route::get('notasfiscais/buscar-produto', [NotaFiscalController::class, 'buscarProduto'])
