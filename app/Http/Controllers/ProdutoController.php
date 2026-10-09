@@ -188,7 +188,6 @@ class ProdutoController extends Controller
             [
                 'cor' => $linha['cor'] ?? null,
                 'tamanho' => $linha['tamanho'] ?? null,
-                'sku' => $linha['sku'] ?? null,
                 'codigo_barras' => $ehEanReal ? $codigoDigitado : $codigoInterno,
                 'codigo_barras_valido' => $ehEanReal,
                 'estoque' => $linha['estoque'] ?? 0,

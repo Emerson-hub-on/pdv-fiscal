@@ -152,7 +152,6 @@ class SyncService
                                 'produto_id' => $variante->produto_id,
                                 'cor' => $variante->cor,
                                 'tamanho' => $variante->tamanho,
-                                'sku' => $variante->sku,
                                 'codigo_barras' => $variante->codigo_barras,
                                 'codigo_barras_valido' => $variante->codigo_barras_valido,
                                 'estoque' => $variante->estoque,

@@ -9,7 +9,7 @@ class ProdutoVariante extends Model
     protected $table = 'produto_variantes';
 
     protected $fillable = [
-        'produto_id', 'cor', 'tamanho', 'sku', 'codigo_barras', 'codigo_barras_valido', 'estoque', 'estoque_minimo',
+        'produto_id', 'cor', 'tamanho', 'codigo_barras', 'codigo_barras_valido', 'estoque', 'estoque_minimo',
     ];
 
     protected $casts = [

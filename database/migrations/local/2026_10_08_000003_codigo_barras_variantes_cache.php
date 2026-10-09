@@ -14,9 +14,6 @@ return new class extends Migration
         $schema = Schema::connection('sqlite_local');
 
         $schema->table('produto_variantes_cache', function (Blueprint $table) use ($schema) {
-            if (! $schema->hasColumn('produto_variantes_cache', 'sku')) {
-                $table->string('sku')->nullable();
-            }
             if (! $schema->hasColumn('produto_variantes_cache', 'codigo_barras')) {
                 $table->string('codigo_barras', 50)->nullable()->index();
             }
@@ -36,7 +33,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::connection('sqlite_local')->table('produto_variantes_cache', function (Blueprint $table) {
-            $table->dropColumn(['sku', 'codigo_barras', 'codigo_barras_valido']);
+            $table->dropColumn(['codigo_barras', 'codigo_barras_valido']);
         });
     }
 };

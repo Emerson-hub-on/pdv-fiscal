@@ -327,8 +327,7 @@
                         <tr>
                             <th class="px-3 py-2 text-left">Cor</th>
                             <th class="px-3 py-2 text-left">Tamanho</th>
-                            <th class="px-3 py-2 text-left">SKU</th>
-                            <th class="px-3 py-2 text-left">EAN</th>
+                            <th class="px-3 py-2 text-left">Cód. de barras</th>
                             <th class="px-3 py-2 text-left">Estoque</th>
                             <th class="px-3 py-2 text-left">Est. mín.</th>
                             <th class="px-3 py-2"></th>
@@ -723,7 +722,7 @@ function toggleVariacao(temVariacao) {
     document.getElementById('bloco-variantes').classList.toggle('hidden', !temVariacao);
 }
 
-function adicionarLinhaVariante(cor = '', tamanho = '', sku = '', estoque = 0, estoqueMinimo = 0, id = '', codigoBarras = '', codigoInterno = '') {
+function adicionarLinhaVariante(cor = '', tamanho = '', estoque = 0, estoqueMinimo = 0, id = '', codigoBarras = '', codigoInterno = '') {
     const tbody = document.getElementById('linhas-variantes');
     const i = indiceVariante++;
     const tr = document.createElement('tr');
@@ -736,10 +735,6 @@ function adicionarLinhaVariante(cor = '', tamanho = '', sku = '', estoque = 0, e
         </td>
         <td class="px-3 py-2">
             <input type="text" name="variantes[${i}][tamanho]" value="${tamanho}"
-                   class="w-full border border-gray-200 rounded px-2 py-1 text-sm">
-        </td>
-        <td class="px-3 py-2">
-            <input type="text" name="variantes[${i}][sku]" value="${sku}"
                    class="w-full border border-gray-200 rounded px-2 py-1 text-sm">
         </td>
         <td class="px-3 py-2">
@@ -775,7 +770,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     'id' => $v->id,
                     'cor' => $v->cor,
                     'tamanho' => $v->tamanho,
-                    'sku' => $v->sku,
                     // EAN real aparece no campo; o código interno gerado aparece só como legenda
                     'codigo_barras' => $v->codigo_barras_valido ? $v->codigo_barras : '',
                     'codigo_interno' => $v->codigo_barras_valido ? '' : $v->codigo_barras,
@@ -785,7 +779,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 : []);
     @endphp
     @json($variantesIniciais).forEach(v => adicionarLinhaVariante(
-        v.cor ?? '', v.tamanho ?? '', v.sku ?? '',
+        v.cor ?? '', v.tamanho ?? '',
         v.estoque ?? 0, v.estoque_minimo ?? 0, v.id ?? '', v.codigo_barras ?? '', v.codigo_interno ?? ''
     ));
 });
