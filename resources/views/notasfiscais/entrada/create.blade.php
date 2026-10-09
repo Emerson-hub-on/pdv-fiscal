@@ -15,7 +15,6 @@
             {{ $message }}
         </div>
     @enderror
-
     <div class="flex justify-end mb-4">
         <button type="button" onclick="abrirModalXml()"
                 class="bg-gray-700 hover:bg-gray-500 text-amber-50 px-4 py-2 rounded-lg text-sm font-medium transition">
@@ -24,5 +23,7 @@
     </div>
 
     @include('notasfiscais.entrada._form')
+
+
     @include('notasfiscais.entrada._modal-importar-xml')
 @endsection

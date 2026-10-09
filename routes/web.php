@@ -168,7 +168,9 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
             // ---------------- FATURAMENTO - ENTRADAS DE NOTA ----------------
             Route::prefix('faturamento/entradas-nota')->name('entradas-nota.')->group(function () {
                 Route::get('produtos', [EntradaNotaController::class, 'buscarProdutos'])->name('produtos');
-                Route::post('importar-xml', [EntradaNotaController::class, 'importarXml'])->name('importar-xml');
+                Route::post('importar-xml/analisar', [EntradaNotaController::class, 'analisarXml'])->name('importar-xml.analisar');
+                Route::post('importar-xml/produto-rapido', [EntradaNotaController::class, 'criarProdutoRapido'])->name('importar-xml.produto-rapido');
+                Route::post('importar-xml/confirmar', [EntradaNotaController::class, 'confirmarImportacaoXml'])->name('importar-xml.confirmar');
 
                 Route::get('/', [EntradaNotaController::class, 'index'])->name('index');
                 Route::get('criar', [EntradaNotaController::class, 'create'])->name('create');

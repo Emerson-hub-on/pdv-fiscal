@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use App\Services\NfeXmlParser;
+use App\Models\EntradaNotaItem;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class EntradaNotaController extends Controller
 {
@@ -43,7 +47,7 @@ class EntradaNotaController extends Controller
         return view('notasfiscais.entrada.index', compact('entradas'));
     }
 
-    public function importarXml(Request $request, NfeXmlParser $parser)
+    public function analisarXml(Request $request, NfeXmlParser $parser)
     {
         $request->validate([
             'xml' => ['required', 'file', 'max:2048', 'extensions:xml'],
@@ -56,29 +60,121 @@ class EntradaNotaController extends Controller
         try {
             $nfe = $parser->parse($request->file('xml')->get());
         } catch (\RuntimeException $e) {
-            return back()->with('erro_xml', $e->getMessage());
+            return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        if (EntradaNota::where('chave_acesso', $nfe['chave'])->exists()) {
-            return back()->with('erro_xml', 'Esta NF-e já foi lançada (chave de acesso já cadastrada).');
+        $fornecedor = Fornecedor::where('cpf_cnpj', $nfe['fornecedor']['cpf_cnpj'])->first();
+
+        if ($erro = $this->erroDuplicidadeXml($nfe, $fornecedor)) {
+            return response()->json(['message' => $erro], 422);
         }
 
-        $dadosFornecedor = $nfe['fornecedor'];
-        $fornecedor = Fornecedor::where('cpf_cnpj', $dadosFornecedor['cpf_cnpj'])->first();
+        $itens = [];
+        foreach ($nfe['itens'] as $item) {
+            $achado = $this->localizarProduto($item, $fornecedor);
 
-        if ($fornecedor && EntradaNota::where('fornecedor_id', $fornecedor->id)
-                ->where('modelo', '55')
-                ->where('serie', $nfe['serie'])
-                ->where('numero', $nfe['numero'])
-                ->where('status', '!=', 'cancelada')
-                ->exists()) {
-            return back()->with('erro_xml', 'Esta nota já foi lançada para este fornecedor.');
+            $itens[] = [
+                'ean'         => $item['ean'],
+                'codigo'      => $item['codigo'],
+                'descricao'   => $item['descricao'],
+                'unidade'     => $item['unidade'],
+                'ncm'         => $item['ncm'],
+                'valor_custo' => $item['quantidade'] > 0 ? round($item['valor_total'] / $item['quantidade'], 2) : 0,
+                'produto'     => $achado
+                    ? $achado['produto']->only(['id', 'nome', 'codigo_interno', 'codigo_barras']) + ['por' => $achado['por']]
+                    : null,
+            ];
+        }
+
+        $token = (string) Str::uuid();
+        Cache::put('importar_xml:' . auth()->id() . ':' . $token, $nfe, now()->addMinutes(30));
+
+        return response()->json([
+            'token' => $token,
+            'nota'  => [
+                'numero'               => $nfe['numero'],
+                'serie'                => $nfe['serie'],
+                'fornecedor_nome'      => $nfe['fornecedor']['nome'],
+                'fornecedor_documento' => $nfe['fornecedor']['cpf_cnpj'],
+                'fornecedor_novo'      => $fornecedor === null,
+            ],
+            'itens' => $itens,
+        ]);
+    }
+
+    public function criarProdutoRapido(Request $request)
+    {
+        abort_unless(auth()->user()?->podeVer('produtos'), 403, 'Você não tem permissão para cadastrar produtos.');
+
+        $dados = $request->validate([
+            'nome'              => ['required', 'string', 'max:200'],
+            'codigo_barras'     => ['nullable', 'digits_between:8,14', Rule::unique('produtos', 'codigo_barras')],
+            'unidade_comercial' => ['required', 'string', 'max:6'],
+            'ncm'               => ['nullable', 'digits:8'],
+            'preco_custo'       => ['required', 'numeric', 'min:0'],
+            'preco_venda'       => ['required', 'numeric', 'min:0'],
+        ], [
+            'codigo_barras.unique'         => 'Já existe um produto com este código de barras. Busque por ele na lista.',
+            'codigo_barras.digits_between' => 'O código de barras deve ter de 8 a 14 dígitos.',
+            'ncm.digits'                   => 'O NCM deve ter 8 dígitos.',
+        ]);
+
+        $campos = [
+            'nome'              => $dados['nome'],
+            'codigo_barras'     => $dados['codigo_barras'] ?? null,
+            'unidade_comercial' => strtoupper($dados['unidade_comercial']),
+            'preco_custo'       => $dados['preco_custo'],
+            'preco_venda'       => $dados['preco_venda'],
+            'estoque'           => 0,
+            'tem_variacao'      => false,
+            'ativo'             => true,
+        ];
+
+        if (Schema::hasColumn('produtos', 'ncm')) {
+            $campos['ncm'] = $dados['ncm'] ?? null;
+        }
+
+        $produto = new Produto();
+        $produto->forceFill($campos)->save();
+
+        return response()->json(
+            $produto->only(['id', 'nome', 'codigo_interno', 'codigo_barras', 'unidade_comercial', 'preco_custo', 'estoque'])
+        );
+    }
+
+    public function confirmarImportacaoXml(Request $request)
+    {
+        $dados = $request->validate([
+            'token'      => ['required', 'string'],
+            'produtos'   => ['present', 'array'],   // [indice_do_item => produto_id]
+            'produtos.*' => ['integer'],
+        ]);
+
+        $chaveCache = 'importar_xml:' . auth()->id() . ':' . $dados['token'];
+        $nfe = Cache::get($chaveCache);
+
+        if (! $nfe) {
+            return response()->json(['message' => 'A importação expirou. Envie o XML novamente.'], 422);
+        }
+
+        $fornecedor = Fornecedor::where('cpf_cnpj', $nfe['fornecedor']['cpf_cnpj'])->first();
+
+        if ($erro = $this->erroDuplicidadeXml($nfe, $fornecedor)) {
+            return response()->json(['message' => $erro], 422);
+        }
+
+        $ids = array_values(array_unique($dados['produtos']));
+        $produtos = Produto::ativos()->where('tem_variacao', false)->whereIn('id', $ids)->get()->keyBy('id');
+
+        if ($produtos->count() !== count($ids)) {
+            return response()->json(['message' => 'Algum produto assimilado está inativo ou possui variação.'], 422);
         }
 
         $avisos = [];
 
-        $entrada = DB::transaction(function () use ($nfe, $dadosFornecedor, $fornecedor, &$avisos) {
-            // 1) Fornecedor: usa o existente ou cadastra com os dados do XML
+        $entrada = DB::transaction(function () use ($nfe, $fornecedor, $dados, $produtos, &$avisos) {
+            $dadosFornecedor = $nfe['fornecedor'];
+
             if (! $fornecedor) {
                 $fornecedor = Fornecedor::create($dadosFornecedor + ['ativo' => true]);
                 $avisos[] = "Fornecedor \"{$fornecedor->nome}\" cadastrado automaticamente a partir do XML.";
@@ -87,7 +183,6 @@ class EntradaNotaController extends Controller
                 $avisos[] = "O fornecedor \"{$fornecedor->nome}\" estava inativo e foi reativado.";
             }
 
-            // 2) Rascunho da entrada
             $entrada = EntradaNota::create([
                 'fornecedor_id'     => $fornecedor->id,
                 'user_id'           => auth()->id(),
@@ -106,16 +201,17 @@ class EntradaNotaController extends Controller
                 'atualizar_custo'   => true,
             ]);
 
-            // 3) Itens: só entram os que têm produto cadastrado
-            $naoEncontrados = [];
+            $ignorados = [];
 
-            foreach ($nfe['itens'] as $item) {
-                $produto = $this->localizarProduto($item);
+            foreach ($nfe['itens'] as $indice => $item) {
+                $produtoId = $dados['produtos'][$indice] ?? null;
 
-                if (! $produto) {
-                    $naoEncontrados[] = "{$item['codigo']} - {$item['descricao']}";
+                if (! $produtoId) {
+                    $ignorados[] = "{$item['codigo']} - {$item['descricao']}";
                     continue;
                 }
+
+                $produto = $produtos[$produtoId];
 
                 $entrada->itens()->create([
                     'produto_id'        => $produto->id,
@@ -131,9 +227,8 @@ class EntradaNotaController extends Controller
                 ]);
             }
 
-            if ($naoEncontrados) {
-                $avisos[] = count($naoEncontrados) . ' item(ns) não importado(s) por não existir produto cadastrado '
-                    . '(busca por código de barras, referência ou código interno): ' . implode('; ', $naoEncontrados);
+            if ($ignorados) {
+                $avisos[] = count($ignorados) . ' item(ns) ficaram de fora por não terem produto assimilado: ' . implode('; ', $ignorados);
             }
 
             $entrada->recalcularTotais();
@@ -141,32 +236,65 @@ class EntradaNotaController extends Controller
             return $entrada;
         });
 
-        $importados = $entrada->itens()->count();
+        Cache::forget($chaveCache);
 
-        return redirect()->route('entradas-nota.edit', $entrada)
-            ->with('sucesso', "XML importado: {$importados} de " . count($nfe['itens']) . ' itens no rascunho.')
-            ->with('avisos', $avisos);
+        session()->flash('sucesso', 'XML importado: ' . $entrada->itens()->count() . ' de ' . count($nfe['itens']) . ' itens no rascunho.');
+        session()->flash('avisos', $avisos);
+
+        return response()->json(['redirect' => route('entradas-nota.edit', $entrada)]);
     }
 
-    private function localizarProduto(array $item): ?Produto
+    private function erroDuplicidadeXml(array $nfe, ?Fornecedor $fornecedor): ?string
+    {
+        if (EntradaNota::where('chave_acesso', $nfe['chave'])->exists()) {
+            return 'Esta NF-e já foi lançada (chave de acesso já cadastrada).';
+        }
+
+        if ($fornecedor && EntradaNota::where('fornecedor_id', $fornecedor->id)
+                ->where('modelo', '55')
+                ->where('serie', $nfe['serie'])
+                ->where('numero', $nfe['numero'])
+                ->where('status', '!=', 'cancelada')
+                ->exists()) {
+            return 'Esta nota já foi lançada para este fornecedor.';
+        }
+
+        return null;
+    }
+
+    /** Retorna ['produto' => Produto, 'por' => texto] ou null. */
+    private function localizarProduto(array $item, ?Fornecedor $fornecedor = null): ?array
     {
         $base = Produto::ativos()->where('tem_variacao', false);
 
         if ($item['ean'] !== '') {
-            $produto = (clone $base)->where('codigo_barras', $item['ean'])->first();
-            if ($produto) {
-                return $produto;
+            $p = (clone $base)->where('codigo_barras', $item['ean'])->first();
+            if ($p) {
+                return ['produto' => $p, 'por' => "ean: {$item['ean']}"];
             }
         }
 
-        if ($item['codigo'] === '') {
-            return null;
+        if ($item['codigo'] !== '') {
+            $p = (clone $base)->where('referencia', $item['codigo'])->first();
+            if ($p) {
+                return ['produto' => $p, 'por' => "referência: {$item['codigo']}"];
+            }
+
+            // Vínculo de uma importação anterior: mesmo fornecedor + mesmo código do fornecedor
+            if ($fornecedor) {
+                $produtoId = EntradaNotaItem::where('codigo_fornecedor', $item['codigo'])
+                    ->whereHas('entrada', fn ($q) => $q->where('fornecedor_id', $fornecedor->id))
+                    ->latest('id')
+                    ->value('produto_id');
+
+                $p = $produtoId ? (clone $base)->find($produtoId) : null;
+                if ($p) {
+                    return ['produto' => $p, 'por' => 'vínculo de importação anterior'];
+                }
+            }
         }
 
-        return (clone $base)
-            ->where(fn ($w) => $w->where('referencia', $item['codigo'])
-                                ->orWhere('codigo_interno', $item['codigo']))
-            ->first();
+        return null;
     }
 
     public function create()

@@ -91,6 +91,8 @@ class NfeXmlParser
                 'codigo'         => $this->v('n:prod/n:cProd', $det),
                 'ean'            => preg_match('/^\d{8,14}$/', $ean) ? $ean : '',
                 'descricao'      => $this->v('n:prod/n:xProd', $det),
+                'unidade'        => $this->v('n:prod/n:uCom', $det),
+                'ncm'            => $this->v('n:prod/n:NCM', $det),
                 'quantidade'     => (float) $this->v('n:prod/n:qCom', $det),
                 'valor_unitario' => (float) $this->v('n:prod/n:vUnCom', $det),
                 'valor_desconto' => $vDesc,
