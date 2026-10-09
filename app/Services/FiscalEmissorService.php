@@ -542,12 +542,24 @@ protected function montarItens(Make $nfe, Venda $venda): void
             $n = $index + 1;
             $trib = $produto->tributacao;
 
-            $temEanValido = $this->gtinValido($produto->codigo_barras, (bool) $produto->codigo_barras_valido);
+            // Item com variação: o EAN é o da variação (o do produto pai é só o fallback
+            // interno). Variação com código interno gerado tem codigo_barras_valido = false
+            // e sai como SEM GTIN. Variação sem código nenhum (legado) cai no do produto.
+            $variante = $item->variante;
+            if ($variante && !empty($variante->codigo_barras)) {
+                $codigoBarrasItem = $variante->codigo_barras;
+                $barrasMarcadoValido = (bool) $variante->codigo_barras_valido;
+            } else {
+                $codigoBarrasItem = $produto->codigo_barras;
+                $barrasMarcadoValido = (bool) $produto->codigo_barras_valido;
+            }
+
+            $temEanValido = $this->gtinValido($codigoBarrasItem, $barrasMarcadoValido);
 
             $prod = new \stdClass();
             $prod->item = $n;
             $prod->cProd = $produto->codigo_interno;
-            $prod->cEAN = $temEanValido ? $produto->codigo_barras : 'SEM GTIN';
+            $prod->cEAN = $temEanValido ? $codigoBarrasItem : 'SEM GTIN';
             $prod->xProd = $produto->nome . ($item->variante ? " - {$item->variante->cor} {$item->variante->tamanho}" : '');
             $prod->NCM = $produto->ncm->codigo;
             if ($produto->cest) {
@@ -558,7 +570,7 @@ protected function montarItens(Make $nfe, Venda $venda): void
             $prod->qCom = $item->quantidade;
             $prod->vUnCom = number_format($item->preco_unitario, 10, '.', '');
             $prod->vProd = number_format($item->preco_unitario * $item->quantidade, 2, '.', '');
-            $prod->cEANTrib = $temEanValido ? $produto->codigo_barras : 'SEM GTIN';
+            $prod->cEANTrib = $temEanValido ? $codigoBarrasItem : 'SEM GTIN';
             $prod->uTrib = $produto->unidade_tributavel;
             $prod->qTrib = $item->quantidade;
             $prod->vUnTrib = number_format($item->preco_unitario, 10, '.', '');
