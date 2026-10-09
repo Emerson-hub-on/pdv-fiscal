@@ -78,6 +78,13 @@
             <p id="assimilar-item-xml" class="text-sm text-gray-600 mb-4"></p>
 
             <div id="view-busca-xml">
+                @if (auth()->user()?->podeVer('produtos'))
+                    <button type="button" onclick="xmlMostrarCadastro()"
+                            class="mb-4 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition">
+                        + Cadastrar este produto no sistema
+                    </button>
+                @endif
+                <label class="block text-sm font-medium text-gray-700 mb-1">Produto no sistema</label>
                 <input type="text" id="busca-assimilar-xml" placeholder="Buscar por nome, referência ou código de barras..." autocomplete="off"
                        class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
                 <table class="w-full text-sm">
@@ -93,44 +100,215 @@
                 </table>
                 <p id="erro-assimilar-xml" class="hidden text-sm text-red-600 mt-3 whitespace-pre-line"></p>
                 <p class="text-xs text-gray-400 mt-3">Use ↑ ↓ para navegar e Enter para selecionar.</p>
-
-                @if (auth()->user()?->podeVer('produtos'))
-                    <button type="button" onclick="xmlMostrarCadastro()" class="mt-4 text-sm text-blue-600 hover:underline">
-                        + Cadastrar este produto no sistema
-                    </button>
-                @endif
             </div>
 
+            @if (auth()->user()?->podeVer('produtos'))
+            @php
+                $pisCofinsObrigatorio = \App\Models\Empresa::atual()->crt == 3;
+                $cls = 'w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition';
+                $clsBtn = 'w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition';
+                $abas = ['geral' => 'Dados Gerais', 'fiscal' => 'Dados Fiscais', 'preco' => 'Preço e Estoque', 'atacado' => 'Atacado'];
+            @endphp
+
             <div id="view-cadastro-xml" class="hidden">
-                <div class="grid grid-cols-2 gap-4">
+
+                {{-- ids usados pelos modais de catálogo (tributacao_id já vem do partial) --}}
+                @foreach (['categoria_id', 'marca_id', 'grupo_id', 'ncm_id', 'cest_id', 'class_trib_ibs_cbs_id', 'pis_cofins_id', 'ipi_id'] as $idOculto)
+                    <input type="hidden" id="{{ $idOculto }}">
+                @endforeach
+
+                <div class="flex border-b border-gray-200 mb-5">
+                    @foreach ($abas as $chave => $titulo)
+                        <button type="button" onclick="cadTab('{{ $chave }}')" id="cad-tab-btn-{{ $chave }}"
+                                class="cad-tab-btn px-5 py-3 text-sm font-medium border-b-2 transition {{ $loop->first ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
+                            {{ $titulo }}
+                        </button>
+                    @endforeach
+                </div>
+
+                {{-- Dados Gerais --}}
+                <div id="cad-painel-geral" class="cad-painel grid grid-cols-2 gap-4">
                     <div class="col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Nome <span class="text-red-500">*</span></label>
-                        <input type="text" id="cad-nome" maxlength="200" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="text" id="cad-nome" maxlength="255" class="{{ $cls }}">
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Código de barras</label>
-                        <input type="text" id="cad-codigo-barras" maxlength="14" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+
+                    <div class="col-span-2 grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Código de barras (EAN)</label>
+                            <input type="text" id="cad-codigo-barras" maxlength="50" placeholder="Deixe em branco se não tiver" class="{{ $cls }}">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Código interno <span class="text-xs text-gray-400 font-normal">(automático)</span></label>
+                            <input type="text" readonly value="Gerado ao salvar" class="w-full border rounded-lg px-3 py-2.5 text-sm bg-gray-50 text-gray-500 cursor-not-allowed">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Referência</label>
+                            <input type="text" id="cad-referencia" maxlength="100" class="{{ $cls }}">
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Unidade <span class="text-red-500">*</span></label>
-                        <input type="text" id="cad-unidade" maxlength="6" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                        <textarea id="cad-descricao" rows="2" class="{{ $cls }} resize-none"></textarea>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">NCM</label>
-                        <input type="text" id="cad-ncm" maxlength="8" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
-                    <div></div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Preço de custo <span class="text-red-500">*</span></label>
-                        <input type="number" step="0.01" min="0" id="cad-custo" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Preço de venda <span class="text-red-500">*</span></label>
-                        <input type="number" step="0.01" min="0" id="cad-venda" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+
+                    @foreach (['categoria' => 'Categoria', 'marca' => 'Marca', 'grupo' => 'Grupo'] as $tipo => $rotulo)
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ $rotulo }}</label>
+                            <button type="button" onclick="abrirModalCatalogo('{{ $tipo }}')" class="{{ $clsBtn }}">
+                                <span id="{{ $tipo }}_label" class="text-gray-600">Clique para selecionar...</span>
+                            </button>
+                        </div>
+                    @endforeach
+
+                    <div class="flex flex-col justify-center">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Produto de balança</label>
+                        <div class="flex items-center gap-3">
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="cad-balanca" class="sr-only peer" onchange="cadValidarBalanca(this)">
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                            <span class="text-sm text-gray-600">Pesado em KG</span>
+                            <span id="cad-aviso-balanca" class="text-xs text-orange-500 hidden">⚠️ Unidade comercial deve ser KG</span>
+                        </div>
                     </div>
                 </div>
 
-                <p id="erro-cadastro-xml" class="hidden text-sm text-red-600 mt-3 whitespace-pre-line"></p>
+                {{-- Dados Fiscais --}}
+                <div id="cad-painel-fiscal" class="cad-painel grid grid-cols-2 gap-4 hidden">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">NCM <span class="text-red-500">*</span></label>
+                        <button type="button" onclick="abrirModalNcm()" class="{{ $clsBtn }}">
+                            <span id="ncm_label" class="text-gray-600">Clique para selecionar...</span>
+                        </button>
+                        <p id="cad-ncm-dica" class="text-xs text-gray-400 mt-1"></p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">CEST</label>
+                        <button type="button" onclick="abrirModalCest()" class="{{ $clsBtn }}">
+                            <span id="cest_label" class="text-gray-600">Clique para selecionar (opcional)...</span>
+                        </button>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            PIS/COFINS
+                            @if ($pisCofinsObrigatorio)
+                                <span class="text-red-500">*</span>
+                            @else
+                                <span class="text-xs text-gray-400 font-normal">(obrigatório apenas no Lucro Presumido/Real)</span>
+                            @endif
+                        </label>
+                        <button type="button" onclick="abrirModalPisCofins()" class="{{ $clsBtn }}">
+                            <span id="pis_cofins_label" class="text-gray-600">Clique para selecionar...</span>
+                        </button>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">IPI <span class="text-xs text-gray-400 font-normal">(opcional)</span></label>
+                        <button type="button" onclick="abrirModalIpi()" class="{{ $clsBtn }}">
+                            <span id="ipi_label" class="text-gray-600">Clique para selecionar (opcional)...</span>
+                        </button>
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Classificação Tributária <span class="text-red-500">*</span></label>
+                        <button type="button" onclick="abrirModalTributacao()" class="{{ $clsBtn }}">
+                            <span id="tributacao_label" class="text-gray-600">Clique para selecionar...</span>
+                        </button>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Unidade comercial <span class="text-red-500">*</span></label>
+                        <input type="text" id="cad-unidade" maxlength="6" class="{{ $cls }}" oninput="cadUnidadeMudou()">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Unidade tributável <span class="text-red-500">*</span></label>
+                        <input type="text" id="cad-unidade-trib" maxlength="6" class="{{ $cls }}">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Origem da mercadoria <span class="text-red-500">*</span></label>
+                        <select id="cad-origem" class="{{ $cls }} bg-white">
+                            @foreach ([0 => '0 - Nacional', 1 => '1 - Importado (importação direta)', 2 => '2 - Importado (mercado interno)', 3 => '3 - Nacional (importação 40% a 70%)', 4 => '4 - Nacional (processos produtivos básicos)', 5 => '5 - Nacional (importação até 40%)', 6 => '6 - Importado (direta, sem similar)', 7 => '7 - Importado (mercado interno, sem similar)', 8 => '8 - Nacional (importação acima de 70%)'] as $valor => $texto)
+                                <option value="{{ $valor }}">{{ $texto }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Classificação IBS/CBS</label>
+                        <button type="button" onclick="abrirModalClassTrib()" class="{{ $clsBtn }}">
+                            <span id="class_trib_ibs_cbs_label" class="text-gray-600">Clique para selecionar (opcional)...</span>
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Preço e Estoque --}}
+                <div id="cad-painel-preco" class="cad-painel grid grid-cols-2 gap-4 hidden">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Preço de venda <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">R$</span>
+                            <input type="number" step="0.01" min="0" id="cad-venda" class="{{ $cls }} pl-9">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Preço de custo</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">R$</span>
+                            <input type="number" step="0.01" min="0" id="cad-custo" class="{{ $cls }} pl-9">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Estoque</label>
+                        <input type="number" readonly value="0" class="w-full border rounded-lg px-3 py-2.5 text-sm bg-gray-50 text-gray-500 cursor-not-allowed">
+                        <p class="text-xs text-gray-400 mt-1">A quantidade da nota entra quando a entrada for finalizada.</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Estoque mínimo</label>
+                        <input type="number" min="0" id="cad-estoque-min" value="0" class="{{ $cls }}">
+                    </div>
+                    <p class="col-span-2 text-xs text-gray-400">Produtos com variação (cor/tamanho) ainda não são suportados na entrada de nota.</p>
+                </div>
+
+                {{-- Atacado --}}
+                <div id="cad-painel-atacado" class="cad-painel hidden">
+                    <div class="flex items-center gap-3 py-1 mb-4">
+                        <input type="checkbox" id="cad-tem-atacado" onchange="cadToggleAtacado(this.checked)" class="w-4 h-4 text-blue-600 rounded">
+                        <label for="cad-tem-atacado" class="text-sm font-medium text-gray-700">Este produto tem preço de atacado</label>
+                    </div>
+
+                    <div id="cad-bloco-atacado" class="grid grid-cols-2 gap-4 hidden">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Valor original</label>
+                            <input type="text" id="cad-atacado-original" readonly class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-gray-50 text-gray-500 cursor-not-allowed">
+                            <p class="text-xs text-gray-400 mt-1">Vem do preço de venda em <em>Preço e Estoque</em>.</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Valor de atacado</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">R$</span>
+                                <input type="number" step="0.01" min="0" id="cad-preco-atacado" class="{{ $cls }} pl-9">
+                            </div>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">A partir de <span id="cad-unidade-atacado" class="text-gray-400 font-normal">(UN)</span></label>
+                            <input type="number" step="0.001" min="0" id="cad-qtd-atacado" placeholder="Ex: 10" class="{{ $cls }} max-w-xs">
+                        </div>
+                        <div class="col-span-2 border-t pt-3 flex items-center gap-3">
+                            <input type="checkbox" id="cad-atacado-prazo" onchange="cadTogglePrazo(this.checked)" class="w-4 h-4 text-blue-600 rounded">
+                            <label for="cad-atacado-prazo" class="text-sm font-medium text-gray-700">Ativar prazo do atacado</label>
+                        </div>
+                        <div id="cad-bloco-prazo" class="col-span-2 grid grid-cols-2 gap-4 hidden">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Data inicial</label>
+                                <input type="date" id="cad-atacado-inicio" class="{{ $cls }}">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Data final</label>
+                                <input type="date" id="cad-atacado-fim" class="{{ $cls }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <p id="erro-cadastro-xml" class="hidden text-sm text-red-600 mt-4 whitespace-pre-line"></p>
 
                 <div class="flex justify-end gap-2 mt-5">
                     <button type="button" onclick="xmlMostrarBusca()"
@@ -141,15 +319,13 @@
                     </button>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
+            @endif
 
 <script>
 const XML_URLS = {
     analisar:  @json(route('entradas-nota.importar-xml.analisar')),
     confirmar: @json(route('entradas-nota.importar-xml.confirmar')),
-    rapido:    @json(route('entradas-nota.importar-xml.produto-rapido')),
+    rapido: @json(route('entradas-nota.importar-xml.produto')),
     produtos:  @json(route('entradas-nota.produtos')),
 };
 
@@ -428,38 +604,187 @@ function xmlAtribuir(produto) {
 }
 
 // ---------- 3b) assimilar: cadastro rápido ----------
+const CAD_PIS_COFINS_OBRIGATORIO = {{ !empty($pisCofinsObrigatorio) ? 'true' : 'false' }};
+
+// textos padrão dos seletores de catálogo (ids/labels iguais aos do formulário de produto)
+const CAD_SELETORES = {
+    categoria: 'Clique para selecionar...',
+    marca: 'Clique para selecionar...',
+    grupo: 'Clique para selecionar...',
+    ncm: 'Clique para selecionar...',
+    cest: 'Clique para selecionar (opcional)...',
+    pis_cofins: 'Clique para selecionar...',
+    ipi: 'Clique para selecionar (opcional)...',
+    tributacao: 'Clique para selecionar...',
+    class_trib_ibs_cbs: 'Clique para selecionar (opcional)...',
+};
+
+function cadTab(tab) {
+    document.querySelectorAll('.cad-painel').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.cad-tab-btn').forEach(b => {
+        b.classList.remove('border-blue-600', 'text-blue-600');
+        b.classList.add('border-transparent', 'text-gray-500');
+    });
+    document.getElementById('cad-painel-' + tab).classList.remove('hidden');
+    const btn = document.getElementById('cad-tab-btn-' + tab);
+    btn.classList.add('border-blue-600', 'text-blue-600');
+    btn.classList.remove('border-transparent', 'text-gray-500');
+
+    if (tab === 'atacado') cadAtualizarOriginalAtacado();
+}
+
+function cadAtualizarOriginalAtacado() {
+    const venda = parseFloat(document.getElementById('cad-venda').value) || 0;
+    document.getElementById('cad-atacado-original').value =
+        venda.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.getElementById('cad-unidade-atacado').textContent =
+        `(${document.getElementById('cad-unidade').value.toUpperCase() || 'UN'})`;
+}
+
+function cadToggleAtacado(ligado) {
+    document.getElementById('cad-bloco-atacado').classList.toggle('hidden', !ligado);
+    cadAtualizarOriginalAtacado();
+}
+
+function cadTogglePrazo(ligado) {
+    document.getElementById('cad-bloco-prazo').classList.toggle('hidden', !ligado);
+}
+
+function cadValidarBalanca(checkbox) {
+    const unidade = document.getElementById('cad-unidade').value.toUpperCase().trim();
+    if (checkbox.checked && unidade !== 'KG') {
+        checkbox.checked = false;
+        const aviso = document.getElementById('cad-aviso-balanca');
+        aviso.classList.remove('hidden');
+        setTimeout(() => aviso.classList.add('hidden'), 3000);
+    }
+}
+
+function cadUnidadeMudou() {
+    const box = document.getElementById('cad-balanca');
+    if (box.checked) cadValidarBalanca(box);
+}
+
 function xmlMostrarCadastro() {
     const item = xmlImportacao.itens[xmlItemAtual];
+    const set = (id, valor) => { document.getElementById(id).value = valor ?? ''; };
 
-    document.getElementById('cad-nome').value = item.descricao;
-    document.getElementById('cad-codigo-barras').value = item.ean || '';
-    document.getElementById('cad-unidade').value = item.unidade || 'UN';
-    document.getElementById('cad-ncm').value = item.ncm || '';
-    document.getElementById('cad-custo').value = item.valor_custo;
-    document.getElementById('cad-venda').value = item.valor_custo;
+    // limpa seleções de um cadastro anterior
+    Object.entries(CAD_SELETORES).forEach(([chave, texto]) => {
+        set(chave + '_id', '');
+        document.getElementById(chave + '_label').innerText = texto;
+    });
+
+    // NCM do XML já selecionado, quando existe no cadastro
+    if (item.ncm_registro) {
+        set('ncm_id', item.ncm_registro.id);
+        document.getElementById('ncm_label').innerText = `${item.ncm_registro.codigo} — ${item.ncm_registro.descricao}`;
+    }
+    document.getElementById('cad-ncm-dica').textContent = !item.ncm ? ''
+        : (item.ncm_registro ? `NCM do XML: ${item.ncm}`
+                             : `NCM do XML: ${item.ncm} — não cadastrado. Use a janela do NCM para cadastrá-lo.`);
+
+    set('cad-nome', item.descricao);
+    set('cad-codigo-barras', item.ean);
+    set('cad-referencia', '');
+    set('cad-descricao', '');
+    document.getElementById('cad-balanca').checked = false;
+
+    set('cad-unidade', item.unidade || 'UN');
+    set('cad-unidade-trib', item.unidade_tributavel || item.unidade || 'UN');
+    set('cad-origem', item.origem ?? 0);
+
+    set('cad-custo', item.valor_custo);
+    set('cad-venda', item.valor_custo);
+    set('cad-estoque-min', 0);
+
+    document.getElementById('cad-tem-atacado').checked = false;
+    document.getElementById('cad-atacado-prazo').checked = false;
+    ['cad-preco-atacado', 'cad-qtd-atacado', 'cad-atacado-inicio', 'cad-atacado-fim'].forEach(id => set(id, ''));
+    cadToggleAtacado(false);
+    cadTogglePrazo(false);
+
     xmlLimparErro('erro-cadastro-xml');
-
     document.getElementById('view-busca-xml').classList.add('hidden');
     document.getElementById('view-cadastro-xml').classList.remove('hidden');
+    cadTab('geral');
     document.getElementById('cad-nome').focus();
 }
 
+function cadValidar() {
+    const v = (id) => document.getElementById(id).value.trim();
+
+    const regras = [
+        ['O campo Nome é obrigatório.', 'geral', () => !v('cad-nome')],
+        ['O campo NCM é obrigatório. Selecione em Dados Fiscais.', 'fiscal', () => !v('ncm_id')],
+        ['O campo Unidade comercial é obrigatório.', 'fiscal', () => !v('cad-unidade')],
+        ['O campo Unidade tributável é obrigatório.', 'fiscal', () => !v('cad-unidade-trib')],
+        ['O campo Classificação Tributária é obrigatório. Selecione em Dados Fiscais.', 'fiscal', () => !v('tributacao_id')],
+        ['O campo Preço de venda é obrigatório. Preencha em Preço e Estoque.', 'preco', () => v('cad-venda') === ''],
+    ];
+
+    if (CAD_PIS_COFINS_OBRIGATORIO) {
+        regras.splice(5, 0, ['O campo PIS/COFINS é obrigatório no seu regime tributário. Selecione em Dados Fiscais.',
+            'fiscal', () => !v('pis_cofins_id')]);
+    }
+
+    for (const [mensagem, tab, falhou] of regras) {
+        if (falhou()) {
+            cadTab(tab);
+            xmlErro('erro-cadastro-xml', mensagem);
+            return false;
+        }
+    }
+    return true;
+}
+
 async function xmlSalvarProduto() {
+    xmlLimparErro('erro-cadastro-xml');
+    if (!cadValidar()) return;
+
+    const v = (id) => document.getElementById(id).value.trim();
+    const ou = (id) => v(id) || null;
+    const flag = (id) => document.getElementById(id).checked ? '1' : '0';
+    const temAtacado = document.getElementById('cad-tem-atacado').checked;
+
     const btn = document.getElementById('btn-salvar-produto-xml');
     btn.disabled = true;
-    xmlLimparErro('erro-cadastro-xml');
 
     try {
         const produto = await xmlRequisicao(XML_URLS.rapido, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                nome: document.getElementById('cad-nome').value,
-                codigo_barras: document.getElementById('cad-codigo-barras').value || null,
-                unidade_comercial: document.getElementById('cad-unidade').value,
-                ncm: document.getElementById('cad-ncm').value || null,
-                preco_custo: document.getElementById('cad-custo').value,
-                preco_venda: document.getElementById('cad-venda').value,
+                nome: v('cad-nome'),
+                codigo_barras: v('cad-codigo-barras'),
+                referencia: ou('cad-referencia'),
+                descricao: ou('cad-descricao'),
+                categoria_id: ou('categoria_id'),
+                marca_id: ou('marca_id'),
+                grupo_id: ou('grupo_id'),
+                produto_balanca: flag('cad-balanca'),
+
+                ncm_id: ou('ncm_id'),
+                cest_id: ou('cest_id'),
+                pis_cofins_id: ou('pis_cofins_id'),
+                ipi_id: ou('ipi_id'),
+                tributacao_id: ou('tributacao_id'),
+                class_trib_ibs_cbs_id: ou('class_trib_ibs_cbs_id'),
+                unidade_comercial: v('cad-unidade').toUpperCase(),
+                unidade_tributavel: v('cad-unidade-trib').toUpperCase(),
+                origem_mercadoria: v('cad-origem'),
+
+                preco_venda: v('cad-venda'),
+                preco_custo: ou('cad-custo'),
+                estoque: 0,
+                estoque_minimo: v('cad-estoque-min') || 0,
+
+                tem_preco_atacado: temAtacado ? '1' : '0',
+                preco_atacado: temAtacado ? ou('cad-preco-atacado') : null,
+                quantidade_minima_atacado: temAtacado ? ou('cad-qtd-atacado') : null,
+                atacado_tem_prazo: temAtacado ? flag('cad-atacado-prazo') : '0',
+                atacado_data_inicio: temAtacado ? ou('cad-atacado-inicio') : null,
+                atacado_data_fim: temAtacado ? ou('cad-atacado-fim') : null,
             }),
         });
         xmlAtribuir(produto);

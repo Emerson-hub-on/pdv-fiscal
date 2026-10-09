@@ -16,6 +16,9 @@ use App\Models\EntradaNotaItem;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use App\Models\Ncm;
+use App\Models\ProdutoVariante;
+use App\Models\Tributacao;
 
 class EntradaNotaController extends Controller
 {
@@ -70,17 +73,27 @@ class EntradaNotaController extends Controller
         }
 
         $itens = [];
+        $ncms = [];
+
         foreach ($nfe['itens'] as $item) {
             $achado = $this->localizarProduto($item, $fornecedor);
 
+            if (! array_key_exists($item['ncm'], $ncms)) {
+                $ncms[$item['ncm']] = $this->resolverNcm($item['ncm']);
+            }
+            $ncm = $ncms[$item['ncm']];
+
             $itens[] = [
-                'ean'         => $item['ean'],
-                'codigo'      => $item['codigo'],
-                'descricao'   => $item['descricao'],
-                'unidade'     => $item['unidade'],
-                'ncm'         => $item['ncm'],
-                'valor_custo' => $item['quantidade'] > 0 ? round($item['valor_total'] / $item['quantidade'], 2) : 0,
-                'produto'     => $achado
+                'ean'                => $item['ean'],
+                'codigo'             => $item['codigo'],
+                'descricao'          => $item['descricao'],
+                'unidade'            => $item['unidade'],
+                'unidade_tributavel' => $item['unidade_tributavel'] ?: $item['unidade'],
+                'ncm'                => $item['ncm'],
+                'ncm_registro'       => $ncm?->only(['id', 'codigo', 'descricao']),
+                'origem'             => (int) ($item['origem'] ?: 0),
+                'valor_custo'        => $item['quantidade'] > 0 ? round($item['valor_total'] / $item['quantidade'], 2) : 0,
+                'produto'            => $achado
                     ? $achado['produto']->only(['id', 'nome', 'codigo_interno', 'codigo_barras']) + ['por' => $achado['por']]
                     : null,
             ];
@@ -102,44 +115,17 @@ class EntradaNotaController extends Controller
         ]);
     }
 
-    public function criarProdutoRapido(Request $request)
+    private function resolverNcm(string $codigo): ?Ncm
     {
-        abort_unless(auth()->user()?->podeVer('produtos'), 403, 'Você não tem permissão para cadastrar produtos.');
-
-        $dados = $request->validate([
-            'nome'              => ['required', 'string', 'max:200'],
-            'codigo_barras'     => ['nullable', 'digits_between:8,14', Rule::unique('produtos', 'codigo_barras')],
-            'unidade_comercial' => ['required', 'string', 'max:6'],
-            'ncm'               => ['nullable', 'digits:8'],
-            'preco_custo'       => ['required', 'numeric', 'min:0'],
-            'preco_venda'       => ['required', 'numeric', 'min:0'],
-        ], [
-            'codigo_barras.unique'         => 'Já existe um produto com este código de barras. Busque por ele na lista.',
-            'codigo_barras.digits_between' => 'O código de barras deve ter de 8 a 14 dígitos.',
-            'ncm.digits'                   => 'O NCM deve ter 8 dígitos.',
-        ]);
-
-        $campos = [
-            'nome'              => $dados['nome'],
-            'codigo_barras'     => $dados['codigo_barras'] ?? null,
-            'unidade_comercial' => strtoupper($dados['unidade_comercial']),
-            'preco_custo'       => $dados['preco_custo'],
-            'preco_venda'       => $dados['preco_venda'],
-            'estoque'           => 0,
-            'tem_variacao'      => false,
-            'ativo'             => true,
-        ];
-
-        if (Schema::hasColumn('produtos', 'ncm')) {
-            $campos['ncm'] = $dados['ncm'] ?? null;
+        $codigo = preg_replace('/\D/', '', $codigo);
+        if (strlen($codigo) !== 8) {
+            return null;
         }
 
-        $produto = new Produto();
-        $produto->forceFill($campos)->save();
+        // aceita gravado como 12345678 ou 1234.56.78
+        $formatado = substr($codigo, 0, 4) . '.' . substr($codigo, 4, 2) . '.' . substr($codigo, 6, 2);
 
-        return response()->json(
-            $produto->only(['id', 'nome', 'codigo_interno', 'codigo_barras', 'unidade_comercial', 'preco_custo', 'estoque'])
-        );
+        return Ncm::whereIn('codigo', [$codigo, $formatado])->first(['id', 'codigo', 'descricao']);
     }
 
     public function confirmarImportacaoXml(Request $request)

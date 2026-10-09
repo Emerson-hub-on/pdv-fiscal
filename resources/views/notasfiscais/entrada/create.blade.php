@@ -26,4 +26,11 @@
 
 
     @include('notasfiscais.entrada._modal-importar-xml')
+    @if (auth()->user()?->podeVer('produtos'))
+        @include('produtos._modais_catalogo')
+        <style>
+            #modal-catalogo, #modal-ncm, #modal-cest, #modal-classtrib,
+            #modal-piscofins, #modal-ipi, #modal-tributacao { z-index: 70; }
+        </style>
+    @endif
 @endsection

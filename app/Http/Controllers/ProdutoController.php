@@ -141,6 +141,27 @@ class ProdutoController extends Controller
             ->with('sucesso', 'Produto cadastrado com sucesso.');
     }
 
+    /**
+     * Cadastro via JSON (modal de assimilação da entrada de nota).
+     * Mesmas regras do store(), sem variações.
+     */
+    public function storeJson(Request $request): JsonResponse
+    {
+        $request->merge([
+            'codigo_interno' => Produto::proximoCodigoInterno(),
+            'tem_variacao'   => '0',
+        ]);
+
+        $this->resolverCodigoBarras($request);
+        $validado = $this->validarProduto($request);
+
+        $produto = Produto::create($validado);
+
+        return response()->json($produto->only([
+            'id', 'nome', 'codigo_interno', 'codigo_barras', 'unidade_comercial', 'preco_custo', 'estoque',
+        ]));
+    }
+
     public function edit(Produto $produto)
     {
         $produto->load('variantes');
