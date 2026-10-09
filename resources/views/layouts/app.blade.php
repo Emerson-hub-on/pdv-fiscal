@@ -66,6 +66,13 @@
                     </a>
                 @endif
 
+                @if (auth()->user()?->podeVer('fornecedores'))
+                    <a href="{{ route('fornecedores.index') }}"
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                        Fornecedores
+                    </a>
+                @endif
+
                 @if (auth()->user()?->podeVer('empresa'))
                     <a href="{{ route('empresa.editar') }}"
                     class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">

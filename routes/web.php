@@ -168,6 +168,7 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
             // ---------------- FATURAMENTO - ENTRADAS DE NOTA ----------------
             Route::prefix('faturamento/entradas-nota')->name('entradas-nota.')->group(function () {
                 Route::get('produtos', [EntradaNotaController::class, 'buscarProdutos'])->name('produtos');
+                Route::post('importar-xml', [EntradaNotaController::class, 'importarXml'])->name('importar-xml');
 
                 Route::get('/', [EntradaNotaController::class, 'index'])->name('index');
                 Route::get('criar', [EntradaNotaController::class, 'create'])->name('create');
