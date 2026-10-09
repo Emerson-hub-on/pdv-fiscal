@@ -94,7 +94,7 @@
 
         <div class="col-span-2 grid grid-cols-3 gap-5 items-end">
 
-            <div>
+            <div class="relative">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Código de barras (EAN)</label>
                 <input type="text" name="codigo_barras" value="{{ old('codigo_barras', $produto->codigo_barras ?? '') }}"
                        placeholder="Deixe em branco se não tiver"
@@ -121,7 +121,7 @@
         </div>
 
         <div class="col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+            <label class="block text-sm font-medium text-gray-700 mt-4">Descrição</label>
             <textarea name="descricao" rows="3"
                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-none">{{ old('descricao', $produto->descricao ?? '') }}</textarea>
         </div>
@@ -328,6 +328,7 @@
                             <th class="px-3 py-2 text-left">Cor</th>
                             <th class="px-3 py-2 text-left">Tamanho</th>
                             <th class="px-3 py-2 text-left">Cód. de barras</th>
+                            <th class="px-3 py-2 text-left">Código no caixa</th>
                             <th class="px-3 py-2 text-left">Estoque</th>
                             <th class="px-3 py-2 text-left">Est. mín.</th>
                             <th class="px-3 py-2"></th>
@@ -722,6 +723,13 @@ function toggleVariacao(temVariacao) {
     document.getElementById('bloco-variantes').classList.toggle('hidden', !temVariacao);
 }
 
+// Mantém a coluna "Código no caixa" em sincronia com o que o operador digita:
+// EAN digitado vale como está; em branco, vale o código interno gerado.
+function atualizarCodigoCaixa(input) {
+    const alvo = input.closest('tr').querySelector('[data-codigo-caixa]');
+    alvo.textContent = input.value.trim() || alvo.dataset.interno || 'Gerado ao salvar';
+}
+
 function adicionarLinhaVariante(cor = '', tamanho = '', estoque = 0, estoqueMinimo = 0, id = '', codigoBarras = '', codigoInterno = '') {
     const tbody = document.getElementById('linhas-variantes');
     const i = indiceVariante++;
@@ -740,8 +748,12 @@ function adicionarLinhaVariante(cor = '', tamanho = '', estoque = 0, estoqueMini
         <td class="px-3 py-2">
             <input type="text" name="variantes[${i}][codigo_barras]" value="${codigoBarras}"
                    inputmode="numeric" maxlength="14" placeholder="Em branco = automático"
+                   oninput="atualizarCodigoCaixa(this)"
                    class="w-full min-w-[9rem] border border-gray-200 rounded px-2 py-1 text-sm">
-            ${codigoInterno ? `<p class="mt-1 text-xs text-gray-400">Código no caixa: <span class="font-mono text-gray-600">${codigoInterno}</span></p>` : ''}
+        </td>
+        <td class="px-3 py-2 whitespace-nowrap">
+            <span data-codigo-caixa data-interno="${codigoInterno}"
+                  class="font-mono text-sm text-gray-600">${codigoBarras || codigoInterno || 'Gerado ao salvar'}</span>
         </td>
         <td class="px-3 py-2">
             <input type="number" name="variantes[${i}][estoque]" value="${estoque}"
