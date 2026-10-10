@@ -15,7 +15,9 @@
     @php
         $podeProdutos = (bool) auth()->user()?->podeVer('produtos');
         $empresa = $podeProdutos ? \App\Models\Empresa::atual() : null;
-        $tributacoes = $podeProdutos ? \App\Models\Tributacao::orderBy('descricao')->get() : collect();
+        $tributacoes = $podeProdutos
+            ? \App\Models\Tributacao::where('crt', $empresa->crt)->where('ativo', true)->orderBy('descricao')->get()
+            : collect();
         $pisCofinsLista = $podeProdutos ? \App\Models\ClassificacaoPisCofins::orderBy('codigo')->get() : collect();
         $clsSel = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-500';
     @endphp
@@ -49,7 +51,14 @@
                 @if ($podeProdutos)
                     <div class="mt-4 pt-4 border-t border-gray-100 space-y-3">
                         <p class="font-medium text-gray-700">Padrões do cadastro automático</p>
+                        @php
+                            $nomeRegime = [1 => 'Simples Nacional', 2 => 'Simples Nacional (excesso de sublimite)', 3 => 'Regime Normal'][$empresa->crt] ?? "CRT {$empresa->crt}";
+                        @endphp
+                        <p class="text-xs text-gray-500 -mt-2">Regime da empresa: <strong>{{ $nomeRegime }}</strong> (CRT {{ $empresa->crt }})</p>
 
+                        @if ($tributacoes->isEmpty())
+                            <p class="text-xs text-red-600">Nenhuma tributação ativa cadastrada para este regime. Cadastre uma antes de usar o cadastro automático.</p>
+                        @endif
                         <div>
                             <label class="block text-xs text-gray-500 mb-1">Tributação padrão <span class="text-red-500">*</span></label>
                             <select id="opt-trib" class="{{ $clsSel }}">

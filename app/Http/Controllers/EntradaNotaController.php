@@ -21,6 +21,7 @@ use App\Models\ProdutoVariante;
 use App\Models\Tributacao;
 use App\Models\Empresa;
 
+
 class EntradaNotaController extends Controller
 {
     public function index(Request $request)
@@ -53,11 +54,19 @@ class EntradaNotaController extends Controller
 
     public function salvarOpcoesXml(Request $request)
     {
+        $empresa = Empresa::atual();
+
+        $doRegime = Rule::exists('tributacoes', 'id')
+            ->where(fn ($q) => $q->where('crt', $empresa->crt)->where('ativo', true));
+
         $d = $request->validate([
-            'tributacao_padrao_id'    => ['nullable', 'exists:tributacoes,id'],
-            'tributacao_st_padrao_id' => ['nullable', 'exists:tributacoes,id'],
+            'tributacao_padrao_id'    => ['nullable', $doRegime],
+            'tributacao_st_padrao_id' => ['nullable', $doRegime],
             'pis_cofins_padrao_id'    => ['nullable', 'exists:classificacoes_pis_cofins,id'],
             'margem_padrao'           => ['nullable', 'numeric', 'min:0', 'max:1000'],
+        ], [
+            'tributacao_padrao_id.exists'    => 'A tributação padrão não pertence ao regime da empresa.',
+            'tributacao_st_padrao_id.exists' => 'A tributação de ST não pertence ao regime da empresa.',
         ]);
 
         Empresa::atual()->forceFill([
@@ -70,7 +79,7 @@ class EntradaNotaController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    public function cadastrarPendentes(Request $request)
+public function cadastrarPendentes(Request $request)
     {
         $dados = $request->validate([
             'token'     => ['required', 'string'],
@@ -92,6 +101,22 @@ class EntradaNotaController extends Controller
             return response()->json(['message' => 'Defina o "PIS/COFINS padrão" em Opções (obrigatório no seu regime).'], 422);
         }
 
+        $validas = Tributacao::where('crt', $empresa->crt)->where('ativo', true)
+            ->whereIn('id', array_filter([
+                $empresa->entrada_tributacao_padrao_id,
+                $empresa->entrada_tributacao_st_padrao_id,
+            ]))
+            ->pluck('id');
+        if (! $validas->contains($empresa->entrada_tributacao_padrao_id)) {
+            return response()->json([
+                'message' => 'A tributação padrão salva não pertence ao regime atual da empresa. Abra Opções e escolha novamente.',
+            ], 422);
+        }
+        // padrão de ST de outro regime é ignorado: usa a tributação padrão
+        $tributacaoStId = $validas->contains($empresa->entrada_tributacao_st_padrao_id)
+            ? $empresa->entrada_tributacao_st_padrao_id
+            : null;
+
         $produtos = app(ProdutoController::class);
         $margem = (float) $empresa->entrada_margem_padrao;
         $criados = [];
@@ -111,8 +136,8 @@ class EntradaNotaController extends Controller
 
             $custo = $item['quantidade'] > 0 ? round($item['valor_total'] / $item['quantidade'], 2) : 0;
             $unidade = strtoupper($item['unidade'] ?: 'UN');
-            $tributacaoId = ($item['com_st'] && $empresa->entrada_tributacao_st_padrao_id)
-                ? $empresa->entrada_tributacao_st_padrao_id
+            $tributacaoId = ($item['com_st'] && $tributacaoStId)
+                ? $tributacaoStId
                 : $empresa->entrada_tributacao_padrao_id;
 
             try {
