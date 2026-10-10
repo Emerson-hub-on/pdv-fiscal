@@ -1,4 +1,4 @@
-<div id="modal-operacao-entrada" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+<div id="modal-operacao-entrada" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[65]">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col">
         <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900 rounded-t-xl">
             <h2 class="text-lg font-bold text-white">CFOP / Operação da entrada</h2>
@@ -76,6 +76,7 @@
 let opLista = @json($operacoes);
 let opFiltrada = [];
 let opIndice = 0;
+let opContexto = 'cabecalho'; 
 
 function opEsc(v) {
     return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -83,7 +84,8 @@ function opEsc(v) {
 
 function opRotulo(o) { return `${o.cfops || '—'} — ${o.descricao}`; }
 
-function abrirModalOperacao() {
+function abrirModalOperacao(contexto = 'cabecalho') {
+    opContexto = contexto;
     const modal = document.getElementById('modal-operacao-entrada');
     modal.classList.remove('hidden');
     modal.classList.add('flex');
@@ -114,7 +116,8 @@ function opFiltrar() {
 }
 
 function opRender() {
-    const atual = String(document.getElementById('operacao_entrada_id').value);
+    const campo = document.getElementById(opContexto === 'import' ? 'xml-operacao' : 'operacao_entrada_id');
+    const atual = String(campo?.value ?? '');
     const tbody = document.getElementById('op-linhas');
 
     if (!opFiltrada.length) {
@@ -145,22 +148,34 @@ document.getElementById('op-busca').addEventListener('keydown', (e) => {
     else if (e.key === 'Enter') { e.preventDefault(); opSelecionar(opFiltrada[opIndice].id); }
 });
 
+function opAplicarNoImport(o) {
+    const campo = document.getElementById('xml-operacao');
+    if (!campo) return;
+
+    campo.value = o.id;
+    const label = document.getElementById('xml-operacao-label');
+    label.textContent = opRotulo(o);
+    label.className = 'text-gray-800';
+
+    if (typeof xmlAtualizarBotaoImportar === 'function') xmlAtualizarBotaoImportar();
+}
+
 function opSelecionar(id) {
     const o = opLista.find(x => String(x.id) === String(id));
     if (!o) return;
 
-    document.getElementById('operacao_entrada_id').value = o.id;
-    const label = document.getElementById('operacao_entrada_label');
-    label.textContent = opRotulo(o);
-    label.className = 'text-gray-800';
-
-    // mantém o select do modal de importação de XML igual ao cabeçalho
-    const sel = document.getElementById('xml-operacao');
-    if (sel) {
-        if (!sel.querySelector(`option[value="${o.id}"]`)) sel.add(new Option(opRotulo(o), o.id));
-        sel.value = o.id;
+    // escolha feita no cabeçalho também atualiza o cabeçalho; no modal de importação só vale para a importação
+    if (opContexto !== 'import') {
+        const cabecalho = document.getElementById('operacao_entrada_id');
+        if (cabecalho) {
+            cabecalho.value = o.id;
+            const label = document.getElementById('operacao_entrada_label');
+            label.textContent = opRotulo(o);
+            label.className = 'text-gray-800';
+        }
     }
 
+    opAplicarNoImport(o);
     fecharModalOperacao();
 }
 

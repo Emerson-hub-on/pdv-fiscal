@@ -443,7 +443,6 @@ public function confirmarImportacaoXml(Request $request)
     public function create()
     {
         $entrada = new EntradaNota([
-            'operacao_entrada_id' => OperacaoEntrada::where('codigo', 'compra_comercializacao')->value('id'),
             'modelo'              => '55',
             'data_entrada'        => today()->toDateString(),
             'atualizar_custo'     => true,

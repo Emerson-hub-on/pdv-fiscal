@@ -1,7 +1,4 @@
-@php 
-    $operacoesEntrada = \App\Models\OperacaoEntrada::where('ativo', true)
-        ->orderBy('ordem')->get(); 
-@endphp
+
 
 {{-- 1) Envio do XML --}}
 <div id="modal-importar-xml" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
@@ -18,14 +15,19 @@
             <input type="file" id="input-xml" accept=".xml,text/xml,application/xml" class="hidden">
         </div>
 
+        @php $opImport = collect($operacoes)->firstWhere('id', $entrada->operacao_entrada_id); @endphp
         <div class="mt-4">
+            <p id="aviso-operacao-xml" class="text-xs text-amber-600 mt-1 {{ $entrada->operacao_entrada_id ? 'hidden' : '' }}">
+                Selecione a operação da entrada para habilitar a importação.
+            </p>
             <label class="block text-sm font-medium text-gray-700 mb-1">Operação da entrada <span class="text-red-500">*</span></label>
-            <select id="xml-operacao"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
-                @foreach ($operacoesEntrada as $op)
-                    <option value="{{ $op->id }}">{{ $op->descricao }}</option>
-                @endforeach
-            </select>
+            <input type="hidden" id="xml-operacao" value="{{ $entrada->operacao_entrada_id }}">
+            <button type="button" onclick="abrirModalOperacao('import')"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                <span id="xml-operacao-label" class="{{ $opImport ? 'text-gray-800' : 'text-gray-500' }}">
+                    {{ $opImport ? (($opImport['cfops'] ?: '—') . ' — ' . $opImport['descricao']) : 'Clique para selecionar...' }}
+                </span>
+            </button>
         </div>
 
         <p class="text-xs text-gray-400 mt-3">
@@ -337,13 +339,6 @@
             
 
 <script>
-try {
-    const salva = localStorage.getItem('entrada_xml_operacao');
-    const selOperacao = document.getElementById('xml-operacao');
-    if (salva && selOperacao.querySelector(`option[value="${salva}"]`)) {
-        selOperacao.value = salva;
-    }
-} catch (e) {}
 
 const XML_URLS = {
     analisar:  @json(route('entradas-nota.importar-xml.analisar')),
@@ -448,28 +443,35 @@ const nomeXml = document.getElementById('nome-arquivo-xml');
 const btnXml = document.getElementById('btn-enviar-xml');
 
 function abrirModalXml() { xmlAbrir('modal-importar-xml'); }
+
 function fecharModalXml() {
     xmlFechar('modal-importar-xml');
     inputXml.value = '';
     nomeXml.textContent = '';
-    btnXml.disabled = true;
+    xmlAtualizarBotaoImportar();
     xmlLimparErro('erro-upload-xml');
+}
+
+function xmlAtualizarBotaoImportar() {
+    const temArquivo = !!inputXml.files[0];
+    const temOperacao = !!document.getElementById('xml-operacao').value;
+
+    btnXml.disabled = !(temArquivo && temOperacao);
+    document.getElementById('aviso-operacao-xml').classList.toggle('hidden', temOperacao);
 }
 
 function atualizarArquivoXml() {
     const arquivo = inputXml.files[0];
     xmlLimparErro('erro-upload-xml');
 
-    if (!arquivo) { nomeXml.textContent = ''; btnXml.disabled = true; return; }
-
-    if (!arquivo.name.toLowerCase().endsWith('.xml')) {
+    if (arquivo && !arquivo.name.toLowerCase().endsWith('.xml')) {
         nomeXml.textContent = 'Selecione um arquivo .xml';
         inputXml.value = '';
-        btnXml.disabled = true;
-        return;
+    } else {
+        nomeXml.textContent = arquivo ? arquivo.name : '';
     }
-    nomeXml.textContent = arquivo.name;
-    btnXml.disabled = false;
+
+    xmlAtualizarBotaoImportar();
 }
 
 inputXml.addEventListener('click', (e) => e.stopPropagation());
@@ -504,7 +506,13 @@ function xmlLinhaFiscal(item) {
 
 async function analisarXml() {
     const arquivo = inputXml.files[0];
+
     if (!arquivo) return;
+
+    if (!document.getElementById('xml-operacao').value) {
+        xmlErro('erro-upload-xml', 'Selecione a operação da entrada.');
+        return;
+    }
 
     btnXml.disabled = true;
     btnXml.textContent = 'Analisando...';
@@ -515,7 +523,6 @@ async function analisarXml() {
         fd.append('xml', arquivo);
         const operacao = document.getElementById('xml-operacao').value;
         fd.append('operacao_entrada_id', operacao);
-        try { localStorage.setItem('entrada_xml_operacao', operacao); } catch (e) {}
         xmlImportacao = await xmlRequisicao(XML_URLS.analisar, { method: 'POST', body: fd });
 
         fecharModalXml();
@@ -525,7 +532,7 @@ async function analisarXml() {
         xmlErro('erro-upload-xml', e.message);
     } finally {
         btnXml.textContent = 'Analisar XML';
-        btnXml.disabled = !inputXml.files[0];
+        xmlAtualizarBotaoImportar();
     }
 }
 
