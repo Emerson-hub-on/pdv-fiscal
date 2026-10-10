@@ -223,7 +223,16 @@ class NotaFiscalController extends Controller
             'finalidade'                 => ['required', 'in:1,2,3,4,5,6'],
             'motivo_ajuste'              => ['nullable', 'string', 'max:2'],
             'cfop_saida_id'              => ['required', 'exists:cfop_saida,id'],
-            'forma_pagamento_id'         => ['required', 'exists:formas_pagamento,id'],
+            'forma_pagamento_id'         => ['required', function ($atributo, $valor, $fail) {
+                // Edição de nota antiga: manter a forma que já estava gravada não bloqueia
+                $atual = request()->route('notaFiscal')?->forma_pagamento_id;
+                if ($atual !== null && (int) $valor === (int) $atual) {
+                    return;
+                }
+                if (!\App\Models\FormaPagamento::ativos()->paraSaida()->whereKey($valor)->exists()) {
+                    $fail('Selecione uma forma de pagamento válida para venda.');
+                }
+            }],
             'operador_token'             => ['nullable', 'string'],
             'operador_id'                => ['required', function ($atributo, $valor, $fail) {
                 // Edição de nota antiga: manter o operador que já estava gravado não pede nada
