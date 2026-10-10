@@ -28,6 +28,7 @@ class EntradaNotaItem extends Model
         'cfop_entrada_id', 
         'cst_csosn_entrada', 
         'gera_credito',
+        'fiscal_manual',
     ];
 
     protected $casts = [
@@ -36,7 +37,8 @@ class EntradaNotaItem extends Model
         'valor_unitario' => 'decimal:4',
         'valor_desconto' => 'decimal:2',
         'valor_total'    => 'decimal:2',
-        'gera_credito'   => 'boolean'
+        'gera_credito'   => 'boolean',
+        'fiscal_manual'  => 'boolean'
     ];
 
     public function cfopEntrada()

@@ -196,6 +196,33 @@
                                class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
                     </div>
                 </div>
+                <div class="border-t border-gray-200 pt-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Classificação fiscal</span>
+                        <button type="button" onclick="restaurarFiscalAutomatico()" class="text-xs text-blue-600 hover:underline">Restaurar automático</button>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">CFOP de entrada</label>
+                            <select id="ed-cfop" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white"></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">{{ $fiscal['regime'] === 'normal' ? 'CST' : 'CSOSN' }} de entrada</label>
+                            <select id="ed-cst" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white"></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Gera crédito de ICMS</label>
+                            <select id="ed-credito" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white">
+                                <option value="">Não informado</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <p id="ed-fiscal-dica" class="text-xs text-gray-400 mt-1"></p>
+                </div>
 
                 <div class="flex gap-2">
                     <button type="button" onclick="adicionarLinhaNaGrid()"
@@ -380,6 +407,7 @@ const csrfToken = {{ Illuminate\Support\Js::from(csrf_token()) }};
 let itensNota = [];
 let produtoEditor = null;   // produto selecionado no editor
 let fiscalPreservado = null;   // dados fiscais do item em edição   
+let fiscalEditor = null;   // valores automáticos do item em edição (para detectar mudança manual)
 let resultadosBusca = [];
 let indiceBusca = 0;
 let timerBusca = null;
@@ -447,20 +475,26 @@ function exibirCstEntrada(codigo, origem) {
     return (regrasFiscais.regime === 'normal' && origem !== '' && origem != null) ? `${origem}${codigo}` : codigo;
 }
 
+
+
+const flag = v => v === true || v === '1' || v === 1;
+const creditoDe = v => (v === '' || v == null) ? null : flag(v);
+
 function fiscalDoItem(item) {
     const tipo = item.csosn_origem ? 'csosn' : (item.cst_origem ? 'cst' : null);
     const codigoOrigem = item.csosn_origem || item.cst_origem || null;
 
-    // Nota finalizada: mostra o que foi gravado, sem recalcular
-    if (somenteLeitura) {
+    // Nota finalizada ou item informado manualmente: vale o que está gravado no item
+    if (somenteLeitura || flag(item.fiscal_manual)) {
         return {
             semOperacao: false,
+            manual: flag(item.fiscal_manual),
             presumido: false,
             cfopOrigem: item.cfop_origem || null,
             cfopEntrada: item.cfop_entrada || null,
             tipo,
             codigoOrigem,
-            cst: item.cst_entrada ? { cst: item.cst_entrada, credito: item.gera_credito } : null,
+            cst: item.cst_entrada ? { cst: item.cst_entrada, credito: creditoDe(item.gera_credito) } : null,
         };
     }
 
@@ -470,6 +504,7 @@ function fiscalDoItem(item) {
 
     return {
         semOperacao: !operacao,
+        manual: false,
         presumido,
         cfopOrigem,
         cfopEntrada: operacao && cfopOrigem ? (regrasFiscais.cfops[operacao]?.[cfopOrigem] ?? null) : null,
@@ -479,6 +514,7 @@ function fiscalDoItem(item) {
     };
 }
 
+
 function elemento(tag, classes, texto, titulo = '') {
     const el = document.createElement(tag);
     el.className = classes;
@@ -486,6 +522,11 @@ function elemento(tag, classes, texto, titulo = '') {
     if (titulo) el.title = titulo;
     return el;
 }
+
+function marcaManual() {
+    return elemento('span', 'ml-1 text-xs text-gray-400', '✎', 'Informado manualmente');
+}
+
 
 function celulaCfop(f) {
     const td = document.createElement('td');
@@ -505,31 +546,35 @@ function celulaCfop(f) {
         td.appendChild(elemento('span',
             'inline-block px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-mono text-xs font-semibold',
             f.cfopEntrada, descricao + origem));
+        if (f.manual) td.appendChild(marcaManual());
     } else {
         td.appendChild(elemento('span', 'inline-block px-2 py-0.5 rounded bg-amber-50 text-amber-700 text-xs font-medium', 'Pendente',
-            f.cfopOrigem ? `Sem regra para o CFOP ${f.cfopOrigem} nesta operação`
-                         : 'Sem CFOP de origem: selecione o fornecedor (UF) ou importe pelo XML'));
+            f.manual ? 'CFOP não definido neste item'
+                : (f.cfopOrigem ? `Sem regra para o CFOP ${f.cfopOrigem} nesta operação`
+                                : 'Sem CFOP de origem: selecione o fornecedor (UF) ou importe pelo XML')));
     }
 
     return td;
 }
 
+
 function celulaCst(f, item) {
     const td = document.createElement('td');
     td.className = 'px-3 py-2 text-left';
 
-    if (!f.tipo) {
-        td.appendChild(elemento('span', 'text-xs text-gray-400', '—', 'Sem CST/CSOSN do XML (item digitado)'));
-        return td;
-    }
-
     if (f.cst) {
-        const origem = f.tipo === 'cst' ? `${item.origem_mercadoria ?? ''}${item.cst_origem}` : item.csosn_origem;
+        const origem = f.tipo
+            ? ` · ${f.tipo.toUpperCase()} do fornecedor: ${f.tipo === 'cst' ? `${item.origem_mercadoria ?? ''}${item.cst_origem}` : item.csosn_origem}`
+            : '';
+        const credito = f.cst.credito === null ? 'não informado' : (f.cst.credito ? 'sim' : 'não');
 
         td.appendChild(elemento('span',
             'inline-block px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-mono text-xs font-semibold',
             exibirCstEntrada(f.cst.cst, item.origem_mercadoria),
-            `${rotuloCst} de entrada · ${f.tipo.toUpperCase()} do fornecedor: ${origem} · gera crédito de ICMS: ${f.cst.credito ? 'sim' : 'não'}`));
+            `${rotuloCst} de entrada${origem} · gera crédito de ICMS: ${credito}`));
+        if (f.manual) td.appendChild(marcaManual());
+    } else if (!f.tipo) {
+        td.appendChild(elemento('span', 'text-xs text-gray-400', '—', 'Sem CST/CSOSN do XML (item digitado)'));
     } else {
         td.appendChild(elemento('span', 'inline-block px-2 py-0.5 rounded bg-amber-50 text-amber-700 text-xs font-medium', 'Pendente',
             `Sem conversão para o ${f.tipo.toUpperCase()} ${f.codigoOrigem} no seu regime`));
@@ -537,6 +582,68 @@ function celulaCst(f, item) {
 
     return td;
 }
+
+
+// ---------------------------------------------------------------
+// Campos fiscais do editor de item
+// ---------------------------------------------------------------
+function preencherSelect(select, opcoes) {
+    select.innerHTML = '';
+    select.add(new Option('— não definido —', ''));
+    opcoes.forEach(([valor, texto]) => select.add(new Option(texto, valor)));
+}
+
+function popularOpcoesFiscais() {
+    const cfop = document.getElementById('ed-cfop');
+    if (!cfop) return;   // nota finalizada: não há editor
+
+    preencherSelect(cfop, regrasFiscais.cfopsEntrada.map(c => [c.codigo, `${c.codigo} — ${c.descricao}`]));
+    preencherSelect(document.getElementById('ed-cst'), regrasFiscais.opcoesCst.map(o => [o.codigo, `${o.codigo} — ${o.descricao}`]));
+}
+
+function paraCampos(f) {
+    return {
+        cfop: f.cfopEntrada || '',
+        cst: f.cst?.cst || '',
+        credito: f.cst ? (f.cst.credito === null ? '' : (f.cst.credito ? '1' : '0')) : '',
+    };
+}
+
+function aplicarNoEditor(v) {
+    document.getElementById('ed-cfop').value = v.cfop;
+    document.getElementById('ed-cst').value = v.cst;
+    document.getElementById('ed-credito').value = v.credito;
+}
+
+function preencherEditorFiscal(item) {
+    // o que o sistema calcularia sem intervenção manual
+    fiscalEditor = paraCampos(fiscalDoItem({ ...item, fiscal_manual: false }));
+
+    const manual = flag(item.fiscal_manual);
+    aplicarNoEditor(manual ? paraCampos(fiscalDoItem(item)) : fiscalEditor);
+
+    document.getElementById('ed-fiscal-dica').textContent = manual
+        ? 'Informado manualmente.'
+        : 'Calculado automaticamente. Altere os campos para informar manualmente.';
+}
+
+function restaurarFiscalAutomatico() {
+    if (!fiscalEditor) return;
+    aplicarNoEditor(fiscalEditor);
+    document.getElementById('ed-fiscal-dica').textContent = 'Voltou ao cálculo automático.';
+}
+
+function lerEditorFiscal() {
+    const v = {
+        cfop: document.getElementById('ed-cfop').value,
+        cst: document.getElementById('ed-cst').value,
+        credito: document.getElementById('ed-credito').value,
+    };
+    const auto = fiscalEditor ?? { cfop: '', cst: '', credito: '' };
+
+    return { ...v, manual: v.cfop !== auto.cfop || v.cst !== auto.cst || v.credito !== auto.credito };
+}
+
 
 function renderizarGrid() {
     const corpo = document.getElementById('linhas-grid-itens');
@@ -601,25 +708,15 @@ function renderizarGrid() {
         corpo.appendChild(tr);
 
         // Campos enviados ao servidor
-        [
-            'produto_id', 
-            'descricao',
-            'codigo_fornecedor', 
-            'quantidade', 
-            'valor_unitario', 
-            'valor_desconto', 
-            'lote', 
-            'validade',
-            'cfop_origem', 
-            'cst_origem', 
-            'csosn_origem', 
-            'origem_mercadoria'
-        ]
+        const camposFiscaisManuais = ['cfop_entrada', 'cst_entrada', 'gera_credito'];
+
+        ['produto_id', 'descricao', 'codigo_fornecedor', 'quantidade', 'valor_unitario', 'valor_desconto', 'lote', 'validade',
+        'cfop_origem', 'cst_origem', 'csosn_origem', 'origem_mercadoria', 'fiscal_manual', ...camposFiscaisManuais]
             .forEach(campo => {
                 const input = document.createElement('input');
                 input.type = 'hidden';
                 input.name = `itens[${i}][${campo}]`;
-                input.value = item[campo] ?? '';
+                input.value = (camposFiscaisManuais.includes(campo) && !flag(item.fiscal_manual)) ? '' : (item[campo] ?? '');
                 campos.appendChild(input);
             });
     });
@@ -660,7 +757,7 @@ function abrirEditor(produto, dados = {}) {
     document.getElementById('ed-codforn').value = dados.codigo_fornecedor ?? '';
     document.getElementById('ed-lote').value = dados.lote ?? '';
     document.getElementById('ed-validade').value = dados.validade ?? '';
-
+    preencherEditorFiscal(dados);
     document.getElementById('editor-item').classList.remove('hidden');
     atualizarTotalEditor();
     document.getElementById('ed-qtd').focus();
@@ -670,6 +767,7 @@ function abrirEditor(produto, dados = {}) {
 function cancelarEditor() {
     produtoEditor = null;
     fiscalPreservado = null;
+    fiscalEditor = null;
     document.getElementById('editor-item').classList.add('hidden');
 }
 
@@ -683,6 +781,7 @@ function adicionarLinhaNaGrid() {
     if (quantidade <= 0) { mostrarAviso('Informe uma quantidade maior que zero.'); return; }
     if (valorUnitario < 0) { mostrarAviso('O valor unitário não pode ser negativo.'); return; }
     if (desconto > quantidade * valorUnitario) { mostrarAviso('O desconto não pode ser maior que o valor do item.'); return; }
+    const fiscal = lerEditorFiscal();
 
     itensNota.push({
         produto_id: produtoEditor.id,
@@ -694,6 +793,10 @@ function adicionarLinhaNaGrid() {
         lote: document.getElementById('ed-lote').value.trim(),
         validade: document.getElementById('ed-validade').value,
         ...(fiscalPreservado ?? {}),
+        fiscal_manual: fiscal.manual ? '1' : '0',
+        cfop_entrada: fiscal.manual ? fiscal.cfop : '',
+        cst_entrada: fiscal.manual ? fiscal.cst : '',
+        gera_credito: fiscal.manual ? fiscal.credito : '',
     });
 
     cancelarEditor();
@@ -912,11 +1015,12 @@ itensNota = itensIniciais.map(i => ({
     cst_origem: i.cst_origem ?? '',
     csosn_origem: i.csosn_origem ?? '',
     origem_mercadoria: i.origem_mercadoria ?? '',
-    cfop_entrada: i.cfop_entrada ?? null,
-    cst_entrada: i.cst_entrada ?? null,
-    gera_credito: i.gera_credito ?? null,
+    fiscal_manual: flag(i.fiscal_manual) ? '1' : '0',
+    cfop_entrada: i.cfop_entrada ?? '',
+    cst_entrada: i.cst_entrada ?? '',
+    gera_credito: creditoDe(i.gera_credito) === null ? '' : (creditoDe(i.gera_credito) ? '1' : '0'),
 }));
 document.getElementById('fornecedor_id').addEventListener('change', renderizarGrid);
-
+if (!somenteLeitura) popularOpcoesFiscais();
 renderizarGrid();
 </script>

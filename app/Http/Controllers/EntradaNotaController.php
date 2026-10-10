@@ -30,6 +30,32 @@ use App\Models\CstEntradaConversao;
 
 class EntradaNotaController extends Controller
 {
+    private const CSOSN = [
+        '101' => 'Tributada pelo Simples Nacional com permissão de crédito',
+        '102' => 'Tributada pelo Simples Nacional sem permissão de crédito',
+        '103' => 'Isenção do ICMS no Simples Nacional para faixa de receita bruta',
+        '201' => 'Tributada pelo SN com permissão de crédito e com cobrança do ICMS por ST',
+        '202' => 'Tributada pelo SN sem permissão de crédito e com cobrança do ICMS por ST',
+        '203' => 'Isenção do ICMS no SN para faixa de receita bruta e com cobrança do ICMS por ST',
+        '300' => 'Imune',
+        '400' => 'Não tributada pelo Simples Nacional',
+        '500' => 'ICMS cobrado anteriormente por ST (substituído) ou por antecipação',
+        '900' => 'Outros',
+    ];
+
+    private const CST = [
+        '00' => 'Tributada integralmente',
+        '10' => 'Tributada e com cobrança do ICMS por ST',
+        '20' => 'Com redução de base de cálculo',
+        '30' => 'Isenta ou não tributada e com cobrança do ICMS por ST',
+        '40' => 'Isenta',
+        '41' => 'Não tributada',
+        '50' => 'Suspensão',
+        '51' => 'Diferimento',
+        '60' => 'ICMS cobrado anteriormente por ST',
+        '70' => 'Com redução de base de cálculo e cobrança do ICMS por ST',
+        '90' => 'Outras',
+    ];
     public function index(Request $request)
     {
         $entradas = EntradaNota::with('fornecedor')
@@ -571,6 +597,7 @@ class EntradaNotaController extends Controller
                 'cfop_entrada'      => $i->cfopEntrada?->codigo,
                 'cst_entrada'       => $i->cst_csosn_entrada,
                 'gera_credito'      => $i->gera_credito,
+                'fiscal_manual'     => (bool) $i->fiscal_manual,
             ])
             ->values()
             ->all();
@@ -605,11 +632,15 @@ class EntradaNotaController extends Controller
             ])->all();
 
         return [
-            'regime'     => $regime,
-            'ufEmpresa'  => $empresa->getAttributes()['uf'] ?? null,
-            'cfops'      => $cfops,
-            'csts'       => $csts,
-            'descricoes' => CfopEntrada::pluck('descricao', 'codigo'),
+            'regime'       => $regime,
+            'ufEmpresa'    => $empresa->getAttributes()['uf'] ?? null,
+            'cfops'        => $cfops,
+            'csts'         => $csts,
+            'descricoes'   => CfopEntrada::pluck('descricao', 'codigo'),
+            'cfopsEntrada' => CfopEntrada::where('ativo', true)->orderBy('codigo')->get(['codigo', 'descricao']),
+            'opcoesCst'    => collect($regime === 'normal' ? self::CST : self::CSOSN)
+                                ->map(fn ($descricao, $codigo) => ['codigo' => (string) $codigo, 'descricao' => $descricao])
+                                ->values(),
         ];
     }
 
@@ -699,6 +730,7 @@ class EntradaNotaController extends Controller
 
     private function validar(Request $request, ?EntradaNota $entrada): array
     {
+        $cstValidos = array_keys(Empresa::atual()->crt == 3 ? self::CST : self::CSOSN);
         $dados = $request->validate([
             'operacao_entrada_id' => ['required', Rule::exists('operacoes_entrada', 'id')->where('ativo', true)],
             'fornecedor_id'       => ['required', 'exists:fornecedores,id'],
@@ -731,6 +763,10 @@ class EntradaNotaController extends Controller
             'itens.*.cst_origem'        => ['nullable', 'string', 'max:3'],
             'itens.*.csosn_origem'      => ['nullable', 'string', 'max:3'],
             'itens.*.origem_mercadoria' => ['nullable', 'integer', 'between:0,8'],
+            'itens.*.fiscal_manual'     => ['nullable', 'boolean'],
+            'itens.*.cfop_entrada'      => ['nullable', 'digits:4', Rule::exists('cfops_entrada', 'codigo')],
+            'itens.*.cst_entrada'       => ['nullable', Rule::in($cstValidos)],
+            'itens.*.gera_credito'      => ['nullable', 'boolean'],
         ], [
             'operacao_entrada_id.required' => 'Selecione a operação (CFOP) da entrada.',
             'itens.required'       => 'Adicione ao menos um item à entrada.',
@@ -779,6 +815,7 @@ class EntradaNotaController extends Controller
         $produtos = Produto::whereIn('id', collect($dados['itens'])->pluck('produto_id')->unique())
             ->get()
             ->keyBy('id');
+        $cfopIds = CfopEntrada::pluck('id', 'codigo');
 
         foreach ($dados['itens'] as $i => $item) {
             if ($produtos[$item['produto_id']]->tem_variacao) {
@@ -815,6 +852,7 @@ class EntradaNotaController extends Controller
                 $qtd      = (float) $item['quantidade'];
                 $unit     = (float) $item['valor_unitario'];
                 $desconto = (float) ($item['valor_desconto'] ?? 0);
+                $manual = filter_var($item['fiscal_manual'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
                 $entrada->itens()->create([
                     'produto_id'        => $produto->id,
@@ -831,6 +869,13 @@ class EntradaNotaController extends Controller
                     'cst_origem'        => $item['cst_origem'] ?? null,
                     'csosn_origem'      => $item['csosn_origem'] ?? null,
                     'origem_mercadoria' => $item['origem_mercadoria'] ?? null,
+                    'fiscal_manual'     => $manual,
+                    ...($manual ? [
+                    'cfop_entrada_id'   => ! empty($item['cfop_entrada']) ? ($cfopIds[$item['cfop_entrada']] ?? null) : null,
+                    'cst_csosn_entrada' => ($item['cst_entrada'] ?? null) ?: null,
+                    'gera_credito'      => isset($item['gera_credito']) && $item['gera_credito'] !== ''
+                                                ? filter_var($item['gera_credito'], FILTER_VALIDATE_BOOLEAN) : null,
+                    ] : []),
                 ]);
             }
 
@@ -852,7 +897,7 @@ class EntradaNotaController extends Controller
         $conversao = new ConversaoFiscalEntrada($entrada->operacao);
         $presumido = $conversao->cfopOrigemPresumido($entrada->fornecedor);
 
-        foreach ($entrada->itens as $item) {
+        foreach ($entrada->itens->reject(fn ($i) => $i->fiscal_manual) as $item) {
             $item->update($conversao->converter(
                 $item->cfop_origem ?: $presumido,
                 $item->cst_origem,
