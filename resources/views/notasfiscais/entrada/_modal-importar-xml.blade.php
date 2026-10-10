@@ -1,3 +1,8 @@
+@php 
+    $operacoesEntrada = \App\Models\OperacaoEntrada::where('ativo', true)
+        ->orderBy('ordem')->get(); 
+@endphp
+
 {{-- 1) Envio do XML --}}
 <div id="modal-importar-xml" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-lg w-full max-w-lg p-6">
@@ -11,6 +16,16 @@
             <p class="text-sm text-gray-600">Arraste o XML aqui ou <span class="text-blue-600 font-medium">clique para procurar</span></p>
             <p id="nome-arquivo-xml" class="text-xs text-gray-500 mt-2"></p>
             <input type="file" id="input-xml" accept=".xml,text/xml,application/xml" class="hidden">
+        </div>
+
+        <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Operação da entrada <span class="text-red-500">*</span></label>
+            <select id="xml-operacao"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                @foreach ($operacoesEntrada as $op)
+                    <option value="{{ $op->id }}">{{ $op->descricao }}</option>
+                @endforeach
+            </select>
         </div>
 
         <p class="text-xs text-gray-400 mt-3">
@@ -320,7 +335,13 @@
             @endif
 
 <script>
-
+try {
+    const salva = localStorage.getItem('entrada_xml_operacao');
+    const selOperacao = document.getElementById('xml-operacao');
+    if (salva && selOperacao.querySelector(`option[value="${salva}"]`)) {
+        selOperacao.value = salva;
+    }
+} catch (e) {}
 
 const XML_URLS = {
     analisar:  @json(route('entradas-nota.importar-xml.analisar')),
@@ -336,8 +357,6 @@ let xmlResultados = [];
 let xmlIndice = -1;
 let xmlTimeout;
 const XML_PODE_CADASTRAR = @json((bool) auth()->user()?->podeVer('produtos'));
-
-
 
 function xmlAutoCadastroAtivo() {
     try { return localStorage.getItem(XML_CHAVE_AUTO) === '1'; } catch (e) { return false; }
@@ -467,6 +486,20 @@ dropzoneXml.addEventListener('drop', (e) => {
     if (e.dataTransfer.files.length) { inputXml.files = e.dataTransfer.files; atualizarArquivoXml(); }
 });
 
+
+function xmlLinhaFiscal(item) {
+    const c = item.conversao;
+    if (!c) return '';
+
+    if (!c.cfop_entrada) {
+        return `<span class="block text-xs text-amber-600">Conversão pendente: CFOP ${xmlEsc(c.cfop_origem || '—')} sem regra para esta operação</span>`;
+    }
+
+    return `<span class="block text-xs text-gray-500">CFOP ${xmlEsc(c.cfop_origem || '—')} → <strong>${xmlEsc(c.cfop_entrada)}</strong>
+        · ${c.tipo_origem} ${xmlEsc(c.cst_origem || '—')} → <strong>${c.tipo_entrada} ${xmlEsc(c.cst_entrada || 'pendente')}</strong></span>`;
+}
+
+
 async function analisarXml() {
     const arquivo = inputXml.files[0];
     if (!arquivo) return;
@@ -478,6 +511,9 @@ async function analisarXml() {
     try {
         const fd = new FormData();
         fd.append('xml', arquivo);
+        const operacao = document.getElementById('xml-operacao').value;
+        fd.append('operacao_entrada_id', operacao);
+        try { localStorage.setItem('entrada_xml_operacao', operacao); } catch (e) {}
         xmlImportacao = await xmlRequisicao(XML_URLS.analisar, { method: 'POST', body: fd });
 
         fecharModalXml();
@@ -498,6 +534,7 @@ function renderizarConferenciaXml() {
     document.getElementById('resumo-nota-xml').innerHTML =
         `NF-e nº <strong>${xmlEsc(nota.numero)}</strong>${nota.serie ? ' / série ' + xmlEsc(nota.serie) : ''} — ` +
         `Fornecedor: <strong>${xmlEsc(nota.fornecedor_nome)}</strong>` +
+        (nota.operacao ? ` — Operação: <strong>${xmlEsc(nota.operacao)}</strong>` : '') +
         (nota.fornecedor_novo ? ' <span class="text-amber-600">(não cadastrado: será cadastrado automaticamente)</span>' : '');
 
     document.getElementById('linhas-conferencia-xml').innerHTML = itens.map((item, i) => {
@@ -530,6 +567,7 @@ function renderizarConferenciaXml() {
                 <td class="py-3 pr-3 font-mono text-xs text-gray-600">${xmlEsc(item.ean || '—')}</td>
                 <td class="py-3 pr-3">${xmlEsc(item.descricao)}
                     <span class="block text-xs text-gray-400">Cód. fornecedor: ${xmlEsc(item.codigo || '—')}</span></td>
+                    ${xmlLinhaFiscal(item)}
                 <td class="py-3 pr-3">${xmlMoeda(item.valor_custo)}</td>
                 <td class="py-3">${celula}</td>
             </tr>`;
@@ -698,7 +736,6 @@ function xmlAtribuir(produto) {
 // ---------- 3b) assimilar: cadastro rápido ----------
 const CAD_PIS_COFINS_OBRIGATORIO = {{ !empty($pisCofinsObrigatorio) ? 'true' : 'false' }};
 
-// textos padrão dos seletores de catálogo (ids/labels iguais aos do formulário de produto)
 const CAD_SELETORES = {
     categoria: 'Clique para selecionar...',
     marca: 'Clique para selecionar...',
@@ -761,13 +798,11 @@ function xmlMostrarCadastro() {
     const item = xmlImportacao.itens[xmlItemAtual];
     const set = (id, valor) => { document.getElementById(id).value = valor ?? ''; };
 
-    // limpa seleções de um cadastro anterior
     Object.entries(CAD_SELETORES).forEach(([chave, texto]) => {
         set(chave + '_id', '');
         document.getElementById(chave + '_label').innerText = texto;
     });
 
-    // NCM do XML já selecionado, quando existe no cadastro
     if (item.ncm_registro) {
         set('ncm_id', item.ncm_registro.id);
         document.getElementById('ncm_label').innerText = `${item.ncm_registro.codigo} — ${item.ncm_registro.descricao}`;

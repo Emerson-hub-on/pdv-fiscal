@@ -9,11 +9,26 @@ class EntradaNota extends Model
     protected $table = 'entradas_nota';
 
     protected $fillable = [
-        'fornecedor_id', 'user_id', 'tipo_entrada', 'status',
-        'chave_acesso', 'modelo', 'serie', 'numero',
-        'data_emissao', 'data_entrada', 'natureza_operacao',
-        'valor_produtos', 'valor_frete', 'valor_desconto', 'valor_outras', 'valor_total',
-        'atualizar_custo', 'observacao', 'finalizada_em',
+        'fornecedor_id', 
+        'user_id', 
+        'tipo_entrada', 
+        'status',
+        'chave_acesso', 
+        'modelo', 
+        'serie', 
+        'numero',
+        'data_emissao', 
+        'data_entrada', 
+        'natureza_operacao',
+        'valor_produtos', 
+        'valor_frete', 
+        'valor_desconto', 
+        'valor_outras', 
+        'valor_total',
+        'atualizar_custo', 
+        'observacao', 
+        'finalizada_em',
+        'operacao_entrada_id'
     ];
 
     protected $casts = [
@@ -31,6 +46,11 @@ class EntradaNota extends Model
     public function fornecedor()
     {
         return $this->belongsTo(Fornecedor::class);
+    }
+
+    public function operacao()
+    {
+        return $this->belongsTo(OperacaoEntrada::class, 'operacao_entrada_id');
     }
 
     public function usuario()

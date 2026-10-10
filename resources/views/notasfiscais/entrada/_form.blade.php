@@ -66,13 +66,33 @@
                 @error('fornecedor_id') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
             </div>
 
-            <div>
-                <label class="{{ $labelCls }}">Modelo</label>
-                <select name="modelo" class="{{ $inputCls }}" @disabled($somenteLeitura)>
-                    <option value="55" @selected(old('modelo', $entrada->modelo) === '55')>55 - NF-e</option>
-                    <option value="01" @selected(old('modelo', $entrada->modelo) === '01')>01 - NF (papel)</option>
-                </select>
-                @error('modelo') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
+            <div class="col-span-2 grid grid-cols-3 gap-4">
+                <div>
+                    <label class="{{ $labelCls }}">Modelo</label>
+                    <select name="modelo" class="{{ $inputCls }}" @disabled($somenteLeitura)>
+                        <option value="55" @selected(old('modelo', $entrada->modelo) === '55')>55 - NF-e</option>
+                        <option value="01" @selected(old('modelo', $entrada->modelo) === '01')>01 - NF (papel)</option>
+                    </select>
+                    @error('modelo') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label class="{{ $labelCls }}">Série</label>
+                    <input type="text" name="serie" maxlength="3" value="{{ old('serie', $entrada->serie) }}"
+                           class="{{ $inputCls }}" @disabled($somenteLeitura)>
+                    @error('serie') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label class="{{ $labelCls }}">Operação / CFOP da entrada <span class="text-red-500">*</span></label>
+                    <select name="operacao_entrada_id" required class="{{ $inputCls }}" @disabled($somenteLeitura)>
+                        <option value="">Selecione...</option>
+                        @foreach ($operacoes as $op)
+                            <option value="{{ $op->id }}" @selected(old('operacao_entrada_id', $entrada->operacao_entrada_id) == $op->id)>{{ $op->descricao }}</option>
+                        @endforeach
+                    </select>
+                    @error('operacao_entrada_id') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
+                </div>
             </div>
 
             <div>
@@ -88,13 +108,6 @@
                 <input type="text" name="numero" maxlength="9" value="{{ old('numero', $entrada->numero) }}"
                        class="{{ $inputCls }}" @disabled($somenteLeitura)>
                 @error('numero') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
-            </div>
-
-            <div>
-                <label class="{{ $labelCls }}">Série</label>
-                <input type="text" name="serie" maxlength="3" value="{{ old('serie', $entrada->serie) }}"
-                       class="{{ $inputCls }}" @disabled($somenteLeitura)>
-                @error('serie') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
             </div>
 
             <div class="col-span-2">
@@ -246,7 +259,7 @@
             <div class="col-span-3">
                 <label class="{{ $labelCls }}">Observação</label>
                 <textarea name="observacao" rows="3" maxlength="1000" class="{{ $inputCls }}"
-                          @disabled($somenteLeitura)>{{ old('observacao', $entrada->observacao) }}</textarea>
+                          @disabled($somenteLeitura)>{{ old('observacao',$entrada->observacao) }}</textarea>
             </div>
 
             <label class="col-span-3 flex items-center gap-2 text-sm text-gray-700 cursor-pointer">

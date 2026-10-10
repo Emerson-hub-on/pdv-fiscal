@@ -20,6 +20,9 @@ use App\Models\Ncm;
 use App\Models\ProdutoVariante;
 use App\Models\Tributacao;
 use App\Models\Empresa;
+use App\Models\CfopEntrada;
+use App\Models\OperacaoEntrada;
+use App\Services\ConversaoFiscalEntrada;
 
 
 class EntradaNotaController extends Controller
@@ -79,7 +82,7 @@ class EntradaNotaController extends Controller
         return response()->json(['ok' => true]);
     }
 
-public function cadastrarPendentes(Request $request)
+    public function cadastrarPendentes(Request $request)
     {
         $dados = $request->validate([
             'token'     => ['required', 'string'],
@@ -175,11 +178,13 @@ public function cadastrarPendentes(Request $request)
     public function analisarXml(Request $request, NfeXmlParser $parser)
     {
         $request->validate([
-            'xml' => ['required', 'file', 'max:2048', 'extensions:xml'],
+            'xml'                 => ['required', 'file', 'max:2048', 'extensions:xml'],
+            'operacao_entrada_id' => ['required', Rule::exists('operacoes_entrada', 'id')->where('ativo', true)],
         ], [
-            'xml.required'   => 'Selecione um arquivo XML.',
-            'xml.extensions' => 'O arquivo deve ter extensão .xml.',
-            'xml.max'        => 'O XML excede 2 MB.',
+            'xml.required'                 => 'Selecione um arquivo XML.',
+            'xml.extensions'               => 'O arquivo deve ter extensão .xml.',
+            'xml.max'                      => 'O XML excede 2 MB.',
+            'operacao_entrada_id.required' => 'Selecione a operação da entrada.',
         ]);
 
         try {
@@ -196,6 +201,9 @@ public function cadastrarPendentes(Request $request)
 
         $itens = [];
         $ncms = [];
+        $operacao = OperacaoEntrada::findOrFail($request->input('operacao_entrada_id'));
+        $conversao = new ConversaoFiscalEntrada($operacao);
+        $codigosCfop = CfopEntrada::pluck('codigo', 'id');
 
         foreach ($nfe['itens'] as $item) {
             $achado = $this->localizarProduto($item, $fornecedor);
@@ -204,6 +212,7 @@ public function cadastrarPendentes(Request $request)
                 $ncms[$item['ncm']] = $this->resolverNcm($item['ncm']);
             }
             $ncm = $ncms[$item['ncm']];
+            $conv = $conversao->converter($item['cfop'] ?: null, $item['cst'] ?: null, $item['csosn'] ?: null);
 
             $itens[] = [
                 'ean'                => $item['ean'],
@@ -218,15 +227,24 @@ public function cadastrarPendentes(Request $request)
                 'produto'            => $achado
                     ? $achado['produto']->only(['id', 'nome', 'codigo_interno', 'codigo_barras']) + ['por' => $achado['por']]
                     : null,
+                'conversao' => [
+                    'cfop_origem'  => $item['cfop'] ?: null,
+                    'cfop_entrada' => $conv['cfop_entrada_id'] ? $codigosCfop->get($conv['cfop_entrada_id']) : null,
+                    'tipo_origem'  => $item['csosn'] ? 'CSOSN' : 'CST',
+                    'cst_origem'   => $item['csosn'] ?: ($item['cst'] ?: null),
+                    'tipo_entrada' => $conversao->regime() === 'normal' ? 'CST' : 'CSOSN',
+                    'cst_entrada'  => $conv['cst_csosn_entrada'],
+                ],
             ];
         }
 
         $token = (string) Str::uuid();
-        Cache::put('importar_xml:' . auth()->id() . ':' . $token, $nfe, now()->addMinutes(30));
+        Cache::put('importar_xml:' . auth()->id() . ':' . $token, $nfe + ['operacao_entrada_id' => $operacao->id], now()->addMinutes(30));
 
         return response()->json([
             'token' => $token,
             'nota'  => [
+                'operacao'             => $operacao->descricao,
                 'numero'               => $nfe['numero'],
                 'serie'                => $nfe['serie'],
                 'fornecedor_nome'      => $nfe['fornecedor']['nome'],
@@ -250,7 +268,7 @@ public function cadastrarPendentes(Request $request)
         return Ncm::whereIn('codigo', [$codigo, $formatado])->first(['id', 'codigo', 'descricao']);
     }
 
-    public function confirmarImportacaoXml(Request $request)
+public function confirmarImportacaoXml(Request $request)
     {
         $dados = $request->validate([
             'token'      => ['required', 'string'],
@@ -280,69 +298,85 @@ public function cadastrarPendentes(Request $request)
 
         $avisos = [];
 
-        $entrada = DB::transaction(function () use ($nfe, $fornecedor, $dados, $produtos, &$avisos) {
-            $dadosFornecedor = $nfe['fornecedor'];
+        try {
+            $entrada = DB::transaction(function () use ($nfe, $fornecedor, $dados, $produtos, &$avisos) {
+                $dadosFornecedor = $nfe['fornecedor'];
 
-            if (! $fornecedor) {
-                $fornecedor = Fornecedor::create($dadosFornecedor + ['ativo' => true]);
-                $avisos[] = "Fornecedor \"{$fornecedor->nome}\" cadastrado automaticamente a partir do XML.";
-            } elseif (! $fornecedor->ativo) {
-                $fornecedor->update(['ativo' => true]);
-                $avisos[] = "O fornecedor \"{$fornecedor->nome}\" estava inativo e foi reativado.";
-            }
-
-            $entrada = EntradaNota::create([
-                'fornecedor_id'     => $fornecedor->id,
-                'user_id'           => auth()->id(),
-                'tipo_entrada'      => 'xml',
-                'status'            => 'rascunho',
-                'chave_acesso'      => $nfe['chave'],
-                'modelo'            => $nfe['modelo'],
-                'serie'             => $nfe['serie'],
-                'numero'            => $nfe['numero'],
-                'data_emissao'      => $nfe['data_emissao'],
-                'data_entrada'      => today()->toDateString(),
-                'natureza_operacao' => $nfe['natureza_operacao'],
-                'valor_frete'       => $nfe['valor_frete'],
-                'valor_desconto'    => 0, // o desconto do XML já está nos itens
-                'valor_outras'      => $nfe['valor_outras'],
-                'atualizar_custo'   => true,
-            ]);
-
-            $ignorados = [];
-
-            foreach ($nfe['itens'] as $indice => $item) {
-                $produtoId = $dados['produtos'][$indice] ?? null;
-
-                if (! $produtoId) {
-                    $ignorados[] = "{$item['codigo']} - {$item['descricao']}";
-                    continue;
+                if (! $fornecedor) {
+                    $fornecedor = Fornecedor::create($dadosFornecedor + ['ativo' => true]);
+                    $avisos[] = "Fornecedor \"{$fornecedor->nome}\" cadastrado automaticamente a partir do XML.";
+                } elseif (! $fornecedor->ativo) {
+                    $fornecedor->update(['ativo' => true]);
+                    $avisos[] = "O fornecedor \"{$fornecedor->nome}\" estava inativo e foi reativado.";
                 }
 
-                $produto = $produtos[$produtoId];
-
-                $entrada->itens()->create([
-                    'produto_id'        => $produto->id,
-                    'codigo_fornecedor' => $item['codigo'] ?: null,
-                    'descricao'         => $produto->nome,
-                    'unidade'           => $produto->unidade_comercial,
-                    'quantidade'        => $item['quantidade'],
-                    'valor_unitario'    => $item['valor_unitario'],
-                    'valor_desconto'    => $item['valor_desconto'],
-                    'valor_total'       => $item['valor_total'],
-                    'lote'              => $item['lote'],
-                    'validade'          => $item['validade'],
+                $entrada = EntradaNota::create([
+                    'operacao_entrada_id' => $nfe['operacao_entrada_id'],
+                    'fornecedor_id'     => $fornecedor->id,
+                    'user_id'           => auth()->id(),
+                    'tipo_entrada'      => 'xml',
+                    'status'            => 'rascunho',
+                    'chave_acesso'      => $nfe['chave'],
+                    'modelo'            => $nfe['modelo'],
+                    'serie'             => $nfe['serie'],
+                    'numero'            => $nfe['numero'],
+                    'data_emissao'      => $nfe['data_emissao'],
+                    'data_entrada'      => today()->toDateString(),
+                    'natureza_operacao' => $nfe['natureza_operacao'],
+                    'valor_frete'       => $nfe['valor_frete'],
+                    'valor_desconto'    => 0, // o desconto do XML já está nos itens
+                    'valor_outras'      => $nfe['valor_outras'],
+                    'atualizar_custo'   => true,
                 ]);
-            }
 
-            if ($ignorados) {
-                $avisos[] = count($ignorados) . ' item(ns) ficaram de fora por não terem produto assimilado: ' . implode('; ', $ignorados);
-            }
+                $ignorados = [];
 
-            $entrada->recalcularTotais();
+                foreach ($nfe['itens'] as $indice => $item) {
+                    $produtoId = $dados['produtos'][$indice] ?? null;
 
-            return $entrada;
-        });
+                    if (! $produtoId) {
+                        $ignorados[] = "{$item['codigo']} - {$item['descricao']}";
+                        continue;
+                    }
+
+                    $produto = $produtos[$produtoId];
+
+                    $entrada->itens()->create([
+                        'produto_id'        => $produto->id,
+                        'codigo_fornecedor' => $item['codigo'] ?: null,
+                        'descricao'         => $produto->nome,
+                        'unidade'           => $produto->unidade_comercial,
+                        'quantidade'        => $item['quantidade'],
+                        'valor_unitario'    => $item['valor_unitario'],
+                        'valor_desconto'    => $item['valor_desconto'],
+                        'valor_total'       => $item['valor_total'],
+                        'lote'              => $item['lote'],
+                        'validade'          => $item['validade'],
+                        'cfop_origem'       => $item['cfop'] ?: null,
+                        'cst_origem'        => $item['cst'] ?: null,
+                        'csosn_origem'      => $item['csosn'] ?: null,
+                        'origem_mercadoria' => $item['origem'] !== '' ? (int) $item['origem'] : null,
+                    ]);
+                }
+
+                if ($ignorados) {
+                    $avisos[] = count($ignorados) . ' item(ns) ficaram de fora por não terem produto assimilado: ' . implode('; ', $ignorados);
+                }
+
+                $entrada->recalcularTotais();
+                $this->aplicarConversaoFiscal($entrada);
+
+                $pendentes = $entrada->itens->whereNull('cfop_entrada_id')->count();
+                if ($pendentes) {
+                    $avisos[] = "{$pendentes} item(ns) com conversão de CFOP pendente (o CFOP do fornecedor não tem regra para esta operação).";
+                }
+
+                return $entrada;
+            });
+        } catch (\Throwable $e) {
+            report($e);
+            return response()->json(['message' => 'Falha ao criar o rascunho: ' . $e->getMessage()], 500);
+        }
 
         Cache::forget($chaveCache);
 
@@ -408,9 +442,10 @@ public function cadastrarPendentes(Request $request)
     public function create()
     {
         $entrada = new EntradaNota([
-            'modelo'          => '55',
-            'data_entrada'    => today()->toDateString(),
-            'atualizar_custo' => true,
+            'operacao_entrada_id' => OperacaoEntrada::where('codigo', 'compra_comercializacao')->value('id'),
+            'modelo'              => '55',
+            'data_entrada'        => today()->toDateString(),
+            'atualizar_custo'     => true,
         ]);
 
         return view('notasfiscais.entrada.create', $this->dadosFormulario($entrada));
@@ -515,17 +550,19 @@ public function cadastrarPendentes(Request $request)
             'fornecedores'    => Fornecedor::ativos()->orderBy('nome')->get(),
             'itens'           => $itens,
             'somenteLeitura'  => $entrada->exists && ! $entrada->isRascunho(),
+            'operacoes'       => OperacaoEntrada::where('ativo', true)->orderBy('ordem')->get(),
         ];
     }
 
     private function validar(Request $request, ?EntradaNota $entrada): array
     {
         $dados = $request->validate([
-            'fornecedor_id'     => ['required', 'exists:fornecedores,id'],
-            'modelo'            => ['required', Rule::in(['55', '01'])],
-            'serie'             => ['nullable', 'string', 'max:3'],
-            'numero'            => ['required', 'string', 'max:9'],
-            'chave_acesso'      => [
+            'operacao_entrada_id' => ['required', Rule::exists('operacoes_entrada', 'id')->where('ativo', true)],
+            'fornecedor_id'       => ['required', 'exists:fornecedores,id'],
+            'modelo'              => ['required', Rule::in(['55', '01'])],
+            'serie'               => ['nullable', 'string', 'max:3'],
+            'numero'              => ['required', 'string', 'max:9'],
+            'chave_acesso'        => [
                 'nullable', 'digits:44',
                 Rule::unique('entradas_nota', 'chave_acesso')->ignore($entrada?->id),
             ],
@@ -547,6 +584,7 @@ public function cadastrarPendentes(Request $request)
             'itens.*.lote'              => ['nullable', 'string', 'max:30'],
             'itens.*.validade'          => ['nullable', 'date'],
         ], [
+            'operacao_entrada_id.required' => 'Selecione a operação (CFOP) da entrada.',
             'itens.required'       => 'Adicione ao menos um item à entrada.',
             'itens.min'            => 'Adicione ao menos um item à entrada.',
             'chave_acesso.digits'  => 'A chave de acesso deve ter 44 dígitos.',
@@ -601,6 +639,11 @@ public function cadastrarPendentes(Request $request)
             $entrada->atualizar_custo = $request->boolean('atualizar_custo');
             $entrada->save();
 
+            $fiscaisAnteriores = $entrada->itens->mapWithKeys(fn ($i) => [
+                $i->produto_id . '|' . $i->codigo_fornecedor
+                    => $i->only(['cfop_origem', 'cst_origem', 'csosn_origem', 'origem_mercadoria']),
+            ]);
+
             // Rascunho: recria os itens a cada gravação
             $entrada->itens()->delete();
 
@@ -609,6 +652,7 @@ public function cadastrarPendentes(Request $request)
                 $qtd      = (float) $item['quantidade'];
                 $unit     = (float) $item['valor_unitario'];
                 $desconto = (float) ($item['valor_desconto'] ?? 0);
+                $fiscal = $fiscaisAnteriores->get($produto->id . '|' . ($item['codigo_fornecedor'] ?? ''), []);
 
                 $entrada->itens()->create([
                     'produto_id'        => $produto->id,
@@ -621,13 +665,35 @@ public function cadastrarPendentes(Request $request)
                     'valor_total'       => round(($qtd * $unit) - $desconto, 2),
                     'lote'              => $item['lote'] ?? null,
                     'validade'          => $item['validade'] ?? null,
+                    ...$fiscal,
                 ]);
             }
 
             $entrada->recalcularTotais();
+            $this->aplicarConversaoFiscal($entrada);
 
             return $entrada;
         });
+    }
+
+    private function aplicarConversaoFiscal(EntradaNota $entrada): void
+    {
+        $entrada->load(['operacao', 'fornecedor', 'itens']);
+
+        if (! $entrada->operacao) {
+            return;
+        }
+
+        $conversao = new ConversaoFiscalEntrada($entrada->operacao);
+        $presumido = $conversao->cfopOrigemPresumido($entrada->fornecedor);
+
+        foreach ($entrada->itens as $item) {
+            $item->update($conversao->converter(
+                $item->cfop_origem ?: $presumido,
+                $item->cst_origem,
+                $item->csosn_origem
+            ));
+        }
     }
 
     /**
@@ -641,8 +707,9 @@ public function cadastrarPendentes(Request $request)
             if (! $entrada->isRascunho()) {
                 return; // proteção contra duplo clique / reenvio
             }
+            $movimenta = $entrada->operacao?->movimenta_estoque ?? true;
 
-            foreach ($entrada->itens as $item) {
+            foreach ($movimenta ? $entrada->itens : [] as $item) {
                 $produto = Produto::whereKey($item->produto_id)->lockForUpdate()->firstOrFail();
 
                 $produto->increment('estoque', $item->quantidade);
