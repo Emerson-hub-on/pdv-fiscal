@@ -173,11 +173,13 @@ function opSelecionar(id) {
             label.textContent = opRotulo(o);
             label.className = 'text-gray-800';
         }
+        if (typeof renderizarGrid === 'function') renderizarGrid();
     }
 
     opAplicarNoImport(o);
     fecharModalOperacao();
 }
+
 
 function opMostrarCadastro() {
     ['op-cfop', 'op-cfop-st', 'op-descricao'].forEach(id => document.getElementById(id).value = '');

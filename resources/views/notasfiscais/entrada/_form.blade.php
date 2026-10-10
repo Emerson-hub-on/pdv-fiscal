@@ -50,10 +50,9 @@
                 <div class="flex gap-2">
                     <select id="fornecedor_id" name="fornecedor_id" class="{{ $inputCls }}" @disabled($somenteLeitura)>
                         <option value="">Selecionar fornecedor...</option>
-                        @foreach ($fornecedores as $f)
-                            <option value="{{ $f->id }}" @selected(old('fornecedor_id', $entrada->fornecedor_id) == $f->id)>
-                                {{ $f->nome_exibicao }} — {{ $f->documento_formatado }}
-                            </option>
+                        @foreach ($fornecedores as $f) @dump($f->toArray())
+<option value="{{ $f->id }}" data-uf="{{ $f->uf }}" @selected(old('fornecedor_id', $entrada->fornecedor_id) == $f->id)>
+                        {{ $f->nome_exibicao }} - {{ $f->documento_formatado }}
                         @endforeach
                     </select>
                     @unless ($somenteLeitura)
@@ -217,6 +216,10 @@
                     <tr>
                         <th class="text-left px-3 py-2">Descrição</th>
                         <th class="text-left px-3 py-2">Cód. forn.</th>
+                        <th class="text-left px-3 py-2">CFOP</th>
+                        <th class="text-left px-3 py-2">
+                        {{ $fiscal['regime'] === 'normal' ? 'CST' : 'CSOSN' }}
+                        </th>
                         <th class="text-right px-3 py-2">Qtd</th>
                         <th class="text-right px-3 py-2">Vl Unit</th>
                         <th class="text-right px-3 py-2">Desconto</th>
@@ -229,12 +232,12 @@
                 <tbody id="linhas-grid-itens" class="divide-y divide-gray-100"></tbody>
                 <tfoot class="bg-gray-50 font-medium">
                     <tr>
-                        <td colspan="5" class="px-3 py-1 text-right text-gray-500">Produtos</td>
+                        <td colspan="7" class="px-3 py-1 text-right text-gray-500">Produtos</td>
                         <td class="px-3 py-1 text-right" id="total-produtos">R$ 0,00</td>
                         <td colspan="3"></td>
                     </tr>
                     <tr>
-                        <td colspan="5" class="px-3 py-2 text-right">Total da nota</td>
+                        <td colspan="7" class="px-3 py-2 text-right">Total da nota</td>
                         <td class="px-3 py-2 text-right" id="total-nota">R$ 0,00</td>
                         <td colspan="3"></td>
                     </tr>
@@ -375,7 +378,8 @@ const urlFornecedorRapido = {{ Illuminate\Support\Js::from(route('fornecedores.r
 const csrfToken = {{ Illuminate\Support\Js::from(csrf_token()) }};
 
 let itensNota = [];
-let produtoEditor = null;      // produto selecionado no editor
+let produtoEditor = null;   // produto selecionado no editor
+let fiscalPreservado = null;   // dados fiscais do item em edição   
 let resultadosBusca = [];
 let indiceBusca = 0;
 let timerBusca = null;
@@ -419,6 +423,121 @@ function totalItem(item) {
     return arred2((item.quantidade * item.valor_unitario) - item.valor_desconto);
 }
 
+// ---------------------------------------------------------------
+// Classificação fiscal dos itens (CFOP e CST/CSOSN de entrada)
+// ---------------------------------------------------------------
+const regrasFiscais = {{ Illuminate\Support\Js::from($fiscal) }};
+const rotuloCst = regrasFiscais.regime === 'normal' ? 'CST' : 'CSOSN';
+
+function operacaoAtual() {
+    return document.getElementById('operacao_entrada_id')?.value || '';
+}
+
+// Item digitado (sem XML): presume o CFOP de origem pela UF do fornecedor
+function cfopOrigemPresumido() {
+    const ufFornecedor = (document.getElementById('fornecedor_id')?.selectedOptions[0]?.dataset.uf || '').toUpperCase();
+    const ufEmpresa = (regrasFiscais.ufEmpresa || '').toUpperCase();
+
+    if (!ufFornecedor || !ufEmpresa) return null;
+    return ufFornecedor === ufEmpresa ? '5102' : '6102';
+}
+
+// Regime normal mostra a origem na frente do CST (ex.: 000), como no XML
+function exibirCstEntrada(codigo, origem) {
+    return (regrasFiscais.regime === 'normal' && origem !== '' && origem != null) ? `${origem}${codigo}` : codigo;
+}
+
+function fiscalDoItem(item) {
+    const tipo = item.csosn_origem ? 'csosn' : (item.cst_origem ? 'cst' : null);
+    const codigoOrigem = item.csosn_origem || item.cst_origem || null;
+
+    // Nota finalizada: mostra o que foi gravado, sem recalcular
+    if (somenteLeitura) {
+        return {
+            semOperacao: false,
+            presumido: false,
+            cfopOrigem: item.cfop_origem || null,
+            cfopEntrada: item.cfop_entrada || null,
+            tipo,
+            codigoOrigem,
+            cst: item.cst_entrada ? { cst: item.cst_entrada, credito: item.gera_credito } : null,
+        };
+    }
+
+    const operacao = operacaoAtual();
+    const presumido = !item.cfop_origem;
+    const cfopOrigem = item.cfop_origem || cfopOrigemPresumido();
+
+    return {
+        semOperacao: !operacao,
+        presumido,
+        cfopOrigem,
+        cfopEntrada: operacao && cfopOrigem ? (regrasFiscais.cfops[operacao]?.[cfopOrigem] ?? null) : null,
+        tipo,
+        codigoOrigem,
+        cst: tipo ? (regrasFiscais.csts[`${tipo}:${codigoOrigem}`] ?? null) : null,
+    };
+}
+
+function elemento(tag, classes, texto, titulo = '') {
+    const el = document.createElement(tag);
+    el.className = classes;
+    el.textContent = texto;
+    if (titulo) el.title = titulo;
+    return el;
+}
+
+function celulaCfop(f) {
+    const td = document.createElement('td');
+    td.className = 'px-3 py-2 text-left';
+
+    if (f.semOperacao) {
+        td.appendChild(elemento('span', 'text-xs text-gray-400', 'Escolha a operação'));
+        return td;
+    }
+
+    if (f.cfopEntrada) {
+        const descricao = regrasFiscais.descricoes[f.cfopEntrada] ?? '';
+        const origem = f.cfopOrigem
+            ? ` · CFOP do fornecedor: ${f.cfopOrigem}${f.presumido ? ' (presumido pela UF)' : ''}`
+            : '';
+
+        td.appendChild(elemento('span',
+            'inline-block px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-mono text-xs font-semibold',
+            f.cfopEntrada, descricao + origem));
+    } else {
+        td.appendChild(elemento('span', 'inline-block px-2 py-0.5 rounded bg-amber-50 text-amber-700 text-xs font-medium', 'Pendente',
+            f.cfopOrigem ? `Sem regra para o CFOP ${f.cfopOrigem} nesta operação`
+                         : 'Sem CFOP de origem: selecione o fornecedor (UF) ou importe pelo XML'));
+    }
+
+    return td;
+}
+
+function celulaCst(f, item) {
+    const td = document.createElement('td');
+    td.className = 'px-3 py-2 text-left';
+
+    if (!f.tipo) {
+        td.appendChild(elemento('span', 'text-xs text-gray-400', '—', 'Sem CST/CSOSN do XML (item digitado)'));
+        return td;
+    }
+
+    if (f.cst) {
+        const origem = f.tipo === 'cst' ? `${item.origem_mercadoria ?? ''}${item.cst_origem}` : item.csosn_origem;
+
+        td.appendChild(elemento('span',
+            'inline-block px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-mono text-xs font-semibold',
+            exibirCstEntrada(f.cst.cst, item.origem_mercadoria),
+            `${rotuloCst} de entrada · ${f.tipo.toUpperCase()} do fornecedor: ${origem} · gera crédito de ICMS: ${f.cst.credito ? 'sim' : 'não'}`));
+    } else {
+        td.appendChild(elemento('span', 'inline-block px-2 py-0.5 rounded bg-amber-50 text-amber-700 text-xs font-medium', 'Pendente',
+            `Sem conversão para o ${f.tipo.toUpperCase()} ${f.codigoOrigem} no seu regime`));
+    }
+
+    return td;
+}
+
 function renderizarGrid() {
     const corpo = document.getElementById('linhas-grid-itens');
     const campos = document.getElementById('campos-itens');
@@ -434,23 +553,30 @@ function renderizarGrid() {
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-gray-50';
 
-        const celulas = [
+        const adicionarCelulas = (celulas) => celulas.forEach(([texto, alinhamento]) => {
+            const td = document.createElement('td');
+            td.className = `px-3 py-2 ${alinhamento}`;
+            td.textContent = texto;
+            tr.appendChild(td);
+        });
+
+        const fiscal = fiscalDoItem(item);
+
+        // Ordem das colunas: Descrição, Cód. forn., CFOP, CST/CSOSN, Qtd, Vl Unit, Desconto, Vl Total, Lote, Validade, Ações
+        adicionarCelulas([
             [item.descricao, 'text-left'],
             [item.codigo_fornecedor || '—', 'text-left'],
+        ]);
+        tr.appendChild(celulaCfop(fiscal));
+        tr.appendChild(celulaCst(fiscal, item));
+        adicionarCelulas([
             [Number(item.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 3 }), 'text-right'],
             [moeda(item.valor_unitario), 'text-right'],
             [moeda(item.valor_desconto), 'text-right'],
             [moeda(total), 'text-right'],
             [item.lote || '—', 'text-left'],
             [dataBr(item.validade), 'text-left'],
-        ];
-
-        celulas.forEach(([texto, alinhamento]) => {
-            const td = document.createElement('td');
-            td.className = `px-3 py-2 ${alinhamento}`;
-            td.textContent = texto;
-            tr.appendChild(td);
-        });
+        ]);
 
         const tdAcoes = document.createElement('td');
         tdAcoes.className = 'px-3 py-2 text-right';
@@ -475,7 +601,20 @@ function renderizarGrid() {
         corpo.appendChild(tr);
 
         // Campos enviados ao servidor
-        ['produto_id', 'descricao', 'codigo_fornecedor', 'quantidade', 'valor_unitario', 'valor_desconto', 'lote', 'validade']
+        [
+            'produto_id', 
+            'descricao',
+            'codigo_fornecedor', 
+            'quantidade', 
+            'valor_unitario', 
+            'valor_desconto', 
+            'lote', 
+            'validade',
+            'cfop_origem', 
+            'cst_origem', 
+            'csosn_origem', 
+            'origem_mercadoria'
+        ]
             .forEach(campo => {
                 const input = document.createElement('input');
                 input.type = 'hidden';
@@ -530,6 +669,7 @@ function abrirEditor(produto, dados = {}) {
 
 function cancelarEditor() {
     produtoEditor = null;
+    fiscalPreservado = null;
     document.getElementById('editor-item').classList.add('hidden');
 }
 
@@ -553,6 +693,7 @@ function adicionarLinhaNaGrid() {
         valor_desconto: desconto,
         lote: document.getElementById('ed-lote').value.trim(),
         validade: document.getElementById('ed-validade').value,
+        ...(fiscalPreservado ?? {}),
     });
 
     cancelarEditor();
@@ -562,6 +703,10 @@ function adicionarLinhaNaGrid() {
 
 function editarLinha(i) {
     const item = itensNota[i];
+    fiscalPreservado = {
+        cfop_origem: item.cfop_origem, cst_origem: item.cst_origem,
+        csosn_origem: item.csosn_origem, origem_mercadoria: item.origem_mercadoria,
+    };
     itensNota.splice(i, 1);
     renderizarGrid();
 
@@ -738,7 +883,9 @@ async function salvarFornecedor() {
         }
 
         const select = document.getElementById('fornecedor_id');
-        select.add(new Option(json.nome, json.id, true, true));
+        const opcao = new Option(json.nome, json.id, true, true);
+        opcao.dataset.uf = json.uf ?? '';
+        select.add(opcao);
         select.value = json.id;
 
         fecharModalFornecedor();
@@ -761,7 +908,15 @@ itensNota = itensIniciais.map(i => ({
     valor_desconto: parseFloat(i.valor_desconto) || 0,
     lote: i.lote ?? '',
     validade: i.validade ?? '',
+    cfop_origem: i.cfop_origem ?? '',
+    cst_origem: i.cst_origem ?? '',
+    csosn_origem: i.csosn_origem ?? '',
+    origem_mercadoria: i.origem_mercadoria ?? '',
+    cfop_entrada: i.cfop_entrada ?? null,
+    cst_entrada: i.cst_entrada ?? null,
+    gera_credito: i.gera_credito ?? null,
 }));
+document.getElementById('fornecedor_id').addEventListener('change', renderizarGrid);
 
 renderizarGrid();
 </script>

@@ -25,6 +25,7 @@ use App\Models\OperacaoEntrada;
 use App\Services\ConversaoFiscalEntrada;
 use App\Models\CfopEntradaConversao;
 use App\Models\FormaPagamento;
+use App\Models\CstEntradaConversao;
 
 
 class EntradaNotaController extends Controller
@@ -488,6 +489,7 @@ class EntradaNotaController extends Controller
 
     public function edit(EntradaNota $entrada)
     {
+        $entrada->load(['itens.produto', 'itens.cfopEntrada', 'operacao']);
         return view('notasfiscais.entrada.edit', $this->dadosFormulario($entrada));
     }
 
@@ -551,6 +553,7 @@ class EntradaNotaController extends Controller
 
     private function dadosFormulario(EntradaNota $entrada): array
     {
+        $entrada->loadMissing('itens.cfopEntrada');
         $itens = old('itens') ?? $entrada->itens
             ->map(fn ($i) => [
                 'produto_id'        => $i->produto_id,
@@ -561,6 +564,13 @@ class EntradaNotaController extends Controller
                 'valor_desconto'    => (float) $i->valor_desconto,
                 'lote'              => $i->lote,
                 'validade'          => $i->validade?->format('Y-m-d'),
+                'cfop_origem'       => $i->cfop_origem,
+                'cst_origem'        => $i->cst_origem,
+                'csosn_origem'      => $i->csosn_origem,
+                'origem_mercadoria' => $i->origem_mercadoria,
+                'cfop_entrada'      => $i->cfopEntrada?->codigo,
+                'cst_entrada'       => $i->cst_csosn_entrada,
+                'gera_credito'      => $i->gera_credito,
             ])
             ->values()
             ->all();
@@ -572,7 +582,34 @@ class EntradaNotaController extends Controller
             'somenteLeitura'  => $entrada->exists && ! $entrada->isRascunho(),
             'operacoes'       => $this->operacoesParaModal(),      
             'formasPagamento' => FormaPagamento::ativos()->paraEntrada()
-                ->orderByRaw('ordem IS NULL, ordem ASC, descricao ASC')->get(),      
+                ->orderByRaw('ordem IS NULL, ordem ASC, descricao ASC')->get(), 
+            'fiscal'          => $this->regrasFiscais(),     
+        ];
+    }
+
+
+    /** Regras de conversão enviadas à tela para o cálculo ao vivo na grade. */
+    private function regrasFiscais(): array
+    {
+        $empresa = Empresa::atual();
+        $regime = $empresa->crt == 3 ? 'normal' : 'simples';
+
+        $cfops = [];
+        foreach (CfopEntradaConversao::with('cfopEntrada:id,codigo')->get() as $c) {
+            $cfops[$c->operacao_entrada_id][$c->cfop_origem] = $c->cfopEntrada?->codigo;
+        }
+
+        $csts = CstEntradaConversao::where('regime', $regime)->get()
+            ->mapWithKeys(fn ($c) => [
+                $c->tipo_origem . ':' . $c->codigo_origem => ['cst' => $c->codigo_entrada, 'credito' => (bool) $c->gera_credito],
+            ])->all();
+
+        return [
+            'regime'     => $regime,
+            'ufEmpresa'  => $empresa->getAttributes()['uf'] ?? null,
+            'cfops'      => $cfops,
+            'csts'       => $csts,
+            'descricoes' => CfopEntrada::pluck('descricao', 'codigo'),
         ];
     }
 
@@ -690,6 +727,10 @@ class EntradaNotaController extends Controller
             'itens.*.valor_desconto'    => ['nullable', 'numeric', 'min:0'],
             'itens.*.lote'              => ['nullable', 'string', 'max:30'],
             'itens.*.validade'          => ['nullable', 'date'],
+            'itens.*.cfop_origem'       => ['nullable', 'digits:4'],
+            'itens.*.cst_origem'        => ['nullable', 'string', 'max:3'],
+            'itens.*.csosn_origem'      => ['nullable', 'string', 'max:3'],
+            'itens.*.origem_mercadoria' => ['nullable', 'integer', 'between:0,8'],
         ], [
             'operacao_entrada_id.required' => 'Selecione a operação (CFOP) da entrada.',
             'itens.required'       => 'Adicione ao menos um item à entrada.',
@@ -766,11 +807,6 @@ class EntradaNotaController extends Controller
             $entrada->atualizar_custo = $request->boolean('atualizar_custo');
             $entrada->save();
 
-            $fiscaisAnteriores = $entrada->itens->mapWithKeys(fn ($i) => [
-                $i->produto_id . '|' . $i->codigo_fornecedor
-                    => $i->only(['cfop_origem', 'cst_origem', 'csosn_origem', 'origem_mercadoria']),
-            ]);
-
             // Rascunho: recria os itens a cada gravação
             $entrada->itens()->delete();
 
@@ -779,7 +815,6 @@ class EntradaNotaController extends Controller
                 $qtd      = (float) $item['quantidade'];
                 $unit     = (float) $item['valor_unitario'];
                 $desconto = (float) ($item['valor_desconto'] ?? 0);
-                $fiscal = $fiscaisAnteriores->get($produto->id . '|' . ($item['codigo_fornecedor'] ?? ''), []);
 
                 $entrada->itens()->create([
                     'produto_id'        => $produto->id,
@@ -792,7 +827,10 @@ class EntradaNotaController extends Controller
                     'valor_total'       => round(($qtd * $unit) - $desconto, 2),
                     'lote'              => $item['lote'] ?? null,
                     'validade'          => $item['validade'] ?? null,
-                    ...$fiscal,
+                    'cfop_origem'       => $item['cfop_origem'] ?? null,
+                    'cst_origem'        => $item['cst_origem'] ?? null,
+                    'csosn_origem'      => $item['csosn_origem'] ?? null,
+                    'origem_mercadoria' => $item['origem_mercadoria'] ?? null,
                 ]);
             }
 
