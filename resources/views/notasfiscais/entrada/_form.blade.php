@@ -83,15 +83,19 @@
                     @error('serie') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
                 </div>
 
+                @php
+                    $opSelecionada = collect($operacoes)->firstWhere('id', old('operacao_entrada_id', $entrada->operacao_entrada_id));
+                @endphp
                 <div>
-                    <label class="{{ $labelCls }}">Operação / CFOP da entrada <span class="text-red-500">*</span></label>
-                    <select name="operacao_entrada_id" required class="{{ $inputCls }}" @disabled($somenteLeitura)>
-                        <option value="">Selecione...</option>
-                        @foreach ($operacoes as $op)
-                            <option value="{{ $op->id }}" @selected(old('operacao_entrada_id', $entrada->operacao_entrada_id) == $op->id)>{{ $op->descricao }}</option>
-                        @endforeach
-                    </select>
-                    @error('operacao_entrada_id') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Operação / CFOP da entrada <span class="text-red-500">*</span></label>
+                    <input type="hidden" name="operacao_entrada_id" id="operacao_entrada_id"
+                        value="{{ old('operacao_entrada_id', $entrada->operacao_entrada_id) }}">
+                    <button type="button" onclick="abrirModalOperacao()" @disabled($somenteLeitura ?? false)
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition disabled:bg-gray-50 disabled:cursor-not-allowed">
+                        <span id="operacao_entrada_label" class="{{ $opSelecionada ? 'text-gray-800' : 'text-gray-500' }}">
+                            {{ $opSelecionada ? (($opSelecionada['cfops'] ?: '—') . ' — ' . $opSelecionada['descricao']) : 'Clique para selecionar...' }}
+                        </span>
+                    </button>
                 </div>
             </div>
 

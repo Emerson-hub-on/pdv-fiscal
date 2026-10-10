@@ -165,7 +165,7 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
         // ---------------- NOTA FISCAL - SAÍDA (NF-e modelo 55) ----------------
         Route::middleware('permissao:notas')->group(function () {
 
-            // ---------------- FATURAMENTO - ENTRADAS DE NOTA ----------------
+        // ---------------- FATURAMENTO - ENTRADAS DE NOTA ----------------
             Route::prefix('faturamento/entradas-nota')->name('entradas-nota.')->group(function () {
                 Route::get('produtos', [EntradaNotaController::class, 'buscarProdutos'])->name('produtos');
                 Route::post('importar-xml/analisar', [EntradaNotaController::class, 'analisarXml'])->name('importar-xml.analisar');
@@ -173,6 +173,7 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::post('importar-xml/opcoes', [EntradaNotaController::class, 'salvarOpcoesXml'])->middleware('permissao:produtos')->name('importar-xml.opcoes');
                 Route::post('importar-xml/cadastrar-pendentes', [EntradaNotaController::class, 'cadastrarPendentes'])->middleware('permissao:produtos')->name('importar-xml.cadastrar-pendentes');
                 Route::post('importar-xml/confirmar', [EntradaNotaController::class, 'confirmarImportacaoXml'])->name('importar-xml.confirmar');
+                Route::post('operacoes', [EntradaNotaController::class, 'criarOperacao'])->name('operacoes.store');
 
                 Route::get('/', [EntradaNotaController::class, 'index'])->name('index');
                 Route::get('criar', [EntradaNotaController::class, 'create'])->name('create');

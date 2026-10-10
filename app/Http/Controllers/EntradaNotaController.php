@@ -23,6 +23,7 @@ use App\Models\Empresa;
 use App\Models\CfopEntrada;
 use App\Models\OperacaoEntrada;
 use App\Services\ConversaoFiscalEntrada;
+use App\Models\CfopEntradaConversao;
 
 
 class EntradaNotaController extends Controller
@@ -550,8 +551,92 @@ public function confirmarImportacaoXml(Request $request)
             'fornecedores'    => Fornecedor::ativos()->orderBy('nome')->get(),
             'itens'           => $itens,
             'somenteLeitura'  => $entrada->exists && ! $entrada->isRascunho(),
-            'operacoes'       => OperacaoEntrada::where('ativo', true)->orderBy('ordem')->get(),
+            'operacoes'       => $this->operacoesParaModal(),            
         ];
+    }
+
+    /** Operações com os CFOPs principais (o que a 5102/6102 do fornecedor vira). */
+    private function operacoesParaModal()
+    {
+        $codigos = CfopEntrada::pluck('codigo', 'id');
+        $mapa = CfopEntradaConversao::whereIn('cfop_origem', ['5102', '6102'])
+            ->get()
+            ->groupBy('operacao_entrada_id');
+
+        return OperacaoEntrada::where('ativo', true)
+            ->orderBy('ordem')
+            ->orderBy('descricao')
+            ->get()
+            ->map(fn ($op) => [
+                'id'        => $op->id,
+                'descricao' => $op->descricao,
+                'cfops'     => collect($mapa->get($op->id, []))
+                    ->sortBy('cfop_origem')
+                    ->map(fn ($c) => $codigos->get($c->cfop_entrada_id))
+                    ->filter()
+                    ->unique()
+                    ->implode(' / '),
+            ])
+            ->values();
+    }
+
+    public function criarOperacao(Request $request)
+    {
+        $dados = $request->validate([
+            'cfop'              => ['required', 'regex:/^[12]\d{3}$/'],
+            'cfop_st'           => ['nullable', 'regex:/^[12]\d{3}$/'],
+            'descricao'         => ['required', 'string', 'max:255', Rule::unique('operacoes_entrada', 'descricao')],
+            'movimenta_estoque' => ['required', 'boolean'],
+        ], [
+            'cfop.regex'          => 'Informe o CFOP com 4 dígitos, começando por 1 (dentro do estado) ou 2 (outros estados).',
+            'cfop_st.regex'       => 'O CFOP de ST deve ter 4 dígitos, começando por 1 ou 2.',
+            'descricao.required'  => 'Informe a natureza da operação.',
+            'descricao.unique'    => 'Já existe uma operação com esta natureza.',
+        ]);
+
+        $sufixo   = substr($dados['cfop'], 1);
+        $sufixoSt = ! empty($dados['cfop_st']) ? substr($dados['cfop_st'], 1) : $sufixo;
+
+        $operacao = DB::transaction(function () use ($dados, $sufixo, $sufixoSt) {
+            // catálogo: cria o 1xxx e o 2xxx (e os de ST, se informados)
+            foreach (['1', '2'] as $area) {
+                CfopEntrada::firstOrCreate(
+                    ['codigo' => $area . $sufixo],
+                    ['descricao' => $dados['descricao'], 'ativo' => true]
+                );
+
+                if ($sufixoSt !== $sufixo) {
+                    CfopEntrada::firstOrCreate(
+                        ['codigo' => $area . $sufixoSt],
+                        ['descricao' => $dados['descricao'] . ' (com ST)', 'ativo' => true]
+                    );
+                }
+            }
+
+            $base = Str::limit(Str::slug($dados['descricao'], '_'), 36, '') ?: 'operacao';
+            $codigo = $base;
+            for ($n = 2; OperacaoEntrada::where('codigo', $codigo)->exists(); $n++) {
+                $codigo = $base . '_' . $n;
+            }
+
+            $operacao = OperacaoEntrada::create([
+                'codigo'            => $codigo,
+                'descricao'         => $dados['descricao'],
+                'movimenta_estoque' => $dados['movimenta_estoque'],
+                'ordem'             => (int) OperacaoEntrada::max('ordem') + 1,
+                'ativo'             => true,
+            ]);
+
+            CfopEntradaConversao::gerar($operacao, $sufixo, $sufixoSt, array_keys(CfopEntradaConversao::ORIGENS));
+
+            return $operacao;
+        });
+
+        return response()->json([
+            'id'        => $operacao->id,
+            'descricao' => $operacao->descricao,
+            'cfops'     => "1{$sufixo} / 2{$sufixo}",
+        ]);
     }
 
     private function validar(Request $request, ?EntradaNota $entrada): array

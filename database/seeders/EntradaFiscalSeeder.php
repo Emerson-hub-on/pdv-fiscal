@@ -46,19 +46,6 @@ class EntradaFiscalSeeder extends Seeder
 
     private function operacoesEConversoesCfop(): void
     {
-        // CFOPs que o fornecedor usa na saída, por grupo
-        $origens = [
-            'venda' => [
-                '5101', '5102', '5103', '5104', '5105', '5106', '5109', '5110',
-                '5116', '5117', '5118', '5119', '5120', '5122', '5123', '5551',
-                '6101', '6102', '6103', '6104', '6105', '6106', '6107', '6108', '6109', '6110',
-                '6116', '6117', '6118', '6119', '6120', '6122', '6123', '6551',
-            ],
-            'st'          => ['5401', '5402', '5403', '5404', '5405', '6401', '6402', '6403', '6404', '6405'],
-            'bonificacao' => ['5910', '6910'],
-            'amostra'     => ['5911', '6911'],
-            'outras'      => ['5949', '6949'],
-        ];
 
         // [codigo, descricao, movimenta_estoque, ordem, sufixo, sufixo_com_st, grupos de origem aceitos]
         $operacoes = [
@@ -71,26 +58,12 @@ class EntradaFiscalSeeder extends Seeder
             ['outras_entradas',          'Outras entradas não especificadas',              true,  7, '949', '949', ['venda', 'st', 'bonificacao', 'amostra', 'outras']],
         ];
 
-        $cfops = CfopEntrada::pluck('id', 'codigo');
-
         foreach ($operacoes as [$codigo, $descricao, $movimenta, $ordem, $sufixo, $sufixoSt, $grupos]) {
             $operacao = OperacaoEntrada::firstOrCreate(
                 ['codigo' => $codigo],
                 ['descricao' => $descricao, 'movimenta_estoque' => $movimenta, 'ordem' => $ordem, 'ativo' => true]
             );
-
-            foreach ($grupos as $grupo) {
-                foreach ($origens[$grupo] as $cfopOrigem) {
-                    // 5xxx (dentro do estado) -> 1xxx ; 6xxx (outro estado) -> 2xxx
-                    $area = $cfopOrigem[0] === '5' ? '1' : '2';
-                    $cfopEntrada = $area . ($grupo === 'st' ? $sufixoSt : $sufixo);
-
-                    CfopEntradaConversao::firstOrCreate(
-                        ['operacao_entrada_id' => $operacao->id, 'cfop_origem' => $cfopOrigem],
-                        ['cfop_entrada_id' => $cfops[$cfopEntrada]]
-                    );
-                }
-            }
+            CfopEntradaConversao::gerar($operacao, $sufixo, $sufixoSt, $grupos);
         }
     }
 

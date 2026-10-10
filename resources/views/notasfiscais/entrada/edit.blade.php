@@ -14,4 +14,5 @@
         </div>
     @endif
     @include('notasfiscais.entrada._form')
+    @include('notasfiscais.entrada._modal-operacao')
 @endsection

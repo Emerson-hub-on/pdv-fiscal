@@ -115,6 +115,7 @@
     </div>
 
     @include('notasfiscais.entrada._form')
+    @include('notasfiscais.entrada._modal-operacao')
     @include('notasfiscais.entrada._modal-importar-xml')
 
     @if ($podeProdutos)
