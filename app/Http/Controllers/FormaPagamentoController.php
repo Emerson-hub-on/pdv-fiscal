@@ -12,6 +12,7 @@ class FormaPagamentoController extends Controller
         $termo = $request->get('termo');
 
         $formas = FormaPagamento::ativos()
+            ->paraSaida()
             ->when($termo, fn ($q) => $q->where('descricao', 'like', "%{$termo}%"))
             ->orderByRaw('ordem IS NULL, ordem ASC, descricao ASC')
             ->get();
@@ -48,8 +49,10 @@ class FormaPagamentoController extends Controller
         $proximaOrdem = (FormaPagamento::max('ordem') ?? 0) + 1;
 
         $forma = FormaPagamento::create([
-            'descricao' => $dados['descricao'],
-            'ordem' => $proximaOrdem,
+            'descricao'      => $dados['descricao'],
+            'meio_pagamento' => $dados['meio_pagamento'],
+            'ind_pag'        => $dados['ind_pag'],
+            'ordem'          => $proximaOrdem,
         ]);
 
         return response()->json($forma);

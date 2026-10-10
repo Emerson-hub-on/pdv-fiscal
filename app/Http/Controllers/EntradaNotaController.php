@@ -24,6 +24,7 @@ use App\Models\CfopEntrada;
 use App\Models\OperacaoEntrada;
 use App\Services\ConversaoFiscalEntrada;
 use App\Models\CfopEntradaConversao;
+use App\Models\FormaPagamento;
 
 
 class EntradaNotaController extends Controller
@@ -251,6 +252,9 @@ class EntradaNotaController extends Controller
                 'fornecedor_nome'      => $nfe['fornecedor']['nome'],
                 'fornecedor_documento' => $nfe['fornecedor']['cpf_cnpj'],
                 'fornecedor_novo'      => $fornecedor === null,
+                'pagamento' => ($f = $this->formaDoXml($nfe['pagamento'] ?? null))
+                    ? $f->descricao . ' (' . ($f->ind_pag ? 'a prazo' : 'à vista') . ')'
+                    : null,
             ],
             'itens' => $itens,
         ]);
@@ -269,7 +273,7 @@ class EntradaNotaController extends Controller
         return Ncm::whereIn('codigo', [$codigo, $formatado])->first(['id', 'codigo', 'descricao']);
     }
 
-public function confirmarImportacaoXml(Request $request)
+    public function confirmarImportacaoXml(Request $request)
     {
         $dados = $request->validate([
             'token'      => ['required', 'string'],
@@ -311,6 +315,17 @@ public function confirmarImportacaoXml(Request $request)
                     $avisos[] = "O fornecedor \"{$fornecedor->nome}\" estava inativo e foi reativado.";
                 }
 
+                $forma = $this->formaDoXml($nfe['pagamento'] ?? null);
+
+                if (! $forma && ! empty($nfe['pagamento']['meio'])) {
+                    $avisos[] = 'O meio de pagamento do XML (código ' . $nfe['pagamento']['meio']
+                        . ') não está cadastrado em Formas de pagamento. Escolha a forma manualmente.';
+                }
+
+                if (($nfe['pagamento']['qtd'] ?? 0) > 1) {
+                    $avisos[] = 'O XML informa ' . $nfe['pagamento']['qtd'] . ' formas de pagamento; foi usada a de maior valor.';
+                }
+
                 $entrada = EntradaNota::create([
                     'operacao_entrada_id' => $nfe['operacao_entrada_id'],
                     'fornecedor_id'     => $fornecedor->id,
@@ -323,7 +338,12 @@ public function confirmarImportacaoXml(Request $request)
                     'numero'            => $nfe['numero'],
                     'data_emissao'      => $nfe['data_emissao'],
                     'data_entrada'      => today()->toDateString(),
-                    'natureza_operacao' => $nfe['natureza_operacao'],
+                    'forma_pagamento_id'=> $forma?->id,
+                    'natureza_operacao' => Str::limit(
+                        (string) OperacaoEntrada::whereKey($nfe['operacao_entrada_id'])->value('descricao'),
+                        60,
+                        ''
+                    ),
                     'valor_frete'       => $nfe['valor_frete'],
                     'valor_desconto'    => 0, // o desconto do XML já está nos itens
                     'valor_outras'      => $nfe['valor_outras'],
@@ -550,7 +570,9 @@ public function confirmarImportacaoXml(Request $request)
             'fornecedores'    => Fornecedor::ativos()->orderBy('nome')->get(),
             'itens'           => $itens,
             'somenteLeitura'  => $entrada->exists && ! $entrada->isRascunho(),
-            'operacoes'       => $this->operacoesParaModal(),            
+            'operacoes'       => $this->operacoesParaModal(),      
+            'formasPagamento' => FormaPagamento::ativos()->paraEntrada()
+                ->orderByRaw('ordem IS NULL, ordem ASC, descricao ASC')->get(),      
         ];
     }
 
@@ -584,7 +606,7 @@ public function confirmarImportacaoXml(Request $request)
         $dados = $request->validate([
             'cfop'              => ['required', 'regex:/^[12]\d{3}$/'],
             'cfop_st'           => ['nullable', 'regex:/^[12]\d{3}$/'],
-            'descricao'         => ['required', 'string', 'max:255', Rule::unique('operacoes_entrada', 'descricao')],
+            'descricao'         => ['required', 'string', 'max:60', Rule::unique('operacoes_entrada', 'descricao')],
             'movimenta_estoque' => ['required', 'boolean'],
         ], [
             'cfop.regex'          => 'Informe o CFOP com 4 dígitos, começando por 1 (dentro do estado) ou 2 (outros estados).',
@@ -650,9 +672,10 @@ public function confirmarImportacaoXml(Request $request)
                 'nullable', 'digits:44',
                 Rule::unique('entradas_nota', 'chave_acesso')->ignore($entrada?->id),
             ],
+            'forma_pagamento_id' => ['nullable', Rule::exists('formas_pagamento', 'id')
+                ->where(fn ($q) => $q->where('ativo', true)->where('uso_entrada', true))],
             'data_emissao'      => ['required', 'date'],
             'data_entrada'      => ['required', 'date', 'after_or_equal:data_emissao'],
-            'natureza_operacao' => ['nullable', 'string', 'max:60'],
             'valor_frete'       => ['nullable', 'numeric', 'min:0'],
             'valor_desconto'    => ['nullable', 'numeric', 'min:0'],
             'valor_outras'      => ['nullable', 'numeric', 'min:0'],
@@ -693,6 +716,21 @@ public function confirmarImportacaoXml(Request $request)
         return $dados;
     }
 
+    private function formaDoXml(?array $pag): ?FormaPagamento
+    {
+        if (! $pag || empty($pag['meio'])) {
+            return null;
+        }
+
+        $ind = ($pag['condicao'] ?? null) === 'prazo' ? 1 : 0;
+
+        $base = FormaPagamento::ativos()->paraEntrada()
+            ->where('meio_pagamento', $pag['meio'])
+            ->orderByRaw('ordem IS NULL, ordem ASC');
+
+        return (clone $base)->where('ind_pag', $ind)->first() ?? (clone $base)->first();
+    }
+
     private function salvar(Request $request, ?EntradaNota $entrada): EntradaNota
     {
         $dados = $this->validar($request, $entrada);
@@ -717,6 +755,11 @@ public function confirmarImportacaoXml(Request $request)
             ]);
 
             $entrada->fill(Arr::except($dados, ['itens']));
+            $entrada->natureza_operacao = Str::limit(
+                (string) OperacaoEntrada::whereKey($dados['operacao_entrada_id'])->value('descricao'),
+                60,
+                ''
+            );
             $entrada->valor_frete     = $dados['valor_frete'] ?? 0;
             $entrada->valor_desconto  = $dados['valor_desconto'] ?? 0;
             $entrada->valor_outras    = $dados['valor_outras'] ?? 0;

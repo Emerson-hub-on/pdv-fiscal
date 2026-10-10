@@ -544,6 +544,7 @@ function renderizarConferenciaXml() {
         `NF-e nº <strong>${xmlEsc(nota.numero)}</strong>${nota.serie ? ' / série ' + xmlEsc(nota.serie) : ''} — ` +
         `Fornecedor: <strong>${xmlEsc(nota.fornecedor_nome)}</strong>` +
         (nota.operacao ? ` — Operação: <strong>${xmlEsc(nota.operacao)}</strong>` : '') +
+        (nota.pagamento ? ` — Pagamento: <strong>${xmlEsc(nota.pagamento)}</strong>` : '') +
         (nota.fornecedor_novo ? ' <span class="text-amber-600">(não cadastrado: será cadastrado automaticamente)</span>' : '');
 
     document.getElementById('linhas-conferencia-xml').innerHTML = itens.map((item, i) => {

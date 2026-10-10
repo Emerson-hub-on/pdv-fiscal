@@ -100,18 +100,24 @@
             </div>
 
             <div>
-                <label class="{{ $labelCls }}">Natureza da operação</label>
-                <input type="text" name="natureza_operacao" maxlength="60"
-                       value="{{ old('natureza_operacao', $entrada->natureza_operacao) }}"
-                       placeholder="Ex.: Compra para comercialização"
-                       class="{{ $inputCls }}" @disabled($somenteLeitura)>
-            </div>
-
-            <div>
                 <label class="{{ $labelCls }}">Número</label>
                 <input type="text" name="numero" maxlength="9" value="{{ old('numero', $entrada->numero) }}"
                        class="{{ $inputCls }}" @disabled($somenteLeitura)>
                 @error('numero') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Forma de pagamento</label>
+                <select name="forma_pagamento_id"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                    <option value="">Não informada</option>
+                    @foreach ($formasPagamento as $forma)
+                        <option value="{{ $forma->id }}" @selected(old('forma_pagamento_id', $entrada->forma_pagamento_id) == $forma->id)>
+                            {{ $forma->ind_pag ? 'A prazo' : 'À vista' }} — {{ $forma->descricao }}
+                            
+                        </option>
+                    @endforeach
+                </select>
             </div>
 
             <div class="col-span-2">

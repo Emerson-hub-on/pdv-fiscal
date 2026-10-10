@@ -111,6 +111,25 @@ class NfeXmlParser
             ];
         }
 
+        $pagamento = ['meio' => null, 'condicao' => null, 'qtd' => 0];
+        $maior = -1;
+        foreach ($this->xp->query('n:pag/n:detPag', $inf) as $detPag) {
+            $pagamento['qtd']++;
+            $valor = (float) $this->v('n:vPag', $detPag);
+            if ($valor > $maior) {
+                $maior = $valor;
+                $meio = $this->v('n:tPag', $detPag);
+                $ind  = $this->v('n:indPag', $detPag) ?: $this->v('n:ide/n:indPag', $inf);
+                $pagamento['meio'] = $meio ?: null;
+                $pagamento['condicao'] = match (true) {
+                    $meio === '90'              => null,
+                    $meio === '91', $ind === '1' => 'prazo',
+                    $ind === '0'                => 'avista',
+                    default                     => null,
+                };
+            }
+        }
+
         return [
             'chave'             => $chave,
             'modelo'            => '55',
@@ -122,6 +141,7 @@ class NfeXmlParser
             'valor_outras'      => (float) $this->v('n:total/n:ICMSTot/n:vOutro', $inf),
             'fornecedor'        => $fornecedor,
             'itens'             => $itens,
+            'pagamento'         => $pagamento,
         ];
     }
 

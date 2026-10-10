@@ -28,7 +28,8 @@ class EntradaNota extends Model
         'atualizar_custo', 
         'observacao', 
         'finalizada_em',
-        'operacao_entrada_id'
+        'operacao_entrada_id',
+        'forma_pagamento_id',
     ];
 
     protected $casts = [
@@ -42,6 +43,11 @@ class EntradaNota extends Model
         'valor_outras'    => 'decimal:2',
         'valor_total'     => 'decimal:2',
     ];
+
+    public function formaPagamento()
+    {
+        return $this->belongsTo(FormaPagamento::class, 'forma_pagamento_id');
+    }
 
     public function fornecedor()
     {
