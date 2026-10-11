@@ -56,106 +56,111 @@
             </div>
         @endif
 
-        <div class="grid grid-cols-2 gap-4 max-w-5xl">
-            <div class="col-span-2">
-                <label class="{{ $labelCls }}">Fornecedor</label>
-                <div class="flex gap-2">
-                    <select id="fornecedor_id" name="fornecedor_id" class="{{ $inputCls }}" @disabled($travarCab)>
-                        <option value="">Selecionar fornecedor...</option>
-                        @foreach ($fornecedores as $f)
-                            <option value="{{ $f->id }}" data-uf="{{ $f->uf }}" @selected(old('fornecedor_id', $entrada->fornecedor_id) == $f->id)>
-                                {{ $f->nome_exibicao }} - {{ $f->documento_formatado }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @unless ($somenteLeitura)
-                        <button type="button" onclick="abrirModalFornecedor()"
-                                class="shrink-0 border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
-                            + Novo
-                        </button>
-                    @endunless
-                </div>
-                @error('fornecedor_id') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
-            </div>
+            <div class="flex flex-col gap-4 max-w-6xl">
 
-            <div class="col-span-2 grid grid-cols-3 gap-4">
+                {{-- Linha 1: fornecedor --}}
                 <div>
-                    <label class="{{ $labelCls }}">Modelo</label>
-                    <select name="modelo" class="{{ $inputCls }}" @disabled($somenteLeitura)>
-                        <option value="55" @selected(old('modelo', $entrada->modelo) === '55')>55 - NF-e</option>
-                        <option value="01" @selected(old('modelo', $entrada->modelo) === '01')>01 - NF (papel)</option>
-                    </select>
-                    @error('modelo') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
+                    <label class="{{ $labelCls }}">Fornecedor</label>
+                    <div class="flex gap-2">
+                        <select id="fornecedor_id" name="fornecedor_id" class="{{ $inputCls }}" @disabled($travarCab)>
+                            <option value="">Selecionar fornecedor...</option>
+                            @foreach ($fornecedores as $f)
+                                <option value="{{ $f->id }}" data-uf="{{ $f->uf }}" @selected(old('fornecedor_id', $entrada->fornecedor_id) == $f->id)>
+                                    {{ $f->nome_exibicao }} - {{ $f->documento_formatado }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @unless ($travarCab)
+                            <button type="button" onclick="abrirModalFornecedor()"
+                                    class="shrink-0 border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
+                                + Novo
+                            </button>
+                        @endunless
+                    </div>
+                    @error('fornecedor_id') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
                 </div>
 
-                <div>
-                    <label class="{{ $labelCls }}">Série</label>
-                    <input type="text" name="serie" maxlength="3" value="{{ old('serie', $entrada->serie) }}"
-                           class="{{ $inputCls }}" @disabled($somenteLeitura)>
-                    @error('serie') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
+                {{-- Linha 2: documento --}}
+                <div class="flex flex-wrap gap-4">
+                    <div class="flex-1 min-w-[22rem]">
+                        <label class="{{ $labelCls }}">Chave de acesso (44 dígitos)</label>
+                        <input type="text" name="chave_acesso" maxlength="44" inputmode="numeric"
+                            value="{{ old('chave_acesso', $entrada->chave_acesso) }}"
+                            class="{{ $inputCls }}" @disabled($travarCab)>
+                        @error('chave_acesso') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div class="w-24">
+                        <label class="{{ $labelCls }}">Número</label>
+                        <input type="text" name="numero" maxlength="9" value="{{ old('numero', $entrada->numero) }}"
+                            class="{{ $inputCls }}" @disabled($travarCab)>
+                        @error('numero') <p class="{{ $erroCls }} w-max max-w-[18rem]">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div class="w-36">
+                        <label class="{{ $labelCls }}">Modelo</label>
+                        <select name="modelo" class="{{ $inputCls }}" @disabled($travarCab)>
+                            <option value="55" @selected(old('modelo', $entrada->modelo) === '55')>55 - NF-e</option>
+                            <option value="01" @selected(old('modelo', $entrada->modelo) === '01')>01 - NF (papel)</option>
+                        </select>
+                        @error('modelo') <p class="{{ $erroCls }} w-max max-w-[18rem]">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div class="w-16">
+                        <label class="{{ $labelCls }}">Série</label>
+                        <input type="text" name="serie" maxlength="3" value="{{ old('serie', $entrada->serie) }}"
+                            class="{{ $inputCls }}" @disabled($travarCab)>
+                        @error('serie') <p class="{{ $erroCls }} w-max max-w-[18rem]">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div class="w-36">
+                        <label class="{{ $labelCls }}">Data de emissão</label>
+                        <input type="date" name="data_emissao"
+                            value="{{ old('data_emissao', $entrada->data_emissao?->format('Y-m-d')) }}"
+                            class="{{ $inputCls }}" @disabled($travarCab)>
+                        @error('data_emissao') <p class="{{ $erroCls }} w-max max-w-[18rem]">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div class="w-36">
+                        <label class="{{ $labelCls }}">Data de entrada</label>
+                        <input type="date" name="data_entrada"
+                            value="{{ old('data_entrada', $entrada->data_entrada?->format('Y-m-d')) }}"
+                            class="{{ $inputCls }}" @disabled($travarCab)>
+                        @error('data_entrada') <p class="{{ $erroCls }} w-max max-w-[18rem]">{{ $message }}</p> @enderror
+                    </div>
                 </div>
 
+                {{-- Linha 3: operação e pagamento --}}
                 @php
                     $opSelecionada = collect($operacoes)->firstWhere('id', old('operacao_entrada_id', $entrada->operacao_entrada_id));
                 @endphp
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Operação / CFOP da entrada <span class="text-red-500">*</span></label>
-                    <input type="hidden" name="operacao_entrada_id" id="operacao_entrada_id"
-                        value="{{ old('operacao_entrada_id', $entrada->operacao_entrada_id) }}">
-                    <button type="button" onclick="abrirModalOperacao()" @disabled($somenteLeitura ?? false)
-                            class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition disabled:bg-gray-50 disabled:cursor-not-allowed">
-                        <span id="operacao_entrada_label" class="{{ $opSelecionada ? 'text-gray-800' : 'text-gray-500' }}">
-                            {{ $opSelecionada ? (($opSelecionada['cfops'] ?: '—') . ' — ' . $opSelecionada['descricao']) : 'Clique para selecionar...' }}
-                        </span>
-                    </button>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Operação / CFOP da entrada <span class="text-red-500">*</span></label>
+                        <input type="hidden" name="operacao_entrada_id" id="operacao_entrada_id"
+                            value="{{ old('operacao_entrada_id', $entrada->operacao_entrada_id) }}">
+                        <button type="button" onclick="abrirModalOperacao()" @disabled($somenteLeitura ?? false)
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition disabled:bg-gray-50 disabled:cursor-not-allowed">
+                            <span id="operacao_entrada_label" class="{{ $opSelecionada ? 'text-gray-800' : 'text-gray-500' }}">
+                                {{ $opSelecionada ? (($opSelecionada['cfops'] ?: '—') . ' — ' . $opSelecionada['descricao']) : 'Clique para selecionar...' }}
+                            </span>
+                        </button>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Forma de pagamento</label>
+                        <select name="forma_pagamento_id" @disabled($somenteLeitura)
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed">
+                            <option value="">Não informada</option>
+                            @foreach ($formasPagamento as $forma)
+                                <option value="{{ $forma->id }}" @selected(old('forma_pagamento_id', $entrada->forma_pagamento_id) == $forma->id)>
+                                    {{ $forma->ind_pag ? 'A prazo' : 'À vista' }} — {{ $forma->descricao }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
             </div>
-
-            <div>
-                <label class="{{ $labelCls }}">Número</label>
-                <input type="text" name="numero" maxlength="9" value="{{ old('numero', $entrada->numero) }}"
-                       class="{{ $inputCls }}" @disabled($somenteLeitura)>
-                @error('numero') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Forma de pagamento</label>
-                <select name="forma_pagamento_id"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
-                    <option value="">Não informada</option>
-                    @foreach ($formasPagamento as $forma)
-                        <option value="{{ $forma->id }}" @selected(old('forma_pagamento_id', $entrada->forma_pagamento_id) == $forma->id)>
-                            {{ $forma->ind_pag ? 'A prazo' : 'À vista' }} — {{ $forma->descricao }}
-                            
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div class="col-span-2">
-                <label class="{{ $labelCls }}">Chave de acesso (44 dígitos)</label>
-                <input type="text" name="chave_acesso" maxlength="44" inputmode="numeric"
-                       value="{{ old('chave_acesso', $entrada->chave_acesso) }}"
-                       class="{{ $inputCls }}" @disabled($somenteLeitura)>
-                @error('chave_acesso') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
-            </div>
-
-            <div>
-                <label class="{{ $labelCls }}">Data de emissão</label>
-                <input type="date" name="data_emissao"
-                       value="{{ old('data_emissao', $entrada->data_emissao?->format('Y-m-d')) }}"
-                       class="{{ $inputCls }}" @disabled($somenteLeitura)>
-                @error('data_emissao') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
-            </div>
-
-            <div>
-                <label class="{{ $labelCls }}">Data de entrada</label>
-                <input type="date" name="data_entrada"
-                       value="{{ old('data_entrada', $entrada->data_entrada?->format('Y-m-d')) }}"
-                       class="{{ $inputCls }}" @disabled($somenteLeitura)>
-                @error('data_entrada') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
-            </div>
-        </div>
     </div>
 
     {{-- ===================== Itens ===================== --}}

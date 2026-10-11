@@ -526,7 +526,6 @@ class EntradaNotaController extends Controller
 
     public function edit(EntradaNota $entrada)
     {
-        $entrada->load(['itens.produto', 'itens.cfopEntrada', 'operacao']);
         return view('notasfiscais.entrada.edit', $this->dadosFormulario($entrada));
     }
 
