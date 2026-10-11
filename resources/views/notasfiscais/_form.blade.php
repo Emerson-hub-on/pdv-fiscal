@@ -265,129 +265,6 @@
                autocomplete="off" disabled
                class="w-full max-w-2xl border border-gray-300 rounded-lg px-3 py-2 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed">
 
-        <div id="editor-item" class="hidden flex flex-col gap-3 mb-4 bg-gray-50 rounded-lg p-4">
-            <div class="text-sm font-semibold text-gray-800" id="editor-produto-nome"></div>
-
-            <div class="grid grid-cols-4 gap-3">
-                <div>
-                    <label class="block text-xs text-gray-500 mb-1">Código</label>
-                    <input type="text" id="editor-codigo" readonly
-                        class="w-full border border-gray-200 bg-gray-100 rounded-lg px-2 py-1.5 text-sm text-gray-600">
-                </div>
-                <div>
-                    <label class="block text-xs text-gray-500 mb-1">Cód. Barras</label>
-                    <input type="text" id="editor-codigo-barras" readonly
-                        class="w-full border border-gray-200 bg-gray-100 rounded-lg px-2 py-1.5 text-sm text-gray-600">
-                </div>
-
-                <div>
-                    <label class="block text-xs text-gray-500 mb-1">Cst/Csosn</label>
-                    <input type="text" id="editor-cst-csosn" readonly
-                    class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
-                </div>
-
-                <div class="col-span-2">
-                    <label class="block text-xs text-gray-500 mb-1">Descrição</label>
-                    <input type="text" id="editor-descricao"
-                        class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
-                </div>
-            </div>
-
-            <div class="grid grid-cols-6 gap-3">
-
-                <div>
-                    <label class="block text-xs text-gray-500 mb-1">Qtd</label>
-                    <input type="number" step="0.001" id="editor-quantidade" value="1"
-                        class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
-                </div>
-
-                <div>
-                    <label class="block text-xs text-gray-500 mb-1">Vl Unit</label>
-                    <input type="number" step="0.0001" id="editor-valor-unitario"
-                        class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs text-gray-500 mb-1">Vl Total</label>
-                    <input type="text" id="editor-valor-total" readonly
-                        class="w-full border border-gray-200 bg-gray-100 rounded-lg px-2 py-1.5 text-sm text-gray-600">
-                </div>
-                <div>
-                    <label class="block text-xs text-gray-500 mb-1">Desconto (R$)</label>
-                    <input type="number" step="0.01" id="editor-desconto" value="0"
-                        class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
-                </div>
-
-                <div>
-                    <label class="block text-xs text-gray-500 mb-1">Outras despesas (R$)</label>
-                    <input type="number" step="0.01" min="0" id="editor-outras-despesas" value="0"
-                        class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
-                </div>
-
-                <div id="editor-bloco-frete" class="{{ $freteModoInicial === 'item' ? '' : 'hidden' }}">
-                    <label class="block text-xs text-gray-500 mb-1">Frete (R$)</label>
-                    <input type="number" step="0.01" min="0" id="editor-frete" value="0"
-                        class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
-                </div>
-
-                <div id="editor-referencia-devolucao" class="hidden grid grid-cols-2 gap-3 col-span-5">
-                    <div>
-                        <label class="block text-xs text-gray-500 mb-1">Chave da NF-e original (devolução)</label>
-                        <input type="text" id="editor-ref-chave" maxlength="44"
-                            class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm font-mono">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-gray-500 mb-1">Nº do item na nota original (opcional)</label>
-                        <input type="number" id="editor-ref-nitem" min="1"
-                            class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
-                    </div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-6 gap-3">
-                <div>
-                    <label class="block text-xs text-gray-500 mb-1">Desconto %</label>
-                    <input type="number" step="0.01" id="editor-desconto-percentual" value="0"
-                        class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs text-gray-500 mb-1">BC ICMS</label>
-                    <input type="text" id="editor-bc-icms" readonly
-                        class="w-full border border-gray-200 bg-gray-100 rounded-lg px-2 py-1.5 text-sm text-gray-600">
-                </div>
-                <div>
-                    <label class="block text-xs text-gray-500 mb-1">Vlr. ICMS</label>
-                    <input type="text" id="editor-valor-icms" readonly
-                        class="w-full border border-gray-200 bg-gray-100 rounded-lg px-2 py-1.5 text-sm text-gray-600">
-                </div>
-                <div>
-                    <label class="block text-xs text-gray-500 mb-1">% ICMS</label>
-                    <input type="text" id="editor-aliquota-icms" readonly
-                        class="w-full border border-gray-200 bg-gray-100 rounded-lg px-2 py-1.5 text-sm text-gray-600">
-                </div>
-                <div>
-                    <label class="block text-xs text-gray-500 mb-1">Vlr. IPI</label>
-                    <input type="text" id="editor-valor-ipi" readonly
-                        class="w-full border border-gray-200 bg-gray-100 rounded-lg px-2 py-1.5 text-sm text-gray-600">
-                </div>
-                <div>
-                    <label class="block text-xs text-gray-500 mb-1">% IPI</label>
-                    <input type="text" id="editor-aliquota-ipi" readonly
-                        class="w-full border border-gray-200 bg-gray-100 rounded-lg px-2 py-1.5 text-sm text-gray-600">
-                </div>
-            </div>
-
-            <div class="flex items-center gap-2">
-                <button type="button" id="btn-editor-confirmar" onclick="adicionarLinhaNaGrid()"
-                        class="bg-gray-800 text-white rounded-lg px-3 py-1.5 text-sm h-fit hover:bg-gray-700 w-fit">
-                    Adicionar à nota
-                </button>
-                <button type="button" id="btn-editor-remover" onclick="removerOuCancelarEditor()"
-                        class="border border-red-300 text-red-600 rounded-lg px-3 py-1.5 text-sm h-fit hover:bg-red-50 w-fit">
-                    Cancelar
-                </button>
-            </div>
-        </div>
-
         @error('itens') <p class="text-red-600 text-sm mb-3">{{ $message }}</p> @enderror
 
         <div class="overflow-x-auto">
@@ -728,6 +605,143 @@
     </div>
 </div>
 
+
+<!-- Modal de adição / edição do item -->
+@php
+    $edLabel    = 'block text-sm font-medium text-gray-700 mb-1';
+    $edInput    = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none transition';
+    $edReadonly = 'w-full border border-gray-200 bg-gray-100 rounded-lg px-3 py-2 text-sm text-gray-600 outline-none';
+    // campos de imposto: ficam cinza enquanto readonly e liberam o visual quando o CFOP destaca bases
+    $edImposto  = $edInput . ' read-only:bg-gray-100 read-only:text-gray-600';
+@endphp
+<div id="modal-editor-item" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900 rounded-t-xl">
+            <h2 id="editor-modal-titulo" class="text-lg font-bold text-white">Adicionar item à nota</h2>
+            <button type="button" onclick="fecharEditorItem()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
+        </div>
+
+        <div class="px-6 pt-4">
+            <p id="editor-produto-nome" class="text-sm font-semibold text-gray-800"></p>
+        </div>
+
+        <div class="flex border-b border-gray-200 px-6 mt-3">
+            <button type="button" onclick="editorTab('dados')" id="editor-tab-btn-dados"
+                    class="px-5 py-3 text-sm font-medium border-b-2 transition border-blue-600 text-blue-600">
+                Dados do item
+            </button>
+            <button type="button" onclick="editorTab('impostos')" id="editor-tab-btn-impostos"
+                    class="px-5 py-3 text-sm font-medium border-b-2 transition border-transparent text-gray-500 hover:text-gray-700">
+                Impostos
+            </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto">
+            <div id="editor-painel-dados" class="flex flex-col gap-4">
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="{{ $edLabel }}">Código</label>
+                        <input type="text" id="editor-codigo" readonly class="{{ $edReadonly }}">
+                    </div>
+                    <div>
+                        <label class="{{ $edLabel }}">Cód. Barras</label>
+                        <input type="text" id="editor-codigo-barras" readonly class="{{ $edReadonly }}">
+                    </div>
+                    <div>
+                        <label class="{{ $edLabel }}">Cst/Csosn</label>
+                        <input type="text" id="editor-cst-csosn" readonly class="{{ $edReadonly }}">
+                    </div>
+                    <div class="col-span-3">
+                        <label class="{{ $edLabel }}">Descrição</label>
+                        <input type="text" id="editor-descricao" class="{{ $edInput }}">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-4 gap-4">
+                    <div>
+                        <label class="{{ $edLabel }}">Qtd</label>
+                        <input type="number" step="0.001" id="editor-quantidade" value="1" class="{{ $edInput }}">
+                    </div>
+                    <div>
+                        <label class="{{ $edLabel }}">Vl Unit</label>
+                        <input type="number" step="0.0001" id="editor-valor-unitario" class="{{ $edInput }}">
+                    </div>
+                    <div>
+                        <label class="{{ $edLabel }}">Desconto (R$)</label>
+                        <input type="number" step="0.01" id="editor-desconto" value="0" class="{{ $edInput }}">
+                    </div>
+                    <div>
+                        <label class="{{ $edLabel }}">Desconto %</label>
+                        <input type="number" step="0.01" id="editor-desconto-percentual" value="0" class="{{ $edInput }}">
+                    </div>
+
+                    <div>
+                        <label class="{{ $edLabel }}">Outras despesas (R$)</label>
+                        <input type="number" step="0.01" min="0" id="editor-outras-despesas" value="0" class="{{ $edInput }}">
+                    </div>
+                    <div id="editor-bloco-frete" class="{{ $freteModoInicial === 'item' ? '' : 'hidden' }}">
+                        <label class="{{ $edLabel }}">Frete (R$)</label>
+                        <input type="number" step="0.01" min="0" id="editor-frete" value="0" class="{{ $edInput }}">
+                    </div>
+                    <div class="col-start-4">
+                        <label class="{{ $edLabel }}">Vl Total</label>
+                        <input type="text" id="editor-valor-total" readonly class="{{ $edReadonly }}">
+                    </div>
+
+                    <div id="editor-referencia-devolucao" class="hidden grid grid-cols-2 gap-4 col-span-4">
+                        <div>
+                            <label class="{{ $edLabel }}">Chave da NF-e original (devolução)</label>
+                            <input type="text" id="editor-ref-chave" maxlength="44" class="{{ $edInput }} font-mono">
+                        </div>
+                        <div>
+                            <label class="{{ $edLabel }}">Nº do item na nota original (opcional)</label>
+                            <input type="number" id="editor-ref-nitem" min="1" class="{{ $edInput }}">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="editor-painel-impostos" class="hidden">
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="{{ $edLabel }}">BC ICMS</label>
+                        <input type="text" id="editor-bc-icms" readonly class="{{ $edImposto }}">
+                    </div>
+                    <div>
+                        <label class="{{ $edLabel }}">Vlr. ICMS</label>
+                        <input type="text" id="editor-valor-icms" readonly class="{{ $edImposto }}">
+                    </div>
+                    <div>
+                        <label class="{{ $edLabel }}">% ICMS</label>
+                        <input type="text" id="editor-aliquota-icms" readonly class="{{ $edImposto }}">
+                    </div>
+                    <div>
+                        <label class="{{ $edLabel }}">Vlr. IPI</label>
+                        <input type="text" id="editor-valor-ipi" readonly class="{{ $edImposto }}">
+                    </div>
+                    <div>
+                        <label class="{{ $edLabel }}">% IPI</label>
+                        <input type="text" id="editor-aliquota-ipi" readonly class="{{ $edImposto }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-100 flex items-center gap-2">
+            <button type="button" id="btn-editor-remover" onclick="removerOuCancelarEditor()"
+                    class="hidden mr-auto border border-red-300 text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg text-sm font-medium transition">
+                Remover item
+            </button>
+            <button type="button" onclick="fecharEditorItem()"
+                    class="ml-auto bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition">Cancelar</button>
+            <button type="button" id="btn-editor-confirmar" onclick="adicionarLinhaNaGrid()"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition">
+                Adicionar à nota
+            </button>
+        </div>
+    </div>
+</div>
 
 <!-- Modal de Confirmação — Notas Referenciadas + Informações Complementares -->
 <div id="modal-referencia-nota" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
@@ -1948,7 +1962,7 @@ function abrirEditorItem(produto) {
     document.getElementById('editor-outras-despesas').value = 0;
     document.getElementById('editor-frete').value = 0;
     document.getElementById('editor-desconto-percentual').value = 0;
-    document.getElementById('editor-item').classList.remove('hidden');
+    mostrarModalEditorItem();
     atualizarCalculosEditor('valor');
 
     const bases = window.cfopDestacarBases;
@@ -1956,20 +1970,45 @@ function abrirEditorItem(produto) {
     .forEach(id => document.getElementById(id).readOnly = !bases);
 
     document.getElementById('editor-quantidade').focus();
+    document.getElementById('editor-quantidade').select();
     document.getElementById('editor-referencia-devolucao').classList
     .toggle('hidden', !finalidadesRefPorItem.includes(String(campoFinalidade.value)));
     document.getElementById('editor-ref-chave').value = '';
     document.getElementById('editor-ref-nitem').value = '';
 }
 
+function editorTab(nome) {
+    ['dados', 'impostos'].forEach(n => {
+        const ativo = n === nome;
+        const btn = document.getElementById('editor-tab-btn-' + n);
+
+        document.getElementById('editor-painel-' + n).classList.toggle('hidden', !ativo);
+        btn.classList.toggle('border-blue-600', ativo);
+        btn.classList.toggle('text-blue-600', ativo);
+        btn.classList.toggle('border-transparent', !ativo);
+        btn.classList.toggle('text-gray-500', !ativo);
+        btn.classList.toggle('hover:text-gray-700', !ativo);
+    });
+}
+
+function mostrarModalEditorItem() {
+    const modal = document.getElementById('modal-editor-item');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    editorTab('dados');
+}
+
 function atualizarBotoesEditor() {
     const editando = indiceItemEmEdicao !== null;
+    document.getElementById('editor-modal-titulo').innerText = editando ? 'Editar item da nota' : 'Adicionar item à nota';
     document.getElementById('btn-editor-confirmar').innerText = editando ? 'Atualizar item' : 'Adicionar à nota';
-    document.getElementById('btn-editor-remover').innerText  = editando ? 'Remover item' : 'Cancelar';
+    document.getElementById('btn-editor-remover').classList.toggle('hidden', !editando);
 }
 
 function fecharEditorItem() {
-    document.getElementById('editor-item').classList.add('hidden');
+    const modal = document.getElementById('modal-editor-item');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
     produtoSelecionadoParaEditor = null;
     indiceItemEmEdicao = null;
     renderizarGridItens();
@@ -2031,12 +2070,11 @@ function editarItemDaGrid(index) {
     document.getElementById('editor-ref-chave').value = item.ref_chave_acesso ?? '';
     document.getElementById('editor-ref-nitem').value = item.ref_nitem ?? '';
 
-    const editor = document.getElementById('editor-item');
-    editor.classList.remove('hidden');
+    mostrarModalEditorItem();
     atualizarBotoesEditor();
     renderizarGridItens(); // destaca a linha em edição
-    editor.scrollIntoView({ behavior: 'smooth', block: 'center' });
     document.getElementById('editor-quantidade').focus();
+    document.getElementById('editor-quantidade').select();
 }
 
 /**
@@ -2118,6 +2156,16 @@ document.getElementById('editor-desconto-percentual').addEventListener('input', 
 document.getElementById('editor-outras-despesas').addEventListener('input', () => atualizarCalculosEditor('valor'));
 document.getElementById('editor-frete').addEventListener('input', () => atualizarCalculosEditor('valor'));
 
+// Enter confirma o item; Esc fecha o modal sem alterar a nota
+document.getElementById('modal-editor-item').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') {
+        e.preventDefault();
+        adicionarLinhaNaGrid();
+    } else if (e.key === 'Escape') {
+        fecharEditorItem();
+    }
+});
+
 
 function adicionarLinhaNaGrid() {
     const quantidade = parseFloat(document.getElementById('editor-quantidade').value) || 0;
@@ -2131,11 +2179,13 @@ function adicionarLinhaNaGrid() {
     const frete = freteModo === 'item' ? (parseFloat(document.getElementById('editor-frete').value) || 0) : 0;
 
     if (finalidadesRefPorItem.includes(String(campoFinalidade.value)) && refChave.length !== 44) {
+        editorTab('dados');
         alert('Informe a chave de acesso (44 dígitos) da nota de origem deste item.');
         return;
     }
 
     if (quantidade <= 0 || valorUnitario < 0 || descricao.length < 1 || outrasDespesas < 0 || frete < 0) {
+        editorTab('dados');
         alert('Preencha quantidade, valor unitário e descrição corretamente.');
         return;
     }

@@ -353,6 +353,10 @@ class EntradaNotaController extends Controller
                     $avisos[] = 'O XML informa ' . $nfe['pagamento']['qtd'] . ' formas de pagamento; foi usada a de maior valor.';
                 }
 
+                // frete/outras despesas já informados item a item não podem ser contados de novo no cabeçalho
+                $freteItens  = round(collect($nfe['itens'])->sum(fn ($i) => (float) ($i['valor_frete'] ?? 0)), 2);
+                $outrasItens = round(collect($nfe['itens'])->sum(fn ($i) => (float) ($i['valor_outras_despesas'] ?? 0)), 2);
+
                 $entrada = EntradaNota::create([
                     'operacao_entrada_id' => $nfe['operacao_entrada_id'],
                     'fornecedor_id'     => $fornecedor->id,
@@ -371,9 +375,9 @@ class EntradaNotaController extends Controller
                         60,
                         ''
                     ),
-                    'valor_frete'       => $nfe['valor_frete'],
+                    'valor_frete'       => max(round($nfe['valor_frete'] - $freteItens, 2), 0),
                     'valor_desconto'    => 0, // o desconto do XML já está nos itens
-                    'valor_outras'      => $nfe['valor_outras'],
+                    'valor_outras'      => max(round($nfe['valor_outras'] - $outrasItens, 2), 0),
                     'atualizar_custo'   => true,
                 ]);
 
@@ -398,6 +402,13 @@ class EntradaNotaController extends Controller
                         'valor_unitario'    => $item['valor_unitario'],
                         'valor_desconto'    => $item['valor_desconto'],
                         'valor_total'       => $item['valor_total'],
+                        'valor_outras_despesas' => $item['valor_outras_despesas'] ?? 0,
+                        'valor_frete'           => $item['valor_frete'] ?? 0,
+                        'bc_icms'               => $item['bc_icms'] ?? 0,
+                        'valor_icms'            => $item['valor_icms'] ?? 0,
+                        'aliquota_icms'         => $item['aliquota_icms'] ?? 0,
+                        'valor_ipi'             => $item['valor_ipi'] ?? 0,
+                        'aliquota_ipi'          => $item['aliquota_ipi'] ?? 0,
                         'lote'              => $item['lote'],
                         'validade'          => $item['validade'],
                         'cfop_origem'       => $item['cfop'] ?: null,
@@ -579,16 +590,25 @@ class EntradaNotaController extends Controller
 
     private function dadosFormulario(EntradaNota $entrada): array
     {
-        $entrada->loadMissing('itens.cfopEntrada');
+        $entrada->loadMissing(['itens.cfopEntrada', 'itens.produto']);
         $itens = old('itens') ?? $entrada->itens
             ->map(fn ($i) => [
                 'produto_id'        => $i->produto_id,
+                'codigo'            => $i->produto?->codigo_interno,
+                'codigo_barras'     => $i->produto?->codigo_barras,
                 'descricao'         => $i->descricao,
                 'codigo_fornecedor' => $i->codigo_fornecedor,
                 'quantidade'        => (float) $i->quantidade,
                 'qtd_por_caixa'     => (int) ($i->qtd_por_caixa ?: 1),
                 'valor_unitario'    => (float) $i->valor_unitario,
                 'valor_desconto'    => (float) $i->valor_desconto,
+                'valor_outras_despesas' => (float) $i->valor_outras_despesas,
+                'valor_frete'           => (float) $i->valor_frete,
+                'bc_icms'               => (float) $i->bc_icms,
+                'valor_icms'            => (float) $i->valor_icms,
+                'aliquota_icms'         => (float) $i->aliquota_icms,
+                'valor_ipi'             => (float) $i->valor_ipi,
+                'aliquota_ipi'          => (float) $i->aliquota_ipi,
                 'lote'              => $i->lote,
                 'validade'          => $i->validade?->format('Y-m-d'),
                 'cfop_origem'       => $i->cfop_origem,
@@ -759,6 +779,13 @@ class EntradaNotaController extends Controller
             'itens.*.qtd_por_caixa'     => ['nullable', 'integer', 'min:1', 'max:99999'],
             'itens.*.valor_unitario'    => ['required', 'numeric', 'min:0'],
             'itens.*.valor_desconto'    => ['nullable', 'numeric', 'min:0'],
+            'itens.*.valor_outras_despesas' => ['nullable', 'numeric', 'min:0'],
+            'itens.*.valor_frete'       => ['nullable', 'numeric', 'min:0'],
+            'itens.*.bc_icms'           => ['nullable', 'numeric', 'min:0'],
+            'itens.*.valor_icms'        => ['nullable', 'numeric', 'min:0'],
+            'itens.*.aliquota_icms'     => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'itens.*.valor_ipi'         => ['nullable', 'numeric', 'min:0'],
+            'itens.*.aliquota_ipi'      => ['nullable', 'numeric', 'min:0', 'max:100'],
             'itens.*.lote'              => ['nullable', 'string', 'max:30'],
             'itens.*.validade'          => ['nullable', 'date'],
             'itens.*.cfop_origem'       => ['nullable', 'digits:4'],
@@ -859,13 +886,20 @@ class EntradaNotaController extends Controller
                 $entrada->itens()->create([
                     'produto_id'        => $produto->id,
                     'codigo_fornecedor' => $item['codigo_fornecedor'] ?? null,
-                    'descricao'         => $produto->nome,
+                    'descricao'         => trim((string) ($item['descricao'] ?? '')) ?: $produto->nome,
                     'unidade'           => $produto->unidade_comercial,
                     'quantidade'        => $qtd,
                     'qtd_por_caixa'     => (int) (($item['qtd_por_caixa'] ?? null) ?: 1),
                     'valor_unitario'    => $unit,
                     'valor_desconto'    => $desconto,
                     'valor_total'       => round(($qtd * $unit) - $desconto, 2),
+                    'valor_outras_despesas' => round((float) ($item['valor_outras_despesas'] ?? 0), 2),
+                    'valor_frete'           => round((float) ($item['valor_frete'] ?? 0), 2),
+                    'bc_icms'               => round((float) ($item['bc_icms'] ?? 0), 2),
+                    'valor_icms'            => round((float) ($item['valor_icms'] ?? 0), 2),
+                    'aliquota_icms'         => round((float) ($item['aliquota_icms'] ?? 0), 4),
+                    'valor_ipi'             => round((float) ($item['valor_ipi'] ?? 0), 2),
+                    'aliquota_ipi'          => round((float) ($item['aliquota_ipi'] ?? 0), 4),
                     'lote'              => $item['lote'] ?? null,
                     'validade'          => $item['validade'] ?? null,
                     'cfop_origem'       => $item['cfop_origem'] ?? null,

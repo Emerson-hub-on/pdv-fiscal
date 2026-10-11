@@ -88,6 +88,8 @@ class NfeXmlParser
             $vDesc = (float) $this->v('n:prod/n:vDesc', $det);
             $cst   = $this->v('n:imposto/n:ICMS/*/n:CST', $det);
             $csosn = $this->v('n:imposto/n:ICMS/*/n:CSOSN', $det);
+            // frete, outras despesas e impostos destacados no item (ausentes no XML = 0)
+            $num = fn (string $expr, int $casas = 2) => round((float) $this->v($expr, $det), $casas);
 
             $itens[] = [
                 'cfop'   => $this->v('n:prod/n:CFOP', $det),
@@ -106,6 +108,13 @@ class NfeXmlParser
                 'valor_unitario' => (float) $this->v('n:prod/n:vUnCom', $det),
                 'valor_desconto' => $vDesc,
                 'valor_total'    => round($vProd - $vDesc, 2),
+                'valor_frete'           => $num('n:prod/n:vFrete'),
+                'valor_outras_despesas' => $num('n:prod/n:vOutro'),
+                'bc_icms'               => $num('n:imposto/n:ICMS/*/n:vBC'),
+                'valor_icms'            => $num('n:imposto/n:ICMS/*/n:vICMS'),
+                'aliquota_icms'         => $num('n:imposto/n:ICMS/*/n:pICMS', 4),
+                'valor_ipi'             => $num('n:imposto/n:IPI/n:IPITrib/n:vIPI'),
+                'aliquota_ipi'          => $num('n:imposto/n:IPI/n:IPITrib/n:pIPI', 4),
                 'lote'           => mb_substr($this->v('n:prod/n:rastro/n:nLote', $det), 0, 30) ?: null,
                 'validade'       => $this->v('n:prod/n:rastro/n:dVal', $det) ?: null,
             ];

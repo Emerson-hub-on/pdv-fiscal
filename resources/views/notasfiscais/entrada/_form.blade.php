@@ -162,18 +162,28 @@
             <table class="w-full text-sm whitespace-nowrap">
                 <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
                     <tr>
+                        <th class="text-left px-3 py-2">Código</th>
+                        <th class="text-left px-3 py-2">Cód. Barras</th>
                         <th class="text-left px-3 py-2">Descrição</th>
                         <th class="text-left px-3 py-2">Cód. forn.</th>
                         <th class="text-left px-3 py-2">CFOP</th>
                         <th class="text-left px-3 py-2">
-                        {{ $fiscal['regime'] === 'normal' ? 'CST' : 'CSOSN' }}
+                            {{ $fiscal['regime'] === 'normal' ? 'CST' : 'CSOSN' }}
                         </th>
                         <th class="text-right px-3 py-2">Qtd</th>
                         <th class="text-right px-3 py-2">Por cx</th>
                         <th class="text-right px-3 py-2">Qtd. estoque</th>
                         <th class="text-right px-3 py-2">Vl Unit</th>
-                        <th class="text-right px-3 py-2">Desconto</th>
                         <th class="text-right px-3 py-2">Vl Total</th>
+                        <th class="text-right px-3 py-2">Desconto</th>
+                        <th class="text-right px-3 py-2">Desconto %</th>
+                        <th class="text-right px-3 py-2">Outras desp.</th>
+                        <th class="text-right px-3 py-2">Frete</th>
+                        <th class="text-right px-3 py-2">BC ICMS</th>
+                        <th class="text-right px-3 py-2">Vlr. ICMS</th>
+                        <th class="text-right px-3 py-2">% ICMS</th>
+                        <th class="text-right px-3 py-2">Vlr. IPI</th>
+                        <th class="text-right px-3 py-2">% IPI</th>
                         <th class="text-left px-3 py-2">Lote</th>
                         <th class="text-left px-3 py-2">Validade</th>
                         <th class="text-right px-3 py-2">Ações</th>
@@ -182,14 +192,19 @@
                 <tbody id="linhas-grid-itens" class="divide-y divide-gray-100"></tbody>
                 <tfoot class="bg-gray-50 font-medium">
                     <tr>
-                        <td colspan="7" class="px-3 py-1 text-right text-gray-500">Produtos</td>
+                        <td colspan="10" class="px-3 py-1 text-right text-gray-500">Produtos</td>
                         <td class="px-3 py-1 text-right" id="total-produtos">R$ 0,00</td>
-                        <td colspan="3"></td>
+                        <td colspan="12"></td>
                     </tr>
                     <tr>
-                        <td colspan="7" class="px-3 py-2 text-right">Total da nota</td>
+                        <td colspan="10" class="px-3 py-1 text-right text-gray-500">Outras desp. e frete dos itens</td>
+                        <td class="px-3 py-1 text-right" id="total-extras-itens">R$ 0,00</td>
+                        <td colspan="12"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="10" class="px-3 py-2 text-right">Total da nota</td>
                         <td class="px-3 py-2 text-right" id="total-nota">R$ 0,00</td>
-                        <td colspan="3"></td>
+                        <td colspan="12"></td>
                     </tr>
                 </tfoot>
             </table>
@@ -284,77 +299,162 @@
 
 <!-- Modal de edição do item -->
 <div id="modal-editor-item" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
         <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900 rounded-t-xl">
             <h2 id="editor-modal-titulo" class="text-lg font-bold text-white">Adicionar item à nota</h2>
             <button type="button" onclick="cancelarEditor()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
 
-        <div class="p-6 overflow-y-auto flex flex-col gap-4">
+        <div class="px-6 pt-4">
             <p id="editor-produto-nome" class="text-sm font-semibold text-gray-800"></p>
+        </div>
 
-            <div class="grid grid-cols-4 gap-4">
-                <div>
-                    <label class="{{ $labelCls }}">Qtd</label>
-                    <input type="number" id="ed-qtd" step="0.001" min="0.001" oninput="atualizarTotalEditor()" class="{{ $inputCls }}">
-                </div>
-                <div>
-                    <label class="{{ $labelCls }}">Por caixa (UN)</label>
-                    <input type="number" id="ed-porcaixa" step="1" min="1" value="1" oninput="atualizarTotalEditor()" class="{{ $inputCls }}">
-                </div>
-                <div>
-                    <label class="{{ $labelCls }}">Vl Unit (R$)</label>
-                    <input type="number" id="ed-unit" step="0.0001" min="0" oninput="atualizarTotalEditor()" class="{{ $inputCls }}">
-                </div>
-                <div>
-                    <label class="{{ $labelCls }}">Desconto (R$)</label>
-                    <input type="number" id="ed-desc" step="0.01" min="0" value="0" oninput="atualizarTotalEditor()" class="{{ $inputCls }}">
-                </div>
-                <div>
-                    <label class="{{ $labelCls }}">Vl Total</label>
-                    <input type="text" id="ed-total" readonly class="{{ $inputCls }} bg-gray-100">
-                </div>
-                <div>
-                    <label class="{{ $labelCls }}">Cód. no fornecedor</label>
-                    <input type="text" id="ed-codforn" maxlength="60" class="{{ $inputCls }}">
-                </div>
-                <div>
-                    <label class="{{ $labelCls }}">Lote</label>
-                    <input type="text" id="ed-lote" maxlength="30" class="{{ $inputCls }}">
-                </div>
-                <div>
-                    <label class="{{ $labelCls }}">Validade</label>
-                    <input type="date" id="ed-validade" class="{{ $inputCls }}">
-                </div>
-                <p id="ed-estoque-dica" class="col-span-4 text-xs text-gray-500 hidden"></p>
-            </div>
+        <div class="flex border-b border-gray-200 px-6 mt-3">
+            <button type="button" onclick="editorTab('dados')" id="ed-tab-btn-dados"
+                    class="px-5 py-3 text-sm font-medium border-b-2 transition border-blue-600 text-blue-600">
+                Dados do item
+            </button>
+            <button type="button" onclick="editorTab('impostos')" id="ed-tab-btn-impostos"
+                    class="px-5 py-3 text-sm font-medium border-b-2 transition border-transparent text-gray-500 hover:text-gray-700">
+                Impostos
+            </button>
+        </div>
 
-            <div class="border-t border-gray-100 pt-4">
-                <div class="flex items-center justify-between mb-3">
-                    <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Classificação fiscal</span>
-                    <button type="button" onclick="restaurarFiscalAutomatico()" class="text-xs text-blue-600 hover:underline">Restaurar automático</button>
-                </div>
-
+        <div class="p-6 overflow-y-auto">
+            {{-- ===== Aba: Dados do item ===== --}}
+            <div id="ed-painel-dados" class="flex flex-col gap-4">
                 <div class="grid grid-cols-3 gap-4">
                     <div>
-                        <label class="{{ $labelCls }}">CFOP de entrada</label>
-                        <select id="ed-cfop" class="{{ $inputCls }} bg-white"></select>
+                        <label class="{{ $labelCls }}">Código</label>
+                        <input type="text" id="ed-codigo" readonly class="{{ $inputCls }} bg-gray-100">
                     </div>
                     <div>
-                        <label class="{{ $labelCls }}">{{ $fiscal['regime'] === 'normal' ? 'CST' : 'CSOSN' }} de entrada</label>
-                        <select id="ed-cst" class="{{ $inputCls }} bg-white"></select>
+                        <label class="{{ $labelCls }}">Cód. Barras</label>
+                        <input type="text" id="ed-codbarras" readonly class="{{ $inputCls }} bg-gray-100">
                     </div>
                     <div>
-                        <label class="{{ $labelCls }}">Gera crédito de ICMS</label>
-                        <select id="ed-credito" class="{{ $inputCls }} bg-white">
-                            <option value="">Não informado</option>
-                            <option value="1">Sim</option>
-                            <option value="0">Não</option>
-                        </select>
+                        <label class="{{ $labelCls }}">Cód. no fornecedor</label>
+                        <input type="text" id="ed-codforn" maxlength="60" class="{{ $inputCls }}">
+                    </div>
+                    <div class="col-span-3">
+                        <label class="{{ $labelCls }}">Descrição</label>
+                        <input type="text" id="ed-descricao" maxlength="200" class="{{ $inputCls }}">
                     </div>
                 </div>
 
-                <p id="ed-fiscal-dica" class="text-xs text-gray-400 mt-2"></p>
+                <div class="grid grid-cols-4 gap-4">
+                    <div>
+                        <label class="{{ $labelCls }}">Qtd</label>
+                        <input type="number" id="ed-qtd" step="0.001" min="0.001" oninput="aoDigitarValores('valor')" class="{{ $inputCls }}">
+                    </div>
+                    <div>
+                        <label class="{{ $labelCls }}">Por caixa (UN)</label>
+                        <input type="number" id="ed-porcaixa" step="1" min="1" value="1" oninput="atualizarTotalEditor()" class="{{ $inputCls }}">
+                    </div>
+                    <div>
+                        <label class="{{ $labelCls }}">Vl Unit (R$)</label>
+                        <input type="number" id="ed-unit" step="0.0001" min="0" oninput="aoDigitarValores('valor')" class="{{ $inputCls }}">
+                    </div>
+                    <div>
+                        <label class="{{ $labelCls }}">Desconto (R$)</label>
+                        <input type="number" id="ed-desc" step="0.01" min="0" value="0" oninput="aoDigitarValores('valor')" class="{{ $inputCls }}">
+                    </div>
+
+                    <div>
+                        <label class="{{ $labelCls }}">Desconto %</label>
+                        <input type="number" id="ed-desc-pct" step="0.01" min="0" max="100" value="0" oninput="aoDigitarValores('percentual')" class="{{ $inputCls }}">
+                    </div>
+                    <div>
+                        <label class="{{ $labelCls }}">Outras despesas (R$)</label>
+                        <input type="number" id="ed-outras" step="0.01" min="0" value="0" oninput="aoDigitarValores('valor')" class="{{ $inputCls }}">
+                    </div>
+                    <div>
+                        <label class="{{ $labelCls }}">Frete (R$)</label>
+                        <input type="number" id="ed-frete" step="0.01" min="0" value="0" oninput="aoDigitarValores('valor')" class="{{ $inputCls }}">
+                    </div>
+                    <div>
+                        <label class="{{ $labelCls }}">Vl Total</label>
+                        <input type="text" id="ed-total" readonly class="{{ $inputCls }} bg-gray-100">
+                    </div>
+
+                    <p id="ed-estoque-dica" class="col-span-4 text-xs text-gray-500 hidden"></p>
+
+                    <div class="col-span-2">
+                        <label class="{{ $labelCls }}">Lote</label>
+                        <input type="text" id="ed-lote" maxlength="30" class="{{ $inputCls }}">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="{{ $labelCls }}">Validade</label>
+                        <input type="date" id="ed-validade" class="{{ $inputCls }}">
+                    </div>
+                </div>
+            </div>
+
+            {{-- ===== Aba: Impostos ===== --}}
+            <div id="ed-painel-impostos" class="hidden">
+                <div class="flex flex-col gap-5">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Classificação fiscal</span>
+                            <button type="button" onclick="restaurarFiscalAutomatico()" class="text-xs text-blue-600 hover:underline">Restaurar automático</button>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="{{ $labelCls }}">CFOP de entrada</label>
+                                <select id="ed-cfop" class="{{ $inputCls }} bg-white"></select>
+                            </div>
+                            <div>
+                                <label class="{{ $labelCls }}">{{ $fiscal['regime'] === 'normal' ? 'CST' : 'CSOSN' }} de entrada</label>
+                                <select id="ed-cst" class="{{ $inputCls }} bg-white"></select>
+                            </div>
+                            <div>
+                                <label class="{{ $labelCls }}">Gera crédito de ICMS</label>
+                                <select id="ed-credito" class="{{ $inputCls }} bg-white">
+                                    <option value="">Não informado</option>
+                                    <option value="1">Sim</option>
+                                    <option value="0">Não</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <p id="ed-fiscal-dica" class="text-xs text-gray-400 mt-2"></p>
+                    </div>
+
+                    <div class="border-t border-gray-100 pt-4">
+                        <span class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-3">ICMS</span>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="{{ $labelCls }}">BC ICMS (R$)</label>
+                                <input type="number" id="ed-bc-icms" step="0.01" min="0" value="0" oninput="atualizarIcmsEditor()" class="{{ $inputCls }}">
+                            </div>
+                            <div>
+                                <label class="{{ $labelCls }}">Vlr. ICMS (R$)</label>
+                                <input type="number" id="ed-vl-icms" step="0.01" min="0" value="0" class="{{ $inputCls }}">
+                            </div>
+                            <div>
+                                <label class="{{ $labelCls }}">% ICMS</label>
+                                <input type="number" id="ed-aliq-icms" step="0.0001" min="0" max="100" value="0" oninput="atualizarIcmsEditor()" class="{{ $inputCls }}">
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-2">O Vlr. ICMS é calculado (BC × %) ao digitar a BC ou o %, e pode ser ajustado manualmente.</p>
+                    </div>
+
+                    <div class="border-t border-gray-100 pt-4">
+                        <span class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-3">IPI</span>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="{{ $labelCls }}">Vlr. IPI (R$)</label>
+                                <input type="number" id="ed-vl-ipi" step="0.01" min="0" value="0" class="{{ $inputCls }}">
+                            </div>
+                            <div>
+                                <label class="{{ $labelCls }}">% IPI</label>
+                                <input type="number" id="ed-aliq-ipi" step="0.0001" min="0" max="100" value="0" oninput="atualizarIpiEditor()" class="{{ $inputCls }}">
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-2">O Vlr. IPI é calculado sobre Qtd × Vl Unit + outras despesas + frete quando o % é informado, e pode ser ajustado manualmente.</p>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -426,6 +526,7 @@ let timerBusca = null;
 const moeda = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const numero = id => parseFloat(document.getElementById(id)?.value) || 0;
 const arred2 = v => Math.round(v * 100) / 100;
+const pct = v => (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
 const dataBr = iso => iso ? iso.split('-').reverse().join('/') : '—';
 
 function mostrarAviso(mensagem, tipo = 'erro') {
@@ -680,9 +781,15 @@ function renderizarGrid() {
 
         const fiscal = fiscalDoItem(item);
 
-        // Ordem das colunas: Descrição, Cód. forn., CFOP, CST/CSOSN, Qtd, Vl Unit, Desconto, Vl Total, Lote, Validade, Ações
+        const bruto = item.quantidade * item.valor_unitario;
+        const descontoPct = bruto > 0 ? (item.valor_desconto / bruto) * 100 : 0;
+
+        // Ordem das colunas: Código, Cód. Barras, Descrição, Cód. forn., CFOP, CST/CSOSN, Qtd, Por cx, Qtd. estoque,
+        // Vl Unit, Vl Total, Desconto, Desconto %, Outras desp., Frete, BC ICMS, Vlr. ICMS, % ICMS, Vlr. IPI, % IPI, Lote, Validade, Ações
         adicionarCelulas([
-            [item.descricao, 'text-left'],
+            [item.codigo || '—', 'text-left'],
+            [item.codigo_barras || '—', 'text-left'],
+            [item.descricao, 'text-left whitespace-normal min-w-48'],
             [item.codigo_fornecedor || '—', 'text-left'],
         ]);
         tr.appendChild(celulaCfop(fiscal));
@@ -692,8 +799,16 @@ function renderizarGrid() {
             [String(porCaixaDe(item)), 'text-right'],
             [fmtQtd(item.quantidade * porCaixaDe(item)), 'text-right'],
             [moeda(item.valor_unitario), 'text-right'],
+            [moeda(total), 'text-right font-medium'],
             [moeda(item.valor_desconto), 'text-right'],
-            [moeda(total), 'text-right'],
+            [pct(descontoPct), 'text-right'],
+            [moeda(item.valor_outras_despesas), 'text-right'],
+            [moeda(item.valor_frete), 'text-right'],
+            [moeda(item.bc_icms), 'text-right'],
+            [moeda(item.valor_icms), 'text-right'],
+            [pct(item.aliquota_icms), 'text-right'],
+            [moeda(item.valor_ipi), 'text-right'],
+            [pct(item.aliquota_ipi), 'text-right'],
             [item.lote || '—', 'text-left'],
             [dataBr(item.validade), 'text-left'],
         ]);
@@ -723,7 +838,8 @@ function renderizarGrid() {
         // Campos enviados ao servidor
         const camposFiscaisManuais = ['cfop_entrada', 'cst_entrada', 'gera_credito'];
 
-        ['produto_id', 'descricao', 'codigo_fornecedor', 'quantidade','qtd_por_caixa', 'valor_unitario', 'valor_desconto', 'lote', 'validade',
+        ['produto_id', 'codigo', 'codigo_barras', 'descricao', 'codigo_fornecedor', 'quantidade','qtd_por_caixa', 'valor_unitario', 'valor_desconto',
+        'valor_outras_despesas', 'valor_frete', 'bc_icms', 'valor_icms', 'aliquota_icms', 'valor_ipi', 'aliquota_ipi', 'lote', 'validade',
         'cfop_origem', 'cst_origem', 'csosn_origem', 'origem_mercadoria', 'fiscal_manual', ...camposFiscaisManuais]
             .forEach(campo => {
                 const input = document.createElement('input');
@@ -743,9 +859,14 @@ function atualizarTotais(produtos = null) {
         produtos = itensNota.reduce((soma, item) => soma + totalItem(item), 0);
     }
 
-    const total = produtos + numero('valor_frete') + numero('valor_outras') - numero('valor_desconto');
+    // outras despesas e frete informados item a item entram no total da nota (além dos campos do rodapé)
+    const extrasItens = itensNota.reduce((soma, item) =>
+        soma + (Number(item.valor_outras_despesas) || 0) + (Number(item.valor_frete) || 0), 0);
+
+    const total = produtos + extrasItens + numero('valor_frete') + numero('valor_outras') - numero('valor_desconto');
 
     document.getElementById('total-produtos').textContent = moeda(produtos);
+    document.getElementById('total-extras-itens').textContent = moeda(extrasItens);
     document.getElementById('total-nota').textContent = moeda(total);
 }
 
@@ -758,8 +879,19 @@ function atualizarTotais(produtos = null) {
 const fmtQtd = v => Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
 const porCaixaDe = item => Math.max(parseInt(item.qtd_por_caixa, 10) || 1, 1);
 
-function atualizarTotalEditor() {
-    const total = arred2((numero('ed-qtd') * numero('ed-unit')) - numero('ed-desc'));
+// origemDesconto: 'valor' (editou o Desconto R$) ou 'percentual' (editou o Desconto %)
+function atualizarTotalEditor(origemDesconto = 'valor') {
+    const subtotal = numero('ed-qtd') * numero('ed-unit');
+    let desconto = numero('ed-desc');
+
+    if (origemDesconto === 'percentual') {
+        desconto = arred2(subtotal * numero('ed-desc-pct') / 100);
+        document.getElementById('ed-desc').value = desconto.toFixed(2);
+    } else {
+        document.getElementById('ed-desc-pct').value = (subtotal > 0 ? (desconto / subtotal) * 100 : 0).toFixed(2);
+    }
+
+    const total = arred2(subtotal - desconto);
     document.getElementById('ed-total').value = moeda(total);
 
     const porCaixa = Math.max(parseInt(document.getElementById('ed-porcaixa').value, 10) || 1, 1);
@@ -774,27 +906,70 @@ function atualizarTotalEditor() {
     }
 }
 
+// Digitação nos campos de valor: recalcula o total e, se houver % de IPI, o Vlr. IPI.
+// (só ao digitar — abrir um item existente não sobrescreve valores ajustados manualmente)
+function aoDigitarValores(origemDesconto = 'valor') {
+    atualizarTotalEditor(origemDesconto);
+    if (numero('ed-aliq-ipi') > 0) atualizarIpiEditor();
+}
+
+function atualizarIcmsEditor() {
+    document.getElementById('ed-vl-icms').value = arred2(numero('ed-bc-icms') * numero('ed-aliq-icms') / 100).toFixed(2);
+}
+
+function atualizarIpiEditor() {
+    const base = (numero('ed-qtd') * numero('ed-unit')) + numero('ed-outras') + numero('ed-frete');
+    document.getElementById('ed-vl-ipi').value = arred2(base * numero('ed-aliq-ipi') / 100).toFixed(2);
+}
+
+function editorTab(nome) {
+    ['dados', 'impostos'].forEach(n => {
+        const ativo = n === nome;
+        const btn = document.getElementById('ed-tab-btn-' + n);
+
+        document.getElementById('ed-painel-' + n).classList.toggle('hidden', !ativo);
+        btn.classList.toggle('border-blue-600', ativo);
+        btn.classList.toggle('text-blue-600', ativo);
+        btn.classList.toggle('border-transparent', !ativo);
+        btn.classList.toggle('text-gray-500', !ativo);
+        btn.classList.toggle('hover:text-gray-700', !ativo);
+    });
+}
+
 function abrirEditor(produto, dados = {}) {
     produtoEditor = produto;
 
+    const set = (id, valor) => { document.getElementById(id).value = valor; };
     const editando = indiceEdicao !== null;
+
     document.getElementById('editor-modal-titulo').textContent = editando ? 'Editar item da nota' : 'Adicionar item à nota';
     document.getElementById('btn-salvar-item').textContent = editando ? 'Salvar alterações' : 'Adicionar à nota';
 
     document.getElementById('editor-produto-nome').textContent = produto.nome;
-    document.getElementById('ed-qtd').value = dados.quantidade ?? 1;
-    document.getElementById('ed-porcaixa').value = dados.qtd_por_caixa ?? 1;
-    document.getElementById('ed-unit').value = dados.valor_unitario ?? (produto.preco_custo ?? 0);
-    document.getElementById('ed-desc').value = dados.valor_desconto ?? 0;
-    document.getElementById('ed-codforn').value = dados.codigo_fornecedor ?? '';
-    document.getElementById('ed-lote').value = dados.lote ?? '';
-    document.getElementById('ed-validade').value = dados.validade ?? '';
+    set('ed-codigo', produto.codigo_interno ?? '');
+    set('ed-codbarras', produto.codigo_barras ?? '');
+    set('ed-descricao', dados.descricao ?? produto.nome);
+    set('ed-qtd', dados.quantidade ?? 1);
+    set('ed-porcaixa', dados.qtd_por_caixa ?? 1);
+    set('ed-unit', dados.valor_unitario ?? (produto.preco_custo ?? 0));
+    set('ed-desc', dados.valor_desconto ?? 0);
+    set('ed-outras', dados.valor_outras_despesas ?? 0);
+    set('ed-frete', dados.valor_frete ?? 0);
+    set('ed-codforn', dados.codigo_fornecedor ?? '');
+    set('ed-lote', dados.lote ?? '');
+    set('ed-validade', dados.validade ?? '');
+    set('ed-bc-icms', dados.bc_icms ?? 0);
+    set('ed-vl-icms', dados.valor_icms ?? 0);
+    set('ed-aliq-icms', dados.aliquota_icms ?? 0);
+    set('ed-vl-ipi', dados.valor_ipi ?? 0);
+    set('ed-aliq-ipi', dados.aliquota_ipi ?? 0);
     preencherEditorFiscal(dados);
     atualizarTotalEditor();
 
     const modal = document.getElementById('modal-editor-item');
     modal.classList.remove('hidden');
     modal.classList.add('flex');
+    editorTab('dados');
 
     document.getElementById('ed-qtd').focus();
     document.getElementById('ed-qtd').select();
@@ -814,25 +989,43 @@ function cancelarEditor() {
 function adicionarLinhaNaGrid() {
     if (!produtoEditor) return;
 
+    // volta para a aba do campo com problema antes de avisar
+    const erro = (aba, mensagem) => { editorTab(aba); mostrarAviso(mensagem); };
+
     const quantidade = numero('ed-qtd');
     const valorUnitario = numero('ed-unit');
     const desconto = numero('ed-desc');
+    const outras = numero('ed-outras');
+    const frete = numero('ed-frete');
     const porCaixa = parseInt(document.getElementById('ed-porcaixa').value, 10);
 
-    if (quantidade <= 0) { mostrarAviso('Informe uma quantidade maior que zero.'); return; }
-    if (valorUnitario < 0) { mostrarAviso('O valor unitário não pode ser negativo.'); return; }
-    if (desconto > quantidade * valorUnitario) { mostrarAviso('O desconto não pode ser maior que o valor do item.'); return; }
-    if (!(porCaixa >= 1)) { mostrarAviso('Informe quantas unidades vêm por caixa (mínimo 1).'); return; }
+    if (quantidade <= 0) return erro('dados', 'Informe uma quantidade maior que zero.');
+    if (valorUnitario < 0) return erro('dados', 'O valor unitário não pode ser negativo.');
+    if (desconto > quantidade * valorUnitario) return erro('dados', 'O desconto não pode ser maior que o valor do item.');
+    if (outras < 0 || frete < 0) return erro('dados', 'Outras despesas e frete não podem ser negativos.');
+    if (!(porCaixa >= 1)) return erro('dados', 'Informe quantas unidades vêm por caixa (mínimo 1).');
+    if (['ed-bc-icms', 'ed-vl-icms', 'ed-vl-ipi'].some(id => numero(id) < 0)) return erro('impostos', 'Os valores de ICMS e IPI não podem ser negativos.');
+    if (['ed-aliq-icms', 'ed-aliq-ipi'].some(id => numero(id) < 0 || numero(id) > 100)) return erro('impostos', 'As alíquotas devem estar entre 0 e 100.');
+
     const fiscal = lerEditorFiscal();
 
     const item = {
         produto_id: produtoEditor.id,
-        descricao: produtoEditor.nome,
+        codigo: produtoEditor.codigo_interno ?? '',
+        codigo_barras: produtoEditor.codigo_barras ?? '',
+        descricao: document.getElementById('ed-descricao').value.trim() || produtoEditor.nome,
         codigo_fornecedor: document.getElementById('ed-codforn').value.trim(),
         quantidade,
         qtd_por_caixa: porCaixa,
         valor_unitario: valorUnitario,
         valor_desconto: desconto,
+        valor_outras_despesas: outras,
+        valor_frete: frete,
+        bc_icms: numero('ed-bc-icms'),
+        valor_icms: numero('ed-vl-icms'),
+        aliquota_icms: numero('ed-aliq-icms'),
+        valor_ipi: numero('ed-vl-ipi'),
+        aliquota_ipi: numero('ed-aliq-ipi'),
         lote: document.getElementById('ed-lote').value.trim(),
         validade: document.getElementById('ed-validade').value,
         ...(fiscalPreservado ?? {}),
@@ -858,7 +1051,12 @@ function editarLinha(i) {
     };
     indiceEdicao = i;
 
-    abrirEditor({ id: item.produto_id, nome: item.descricao }, item);
+    abrirEditor({
+        id: item.produto_id,
+        nome: item.descricao,
+        codigo_interno: item.codigo,
+        codigo_barras: item.codigo_barras,
+    }, item);
 }
 
 // ---------------------------------------------------------------
@@ -1052,12 +1250,21 @@ async function salvarFornecedor() {
 // ---------------------------------------------------------------
 itensNota = itensIniciais.map(i => ({
     produto_id: i.produto_id,
+    codigo: i.codigo ?? '',
+    codigo_barras: i.codigo_barras ?? '',
     descricao: i.descricao,
     codigo_fornecedor: i.codigo_fornecedor ?? '',
     quantidade: parseFloat(i.quantidade) || 0,
     qtd_por_caixa: parseInt(i.qtd_por_caixa, 10) || 1,
     valor_unitario: parseFloat(i.valor_unitario) || 0,
     valor_desconto: parseFloat(i.valor_desconto) || 0,
+    valor_outras_despesas: parseFloat(i.valor_outras_despesas) || 0,
+    valor_frete: parseFloat(i.valor_frete) || 0,
+    bc_icms: parseFloat(i.bc_icms) || 0,
+    valor_icms: parseFloat(i.valor_icms) || 0,
+    aliquota_icms: parseFloat(i.aliquota_icms) || 0,
+    valor_ipi: parseFloat(i.valor_ipi) || 0,
+    aliquota_ipi: parseFloat(i.aliquota_ipi) || 0,
     lote: i.lote ?? '',
     validade: i.validade ?? '',
     cfop_origem: i.cfop_origem ?? '',

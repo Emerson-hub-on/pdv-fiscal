@@ -82,15 +82,18 @@ class EntradaNota extends Model
     /**
      * Recalcula os totais a partir dos itens já gravados.
      * valor_total dos itens já é líquido do desconto do item;
+     * outras despesas e frete informados item a item somam-se aos do cabeçalho;
      * o desconto do cabeçalho é um desconto global da nota.
      */
     public function recalcularTotais(): void
     {
         $produtos = (float) $this->itens()->sum('valor_total');
+        $extrasItens = (float) $this->itens()->sum('valor_outras_despesas')
+            + (float) $this->itens()->sum('valor_frete');
 
         $this->valor_produtos = round($produtos, 2);
         $this->valor_total = round(
-            $produtos + (float) $this->valor_frete + (float) $this->valor_outras - (float) $this->valor_desconto,
+            $produtos + $extrasItens + (float) $this->valor_frete + (float) $this->valor_outras - (float) $this->valor_desconto,
             2
         );
         $this->save();
