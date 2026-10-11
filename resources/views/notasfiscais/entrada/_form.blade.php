@@ -3,6 +3,9 @@
     $inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed';
     $labelCls = 'block text-sm font-medium text-gray-700 mb-1';
     $erroCls  = 'text-red-600 text-xs mt-1';
+    $travadoXml = $ehEdicao && ! $somenteLeitura && $entrada->tipo_entrada === 'xml';
+    $travarCab  = $somenteLeitura || $travadoXml;   // campos do documento da nota
+
 @endphp
 
 @if ($errors->any())
@@ -51,7 +54,7 @@
                     <select id="fornecedor_id" name="fornecedor_id" class="{{ $inputCls }}" @disabled($somenteLeitura)>
                         <option value="">Selecionar fornecedor...</option>
                         @foreach ($fornecedores as $f) @dump($f->toArray())
-<option value="{{ $f->id }}" data-uf="{{ $f->uf }}" @selected(old('fornecedor_id', $entrada->fornecedor_id) == $f->id)>
+                        <option value="{{ $f->id }}" data-uf="{{ $f->uf }}" @selected(old('fornecedor_id', $entrada->fornecedor_id) == $f->id)>
                         {{ $f->nome_exibicao }} - {{ $f->documento_formatado }}
                         @endforeach
                     </select>
