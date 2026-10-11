@@ -211,7 +211,7 @@
                 <tfoot class="bg-gray-50 font-medium">
                     <tr class="border-t-2 border-gray-200">
                         <td class="px-3 py-2 text-left">
-                            <span class="text-xs font-semibold uppercase tracking-wide text-gray-500 mr-2">Totais</span><span id="tot-itens">0</span>
+                            <span id="tot-itens">0</span>
                         </td>
                         <td colspan="5"></td>
                         <td class="px-3 py-2 text-right" id="tot-qtd">0</td>
