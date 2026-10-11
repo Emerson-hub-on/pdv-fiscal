@@ -839,6 +839,18 @@ class EntradaNotaController extends Controller
 
     private function salvar(Request $request, ?EntradaNota $entrada): EntradaNota
     {
+        // Nota importada do XML: os dados do documento não mudam; vale o que está gravado
+        if ($entrada && $entrada->tipo_entrada === 'xml') {
+            $request->merge([
+                'fornecedor_id' => $entrada->fornecedor_id,
+                'modelo'        => $entrada->modelo,
+                'serie'         => $entrada->serie,
+                'numero'        => $entrada->numero,
+                'chave_acesso'  => $entrada->chave_acesso,
+                'data_emissao'  => $entrada->data_emissao?->format('Y-m-d'),
+                'data_entrada'  => $entrada->data_entrada?->format('Y-m-d'),
+            ]);
+        }
         $dados = $this->validar($request, $entrada);
 
         $produtos = Produto::whereIn('id', collect($dados['itens'])->pluck('produto_id')->unique())

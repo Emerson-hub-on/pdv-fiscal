@@ -46,16 +46,26 @@
                 @endif
             </h1>
         </div>
+        @if ($travadoXml)
+            <div class="mb-4 flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                </svg>
+                <span>Nota importada do XML: os dados do documento ficam travados. Você pode alterar apenas a
+                    <strong>Operação / CFOP da entrada</strong> e a <strong>Forma de pagamento</strong>.</span>
+            </div>
+        @endif
 
         <div class="grid grid-cols-2 gap-4 max-w-5xl">
             <div class="col-span-2">
                 <label class="{{ $labelCls }}">Fornecedor</label>
                 <div class="flex gap-2">
-                    <select id="fornecedor_id" name="fornecedor_id" class="{{ $inputCls }}" @disabled($somenteLeitura)>
+                    <select id="fornecedor_id" name="fornecedor_id" class="{{ $inputCls }}" @disabled($travarCab)>
                         <option value="">Selecionar fornecedor...</option>
-                        @foreach ($fornecedores as $f) @dump($f->toArray())
-                        <option value="{{ $f->id }}" data-uf="{{ $f->uf }}" @selected(old('fornecedor_id', $entrada->fornecedor_id) == $f->id)>
-                        {{ $f->nome_exibicao }} - {{ $f->documento_formatado }}
+                        @foreach ($fornecedores as $f)
+                            <option value="{{ $f->id }}" data-uf="{{ $f->uf }}" @selected(old('fornecedor_id', $entrada->fornecedor_id) == $f->id)>
+                                {{ $f->nome_exibicao }} - {{ $f->documento_formatado }}
+                            </option>
                         @endforeach
                     </select>
                     @unless ($somenteLeitura)
