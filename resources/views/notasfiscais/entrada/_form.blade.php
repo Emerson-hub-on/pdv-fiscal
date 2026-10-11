@@ -204,7 +204,7 @@
                         <th class="text-right px-3 py-2">% IPI</th>
                         <th class="text-left px-3 py-2">Lote</th>
                         <th class="text-left px-3 py-2">Validade</th>
-                        <th class="text-right px-3 py-2">Ações</th>
+
                     </tr>
                 </thead>
                 <tbody id="linhas-grid-itens" class="divide-y divide-gray-100"></tbody>
@@ -212,17 +212,17 @@
                     <tr>
                         <td colspan="10" class="px-3 py-1 text-right text-gray-500">Produtos</td>
                         <td class="px-3 py-1 text-right" id="total-produtos">R$ 0,00</td>
-                        <td colspan="12"></td>
+                        <td colspan="11"></td>
                     </tr>
                     <tr>
                         <td colspan="10" class="px-3 py-1 text-right text-gray-500">Outras desp. e frete dos itens</td>
                         <td class="px-3 py-1 text-right" id="total-extras-itens">R$ 0,00</td>
-                        <td colspan="12"></td>
+                        <td colspan="11"></td>
                     </tr>
                     <tr>
                         <td colspan="10" class="px-3 py-2 text-right">Total da nota</td>
                         <td class="px-3 py-2 text-right" id="total-nota">R$ 0,00</td>
-                        <td colspan="12"></td>
+                        <td colspan="11"></td>
                     </tr>
                 </tfoot>
             </table>
@@ -476,9 +476,13 @@
             </div>
         </div>
 
-        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
+        <div class="px-6 py-4 border-t border-gray-100 flex items-center gap-2">
+            <button type="button" id="btn-remover-item" onclick="removerItemEmEdicao()"
+                    class="hidden border border-red-300 text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg text-sm font-medium transition">
+                Remover item da nota
+            </button>
             <button type="button" onclick="cancelarEditor()"
-                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition">Cancelar</button>
+                    class="ml-auto bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition">Cancelar</button>
             <button type="button" id="btn-salvar-item" onclick="adicionarLinhaNaGrid()"
                     class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition">
                 Adicionar à nota
@@ -841,26 +845,12 @@ function renderizarGrid() {
             [dataBr(item.validade), 'text-left'],
         ]);
 
-        const tdAcoes = document.createElement('td');
-        tdAcoes.className = 'px-3 py-2 text-right';
-
+        // Nota em edição: a linha inteira abre o modal do item
         if (!somenteLeitura) {
-            const editar = document.createElement('button');
-            editar.type = 'button';
-            editar.textContent = 'Editar';
-            editar.className = 'text-gray-600 hover:text-gray-900 text-sm mr-3';
-            editar.onclick = () => editarLinha(i);
-
-            const remover = document.createElement('button');
-            remover.type = 'button';
-            remover.textContent = 'Remover';
-            remover.className = 'text-red-600 hover:text-red-800 text-sm';
-            remover.onclick = () => { itensNota.splice(i, 1); renderizarGrid(); };
-
-            tdAcoes.append(editar, remover);
+            tr.classList.add('cursor-pointer');
+            tr.onclick = () => editarLinha(i);
         }
 
-        tr.appendChild(tdAcoes);
         corpo.appendChild(tr);
 
         // Campos enviados ao servidor
@@ -973,7 +963,7 @@ function abrirEditor(produto, dados = {}) {
 
     document.getElementById('editor-modal-titulo').textContent = editando ? 'Editar item da nota' : 'Adicionar item à nota';
     document.getElementById('btn-salvar-item').textContent = editando ? 'Salvar alterações' : 'Adicionar à nota';
-
+    document.getElementById('btn-remover-item').classList.toggle('hidden', !editando);
     document.getElementById('editor-produto-nome').textContent = produto.nome;
     set('ed-codigo', produto.codigo_interno ?? '');
     set('ed-codbarras', produto.codigo_barras ?? '');
@@ -1013,6 +1003,16 @@ function cancelarEditor() {
     const modal = document.getElementById('modal-editor-item');
     modal.classList.add('hidden');
     modal.classList.remove('flex');
+}
+
+function removerItemEmEdicao() {
+    if (indiceEdicao === null) return;
+    if (!confirm('Remover este item da nota?')) return;
+
+    itensNota.splice(indiceEdicao, 1);
+    cancelarEditor();
+    renderizarGrid();
+    document.getElementById('input-busca-item').focus();
 }
 
 function adicionarLinhaNaGrid() {
