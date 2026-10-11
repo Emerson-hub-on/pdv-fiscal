@@ -271,6 +271,7 @@
             <table class="w-full text-sm whitespace-nowrap">
                 <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
                     <tr>
+                        <th class="text-left px-3 py-2">Itens</th>
                         <th class="text-left px-3 py-2">Código</th>
                         <th class="text-left px-3 py-2">Cód. Barras</th>
                         <th class="text-left px-3 py-2">Descrição</th>
@@ -634,6 +635,10 @@
                     class="px-5 py-3 text-sm font-medium border-b-2 transition border-transparent text-gray-500 hover:text-gray-700">
                 Impostos
             </button>
+            <button type="button" onclick="editorTab('referencia')" id="editor-tab-btn-referencia"
+                    class="hidden px-5 py-3 text-sm font-medium border-b-2 transition border-transparent text-gray-500 hover:text-gray-700">
+                Ref. NF origem
+            </button>
         </div>
 
         <div class="p-6 overflow-y-auto">
@@ -688,16 +693,6 @@
                         <input type="text" id="editor-valor-total" readonly class="{{ $edReadonly }}">
                     </div>
 
-                    <div id="editor-referencia-devolucao" class="hidden grid grid-cols-2 gap-4 col-span-4">
-                        <div>
-                            <label class="{{ $edLabel }}">Chave da NF-e original (devolução)</label>
-                            <input type="text" id="editor-ref-chave" maxlength="44" class="{{ $edInput }} font-mono">
-                        </div>
-                        <div>
-                            <label class="{{ $edLabel }}">Nº do item na nota original (opcional)</label>
-                            <input type="number" id="editor-ref-nitem" min="1" class="{{ $edInput }}">
-                        </div>
-                    </div>
                 </div>
 
             </div>
@@ -725,6 +720,20 @@
                         <input type="text" id="editor-aliquota-ipi" readonly class="{{ $edImposto }}">
                     </div>
                 </div>
+            </div>
+
+            <div id="editor-painel-referencia" class="hidden">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="{{ $edLabel }}">Chave da NF-e original (devolução)</label>
+                        <input type="text" id="editor-ref-chave" maxlength="44" class="{{ $edInput }} font-mono">
+                    </div>
+                    <div>
+                        <label class="{{ $edLabel }}">Nº do item na nota original (opcional)</label>
+                        <input type="number" id="editor-ref-nitem" min="1" class="{{ $edInput }}">
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400 mt-3">A chave de acesso da nota de origem (44 dígitos) é obrigatória para a finalidade desta nota.</p>
             </div>
         </div>
 
@@ -1971,14 +1980,20 @@ function abrirEditorItem(produto) {
 
     document.getElementById('editor-quantidade').focus();
     document.getElementById('editor-quantidade').select();
-    document.getElementById('editor-referencia-devolucao').classList
-    .toggle('hidden', !finalidadesRefPorItem.includes(String(campoFinalidade.value)));
+    atualizarAbaReferencia();
     document.getElementById('editor-ref-chave').value = '';
     document.getElementById('editor-ref-nitem').value = '';
 }
 
+
+function atualizarAbaReferencia() {
+    const exige = finalidadesRefPorItem.includes(String(campoFinalidade.value));
+    document.getElementById('editor-tab-btn-referencia').classList.toggle('hidden', !exige);
+}
+
+
 function editorTab(nome) {
-    ['dados', 'impostos'].forEach(n => {
+    ['dados', 'impostos', 'referencia'].forEach(n => {
         const ativo = n === nome;
         const btn = document.getElementById('editor-tab-btn-' + n);
 
@@ -2065,8 +2080,7 @@ function editarItemDaGrid(index) {
         document.getElementById('editor-aliquota-ipi').value   = Number(item.aliquota_ipi).toFixed(2) + '%';
     }
 
-    document.getElementById('editor-referencia-devolucao').classList
-        .toggle('hidden', !finalidadesRefPorItem.includes(String(campoFinalidade.value)));
+    atualizarAbaReferencia();
     document.getElementById('editor-ref-chave').value = item.ref_chave_acesso ?? '';
     document.getElementById('editor-ref-nitem').value = item.ref_nitem ?? '';
 
@@ -2179,7 +2193,7 @@ function adicionarLinhaNaGrid() {
     const frete = freteModo === 'item' ? (parseFloat(document.getElementById('editor-frete').value) || 0) : 0;
 
     if (finalidadesRefPorItem.includes(String(campoFinalidade.value)) && refChave.length !== 44) {
-        editorTab('dados');
+        editorTab('referencia');
         alert('Informe a chave de acesso (44 dígitos) da nota de origem deste item.');
         return;
     }
@@ -2262,7 +2276,6 @@ function adicionarLinhaNaGrid() {
 }
 
 
-
 function prepararBlocoMotivoAjuste() {
     const bloco = document.getElementById('bloco-motivo-ajuste');
     const select = document.getElementById('modal-motivo-ajuste');
@@ -2307,9 +2320,10 @@ function renderizarGridItens() {
         return `
             <tr class="cursor-pointer transition ${emEdicao ? 'bg-slate-100' : 'hover:bg-gray-50'}"
                 onclick="editarItemDaGrid(${index})" title="Clique para editar">
+                <td class="px-3 py-2 font-medium text-gray-500">${index + 1}</td>
                 <td class="px-3 py-2">${item.codigo ?? '—'}</td>
                 <td class="px-3 py-2">${item.codigo_barras ?? '—'}</td>
-                <td class="px-3 py-2 whitespace-normal min-w-48">${item.descricao}</td>
+                <td class="px-3 py-2"><div class="max-w-[16rem] truncate">${item.descricao}</div></td>
                 <td class="px-3 py-2 font-mono">${cfopEfetivoItem(item)}</td>
                 <td class="px-3 py-2 font-mono">${item.cst_csosn ?? '—'}</td>
                 <td class="px-3 py-2 text-right">${item.quantidade}</td>
