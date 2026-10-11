@@ -209,15 +209,26 @@
                 </thead>
                 <tbody id="linhas-grid-itens" class="divide-y divide-gray-100"></tbody>
                 <tfoot class="bg-gray-50 font-medium">
-                    <tr>
-                        <td colspan="10" class="px-3 py-1 text-right text-gray-500">Produtos</td>
-                        <td class="px-3 py-1 text-right" id="total-produtos">R$ 0,00</td>
-                        <td colspan="11"></td>
-                    </tr>
-                    <tr>
-                        <td colspan="10" class="px-3 py-1 text-right text-gray-500">Outras desp. e frete dos itens</td>
-                        <td class="px-3 py-1 text-right" id="total-extras-itens">R$ 0,00</td>
-                        <td colspan="11"></td>
+                    <tr class="border-t-2 border-gray-200">
+                        <td class="px-3 py-2 text-left">
+                            <span class="text-xs font-semibold uppercase tracking-wide text-gray-500 mr-2">Totais</span><span id="tot-itens">0</span>
+                        </td>
+                        <td colspan="5"></td>
+                        <td class="px-3 py-2 text-right" id="tot-qtd">0</td>
+                        <td></td>
+                        <td class="px-3 py-2 text-right" id="tot-estoque">0</td>
+                        <td></td>
+                        <td class="px-3 py-2 text-right" id="tot-total">R$ 0,00</td>
+                        <td class="px-3 py-2 text-right" id="tot-desconto">R$ 0,00</td>
+                        <td class="px-3 py-2 text-right" id="tot-desconto-pct" title="Desconto sobre o valor bruto dos itens">0,00%</td>
+                        <td class="px-3 py-2 text-right" id="tot-outras">R$ 0,00</td>
+                        <td class="px-3 py-2 text-right" id="tot-frete">R$ 0,00</td>
+                        <td class="px-3 py-2 text-right" id="tot-bc-icms">R$ 0,00</td>
+                        <td class="px-3 py-2 text-right" id="tot-vl-icms">R$ 0,00</td>
+                        <td class="px-3 py-2 text-right" id="tot-aliq-icms" title="Média ponderada pela BC do ICMS">0,00%</td>
+                        <td class="px-3 py-2 text-right" id="tot-vl-ipi">R$ 0,00</td>
+                        <td class="px-3 py-2 text-right" id="tot-aliq-ipi" title="Média ponderada pela base do IPI">0,00%</td>
+                        <td colspan="2"></td>
                     </tr>
                     <tr>
                         <td colspan="10" class="px-3 py-2 text-right">Total da nota</td>
@@ -785,11 +796,8 @@ function renderizarGrid() {
     corpo.innerHTML = '';
     campos.innerHTML = '';
 
-    let produtos = 0;
-
     itensNota.forEach((item, i) => {
         const total = totalItem(item);
-        produtos += total;
 
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-gray-50';
@@ -869,24 +877,43 @@ function renderizarGrid() {
     });
 
     document.getElementById('grid-vazia').classList.toggle('hidden', itensNota.length > 0);
-    atualizarTotais(produtos);
+    atualizarTotais();
 }
 
 
-function atualizarTotais(produtos = null) {
-    if (produtos === null) {
-        produtos = itensNota.reduce((soma, item) => soma + totalItem(item), 0);
-    }
+function atualizarTotais() {
+    const soma = (fn) => itensNota.reduce((acc, item) => acc + (Number(fn(item)) || 0), 0);
 
-    // outras despesas e frete informados item a item entram no total da nota (além dos campos do rodapé)
-    const extrasItens = itensNota.reduce((soma, item) =>
-        soma + (Number(item.valor_outras_despesas) || 0) + (Number(item.valor_frete) || 0), 0);
+    const produtos = soma(totalItem);
+    const bruto    = soma(item => item.quantidade * item.valor_unitario);
+    const desconto = soma(item => item.valor_desconto);
+    const outras   = soma(item => item.valor_outras_despesas);
+    const frete    = soma(item => item.valor_frete);
+    const bcIcms   = soma(item => item.bc_icms);
+    const vlIcms   = soma(item => item.valor_icms);
+    const vlIpi    = soma(item => item.valor_ipi);
+    const baseIpi  = bruto + outras + frete;
 
-    const total = produtos + extrasItens + numero('valor_frete') + numero('valor_outras') - numero('valor_desconto');
+    const texto = (id, valor) => { document.getElementById(id).textContent = valor; };
 
-    document.getElementById('total-produtos').textContent = moeda(produtos);
-    document.getElementById('total-extras-itens').textContent = moeda(extrasItens);
-    document.getElementById('total-nota').textContent = moeda(total);
+    // Totais abaixo de cada coluna (Por cx e Vl Unit não são somáveis e ficam em branco)
+    texto('tot-itens', itensNota.length);
+    texto('tot-qtd', fmtQtd(soma(item => item.quantidade)));
+    texto('tot-estoque', fmtQtd(soma(item => item.quantidade * porCaixaDe(item))));
+    texto('tot-total', moeda(produtos));
+    texto('tot-desconto', moeda(desconto));
+    texto('tot-desconto-pct', pct(bruto > 0 ? (desconto / bruto) * 100 : 0));
+    texto('tot-outras', moeda(outras));
+    texto('tot-frete', moeda(frete));
+    texto('tot-bc-icms', moeda(bcIcms));
+    texto('tot-vl-icms', moeda(vlIcms));
+    texto('tot-aliq-icms', pct(bcIcms > 0 ? (vlIcms / bcIcms) * 100 : 0));
+    texto('tot-vl-ipi', moeda(vlIpi));
+    texto('tot-aliq-ipi', pct(baseIpi > 0 ? (vlIpi / baseIpi) * 100 : 0));
+
+    // total da nota: itens + outras despesas/frete dos itens + campos do rodapé − desconto geral
+    const total = produtos + outras + frete + numero('valor_frete') + numero('valor_outras') - numero('valor_desconto');
+    texto('total-nota', moeda(total));
 }
 
 ['valor_frete', 'valor_outras', 'valor_desconto'].forEach(id =>
