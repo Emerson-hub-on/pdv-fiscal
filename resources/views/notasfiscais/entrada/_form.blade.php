@@ -156,91 +156,6 @@
                    autocomplete="off" oninput="abrirModalProdutoComTexto(this)"
                    class="w-full max-w-2xl border border-gray-300 rounded-lg px-3 py-2 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
 
-            <div id="editor-item" class="hidden flex flex-col gap-3 mb-4 bg-gray-50 rounded-lg p-4">
-                <div class="text-sm font-semibold text-gray-800" id="editor-produto-nome"></div>
-
-                <div class="grid grid-cols-4 gap-3">
-                    <div>
-                        <label class="block text-xs text-gray-500 mb-1">Qtd</label>
-                        <input type="number" id="ed-qtd" step="0.001" min="0.001" oninput="atualizarTotalEditor()"
-                               class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-gray-500 mb-1">Por caixa (UN)</label>
-                        <input type="number" id="ed-porcaixa" step="1" min="1" value="1" oninput="atualizarTotalEditor()"
-                            class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-gray-500 mb-1">Vl Unit (R$)</label>
-                        <input type="number" id="ed-unit" step="0.0001" min="0" oninput="atualizarTotalEditor()"
-                               class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-gray-500 mb-1">Desconto (R$)</label>
-                        <input type="number" id="ed-desc" step="0.01" min="0" value="0" oninput="atualizarTotalEditor()"
-                               class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-gray-500 mb-1">Vl Total</label>
-                        <input type="text" id="ed-total" readonly
-                               class="w-full border border-gray-200 bg-gray-100 rounded-lg px-2 py-1.5 text-sm">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-gray-500 mb-1">Cód. no fornecedor</label>
-                        <input type="text" id="ed-codforn" maxlength="60"
-                               class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-gray-500 mb-1">Lote</label>
-                        <input type="text" id="ed-lote" maxlength="30"
-                               class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-gray-500 mb-1">Validade</label>
-                        <input type="date" id="ed-validade"
-                               class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
-                    </div>
-                    <p id="ed-estoque-dica" class="text-xs text-gray-500 hidden"></p>
-                </div>
-                <div class="border-t border-gray-200 pt-3">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Classificação fiscal</span>
-                        <button type="button" onclick="restaurarFiscalAutomatico()" class="text-xs text-blue-600 hover:underline">Restaurar automático</button>
-                    </div>
-
-                    <div class="grid grid-cols-3 gap-3">
-                        <div>
-                            <label class="block text-xs text-gray-500 mb-1">CFOP de entrada</label>
-                            <select id="ed-cfop" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white"></select>
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-500 mb-1">{{ $fiscal['regime'] === 'normal' ? 'CST' : 'CSOSN' }} de entrada</label>
-                            <select id="ed-cst" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white"></select>
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-500 mb-1">Gera crédito de ICMS</label>
-                            <select id="ed-credito" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white">
-                                <option value="">Não informado</option>
-                                <option value="1">Sim</option>
-                                <option value="0">Não</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <p id="ed-fiscal-dica" class="text-xs text-gray-400 mt-1"></p>
-                </div>
-
-                <div class="flex gap-2">
-                    <button type="button" onclick="adicionarLinhaNaGrid()"
-                            class="bg-gray-800 text-white rounded-lg px-3 py-1.5 text-sm h-fit hover:bg-gray-700 w-fit">
-                        Adicionar à nota
-                    </button>
-                    <button type="button" onclick="cancelarEditor()"
-                            class="border border-red-300 text-red-600 rounded-lg px-3 py-1.5 text-sm h-fit hover:bg-red-50 w-fit">
-                        Cancelar
-                    </button>
-                </div>
-            </div>
         @endunless
 
         <div class="overflow-x-auto">
@@ -367,6 +282,93 @@
     </div>
 </div>
 
+<!-- Modal de edição do item -->
+<div id="modal-editor-item" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col">
+        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900 rounded-t-xl">
+            <h2 id="editor-modal-titulo" class="text-lg font-bold text-white">Adicionar item à nota</h2>
+            <button type="button" onclick="cancelarEditor()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
+        </div>
+
+        <div class="p-6 overflow-y-auto flex flex-col gap-4">
+            <p id="editor-produto-nome" class="text-sm font-semibold text-gray-800"></p>
+
+            <div class="grid grid-cols-4 gap-4">
+                <div>
+                    <label class="{{ $labelCls }}">Qtd</label>
+                    <input type="number" id="ed-qtd" step="0.001" min="0.001" oninput="atualizarTotalEditor()" class="{{ $inputCls }}">
+                </div>
+                <div>
+                    <label class="{{ $labelCls }}">Por caixa (UN)</label>
+                    <input type="number" id="ed-porcaixa" step="1" min="1" value="1" oninput="atualizarTotalEditor()" class="{{ $inputCls }}">
+                </div>
+                <div>
+                    <label class="{{ $labelCls }}">Vl Unit (R$)</label>
+                    <input type="number" id="ed-unit" step="0.0001" min="0" oninput="atualizarTotalEditor()" class="{{ $inputCls }}">
+                </div>
+                <div>
+                    <label class="{{ $labelCls }}">Desconto (R$)</label>
+                    <input type="number" id="ed-desc" step="0.01" min="0" value="0" oninput="atualizarTotalEditor()" class="{{ $inputCls }}">
+                </div>
+                <div>
+                    <label class="{{ $labelCls }}">Vl Total</label>
+                    <input type="text" id="ed-total" readonly class="{{ $inputCls }} bg-gray-100">
+                </div>
+                <div>
+                    <label class="{{ $labelCls }}">Cód. no fornecedor</label>
+                    <input type="text" id="ed-codforn" maxlength="60" class="{{ $inputCls }}">
+                </div>
+                <div>
+                    <label class="{{ $labelCls }}">Lote</label>
+                    <input type="text" id="ed-lote" maxlength="30" class="{{ $inputCls }}">
+                </div>
+                <div>
+                    <label class="{{ $labelCls }}">Validade</label>
+                    <input type="date" id="ed-validade" class="{{ $inputCls }}">
+                </div>
+                <p id="ed-estoque-dica" class="col-span-4 text-xs text-gray-500 hidden"></p>
+            </div>
+
+            <div class="border-t border-gray-100 pt-4">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Classificação fiscal</span>
+                    <button type="button" onclick="restaurarFiscalAutomatico()" class="text-xs text-blue-600 hover:underline">Restaurar automático</button>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="{{ $labelCls }}">CFOP de entrada</label>
+                        <select id="ed-cfop" class="{{ $inputCls }} bg-white"></select>
+                    </div>
+                    <div>
+                        <label class="{{ $labelCls }}">{{ $fiscal['regime'] === 'normal' ? 'CST' : 'CSOSN' }} de entrada</label>
+                        <select id="ed-cst" class="{{ $inputCls }} bg-white"></select>
+                    </div>
+                    <div>
+                        <label class="{{ $labelCls }}">Gera crédito de ICMS</label>
+                        <select id="ed-credito" class="{{ $inputCls }} bg-white">
+                            <option value="">Não informado</option>
+                            <option value="1">Sim</option>
+                            <option value="0">Não</option>
+                        </select>
+                    </div>
+                </div>
+
+                <p id="ed-fiscal-dica" class="text-xs text-gray-400 mt-2"></p>
+            </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
+            <button type="button" onclick="cancelarEditor()"
+                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition">Cancelar</button>
+            <button type="button" id="btn-salvar-item" onclick="adicionarLinhaNaGrid()"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition">
+                Adicionar à nota
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Modal de cadastro rápido de fornecedor -->
 <div id="modal-fornecedor" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-y-auto">
@@ -414,6 +416,7 @@ const csrfToken = {{ Illuminate\Support\Js::from(csrf_token()) }};
 
 let itensNota = [];
 let produtoEditor = null;   // produto selecionado no editor
+let indiceEdicao = null;    // posição do item da grade em edição (null = item novo)
 let fiscalPreservado = null;   // dados fiscais do item em edição   
 let fiscalEditor = null;   // valores automáticos do item em edição (para detectar mudança manual)
 let resultadosBusca = [];
@@ -774,26 +777,38 @@ function atualizarTotalEditor() {
 function abrirEditor(produto, dados = {}) {
     produtoEditor = produto;
 
+    const editando = indiceEdicao !== null;
+    document.getElementById('editor-modal-titulo').textContent = editando ? 'Editar item da nota' : 'Adicionar item à nota';
+    document.getElementById('btn-salvar-item').textContent = editando ? 'Salvar alterações' : 'Adicionar à nota';
+
     document.getElementById('editor-produto-nome').textContent = produto.nome;
     document.getElementById('ed-qtd').value = dados.quantidade ?? 1;
+    document.getElementById('ed-porcaixa').value = dados.qtd_por_caixa ?? 1;
     document.getElementById('ed-unit').value = dados.valor_unitario ?? (produto.preco_custo ?? 0);
     document.getElementById('ed-desc').value = dados.valor_desconto ?? 0;
     document.getElementById('ed-codforn').value = dados.codigo_fornecedor ?? '';
     document.getElementById('ed-lote').value = dados.lote ?? '';
     document.getElementById('ed-validade').value = dados.validade ?? '';
     preencherEditorFiscal(dados);
-    document.getElementById('editor-item').classList.remove('hidden');
     atualizarTotalEditor();
+
+    const modal = document.getElementById('modal-editor-item');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
     document.getElementById('ed-qtd').focus();
     document.getElementById('ed-qtd').select();
-    document.getElementById('ed-porcaixa').value = dados.qtd_por_caixa ?? 1;
 }
 
 function cancelarEditor() {
     produtoEditor = null;
     fiscalPreservado = null;
     fiscalEditor = null;
-    document.getElementById('editor-item').classList.add('hidden');
+    indiceEdicao = null;
+
+    const modal = document.getElementById('modal-editor-item');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
 }
 
 function adicionarLinhaNaGrid() {
@@ -802,13 +817,15 @@ function adicionarLinhaNaGrid() {
     const quantidade = numero('ed-qtd');
     const valorUnitario = numero('ed-unit');
     const desconto = numero('ed-desc');
+    const porCaixa = parseInt(document.getElementById('ed-porcaixa').value, 10);
 
     if (quantidade <= 0) { mostrarAviso('Informe uma quantidade maior que zero.'); return; }
     if (valorUnitario < 0) { mostrarAviso('O valor unitário não pode ser negativo.'); return; }
     if (desconto > quantidade * valorUnitario) { mostrarAviso('O desconto não pode ser maior que o valor do item.'); return; }
+    if (!(porCaixa >= 1)) { mostrarAviso('Informe quantas unidades vêm por caixa (mínimo 1).'); return; }
     const fiscal = lerEditorFiscal();
 
-    itensNota.push({
+    const item = {
         produto_id: produtoEditor.id,
         descricao: produtoEditor.nome,
         codigo_fornecedor: document.getElementById('ed-codforn').value.trim(),
@@ -823,9 +840,10 @@ function adicionarLinhaNaGrid() {
         cfop_entrada: fiscal.manual ? fiscal.cfop : '',
         cst_entrada: fiscal.manual ? fiscal.cst : '',
         gera_credito: fiscal.manual ? fiscal.credito : '',
-    });
-    const porCaixa = parseInt(document.getElementById('ed-porcaixa').value, 10);
-    if (!(porCaixa >= 1)) { mostrarAviso('Informe quantas unidades vêm por caixa (mínimo 1).'); return; }
+    };
+
+    if (indiceEdicao === null) itensNota.push(item);
+    else itensNota[indiceEdicao] = item;
 
     cancelarEditor();
     renderizarGrid();
@@ -838,8 +856,7 @@ function editarLinha(i) {
         cfop_origem: item.cfop_origem, cst_origem: item.cst_origem,
         csosn_origem: item.csosn_origem, origem_mercadoria: item.origem_mercadoria,
     };
-    itensNota.splice(i, 1);
-    renderizarGrid();
+    indiceEdicao = i;
 
     abrirEditor({ id: item.produto_id, nome: item.descricao }, item);
 }
@@ -933,6 +950,7 @@ function buscarProdutos() {
 
 function selecionarProduto(produto) {
     fecharModalProduto();
+    indiceEdicao = null;
     abrirEditor(produto);
 }
 
@@ -957,11 +975,13 @@ if (!somenteLeitura) {
         }
     });
 
-    // Enter nos campos do editor adiciona o item em vez de enviar o formulário
-    document.getElementById('editor-item').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
+    // Enter nos campos do modal salva o item; Esc fecha
+    document.getElementById('modal-editor-item').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') {
             e.preventDefault();
             adicionarLinhaNaGrid();
+        } else if (e.key === 'Escape') {
+            cancelarEditor();
         }
     });
 }
