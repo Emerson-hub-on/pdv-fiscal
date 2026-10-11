@@ -180,10 +180,10 @@
             <table class="w-full text-sm whitespace-nowrap">
                 <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
                     <tr>
-                        <th class="text-left px-3 py-2">Código</th>
+                        <th class="text-left px-3 py-2">Itens</th>
+                        <th class="text-left px-3 py-2">Cód. forn.</th>
                         <th class="text-left px-3 py-2">Cód. Barras</th>
                         <th class="text-left px-3 py-2">Descrição</th>
-                        <th class="text-left px-3 py-2">Cód. forn.</th>
                         <th class="text-left px-3 py-2">CFOP</th>
                         <th class="text-left px-3 py-2">
                             {{ $fiscal['regime'] === 'normal' ? 'CST' : 'CSOSN' }}
@@ -802,16 +802,26 @@ function renderizarGrid() {
         const bruto = item.quantidade * item.valor_unitario;
         const descontoPct = bruto > 0 ? (item.valor_desconto / bruto) * 100 : 0;
 
-        // Ordem das colunas: Código, Cód. Barras, Descrição, Cód. forn., CFOP, CST/CSOSN, Qtd, Por cx, Qtd. estoque,
-        // Vl Unit, Vl Total, Desconto, Desconto %, Outras desp., Frete, BC ICMS, Vlr. ICMS, % ICMS, Vlr. IPI, % IPI, Lote, Validade, Ações
+        // Ordem: Itens, Cód. forn., Cód. Barras, Descrição, CFOP, CST/CSOSN, Qtd, Por cx, Qtd. estoque, ...
         adicionarCelulas([
-            [item.codigo || '—', 'text-left'],
-            [item.codigo_barras || '—', 'text-left'],
-            [item.descricao, 'text-left whitespace-normal min-w-48'],
+            [String(i + 1), 'text-left font-medium text-gray-500'],
             [item.codigo_fornecedor || '—', 'text-left'],
+            [item.codigo_barras || '—', 'text-left'],
         ]);
+
+        // Descrição: uma linha só, com "..." quando passa da largura.
+        const tdDescricao = document.createElement('td');
+        tdDescricao.className = 'px-3 py-2 text-left';
+        const textoDescricao = document.createElement('div');
+        textoDescricao.className = 'max-w-[16rem] truncate';
+        textoDescricao.textContent = item.descricao;
+        if (somenteLeitura) textoDescricao.title = item.descricao;
+        tdDescricao.appendChild(textoDescricao);
+        tr.appendChild(tdDescricao);
+
         tr.appendChild(celulaCfop(fiscal));
         tr.appendChild(celulaCst(fiscal, item));
+        
         adicionarCelulas([
             [Number(item.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 3 }), 'text-right'],
             [String(porCaixaDe(item)), 'text-right'],
@@ -871,6 +881,7 @@ function renderizarGrid() {
     document.getElementById('grid-vazia').classList.toggle('hidden', itensNota.length > 0);
     atualizarTotais(produtos);
 }
+
 
 function atualizarTotais(produtos = null) {
     if (produtos === null) {
