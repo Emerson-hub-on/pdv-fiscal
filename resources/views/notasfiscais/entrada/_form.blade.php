@@ -166,6 +166,11 @@
                                class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
                     </div>
                     <div>
+                        <label class="block text-xs text-gray-500 mb-1">Por caixa (UN)</label>
+                        <input type="number" id="ed-porcaixa" step="1" min="1" value="1" oninput="atualizarTotalEditor()"
+                            class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+                    </div>
+                    <div>
                         <label class="block text-xs text-gray-500 mb-1">Vl Unit (R$)</label>
                         <input type="number" id="ed-unit" step="0.0001" min="0" oninput="atualizarTotalEditor()"
                                class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
@@ -195,6 +200,7 @@
                         <input type="date" id="ed-validade"
                                class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
                     </div>
+                    <p id="ed-estoque-dica" class="text-xs text-gray-500 hidden"></p>
                 </div>
                 <div class="border-t border-gray-200 pt-3">
                     <div class="flex items-center justify-between mb-2">
@@ -248,6 +254,8 @@
                         {{ $fiscal['regime'] === 'normal' ? 'CST' : 'CSOSN' }}
                         </th>
                         <th class="text-right px-3 py-2">Qtd</th>
+                        <th class="text-right px-3 py-2">Por cx</th>
+                        <th class="text-right px-3 py-2">Qtd. estoque</th>
                         <th class="text-right px-3 py-2">Vl Unit</th>
                         <th class="text-right px-3 py-2">Desconto</th>
                         <th class="text-right px-3 py-2">Vl Total</th>
@@ -678,6 +686,8 @@ function renderizarGrid() {
         tr.appendChild(celulaCst(fiscal, item));
         adicionarCelulas([
             [Number(item.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 3 }), 'text-right'],
+            [String(porCaixaDe(item)), 'text-right'],
+            [fmtQtd(item.quantidade * porCaixaDe(item)), 'text-right'],
             [moeda(item.valor_unitario), 'text-right'],
             [moeda(item.valor_desconto), 'text-right'],
             [moeda(total), 'text-right'],
@@ -710,7 +720,7 @@ function renderizarGrid() {
         // Campos enviados ao servidor
         const camposFiscaisManuais = ['cfop_entrada', 'cst_entrada', 'gera_credito'];
 
-        ['produto_id', 'descricao', 'codigo_fornecedor', 'quantidade', 'valor_unitario', 'valor_desconto', 'lote', 'validade',
+        ['produto_id', 'descricao', 'codigo_fornecedor', 'quantidade','qtd_por_caixa', 'valor_unitario', 'valor_desconto', 'lote', 'validade',
         'cfop_origem', 'cst_origem', 'csosn_origem', 'origem_mercadoria', 'fiscal_manual', ...camposFiscaisManuais]
             .forEach(campo => {
                 const input = document.createElement('input');
@@ -742,9 +752,23 @@ function atualizarTotais(produtos = null) {
 // ---------------------------------------------------------------
 // Editor do item
 // ---------------------------------------------------------------
+const fmtQtd = v => Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+const porCaixaDe = item => Math.max(parseInt(item.qtd_por_caixa, 10) || 1, 1);
+
 function atualizarTotalEditor() {
     const total = arred2((numero('ed-qtd') * numero('ed-unit')) - numero('ed-desc'));
     document.getElementById('ed-total').value = moeda(total);
+
+    const porCaixa = Math.max(parseInt(document.getElementById('ed-porcaixa').value, 10) || 1, 1);
+    const unidades = numero('ed-qtd') * porCaixa;
+    const dica = document.getElementById('ed-estoque-dica');
+
+    if (porCaixa > 1 && unidades > 0) {
+        dica.textContent = `Entram no estoque: ${fmtQtd(unidades)} UN (${fmtQtd(numero('ed-qtd'))} × ${porCaixa}) · custo por UN: ${moeda(total / unidades)}`;
+        dica.classList.remove('hidden');
+    } else {
+        dica.classList.add('hidden');
+    }
 }
 
 function abrirEditor(produto, dados = {}) {
@@ -762,6 +786,7 @@ function abrirEditor(produto, dados = {}) {
     atualizarTotalEditor();
     document.getElementById('ed-qtd').focus();
     document.getElementById('ed-qtd').select();
+    document.getElementById('ed-porcaixa').value = dados.qtd_por_caixa ?? 1;
 }
 
 function cancelarEditor() {
@@ -788,6 +813,7 @@ function adicionarLinhaNaGrid() {
         descricao: produtoEditor.nome,
         codigo_fornecedor: document.getElementById('ed-codforn').value.trim(),
         quantidade,
+        qtd_por_caixa: porCaixa,
         valor_unitario: valorUnitario,
         valor_desconto: desconto,
         lote: document.getElementById('ed-lote').value.trim(),
@@ -798,6 +824,8 @@ function adicionarLinhaNaGrid() {
         cst_entrada: fiscal.manual ? fiscal.cst : '',
         gera_credito: fiscal.manual ? fiscal.credito : '',
     });
+    const porCaixa = parseInt(document.getElementById('ed-porcaixa').value, 10);
+    if (!(porCaixa >= 1)) { mostrarAviso('Informe quantas unidades vêm por caixa (mínimo 1).'); return; }
 
     cancelarEditor();
     renderizarGrid();
@@ -1007,6 +1035,7 @@ itensNota = itensIniciais.map(i => ({
     descricao: i.descricao,
     codigo_fornecedor: i.codigo_fornecedor ?? '',
     quantidade: parseFloat(i.quantidade) || 0,
+    qtd_por_caixa: parseInt(i.qtd_por_caixa, 10) || 1,
     valor_unitario: parseFloat(i.valor_unitario) || 0,
     valor_desconto: parseFloat(i.valor_desconto) || 0,
     lote: i.lote ?? '',

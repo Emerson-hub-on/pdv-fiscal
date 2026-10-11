@@ -586,6 +586,7 @@ class EntradaNotaController extends Controller
                 'descricao'         => $i->descricao,
                 'codigo_fornecedor' => $i->codigo_fornecedor,
                 'quantidade'        => (float) $i->quantidade,
+                'qtd_por_caixa'     => (int) ($i->qtd_por_caixa ?: 1),
                 'valor_unitario'    => (float) $i->valor_unitario,
                 'valor_desconto'    => (float) $i->valor_desconto,
                 'lote'              => $i->lote,
@@ -755,6 +756,7 @@ class EntradaNotaController extends Controller
             'itens.*.descricao'         => ['nullable', 'string', 'max:200'],
             'itens.*.codigo_fornecedor' => ['nullable', 'string', 'max:60'],
             'itens.*.quantidade'        => ['required', 'numeric', 'gt:0'],
+            'itens.*.qtd_por_caixa'     => ['nullable', 'integer', 'min:1', 'max:99999'],
             'itens.*.valor_unitario'    => ['required', 'numeric', 'min:0'],
             'itens.*.valor_desconto'    => ['nullable', 'numeric', 'min:0'],
             'itens.*.lote'              => ['nullable', 'string', 'max:30'],
@@ -825,7 +827,7 @@ class EntradaNotaController extends Controller
             }
         }
 
-        return DB::transaction(function () use ($request, $dados, $entrada, $produtos) {
+            return DB::transaction(function () use ($request, $dados, $entrada, $produtos, $cfopIds) {
             $entrada ??= new EntradaNota([
                 'status'       => 'rascunho',
                 'tipo_entrada' => 'manual',
@@ -860,6 +862,7 @@ class EntradaNotaController extends Controller
                     'descricao'         => $produto->nome,
                     'unidade'           => $produto->unidade_comercial,
                     'quantidade'        => $qtd,
+                    'qtd_por_caixa'     => (int) (($item['qtd_por_caixa'] ?? null) ?: 1),
                     'valor_unitario'    => $unit,
                     'valor_desconto'    => $desconto,
                     'valor_total'       => round(($qtd * $unit) - $desconto, 2),
@@ -871,7 +874,7 @@ class EntradaNotaController extends Controller
                     'origem_mercadoria' => $item['origem_mercadoria'] ?? null,
                     'fiscal_manual'     => $manual,
                     ...($manual ? [
-                    'cfop_entrada_id'   => ! empty($item['cfop_entrada']) ? ($cfopIds[$item['cfop_entrada']] ?? null) : null,
+                    'cfop_entrada_id'   => ! empty($item['cfop_entrada']) ? $cfopIds[$item['cfop_entrada']] : null,
                     'cst_csosn_entrada' => ($item['cst_entrada'] ?? null) ?: null,
                     'gera_credito'      => isset($item['gera_credito']) && $item['gera_credito'] !== ''
                                                 ? filter_var($item['gera_credito'], FILTER_VALIDATE_BOOLEAN) : null,
@@ -922,12 +925,15 @@ class EntradaNotaController extends Controller
             foreach ($movimenta ? $entrada->itens : [] as $item) {
                 $produto = Produto::whereKey($item->produto_id)->lockForUpdate()->firstOrFail();
 
-                $produto->increment('estoque', $item->quantidade);
+                // quantidade da nota (caixas) × unidades por caixa = unidades que entram no estoque
+                $qtdEstoque = $item->quantidade_estoque;
 
-                if ($entrada->atualizar_custo && (float) $item->quantidade > 0) {
-                    // custo líquido unitário (já descontado o desconto do item)
+                $produto->increment('estoque', $qtdEstoque);
+
+                if ($entrada->atualizar_custo && $qtdEstoque > 0) {
+                    // custo líquido por UNIDADE (total do item, já com desconto, ÷ unidades)
                     $produto->update([
-                        'preco_custo' => round((float) $item->valor_total / (float) $item->quantidade, 2),
+                        'preco_custo' => round((float) $item->valor_total / $qtdEstoque, 2),
                     ]);
                 }
 
@@ -937,8 +943,8 @@ class EntradaNotaController extends Controller
                         'entrada_nota_item_id' => $item->id,
                         'lote'                 => $item->lote,
                         'validade'             => $item->validade,
-                        'quantidade_inicial'   => $item->quantidade,
-                        'quantidade_atual'     => $item->quantidade,
+                        'quantidade_inicial'   => $qtdEstoque,
+                        'quantidade_atual'     => $qtdEstoque,
                     ]);
                 }
             }

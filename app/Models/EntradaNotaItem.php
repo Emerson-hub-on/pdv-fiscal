@@ -29,6 +29,7 @@ class EntradaNotaItem extends Model
         'cst_csosn_entrada', 
         'gera_credito',
         'fiscal_manual',
+        'qtd_por_caixa',
     ];
 
     protected $casts = [
@@ -38,8 +39,14 @@ class EntradaNotaItem extends Model
         'valor_desconto' => 'decimal:2',
         'valor_total'    => 'decimal:2',
         'gera_credito'   => 'boolean',
-        'fiscal_manual'  => 'boolean'
+        'fiscal_manual'  => 'boolean',
+        'qtd_por_caixa'  => 'integer',
     ];
+
+    public function getQuantidadeEstoqueAttribute(): float
+    {
+        return (float) $this->quantidade * max((int) $this->qtd_por_caixa, 1);
+    }
 
     public function cfopEntrada()
     {
