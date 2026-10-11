@@ -729,7 +729,7 @@
                         <input type="text" id="editor-ref-chave" maxlength="44" class="{{ $edInput }} font-mono">
                     </div>
                     <div>
-                        <label class="{{ $edLabel }}">Nº do item na nota original (opcional)</label>
+                        <label class="{{ $edLabel }}">Nº do item na nota original</label>
                         <input type="number" id="editor-ref-nitem" min="1" class="{{ $edInput }}">
                     </div>
                 </div>
