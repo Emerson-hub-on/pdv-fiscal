@@ -294,15 +294,29 @@
                 </thead>
                 <tbody id="linhas-grid-itens" class="divide-y divide-gray-100"></tbody>
                 <tfoot class="bg-gray-50 font-medium">
-                    <tr>
-                        <td colspan="15" class="px-3 py-1 text-right text-gray-500">Frete total</td>
-                        <td class="px-3 py-1 text-right" id="total-frete-grid">R$ 0,00</td>
+                    <tr class="border-t-2 border-gray-200">
+                        <td class="px-3 py-2 text-left">
+                            <span class="text-xs font-semibold uppercase tracking-wide text-gray-500 mr-2">Totais</span><span id="tot-itens">0</span>
+                        </td>
+                        <td colspan="5"></td>
+                        <td class="px-3 py-2 text-right" id="tot-qtd">0</td>
+                        <td></td>
+                        <td class="px-3 py-2 text-right" id="tot-total">R$ 0,00</td>
+                        <td class="px-3 py-2 text-right" id="tot-desconto">R$ 0,00</td>
+                        <td class="px-3 py-2 text-right" id="tot-desconto-pct" title="Desconto sobre o valor bruto dos itens">0,00%</td>
+                        <td class="px-3 py-2 text-right" id="tot-outras">R$ 0,00</td>
+                        <td class="px-3 py-2 text-right" id="tot-frete" title="Frete total da nota (soma dos itens ou frete global, conforme o modo)">R$ 0,00</td>
+                        <td class="px-3 py-2 text-right" id="tot-bc-icms">R$ 0,00</td>
+                        <td class="px-3 py-2 text-right" id="tot-vl-icms">R$ 0,00</td>
+                        <td class="px-3 py-2 text-right" id="tot-aliq-icms" title="Média ponderada pela BC do ICMS">0,00%</td>
+                        <td class="px-3 py-2 text-right" id="tot-vl-ipi">R$ 0,00</td>
+                        <td class="px-3 py-2 text-right" id="tot-aliq-ipi" title="Média ponderada pela base do IPI">0,00%</td>
                         <td></td>
                     </tr>
                     <tr>
-                        <td colspan="15" class="px-3 py-2 text-right">Total da nota</td>
+                        <td colspan="8" class="px-3 py-2 text-right">Total da nota</td>
                         <td class="px-3 py-2 text-right" id="total-grid-itens">R$ 0,00</td>
-                        <td></td>
+                        <td colspan="10"></td>
                     </tr>
                 </tfoot>
             </table>
@@ -2294,6 +2308,43 @@ function prepararBlocoMotivoAjuste() {
 }
 
 
+// Totais abaixo de cada coluna da grade (Vl Unit não é somável e fica em branco)
+function atualizarTotaisGrid() {
+    const vazio = itensNota.length === 0;
+    const soma = (fn) => vazio ? 0 : itensNota.reduce((acc, item) => acc + (Number(fn(item)) || 0), 0);
+
+    const bruto    = soma(item => item.quantidade * item.valor_unitario);
+    const produtos = soma(item => item.valor_total);
+    const desconto = soma(item => item.valor_desconto);
+    const outras   = soma(item => item.valor_outras_despesas);
+    const bcIcms   = soma(item => item.bc_icms);
+    const vlIcms   = soma(item => item.valor_icms);
+    const vlIpi    = soma(item => item.valor_ipi);
+    // base do IPI igual à do editor: bruto + outras despesas + frete do item (só no modo "frete por item")
+    const baseIpi  = bruto + outras + (freteModo === 'item' ? soma(item => item.valor_frete) : 0);
+    const frete    = vazio ? 0 : freteTotalNota();
+
+    const real  = v => 'R$ ' + v.toFixed(2).replace('.', ',');
+    const perc  = v => v.toFixed(2).replace('.', ',') + '%';
+    const texto = (id, valor) => { document.getElementById(id).innerText = valor; };
+
+    texto('tot-itens', itensNota.length);
+    texto('tot-qtd', String(Math.round(soma(item => item.quantidade) * 1000) / 1000).replace('.', ','));
+    texto('tot-total', real(produtos));
+    texto('tot-desconto', real(desconto));
+    texto('tot-desconto-pct', perc(bruto > 0 ? (desconto / bruto) * 100 : 0));
+    texto('tot-outras', real(outras));
+    texto('tot-frete', real(frete));
+    texto('tot-bc-icms', real(bcIcms));
+    texto('tot-vl-icms', real(vlIcms));
+    texto('tot-aliq-icms', perc(bcIcms > 0 ? (vlIcms / bcIcms) * 100 : 0));
+    texto('tot-vl-ipi', real(vlIpi));
+    texto('tot-aliq-ipi', perc(baseIpi > 0 ? (vlIpi / baseIpi) * 100 : 0));
+
+    // total da nota: itens + outras despesas + frete total
+    texto('total-grid-itens', real(vazio ? 0 : produtos + outras + frete));
+}
+
 function renderizarGridItens() {
     const tbody = document.getElementById('linhas-grid-itens');
     const vazia = document.getElementById('grid-vazia');
@@ -2302,16 +2353,12 @@ function renderizarGridItens() {
     if (itensNota.length === 0) {
         tbody.innerHTML = '';
         vazia.classList.remove('hidden');
-        document.getElementById('total-grid-itens').innerText = 'R$ 0,00';
-        document.getElementById('total-frete-grid').innerText = 'R$ 0,00';
+        atualizarTotaisGrid();
         return;
     }
     vazia.classList.add('hidden');
 
-    let totalNota = 0;
-
     tbody.innerHTML = itensNota.map((item, index) => {
-        totalNota += item.valor_total + Number(item.valor_outras_despesas ?? 0);
         const emEdicao = index === indiceItemEmEdicao;
         const refOrigem = item.ref_chave_acesso
             ? item.ref_chave_acesso.slice(-8) + (item.ref_nitem ? ' (item ' + item.ref_nitem + ')' : '')
@@ -2343,9 +2390,7 @@ function renderizarGridItens() {
         `;
     }).join('');
 
-    const frete = freteTotalNota();
-    document.getElementById('total-frete-grid').innerText = 'R$ ' + frete.toFixed(2).replace('.', ',');
-    document.getElementById('total-grid-itens').innerText = 'R$ ' + (totalNota + frete).toFixed(2).replace('.', ',');
+    atualizarTotaisGrid();
 }
 
 document.getElementById('form-nota').addEventListener('submit', function (e) {
