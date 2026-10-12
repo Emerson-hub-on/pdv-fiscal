@@ -69,7 +69,10 @@
         </div>
 
         <div class="px-6 py-4 border-t border-gray-100 flex items-center gap-3">
-            <p id="contador-conferencia-xml" class="text-sm text-gray-500 mr-auto"></p>
+            <div class="mr-auto">
+                <p id="contador-conferencia-xml" class="text-sm text-gray-500"></p>
+                <p id="totais-conferencia-xml" class="text-sm"></p>
+            </div>
             <button type="button" id="btn-cadastrar-pendentes-xml" onclick="cadastrarPendentesXml()"
                     class="hidden bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition disabled:opacity-50">
                 Cadastrar produtos não encontrados
@@ -647,6 +650,22 @@ function renderizarConferenciaXml() {
     const pendentes = itens.filter(i => !xmlItemCompleto(i)).length;
     document.getElementById('contador-conferencia-xml').textContent =
         pendentes ? `${pendentes} de ${itens.length} item(ns) pendente(s) (sem produto ou sem distribuição completa)` : `Todos os ${itens.length} itens assimilados`;
+
+    // trava: o total que será importado precisa bater com o total do XML
+    const centavos = (v) => Math.round(Number(v) * 100);
+    const totalImportar = itens.filter(xmlItemCompleto).reduce((s, i) => s + centavos(i.total_item), 0) + centavos(nota.resto_cabecalho || 0);
+    const temTotalXml = nota.total_xml !== null && nota.total_xml !== undefined;
+    const diferenca = temTotalXml ? totalImportar - centavos(nota.total_xml) : 0;
+    const totais = document.getElementById('totais-conferencia-xml');
+
+    if (temTotalXml) {
+        totais.textContent = `A importar: ${xmlMoeda(totalImportar / 100)} · Total do XML: ${xmlMoeda(nota.total_xml)}` +
+            (diferenca === 0 ? ' — confere' : ` — diferença de ${xmlMoeda(Math.abs(diferenca) / 100)}`);
+        totais.className = 'text-sm font-medium ' + (diferenca === 0 ? 'text-emerald-600' : 'text-red-600');
+    } else {
+        totais.textContent = '';
+    }
+    document.getElementById('btn-confirmar-xml').disabled = Math.abs(diferenca) > 1;
 
     const btnAuto = document.getElementById('btn-cadastrar-pendentes-xml');
     btnAuto.classList.toggle('hidden', !(XML_PODE_CADASTRAR && xmlAutoCadastroAtivo() && semProduto > 0));

@@ -30,6 +30,9 @@ use App\Models\CstEntradaConversao;
 
 class EntradaNotaController extends Controller
 {
+    /** Diferença máxima (R$) aceita entre o total da entrada e o total do XML. */
+    private const TOLERANCIA_TOTAL = 0.01;
+
     private const CSOSN = [
         '101' => 'Tributada pelo Simples Nacional com permissão de crédito',
         '102' => 'Tributada pelo Simples Nacional sem permissão de crédito',
@@ -254,6 +257,7 @@ class EntradaNotaController extends Controller
                 'origem'             => (int) ($item['origem'] ?: 0),
                 'valor_custo'        => $item['quantidade'] > 0 ? round($item['valor_total'] / $item['quantidade'], 2) : 0,
                 'quantidade'         => $item['quantidade'],
+                'total_item'         => round((float) $item['valor_total'] + (float) ($item['valor_frete'] ?? 0) + (float) ($item['valor_outras_despesas'] ?? 0), 2),
                 'produto'            => $achado
                     ? $this->produtoParaConferencia($achado['produto']) + ['por' => $achado['por']]
                     : null,
@@ -272,6 +276,11 @@ class EntradaNotaController extends Controller
             ];
         }
 
+        // prévia do total: o que sobra de frete/outras despesas no cabeçalho entra na entrada junto com os itens
+        $freteItens  = round(collect($nfe['itens'])->sum(fn ($i) => (float) ($i['valor_frete'] ?? 0)), 2);
+        $outrasItens = round(collect($nfe['itens'])->sum(fn ($i) => (float) ($i['valor_outras_despesas'] ?? 0)), 2);
+        $restoCabecalho = max(round($nfe['valor_frete'] - $freteItens, 2), 0) + max(round($nfe['valor_outras'] - $outrasItens, 2), 0);
+
         $token = (string) Str::uuid();
         Cache::put('importar_xml:' . auth()->id() . ':' . $token, $nfe + ['operacao_entrada_id' => $operacao->id], now()->addMinutes(30));
 
@@ -280,6 +289,8 @@ class EntradaNotaController extends Controller
             'nota'  => [
                 'operacao'             => $operacao->descricao,
                 'numero'               => $nfe['numero'],
+                'total_xml'            => $this->totalComparavelXml($nfe),
+                'resto_cabecalho'      => round($restoCabecalho, 2),
                 'serie'                => $nfe['serie'],
                 'fornecedor_nome'      => $nfe['fornecedor']['nome'],
                 'fornecedor_documento' => $nfe['fornecedor']['cpf_cnpj'],
@@ -429,6 +440,7 @@ class EntradaNotaController extends Controller
                     'valor_frete'       => max(round($nfe['valor_frete'] - $freteItens, 2), 0),
                     'valor_desconto'    => 0, // o desconto do XML já está nos itens
                     'valor_outras'      => max(round($nfe['valor_outras'] - $outrasItens, 2), 0),
+                    'valor_total_xml'   => $this->totalComparavelXml($nfe),
                     'atualizar_custo'   => true,
                 ]);
 
@@ -485,6 +497,12 @@ class EntradaNotaController extends Controller
                 }
 
                 $entrada->recalcularTotais();
+
+                // trava: o total da entrada precisa bater com o total do XML (nada ficou de fora nem foi rateado errado)
+                if (($dif = $this->diferencaTotalXml($entrada)) !== null && abs($dif) > self::TOLERANCIA_TOTAL) {
+                    throw new \DomainException($this->mensagemDiferencaTotal($entrada, $dif));
+                }
+
                 $this->aplicarConversaoFiscal($entrada);
 
                 $pendentes = $entrada->itens->whereNull('cfop_entrada_id')->count();
@@ -494,6 +512,8 @@ class EntradaNotaController extends Controller
 
                 return $entrada;
             });
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
             report($e);
             return response()->json(['message' => 'Falha ao criar o rascunho: ' . $e->getMessage()], 500);
@@ -597,6 +617,45 @@ class EntradaNotaController extends Controller
         return $dados;
     }
 
+    /** Total do XML na mesma base do total da entrada: produtos − desconto + frete + outras despesas. */
+    private function totalComparavelXml(array $nfe): ?float
+    {
+        if (! isset($nfe['valor_produtos'])) {
+            return null; // importação analisada antes desta regra existir
+        }
+
+        return round($nfe['valor_produtos'] - $nfe['valor_desconto'] + $nfe['valor_frete'] + $nfe['valor_outras'], 2);
+    }
+
+    /** Total da entrada − total do XML; null quando a entrada não veio de XML. */
+    private function diferencaTotalXml(EntradaNota $entrada): ?float
+    {
+        if ($entrada->valor_total_xml === null) {
+            return null;
+        }
+
+        return round((float) $entrada->valor_total - (float) $entrada->valor_total_xml, 2);
+    }
+
+    private function mensagemDiferencaTotal(EntradaNota $entrada, float $dif): string
+    {
+        $fmt = fn ($v) => 'R$ ' . number_format($v, 2, ',', '.');
+
+        return 'O total da entrada (' . $fmt((float) $entrada->valor_total) . ') difere do total do XML ('
+            . $fmt((float) $entrada->valor_total_xml) . ') em ' . $fmt(abs($dif)) . '. '
+            . 'Confira se todos os itens foram assimilados e distribuídos corretamente.';
+    }
+
+    /** Impede finalizar uma entrada de XML cujo total não bate mais com o do XML. */
+    private function exigirTotalIgualAoXml(EntradaNota $entrada): void
+    {
+        $dif = $this->diferencaTotalXml($entrada);
+
+        if ($dif !== null && abs($dif) > self::TOLERANCIA_TOTAL) {
+            throw ValidationException::withMessages(['itens' => $this->mensagemDiferencaTotal($entrada, $dif)]);
+        }
+    }
+
     private function descricaoItem(Produto $produto, ?ProdutoVariante $variante): string
     {
         $texto = $variante ? $produto->nome . ' - ' . $variante->rotulo() : $produto->nome;
@@ -629,6 +688,7 @@ class EntradaNotaController extends Controller
         $entrada = $this->salvar($request, null);
 
         if ($request->input('acao') === 'finalizar') {
+            $this->exigirTotalIgualAoXml($entrada);
             $this->finalizar($entrada);
 
             return redirect()->route('entradas-nota.index')
@@ -651,6 +711,7 @@ class EntradaNotaController extends Controller
         $entrada = $this->salvar($request, $entrada);
 
         if ($request->input('acao') === 'finalizar') {
+            $this->exigirTotalIgualAoXml($entrada);
             $this->finalizar($entrada);
 
             return redirect()->route('entradas-nota.index')

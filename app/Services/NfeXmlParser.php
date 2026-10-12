@@ -148,6 +148,8 @@ class NfeXmlParser
             'natureza_operacao' => mb_substr($this->v('n:ide/n:natOp', $inf), 0, 60),
             'valor_frete'       => (float) $this->v('n:total/n:ICMSTot/n:vFrete', $inf),
             'valor_outras'      => (float) $this->v('n:total/n:ICMSTot/n:vOutro', $inf),
+            'valor_produtos'    => (float) $this->v('n:total/n:ICMSTot/n:vProd', $inf),
+            'valor_desconto'    => (float) $this->v('n:total/n:ICMSTot/n:vDesc', $inf),
             'fornecedor'        => $fornecedor,
             'itens'             => $itens,
             'pagamento'         => $pagamento,

@@ -25,6 +25,7 @@ class EntradaNota extends Model
         'valor_desconto', 
         'valor_outras', 
         'valor_total',
+        'valor_total_xml',
         'atualizar_custo', 
         'observacao', 
         'finalizada_em',
@@ -42,6 +43,7 @@ class EntradaNota extends Model
         'valor_desconto'  => 'decimal:2',
         'valor_outras'    => 'decimal:2',
         'valor_total'     => 'decimal:2',
+        'valor_total_xml' => 'decimal:2',
     ];
 
     public function formaPagamento()
