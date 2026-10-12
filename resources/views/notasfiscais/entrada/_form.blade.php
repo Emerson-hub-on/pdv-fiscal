@@ -865,7 +865,7 @@ function renderizarGrid() {
         // Campos enviados ao servidor
         const camposFiscaisManuais = ['cfop_entrada', 'cst_entrada', 'gera_credito'];
 
-        ['produto_id', 'codigo', 'codigo_barras', 'descricao', 'codigo_fornecedor', 'quantidade','qtd_por_caixa', 'valor_unitario', 'valor_desconto',
+        ['produto_id', 'produto_variante_id', 'codigo', 'codigo_barras', 'descricao', 'codigo_fornecedor', 'quantidade','qtd_por_caixa', 'valor_unitario', 'valor_desconto',
         'valor_outras_despesas', 'valor_frete', 'bc_icms', 'valor_icms', 'aliquota_icms', 'valor_ipi', 'aliquota_ipi', 'lote', 'validade',
         'cfop_origem', 'cst_origem', 'csosn_origem', 'origem_mercadoria', 'fiscal_manual', ...camposFiscaisManuais]
             .forEach(campo => {
@@ -1112,6 +1112,7 @@ function editarLinha(i) {
     fiscalPreservado = {
         cfop_origem: item.cfop_origem, cst_origem: item.cst_origem,
         csosn_origem: item.csosn_origem, origem_mercadoria: item.origem_mercadoria,
+        produto_variante_id: item.produto_variante_id ?? '',
     };
     indiceEdicao = i;
 
@@ -1314,6 +1315,7 @@ async function salvarFornecedor() {
 // ---------------------------------------------------------------
 itensNota = itensIniciais.map(i => ({
     produto_id: i.produto_id,
+    produto_variante_id: i.produto_variante_id ?? '',
     codigo: i.codigo ?? '',
     codigo_barras: i.codigo_barras ?? '',
     descricao: i.descricao,

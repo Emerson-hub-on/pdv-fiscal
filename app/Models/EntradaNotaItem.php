@@ -76,4 +76,9 @@ class EntradaNotaItem extends Model
     {
         return $this->belongsTo(Produto::class);
     }
+
+    public function variante()
+    {
+        return $this->belongsTo(ProdutoVariante::class, 'produto_variante_id');
+    }
 }

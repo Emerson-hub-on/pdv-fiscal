@@ -253,9 +253,14 @@ class EntradaNotaController extends Controller
                 'ncm_registro'       => $ncm?->only(['id', 'codigo', 'descricao']),
                 'origem'             => (int) ($item['origem'] ?: 0),
                 'valor_custo'        => $item['quantidade'] > 0 ? round($item['valor_total'] / $item['quantidade'], 2) : 0,
+                'quantidade'         => $item['quantidade'],
                 'produto'            => $achado
-                    ? $achado['produto']->only(['id', 'nome', 'codigo_interno', 'codigo_barras']) + ['por' => $achado['por']]
+                    ? $this->produtoParaConferencia($achado['produto']) + ['por' => $achado['por']]
                     : null,
+                // variação já identificada (EAN/vínculo): recebe a quantidade inteira; senão o operador distribui
+                'distribuicao'       => ($achado['variante'] ?? null)
+                    ? [['variante_id' => $achado['variante']->id, 'quantidade' => $item['quantidade']]]
+                    : [],
                 'conversao' => [
                     'cfop_origem'  => $item['cfop'] ?: null,
                     'cfop_entrada' => $conv['cfop_entrada_id'] ? $codigosCfop->get($conv['cfop_entrada_id']) : null,
@@ -306,6 +311,11 @@ class EntradaNotaController extends Controller
             'token'      => ['required', 'string'],
             'produtos'   => ['present', 'array'],   // [indice_do_item => produto_id]
             'produtos.*' => ['integer'],
+            // [indice_do_item => [['variante_id' => x, 'quantidade' => n], ...]] — só para produtos com variação
+            'distribuicoes'                 => ['nullable', 'array'],
+            'distribuicoes.*'               => ['array'],
+            'distribuicoes.*.*.variante_id' => ['required', 'integer'],
+            'distribuicoes.*.*.quantidade'  => ['required', 'numeric', 'gt:0'],
         ]);
 
         $chaveCache = 'importar_xml:' . auth()->id() . ':' . $dados['token'];
@@ -322,16 +332,57 @@ class EntradaNotaController extends Controller
         }
 
         $ids = array_values(array_unique($dados['produtos']));
-        $produtos = Produto::ativos()->where('tem_variacao', false)->whereIn('id', $ids)->get()->keyBy('id');
+        $produtos = Produto::ativos()->with('variantes')->whereIn('id', $ids)->get()->keyBy('id');
 
         if ($produtos->count() !== count($ids)) {
-            return response()->json(['message' => 'Algum produto assimilado está inativo ou possui variação.'], 422);
+            return response()->json(['message' => 'Algum produto assimilado está inativo ou não existe mais.'], 422);
+        }
+
+        // Plano de itens: indice => [[ProdutoVariante|null, quantidade], ...]
+        $plano = [];
+
+        foreach ($dados['produtos'] as $indice => $produtoId) {
+            $item = $nfe['itens'][$indice] ?? null;
+            if (! $item) {
+                continue;
+            }
+
+            $produto = $produtos[$produtoId];
+            $n = (int) $indice + 1;
+
+            if (! $produto->tem_variacao) {
+                $plano[$indice] = [[null, (float) $item['quantidade']]];
+                continue;
+            }
+
+            $partes = collect($dados['distribuicoes'][$indice] ?? [])
+                ->groupBy('variante_id')
+                ->map(fn ($g) => (float) $g->sum('quantidade'));
+
+            foreach ($partes as $varId => $qtd) {
+                $variante = $produto->variantes->firstWhere('id', (int) $varId);
+
+                if (! $variante) {
+                    return response()->json(['message' => "Item {$n}: variação inválida para o produto \"{$produto->nome}\"."], 422);
+                }
+                if (fmod($qtd, 1.0) != 0.0) {
+                    return response()->json(['message' => "Item {$n}: a quantidade de cada variação deve ser inteira (o estoque da variação é inteiro)."], 422);
+                }
+
+                $plano[$indice][] = [$variante, $qtd];
+            }
+
+            if (abs($partes->sum() - (float) $item['quantidade']) > 0.0005) {
+                return response()->json([
+                    'message' => "Item {$n} ({$item['descricao']}): a distribuição entre as variações soma {$partes->sum()}, mas a nota tem {$item['quantidade']}.",
+                ], 422);
+            }
         }
 
         $avisos = [];
 
         try {
-            $entrada = DB::transaction(function () use ($nfe, $fornecedor, $dados, $produtos, &$avisos) {
+            $entrada = DB::transaction(function () use ($nfe, $fornecedor, $dados, $produtos, $plano, &$avisos) {
                 $dadosFornecedor = $nfe['fornecedor'];
 
                 if (! $fornecedor) {
@@ -384,38 +435,49 @@ class EntradaNotaController extends Controller
                 $ignorados = [];
 
                 foreach ($nfe['itens'] as $indice => $item) {
-                    $produtoId = $dados['produtos'][$indice] ?? null;
-
-                    if (! $produtoId) {
+                    if (! isset($plano[$indice])) {
                         $ignorados[] = "{$item['codigo']} - {$item['descricao']}";
                         continue;
                     }
 
-                    $produto = $produtos[$produtoId];
+                    $produto  = $produtos[$dados['produtos'][$indice]];
+                    $partes   = $plano[$indice];
+                    $qtdTotal = (float) $item['quantidade'];
+                    $acc      = array_fill_keys(
+                        ['valor_desconto', 'valor_total', 'valor_outras_despesas', 'valor_frete', 'bc_icms', 'valor_icms', 'valor_ipi'],
+                        0.0
+                    );
 
-                    $entrada->itens()->create([
-                        'produto_id'        => $produto->id,
-                        'codigo_fornecedor' => $item['codigo'] ?: null,
-                        'descricao'         => $produto->nome,
-                        'unidade'           => $produto->unidade_comercial,
-                        'quantidade'        => $item['quantidade'],
-                        'valor_unitario'    => $item['valor_unitario'],
-                        'valor_desconto'    => $item['valor_desconto'],
-                        'valor_total'       => $item['valor_total'],
-                        'valor_outras_despesas' => $item['valor_outras_despesas'] ?? 0,
-                        'valor_frete'           => $item['valor_frete'] ?? 0,
-                        'bc_icms'               => $item['bc_icms'] ?? 0,
-                        'valor_icms'            => $item['valor_icms'] ?? 0,
-                        'aliquota_icms'         => $item['aliquota_icms'] ?? 0,
-                        'valor_ipi'             => $item['valor_ipi'] ?? 0,
-                        'aliquota_ipi'          => $item['aliquota_ipi'] ?? 0,
-                        'lote'              => $item['lote'],
-                        'validade'          => $item['validade'],
-                        'cfop_origem'       => $item['cfop'] ?: null,
-                        'cst_origem'        => $item['cst'] ?: null,
-                        'csosn_origem'      => $item['csosn'] ?: null,
-                        'origem_mercadoria' => $item['origem'] !== '' ? (int) $item['origem'] : null,
-                    ]);
+                    // sem variação: uma parte só (fator 1); com variação: uma linha por variante, valores rateados pela quantidade
+                    foreach ($partes as $n => [$variante, $qtd]) {
+                        $ultima = $n === count($partes) - 1;
+                        $fator  = $qtdTotal > 0 ? $qtd / $qtdTotal : 1;
+
+                        $entrada->itens()->create([
+                            'produto_id'            => $produto->id,
+                            'produto_variante_id'   => $variante?->id,
+                            'codigo_fornecedor'     => $item['codigo'] ?: null,
+                            'descricao'             => $this->descricaoItem($produto, $variante),
+                            'unidade'               => $produto->unidade_comercial,
+                            'quantidade'            => $qtd,
+                            'valor_unitario'        => $item['valor_unitario'],
+                            'valor_desconto'        => $this->ratear((float) $item['valor_desconto'], $fator, $ultima, $acc['valor_desconto']),
+                            'valor_total'           => $this->ratear((float) $item['valor_total'], $fator, $ultima, $acc['valor_total']),
+                            'valor_outras_despesas' => $this->ratear((float) ($item['valor_outras_despesas'] ?? 0), $fator, $ultima, $acc['valor_outras_despesas']),
+                            'valor_frete'           => $this->ratear((float) ($item['valor_frete'] ?? 0), $fator, $ultima, $acc['valor_frete']),
+                            'bc_icms'               => $this->ratear((float) ($item['bc_icms'] ?? 0), $fator, $ultima, $acc['bc_icms']),
+                            'valor_icms'            => $this->ratear((float) ($item['valor_icms'] ?? 0), $fator, $ultima, $acc['valor_icms']),
+                            'aliquota_icms'         => $item['aliquota_icms'] ?? 0,
+                            'valor_ipi'             => $this->ratear((float) ($item['valor_ipi'] ?? 0), $fator, $ultima, $acc['valor_ipi']),
+                            'aliquota_ipi'          => $item['aliquota_ipi'] ?? 0,
+                            'lote'                  => $item['lote'],
+                            'validade'              => $item['validade'],
+                            'cfop_origem'           => $item['cfop'] ?: null,
+                            'cst_origem'            => $item['cst'] ?: null,
+                            'csosn_origem'          => $item['csosn'] ?: null,
+                            'origem_mercadoria'     => $item['origem'] !== '' ? (int) $item['origem'] : null,
+                        ]);
+                    }
                 }
 
                 if ($ignorados) {
@@ -439,7 +501,7 @@ class EntradaNotaController extends Controller
 
         Cache::forget($chaveCache);
 
-        session()->flash('sucesso', 'XML importado: ' . $entrada->itens()->count() . ' de ' . count($nfe['itens']) . ' itens no rascunho.');
+        session()->flash('sucesso', 'XML importado: ' . count($plano) . ' de ' . count($nfe['itens']) . ' itens da nota no rascunho.');
         session()->flash('avisos', $avisos);
 
         return response()->json(['redirect' => route('entradas-nota.edit', $entrada)]);
@@ -463,39 +525,92 @@ class EntradaNotaController extends Controller
         return null;
     }
 
-    /** Retorna ['produto' => Produto, 'por' => texto] ou null. */
+    /** Retorna ['produto' => Produto, 'variante' => ProdutoVariante|null, 'por' => texto] ou null. */
     private function localizarProduto(array $item, ?Fornecedor $fornecedor = null): ?array
     {
-        $base = Produto::ativos()->where('tem_variacao', false);
+        $base = Produto::ativos();
 
         if ($item['ean'] !== '') {
+            // EAN de uma variação: já define produto e variante
+            $variante = ProdutoVariante::where('codigo_barras', $item['ean'])
+                ->whereHas('produto', fn ($q) => $q->ativos())
+                ->with('produto')
+                ->first();
+            if ($variante) {
+                return ['produto' => $variante->produto, 'variante' => $variante, 'por' => "ean da variação: {$item['ean']}"];
+            }
+
             $p = (clone $base)->where('codigo_barras', $item['ean'])->first();
             if ($p) {
-                return ['produto' => $p, 'por' => "ean: {$item['ean']}"];
+                return ['produto' => $p, 'variante' => null, 'por' => "ean: {$item['ean']}"];
             }
         }
 
         if ($item['codigo'] !== '') {
             $p = (clone $base)->where('referencia', $item['codigo'])->first();
             if ($p) {
-                return ['produto' => $p, 'por' => "referência: {$item['codigo']}"];
+                return ['produto' => $p, 'variante' => null, 'por' => "referência: {$item['codigo']}"];
             }
 
             // Vínculo de uma importação anterior: mesmo fornecedor + mesmo código do fornecedor
             if ($fornecedor) {
-                $produtoId = EntradaNotaItem::where('codigo_fornecedor', $item['codigo'])
+                $ultimo = EntradaNotaItem::where('codigo_fornecedor', $item['codigo'])
                     ->whereHas('entrada', fn ($q) => $q->where('fornecedor_id', $fornecedor->id))
                     ->latest('id')
-                    ->value('produto_id');
+                    ->first(['id', 'entrada_nota_id', 'produto_id']);
 
-                $p = $produtoId ? (clone $base)->find($produtoId) : null;
+                $p = $ultimo ? (clone $base)->find($ultimo->produto_id) : null;
                 if ($p) {
-                    return ['produto' => $p, 'por' => 'vínculo de importação anterior'];
+                    // só assume a variante se, naquela nota, esse código foi para UMA única variação
+                    $variantes = EntradaNotaItem::where('entrada_nota_id', $ultimo->entrada_nota_id)
+                        ->where('codigo_fornecedor', $item['codigo'])
+                        ->where('produto_id', $p->id)
+                        ->pluck('produto_variante_id')
+                        ->unique()
+                        ->values();
+
+                    $variante = ($p->tem_variacao && $variantes->count() === 1 && $variantes->first())
+                        ? ProdutoVariante::where('produto_id', $p->id)->find($variantes->first())
+                        : null;
+
+                    return ['produto' => $p, 'variante' => $variante, 'por' => 'vínculo de importação anterior'];
                 }
             }
         }
 
         return null;
+    }
+
+    /** Dados do produto enviados à conferência do XML (com as variantes, quando houver). */
+    private function produtoParaConferencia(Produto $produto): array
+    {
+        $dados = $produto->only(['id', 'nome', 'codigo_interno', 'codigo_barras']);
+        $dados['tem_variacao'] = (bool) $produto->tem_variacao;
+
+        if ($produto->tem_variacao) {
+            $dados['variantes'] = $produto->variantes()
+                ->orderBy('cor')->orderBy('tamanho')
+                ->get(['id', 'cor', 'tamanho', 'codigo_barras', 'estoque'])
+                ->all();
+        }
+
+        return $dados;
+    }
+
+    private function descricaoItem(Produto $produto, ?ProdutoVariante $variante): string
+    {
+        $texto = $variante ? $produto->nome . ' - ' . $variante->rotulo() : $produto->nome;
+
+        return Str::limit(trim($texto), 200, '');
+    }
+
+    /** Rateia um valor do item entre as variações; a última parte absorve a diferença de arredondamento. */
+    private function ratear(float $total, float $fator, bool $ultima, float &$acumulado): float
+    {
+        $parte = $ultima ? round($total - $acumulado, 2) : round($total * $fator, 2);
+        $acumulado = round($acumulado + $parte, 2);
+
+        return $parte;
     }
 
     public function create()
@@ -596,17 +711,32 @@ class EntradaNotaController extends Controller
             return response()->json([]);
         }
 
+        // ?variacoes=1 (importação de XML): inclui produtos com variação e suas variantes
+        $comVariacoes = $request->boolean('variacoes');
+
         $produtos = Produto::ativos()
-            ->where('tem_variacao', false)
-            ->where(function ($w) use ($q) {
+            ->when(! $comVariacoes, fn ($w) => $w->where('tem_variacao', false))
+            ->where(function ($w) use ($q, $comVariacoes) {
                 $w->where('nome', 'like', "%{$q}%")
                   ->orWhere('referencia', 'like', "%{$q}%")
                   ->orWhere('codigo_barras', $q)
                   ->orWhere('codigo_interno', $q);
+
+                if ($comVariacoes) {
+                    $w->orWhereHas('variantes', fn ($v) => $v->where('codigo_barras', $q));
+                }
             })
+            ->when($comVariacoes, fn ($w) => $w->with('variantes:id,produto_id,cor,tamanho,codigo_barras,estoque'))
             ->orderBy('nome')
             ->limit(15)
-            ->get(['id', 'nome', 'codigo_interno', 'codigo_barras', 'unidade_comercial', 'preco_custo', 'estoque']);
+            ->get(['id', 'nome', 'codigo_interno', 'codigo_barras', 'unidade_comercial', 'preco_custo', 'estoque', 'tem_variacao']);
+
+        // produto com variação: o estoque mora nas variantes
+        $produtos->each(function ($p) {
+            if ($p->tem_variacao && $p->relationLoaded('variantes')) {
+                $p->estoque = (int) $p->variantes->sum('estoque');
+            }
+        });
 
         return response()->json($produtos);
     }
@@ -617,12 +747,13 @@ class EntradaNotaController extends Controller
 
     private function dadosFormulario(EntradaNota $entrada): array
     {
-        $entrada->loadMissing(['itens.cfopEntrada', 'itens.produto']);
+        $entrada->loadMissing(['itens.cfopEntrada', 'itens.produto', 'itens.variante']);
         $itens = old('itens') ?? $entrada->itens
             ->map(fn ($i) => [
                 'produto_id'        => $i->produto_id,
+                'produto_variante_id' => $i->produto_variante_id,
                 'codigo'            => $i->produto?->codigo_interno,
-                'codigo_barras'     => $i->produto?->codigo_barras,
+                'codigo_barras'     => $i->variante?->codigo_barras ?: $i->produto?->codigo_barras,
                 'descricao'         => $i->descricao,
                 'codigo_fornecedor' => $i->codigo_fornecedor,
                 'quantidade'        => (float) $i->quantidade,
@@ -800,6 +931,7 @@ class EntradaNotaController extends Controller
 
             'itens'                     => ['required', 'array', 'min:1'],
             'itens.*.produto_id'        => ['required', 'exists:produtos,id'],
+            'itens.*.produto_variante_id' => ['nullable', 'integer', 'exists:produto_variantes,id'],
             'itens.*.descricao'         => ['nullable', 'string', 'max:200'],
             'itens.*.codigo_fornecedor' => ['nullable', 'string', 'max:60'],
             'itens.*.quantidade'        => ['required', 'numeric', 'gt:0'],
@@ -885,15 +1017,36 @@ class EntradaNotaController extends Controller
             ->keyBy('id');
         $cfopIds = CfopEntrada::pluck('id', 'codigo');
 
+        $variantes = ProdutoVariante::whereIn(
+            'id',
+            collect($dados['itens'])->pluck('produto_variante_id')->filter()->unique()
+        )->get()->keyBy('id');
+
         foreach ($dados['itens'] as $i => $item) {
-            if ($produtos[$item['produto_id']]->tem_variacao) {
+            $produto  = $produtos[$item['produto_id']];
+            $variante = ! empty($item['produto_variante_id']) ? $variantes[$item['produto_variante_id']] : null;
+
+            if ($produto->tem_variacao && ! $variante) {
                 throw ValidationException::withMessages([
-                    "itens.{$i}.produto_id" => 'Produtos com variação ainda não são suportados na entrada de nota.',
+                    "itens.{$i}.produto_id" => 'Produtos com variação só podem ser lançados pela importação de XML (distribuindo a quantidade entre as variações).',
+                ]);
+            }
+
+            if ($variante && (! $produto->tem_variacao || (int) $variante->produto_id !== (int) $produto->id)) {
+                throw ValidationException::withMessages([
+                    "itens.{$i}.produto_id" => 'A variação informada não pertence ao produto.',
+                ]);
+            }
+
+            // o estoque da variação é inteiro
+            if ($variante && fmod((float) $item['quantidade'] * max((int) ($item['qtd_por_caixa'] ?? 1), 1), 1.0) != 0.0) {
+                throw ValidationException::withMessages([
+                    "itens.{$i}.quantidade" => 'Para produtos com variação a quantidade em estoque deve ser inteira.',
                 ]);
             }
         }
 
-            return DB::transaction(function () use ($request, $dados, $entrada, $produtos, $cfopIds) {
+            return DB::transaction(function () use ($request, $dados, $entrada, $produtos, $variantes, $cfopIds) {
             $entrada ??= new EntradaNota([
                 'status'       => 'rascunho',
                 'tipo_entrada' => 'manual',
@@ -924,6 +1077,7 @@ class EntradaNotaController extends Controller
 
                 $entrada->itens()->create([
                     'produto_id'        => $produto->id,
+                    'produto_variante_id' => ! empty($item['produto_variante_id']) ? $variantes[$item['produto_variante_id']]->id : null,
                     'codigo_fornecedor' => $item['codigo_fornecedor'] ?? null,
                     'descricao'         => trim((string) ($item['descricao'] ?? '')) ?: $produto->nome,
                     'unidade'           => $produto->unidade_comercial,
@@ -1012,12 +1166,19 @@ class EntradaNotaController extends Controller
                     );
                 }
 
-                // total que entrou por produto (o mesmo produto pode aparecer em mais de um item)
+                // total que entrou por produto (sem variação) e por variante; o mesmo destino pode aparecer em mais de um item
                 $porProduto = $entrada->itens
+                    ->whereNull('produto_variante_id')
                     ->groupBy('produto_id')
                     ->map(fn ($itens) => $itens->sum(fn ($i) => $i->quantidade_estoque));
 
-                $produtos = Produto::whereIn('id', $porProduto->keys())->lockForUpdate()->get()->keyBy('id');
+                $porVariante = $entrada->itens
+                    ->whereNotNull('produto_variante_id')
+                    ->groupBy('produto_variante_id')
+                    ->map(fn ($itens) => (int) round($itens->sum(fn ($i) => $i->quantidade_estoque)));
+
+                $produtos  = Produto::whereIn('id', $porProduto->keys())->lockForUpdate()->get()->keyBy('id');
+                $variantes = ProdutoVariante::whereIn('id', $porVariante->keys())->lockForUpdate()->get()->keyBy('id');
 
                 foreach ($porProduto as $produtoId => $qtd) {
                     $produto = $produtos[$produtoId];
@@ -1029,8 +1190,23 @@ class EntradaNotaController extends Controller
                     }
                 }
 
+                foreach ($porVariante as $varId => $qtd) {
+                    $variante = $variantes[$varId];
+
+                    if ((int) $variante->estoque < $qtd) {
+                        $nome = $entrada->itens->firstWhere('produto_variante_id', $varId)?->descricao;
+                        throw new \RuntimeException(
+                            "Estoque insuficiente para estornar \"{$nome}\": estoque atual {$variante->estoque}, a estornar {$qtd}."
+                        );
+                    }
+                }
+
                 foreach ($porProduto as $produtoId => $qtd) {
                     $produtos[$produtoId]->decrement('estoque', $qtd);
+                }
+
+                foreach ($porVariante as $varId => $qtd) {
+                    $variantes[$varId]->decrement('estoque', $qtd);
                 }
 
                 ProdutoLote::whereIn('entrada_nota_item_id', $itemIds)->delete();
@@ -1062,7 +1238,13 @@ class EntradaNotaController extends Controller
                 // quantidade da nota (caixas) × unidades por caixa = unidades que entram no estoque
                 $qtdEstoque = $item->quantidade_estoque;
 
-                $produto->increment('estoque', $qtdEstoque);
+                if ($item->produto_variante_id) {
+                    // produto com variação: o estoque mora na variante (inteiro)
+                    ProdutoVariante::whereKey($item->produto_variante_id)->lockForUpdate()->firstOrFail()
+                        ->increment('estoque', (int) round($qtdEstoque));
+                } else {
+                    $produto->increment('estoque', $qtdEstoque);
+                }
 
                 if ($entrada->atualizar_custo && $qtdEstoque > 0) {
                     // custo líquido por UNIDADE (total do item, já com desconto, ÷ unidades)
@@ -1074,6 +1256,7 @@ class EntradaNotaController extends Controller
                 if ($item->lote || $item->validade) {
                     ProdutoLote::create([
                         'produto_id'           => $item->produto_id,
+                        'produto_variante_id'  => $item->produto_variante_id,
                         'entrada_nota_item_id' => $item->id,
                         'lote'                 => $item->lote,
                         'validade'             => $item->validade,

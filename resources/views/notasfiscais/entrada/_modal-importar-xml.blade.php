@@ -1,5 +1,3 @@
-
-
 {{-- 1) Envio do XML --}}
 <div id="modal-importar-xml" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-lg w-full max-w-lg p-6">
@@ -82,6 +80,44 @@
             <button type="button" id="btn-confirmar-xml" onclick="confirmarImportacaoXml()"
                     class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition disabled:opacity-50">
                 Importar para o rascunho
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- 3c) Distribuir a quantidade do item entre as variações do produto --}}
+<div id="modal-distribuir-xml" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[70]">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900 rounded-t-xl">
+            <h2 class="text-lg font-bold text-white">Distribuir entre as variações</h2>
+            <button type="button" onclick="xmlFecharDistribuir()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
+        </div>
+
+        <div class="p-6 overflow-y-auto">
+            <p id="distribuir-resumo-xml" class="text-sm text-gray-600 mb-4"></p>
+
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
+                        <th class="py-2 pr-3">Variação</th>
+                        <th class="py-2 pr-3">Código de barras</th>
+                        <th class="py-2 pr-3 text-right">Estoque atual</th>
+                        <th class="py-2 w-32 text-right">Quantidade</th>
+                    </tr>
+                </thead>
+                <tbody id="linhas-distribuir-xml"></tbody>
+            </table>
+
+            <p id="erro-distribuir-xml" class="hidden text-sm text-red-600 mt-3 whitespace-pre-line"></p>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-100 flex items-center gap-3">
+            <p id="contador-distribuir-xml" class="text-sm text-gray-500 mr-auto"></p>
+            <button type="button" onclick="xmlFecharDistribuir()"
+                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition">Cancelar</button>
+            <button type="button" id="btn-confirmar-distribuir-xml" onclick="xmlConfirmarDistribuicao()"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition disabled:opacity-50">
+                Confirmar distribuição
             </button>
         </div>
     </div>
@@ -413,6 +449,19 @@ function xmlFechar(id) { const m = document.getElementById(id); m.classList.add(
 function xmlErro(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.remove('hidden'); }
 function xmlLimparErro(id) { document.getElementById(id).classList.add('hidden'); }
 
+// ---------- variações ----------
+function xmlTemVariacao(p) { return !!p && Number(p.tem_variacao) === 1; }
+function xmlRotulo(v) { return [v.cor, v.tamanho].filter(Boolean).join(' / ') || 'Sem descrição'; }
+function xmlQtd(v) { return Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 3 }); }
+function xmlSomaDistribuicao(item) { return (item.distribuicao || []).reduce((s, d) => s + Number(d.quantidade || 0), 0); }
+
+// item pronto para importar: tem produto e, se o produto tem variação, a quantidade está toda distribuída
+function xmlItemCompleto(item) {
+    if (!item.produto) return false;
+    if (!xmlTemVariacao(item.produto)) return true;
+    return Math.abs(xmlSomaDistribuicao(item) - Number(item.quantidade)) < 0.0005;
+}
+
 async function xmlRequisicao(url, opcoes = {}) {
     let resp;
     try {
@@ -562,9 +611,20 @@ function renderizarConferenciaXml() {
                 : 'Cadastro encontrado: ' + xmlEsc(p.por))
             : '';
 
+        let detalheVariacao = '';
+        if (p && xmlTemVariacao(p)) {
+            detalheVariacao = xmlItemCompleto(item)
+                ? `<span class="block text-xs text-gray-600">${item.distribuicao.map(d =>
+                        xmlEsc(xmlRotulo((p.variantes || []).find(v => v.id === d.variante_id) || {})) + ': ' + xmlQtd(d.quantidade)).join(' · ')}</span>
+                   <button type="button" onclick="xmlAbrirDistribuir(${i})" class="text-xs text-blue-600 hover:underline">editar distribuição</button>`
+                : `<button type="button" onclick="xmlAbrirDistribuir(${i})" class="block text-xs text-red-600 font-medium hover:underline text-left">
+                       Distribuir ${xmlQtd(item.quantidade)} un. entre as variações (distribuído: ${xmlQtd(xmlSomaDistribuicao(item))})</button>`;
+        }
+
         const celula = p
             ? `<span class="text-green-700 font-medium">${titulo}</span>
                <span class="block text-xs text-gray-500">${xmlEsc(p.nome)}</span>
+               ${detalheVariacao}
                <button type="button" onclick="xmlAbrirAssimilar(${i})" class="text-xs text-blue-600 hover:underline">trocar</button>`
             : `<div class="flex flex-col items-start gap-1.5">
                    ${botaoCadastrar}
@@ -576,20 +636,21 @@ function renderizarConferenciaXml() {
             <tr class="border-b border-gray-100 align-top">
                 <td class="py-3 pr-3 font-mono text-xs text-gray-600">${xmlEsc(item.ean || '—')}</td>
                 <td class="py-3 pr-3">${xmlEsc(item.descricao)}
-                    <span class="block text-xs text-gray-400">Cód. fornecedor: ${xmlEsc(item.codigo || '—')}</span></td>
+                    <span class="block text-xs text-gray-400">Qtd: ${xmlQtd(item.quantidade)} · Cód. fornecedor: ${xmlEsc(item.codigo || '—')}</span></td>
                     ${xmlLinhaFiscal(item)}
                 <td class="py-3 pr-3">${xmlMoeda(item.valor_custo)}</td>
                 <td class="py-3">${celula}</td>
             </tr>`;
     }).join('');
 
-    const pendentes = itens.filter(i => !i.produto).length;
+    const semProduto = itens.filter(i => !i.produto).length;
+    const pendentes = itens.filter(i => !xmlItemCompleto(i)).length;
     document.getElementById('contador-conferencia-xml').textContent =
-        pendentes ? `${pendentes} de ${itens.length} item(ns) sem produto` : `Todos os ${itens.length} itens assimilados`;
+        pendentes ? `${pendentes} de ${itens.length} item(ns) pendente(s) (sem produto ou sem distribuição completa)` : `Todos os ${itens.length} itens assimilados`;
 
     const btnAuto = document.getElementById('btn-cadastrar-pendentes-xml');
-    btnAuto.classList.toggle('hidden', !(XML_PODE_CADASTRAR && xmlAutoCadastroAtivo() && pendentes > 0));
-    btnAuto.textContent = `Cadastrar produtos não encontrados (${pendentes})`;
+    btnAuto.classList.toggle('hidden', !(XML_PODE_CADASTRAR && xmlAutoCadastroAtivo() && semProduto > 0));
+    btnAuto.textContent = `Cadastrar produtos não encontrados (${semProduto})`;
 }
 
 function cancelarConferenciaXml() {
@@ -600,12 +661,17 @@ function cancelarConferenciaXml() {
 
 async function confirmarImportacaoXml() {
     const itens = xmlImportacao.itens;
-    const pendentes = itens.filter(i => !i.produto).length;
+    const pendentes = itens.filter(i => !xmlItemCompleto(i)).length;
 
-    if (pendentes && !confirm(`${pendentes} item(ns) sem produto vão ficar de fora do rascunho. Continuar?`)) return;
+    if (pendentes && !confirm(`${pendentes} item(ns) pendente(s) (sem produto ou com distribuição incompleta) vão ficar de fora do rascunho. Continuar?`)) return;
 
     const produtos = {};
-    itens.forEach((it, i) => { if (it.produto) produtos[i] = it.produto.id; });
+    const distribuicoes = {};
+    itens.forEach((it, i) => {
+        if (!xmlItemCompleto(it)) return;
+        produtos[i] = it.produto.id;
+        if (xmlTemVariacao(it.produto)) distribuicoes[i] = it.distribuicao;
+    });
 
     const btn = document.getElementById('btn-confirmar-xml');
     btn.disabled = true;
@@ -616,7 +682,7 @@ async function confirmarImportacaoXml() {
         const r = await xmlRequisicao(XML_URLS.confirmar, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: xmlImportacao.token, produtos }),
+            body: JSON.stringify({ token: xmlImportacao.token, produtos, distribuicoes }),
         });
         window.location.href = r.redirect;
     } catch (e) {
@@ -685,7 +751,7 @@ async function xmlBuscar(termo) {
     if (termo.length < 2) { xmlResultados = []; xmlIndice = -1; xmlRenderResultados(); return; }
 
     try {
-        xmlResultados = await xmlRequisicao(`${XML_URLS.produtos}?q=${encodeURIComponent(termo)}`);
+        xmlResultados = await xmlRequisicao(`${XML_URLS.produtos}?q=${encodeURIComponent(termo)}&variacoes=1`);
     } catch (e) {
         xmlResultados = [];
         xmlErro('erro-assimilar-xml', 'Falha ao buscar produtos:\n' + e.message);
@@ -708,7 +774,7 @@ function xmlRenderResultados() {
             <tr class="cursor-pointer border-b border-gray-100 transition ${dest ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
                 onclick="xmlSelecionar(${i})">
                 <td class="py-3 font-mono text-sm ${dest ? 'text-slate-300' : 'text-gray-500'}">${xmlEsc(p.codigo_barras || p.codigo_interno || '—')}</td>
-                <td class="py-3 font-medium">${xmlEsc(p.nome)}</td>
+                <td class="py-3 font-medium">${xmlEsc(p.nome)}${xmlTemVariacao(p) ? ` <span class="text-xs font-normal ${dest ? 'text-slate-300' : 'text-gray-400'}">(${(p.variantes || []).length} variações)</span>` : ''}</td>
                 <td class="py-3 ${dest ? 'text-emerald-300' : 'text-emerald-600'} font-semibold">${xmlMoeda(p.preco_custo)}</td>
                 <td class="py-3 font-medium">${xmlEsc(p.estoque)}</td>
             </tr>`;
@@ -732,15 +798,116 @@ inputBuscaXml.addEventListener('keydown', (e) => {
 function xmlSelecionar(i) { xmlAtribuir(xmlResultados[i]); }
 
 function xmlAtribuir(produto) {
-    xmlImportacao.itens[xmlItemAtual].produto = {
+    const item = xmlImportacao.itens[xmlItemAtual];
+
+    item.produto = {
         id: produto.id,
         nome: produto.nome,
         codigo_interno: produto.codigo_interno,
         codigo_barras: produto.codigo_barras,
+        tem_variacao: xmlTemVariacao(produto),
+        variantes: produto.variantes || [],
         manual: true,
     };
+    item.distribuicao = [];
+
     xmlFecharAssimilar();
     renderizarConferenciaXml();
+
+    // produto com variação: a quantidade do item precisa ser dividida entre as variantes
+    if (item.produto.tem_variacao) xmlAbrirDistribuir(xmlItemAtual);
+}
+
+// ---------- 3c) distribuir a quantidade entre as variações ----------
+function xmlAbrirDistribuir(i) {
+    xmlItemAtual = i;
+    const item = xmlImportacao.itens[i];
+    const p = item.produto;
+    const atual = {};
+
+    (item.distribuicao || []).forEach(d => { atual[d.variante_id] = d.quantidade; });
+
+    // EAN do XML igual ao de uma variação: sugere a quantidade toda nela
+    if (!(item.distribuicao || []).length && item.ean) {
+        const v = (p.variantes || []).find(v => v.codigo_barras === item.ean);
+        if (v) atual[v.id] = Number(item.quantidade);
+    }
+
+    document.getElementById('distribuir-resumo-xml').innerHTML =
+        `Item da nota: <strong>${xmlEsc(item.descricao)}</strong> — quantidade: <strong>${xmlQtd(item.quantidade)}</strong> un.<br>` +
+        `Produto no sistema: <strong>${xmlEsc(p.nome)}</strong>`;
+
+    document.getElementById('linhas-distribuir-xml').innerHTML = (p.variantes || []).map(v => `
+        <tr class="border-b border-gray-100">
+            <td class="py-2 pr-3 font-medium">${xmlEsc(xmlRotulo(v))}</td>
+            <td class="py-2 pr-3 font-mono text-xs text-gray-500">${xmlEsc(v.codigo_barras || '—')}</td>
+            <td class="py-2 pr-3 text-right text-gray-500">${xmlEsc(v.estoque)}</td>
+            <td class="py-2 text-right">
+                <input type="number" min="0" step="1" id="dist-qtd-${v.id}" value="${atual[v.id] ?? ''}"
+                       oninput="xmlAtualizarDistribuicao()" onkeydown="xmlTeclaDistribuir(event)"
+                       class="w-28 border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-right focus:ring-2 focus:ring-blue-500 outline-none">
+            </td>
+        </tr>`).join('');
+
+    xmlLimparErro('erro-distribuir-xml');
+    xmlAbrir('modal-distribuir-xml');
+    xmlAtualizarDistribuicao();
+
+    const primeiro = document.querySelector('#linhas-distribuir-xml input');
+    if (primeiro) primeiro.focus();
+}
+
+function xmlLerDistribuicao() {
+    const p = xmlImportacao.itens[xmlItemAtual].produto;
+
+    return (p.variantes || [])
+        .map(v => ({ variante_id: v.id, quantidade: Number(document.getElementById(`dist-qtd-${v.id}`).value) || 0 }))
+        .filter(d => d.quantidade > 0);
+}
+
+function xmlAtualizarDistribuicao() {
+    const total = Number(xmlImportacao.itens[xmlItemAtual].quantidade);
+    const soma = xmlLerDistribuicao().reduce((s, d) => s + d.quantidade, 0);
+    const resta = Math.round((total - soma) * 1000) / 1000;
+    const ok = resta === 0;
+
+    const contador = document.getElementById('contador-distribuir-xml');
+    contador.textContent = `Distribuído ${xmlQtd(soma)} de ${xmlQtd(total)} — ` +
+        (ok ? 'completo' : resta > 0 ? `faltam ${xmlQtd(resta)}` : `excede em ${xmlQtd(-resta)}`);
+    contador.classList.toggle('text-emerald-600', ok);
+    contador.classList.toggle('text-amber-600', !ok);
+    contador.classList.toggle('text-gray-500', false);
+
+    document.getElementById('btn-confirmar-distribuir-xml').disabled = !ok;
+}
+
+function xmlTeclaDistribuir(e) {
+    if (e.key === 'Escape') { xmlFecharDistribuir(); return; }
+    if (e.key === 'Enter') { e.preventDefault(); xmlConfirmarDistribuicao(); }
+}
+
+function xmlConfirmarDistribuicao() {
+    const item = xmlImportacao.itens[xmlItemAtual];
+    const dist = xmlLerDistribuicao();
+
+    if (dist.some(d => !Number.isInteger(d.quantidade))) {
+        xmlErro('erro-distribuir-xml', 'As quantidades devem ser números inteiros (o estoque da variação é inteiro).');
+        return;
+    }
+
+    const soma = dist.reduce((s, d) => s + d.quantidade, 0);
+    if (Math.abs(soma - Number(item.quantidade)) >= 0.0005) {
+        xmlErro('erro-distribuir-xml', `A soma (${xmlQtd(soma)}) precisa ser igual à quantidade da nota (${xmlQtd(item.quantidade)}).`);
+        return;
+    }
+
+    item.distribuicao = dist;
+    xmlFecharDistribuir();
+    renderizarConferenciaXml();
+}
+
+function xmlFecharDistribuir() {
+    xmlFechar('modal-distribuir-xml');
 }
 
 // ---------- 3b) assimilar: cadastro rápido ----------

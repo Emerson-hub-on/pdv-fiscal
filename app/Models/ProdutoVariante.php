@@ -40,6 +40,12 @@ class ProdutoVariante extends Model
         return $base . ((10 - ($soma % 10)) % 10);
     }
 
+    /** Texto curto da variação, ex.: "PRETO / M". */
+    public function rotulo(): string
+    {
+        return collect([$this->cor, $this->tamanho])->filter()->implode(' / ');
+    }
+
     public function produto()
     {
         return $this->belongsTo(Produto::class);
