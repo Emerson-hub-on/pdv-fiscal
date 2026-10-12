@@ -176,9 +176,10 @@
 
         @endunless
 
-        <div class="overflow-x-auto">
+        {{-- Cresce até ~10 itens (30rem inclui cabeçalho e totais); acima disso rola por dentro --}}
+        <div id="area-itens" class="overflow-auto max-h-[30rem]">
             <table class="w-full text-sm whitespace-nowrap">
-                <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                <thead class="bg-gray-50 text-gray-500 text-xs uppercase sticky top-0 z-10">
                     <tr>
                         <th class="text-left px-3 py-2">Itens</th>
                         <th class="text-left px-3 py-2">Cód. forn.</th>
@@ -208,7 +209,7 @@
                     </tr>
                 </thead>
                 <tbody id="linhas-grid-itens" class="divide-y divide-gray-100"></tbody>
-                <tfoot class="bg-gray-50 font-medium">
+                <tfoot class="bg-gray-50 font-medium sticky bottom-0 z-10">
                     <tr class="border-t-2 border-gray-200">
                         <td class="px-3 py-2 text-left">
                             <span id="tot-itens">0</span>
@@ -1091,11 +1092,18 @@ function adicionarLinhaNaGrid() {
         gera_credito: fiscal.manual ? fiscal.credito : '',
     };
 
-    if (indiceEdicao === null) itensNota.push(item);
+    const itemNovo = indiceEdicao === null;
+    if (itemNovo) itensNota.push(item);
     else itensNota[indiceEdicao] = item;
 
     cancelarEditor();
     renderizarGrid();
+
+    // item novo: leva a rolagem até ele
+    if (itemNovo) {
+        const area = document.getElementById('area-itens');
+        area.scrollTop = area.scrollHeight;
+    }
     document.getElementById('input-busca-item').focus();
 }
 
