@@ -180,6 +180,7 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::post('/', [EntradaNotaController::class, 'store'])->name('store');
                 Route::get('{entrada}/editar', [EntradaNotaController::class, 'edit'])->name('edit');
                 Route::put('{entrada}', [EntradaNotaController::class, 'update'])->name('update');
+                Route::post('{entrada}/reabrir', [EntradaNotaController::class, 'reabrir'])->name('reabrir');
                 Route::delete('{entrada}', [EntradaNotaController::class, 'destroy'])->name('destroy');
             });
 

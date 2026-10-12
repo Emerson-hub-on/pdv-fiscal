@@ -548,12 +548,40 @@ class EntradaNotaController extends Controller
 
     public function destroy(EntradaNota $entrada)
     {
-        abort_unless($entrada->isRascunho(), 403, 'Só é possível excluir entradas em rascunho.');
+        $eraFinalizada = $entrada->isFinalizada();
 
-        $entrada->delete(); // itens caem por cascade
+        try {
+            DB::transaction(function () use ($entrada) {
+                if ($entrada->isFinalizada()) {
+                    $this->estornar($entrada); // devolve a nota a rascunho e reverte o estoque
+                }
+
+                $entrada->delete(); // itens caem por cascade
+            });
+        } catch (\RuntimeException $e) {
+            return back()->with('erro', $e->getMessage());
+        }
 
         return redirect()->route('entradas-nota.index')
-            ->with('sucesso', 'Rascunho excluído.');
+            ->with('sucesso', $eraFinalizada ? 'Entrada excluída e estoque estornado.' : 'Rascunho excluído.');
+    }
+
+    /**
+     * Reabre uma entrada finalizada: estorna o estoque e volta a nota para rascunho,
+     * liberando a edição normal (que depois pode ser finalizada de novo).
+     */
+    public function reabrir(EntradaNota $entrada)
+    {
+        abort_unless($entrada->isFinalizada(), 403, 'Só é possível reabrir entradas finalizadas.');
+
+        try {
+            $this->estornar($entrada);
+        } catch (\RuntimeException $e) {
+            return back()->with('erro', $e->getMessage());
+        }
+
+        return redirect()->route('entradas-nota.edit', $entrada)
+            ->with('sucesso', 'Entrada reaberta e estoque estornado. Edite e finalize novamente.');
     }
 
     /**
@@ -952,6 +980,67 @@ class EntradaNotaController extends Controller
                 $item->csosn_origem
             ));
         }
+    }
+
+    /**
+     * Desfaz o finalizar(): subtrai o estoque, remove os lotes gerados e volta a nota para rascunho.
+     * Lança RuntimeException (e nada é gravado) se o estorno não for possível.
+     */
+    private function estornar(EntradaNota $entrada): void
+    {
+        DB::transaction(function () use ($entrada) {
+            $entrada = EntradaNota::whereKey($entrada->id)->lockForUpdate()->firstOrFail();
+
+            if (! $entrada->isFinalizada()) {
+                return; // proteção contra duplo clique / reenvio
+            }
+
+            $entrada->load(['operacao', 'itens']);
+            $movimenta = $entrada->operacao?->movimenta_estoque ?? true;
+
+            if ($movimenta) {
+                $itemIds = $entrada->itens->pluck('id');
+
+                // lote que já teve baixa não pode ser desfeito sem descontrolar o estoque por lote
+                $consumidos = ProdutoLote::whereIn('entrada_nota_item_id', $itemIds)
+                    ->whereColumn('quantidade_atual', '<', 'quantidade_inicial')
+                    ->get();
+
+                if ($consumidos->isNotEmpty()) {
+                    throw new \RuntimeException(
+                        'Não é possível estornar: já houve baixa nos lotes ' . $consumidos->pluck('lote')->filter()->implode(', ') . '.'
+                    );
+                }
+
+                // total que entrou por produto (o mesmo produto pode aparecer em mais de um item)
+                $porProduto = $entrada->itens
+                    ->groupBy('produto_id')
+                    ->map(fn ($itens) => $itens->sum(fn ($i) => $i->quantidade_estoque));
+
+                $produtos = Produto::whereIn('id', $porProduto->keys())->lockForUpdate()->get()->keyBy('id');
+
+                foreach ($porProduto as $produtoId => $qtd) {
+                    $produto = $produtos[$produtoId];
+
+                    if ((float) $produto->estoque < $qtd) {
+                        throw new \RuntimeException(
+                            "Estoque insuficiente para estornar \"{$produto->nome}\": estoque atual {$produto->estoque}, a estornar {$qtd}."
+                        );
+                    }
+                }
+
+                foreach ($porProduto as $produtoId => $qtd) {
+                    $produtos[$produtoId]->decrement('estoque', $qtd);
+                }
+
+                ProdutoLote::whereIn('entrada_nota_item_id', $itemIds)->delete();
+            }
+
+            $entrada->update([
+                'status'        => 'rascunho',
+                'finalizada_em' => null,
+            ]);
+        });
     }
 
     /**
