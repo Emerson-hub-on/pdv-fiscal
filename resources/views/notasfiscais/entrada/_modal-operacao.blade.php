@@ -21,6 +21,7 @@
                     <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
                         <th class="py-2 px-3 w-40">CFOP</th>
                         <th class="py-2 px-3">Natureza da Operação</th>
+                        <th class="py-2 px-3 w-24"></th>
                     </tr>
                 </thead>
                 <tbody id="op-linhas"></tbody>
@@ -30,17 +31,22 @@
 
         {{-- Cadastro --}}
         <div id="op-view-cadastro" class="hidden p-6 overflow-y-auto">
+            <h3 id="op-cadastro-titulo" class="text-base font-semibold text-gray-800 mb-4">Novo CFOP de entrada</h3>
+            <p id="op-cfop-aviso" class="hidden text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
+                Esta operação usa CFOPs diferentes por tipo de operação do fornecedor, por isso os CFOPs não podem ser alterados aqui.
+                Você pode editar a natureza e o "Movimenta estoque".
+            </p>
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">CFOP de entrada <span class="text-red-500">*</span></label>
                     <input type="text" id="op-cfop" maxlength="4" placeholder="Ex.: 1949"
-                           class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-400">
                     <p class="text-xs text-gray-400 mt-1">Informe o 1xxx (dentro do estado). O 2xxx (outros estados) é criado automaticamente.</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">CFOP quando a mercadoria tem ST <span class="text-xs text-gray-400 font-normal">(opcional)</span></label>
                     <input type="text" id="op-cfop-st" maxlength="4" placeholder="Ex.: 1403"
-                           class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-400">
                     <p class="text-xs text-gray-400 mt-1">Em branco: usa o mesmo CFOP da coluna ao lado.</p>
                 </div>
                 <div class="col-span-2">
@@ -76,7 +82,10 @@
 let opLista = @json($operacoes);
 let opFiltrada = [];
 let opIndice = 0;
-let opContexto = 'cabecalho'; 
+let opContexto = 'cabecalho';
+let opEditandoId = null;        // null = cadastrando; id = editando
+let opEdicaoInicial = null;     // CFOPs ao abrir a edição (para saber se mudaram)
+const OP_URL_ATUALIZAR = @json(route('entradas-nota.operacoes.update', '__ID__'));
 
 function opEsc(v) {
     return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -121,7 +130,7 @@ function opRender() {
     const tbody = document.getElementById('op-linhas');
 
     if (!opFiltrada.length) {
-        tbody.innerHTML = '<tr><td colspan="2" class="p-4 text-center text-sm text-gray-400">Nenhum CFOP encontrado.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-sm text-gray-400">Nenhum CFOP encontrado.</td></tr>';
         return;
     }
 
@@ -133,6 +142,12 @@ function opRender() {
                 onclick="opSelecionar(${o.id})">
                 <td class="py-3 px-3 font-mono ${dest ? 'text-slate-300' : 'text-gray-600'}">${opEsc(o.cfops || '—')}</td>
                 <td class="py-3 px-3 font-medium">${opEsc(o.descricao)}${marcado}</td>
+                <td class="py-3 px-3 text-right">
+                    <button type="button" onclick="event.stopPropagation(); opMostrarEdicao(${o.id})"
+                            class="text-xs font-medium px-2.5 py-1 rounded-lg border transition ${dest ? 'border-slate-500 text-slate-200 hover:bg-slate-700' : 'border-gray-300 text-gray-600 hover:bg-gray-100'}">
+                        Editar
+                    </button>
+                </td>
             </tr>`;
     }).join('');
 }
@@ -182,13 +197,57 @@ function opSelecionar(id) {
 
 
 function opMostrarCadastro() {
-    ['op-cfop', 'op-cfop-st', 'op-descricao'].forEach(id => document.getElementById(id).value = '');
+    opEditandoId = null;
+    opEdicaoInicial = null;
+    ['op-cfop', 'op-cfop-st', 'op-descricao'].forEach(id => {
+        const campo = document.getElementById(id);
+        campo.value = '';
+        campo.disabled = false;
+    });
     document.getElementById('op-movimenta').checked = true;
     document.getElementById('op-erro').classList.add('hidden');
+    document.getElementById('op-cfop-aviso').classList.add('hidden');
+    document.getElementById('op-cadastro-titulo').textContent = 'Novo CFOP de entrada';
+    document.getElementById('op-btn-salvar').textContent = 'Cadastrar e selecionar';
 
     document.getElementById('op-view-lista').classList.add('hidden');
     document.getElementById('op-view-cadastro').classList.remove('hidden');
     document.getElementById('op-cfop').focus();
+}
+
+function opMostrarEdicao(id) {
+    const o = opLista.find(x => String(x.id) === String(id));
+    if (!o) return;
+
+    opMostrarCadastro();
+    opEditandoId = o.id;
+    opEdicaoInicial = { cfop: o.cfop || '', cfop_st: o.cfop_st || '' };
+
+    const editavel = !!o.cfop_editavel;
+    const cfop = document.getElementById('op-cfop');
+    const cfopSt = document.getElementById('op-cfop-st');
+
+    cfop.value = o.cfop || '';
+    cfopSt.value = o.cfop_st || '';
+    cfop.disabled = !editavel;
+    cfopSt.disabled = !editavel;
+    document.getElementById('op-cfop-aviso').classList.toggle('hidden', editavel);
+
+    document.getElementById('op-descricao').value = o.descricao;
+    document.getElementById('op-movimenta').checked = !!o.movimenta_estoque;
+    document.getElementById('op-cadastro-titulo').textContent = 'Editar CFOP de entrada';
+    document.getElementById('op-btn-salvar').textContent = 'Salvar alterações';
+
+    document.getElementById('op-descricao').focus();
+}
+
+// depois de editar, atualiza o texto da operação já escolhida no cabeçalho / na importação
+function opAtualizarRotulosSelecionados(o) {
+    [['operacao_entrada_id', 'operacao_entrada_label'], ['xml-operacao', 'xml-operacao-label']].forEach(([campoId, labelId]) => {
+        const campo = document.getElementById(campoId);
+        const label = document.getElementById(labelId);
+        if (campo && label && String(campo.value) === String(o.id)) label.textContent = opRotulo(o);
+    });
 }
 
 async function opSalvar() {
@@ -200,24 +259,32 @@ async function opSalvar() {
     const cfopSt = document.getElementById('op-cfop-st').value.trim();
     const descricao = document.getElementById('op-descricao').value.trim();
 
+    const editando = opEditandoId !== null;
+    const cfopEditavel = !document.getElementById('op-cfop').disabled;
+
     let mensagem = null;
-    if (!/^[12]\d{3}$/.test(cfop)) mensagem = 'Informe o CFOP com 4 dígitos, começando por 1 ou 2.';
-    else if (cfopSt && !/^[12]\d{3}$/.test(cfopSt)) mensagem = 'O CFOP de ST deve ter 4 dígitos, começando por 1 ou 2.';
+    if (cfopEditavel && !/^[12]\d{3}$/.test(cfop)) mensagem = 'Informe o CFOP com 4 dígitos, começando por 1 ou 2.';
+    else if (cfopEditavel && cfopSt && !/^[12]\d{3}$/.test(cfopSt)) mensagem = 'O CFOP de ST deve ter 4 dígitos, começando por 1 ou 2.';
     else if (!descricao) mensagem = 'Informe a natureza da operação.';
 
     if (mensagem) { erro.textContent = mensagem; erro.classList.remove('hidden'); return; }
 
+    // CFOP mudou: as regras de conversão da operação são recriadas
+    const recriar = editando && cfopEditavel && (cfop !== opEdicaoInicial.cfop || cfopSt !== opEdicaoInicial.cfop_st);
+    if (recriar && !confirm('Alterar os CFOPs recria as regras de conversão desta operação (ajustes manuais nelas serão perdidos). Continuar?')) return;
+
     btn.disabled = true;
 
     try {
-        const resp = await fetch(@json(route('entradas-nota.operacoes.store')), {
-            method: 'POST',
+        const resp = await fetch(editando ? OP_URL_ATUALIZAR.replace('__ID__', opEditandoId) : @json(route('entradas-nota.operacoes.store')), {
+            method: editando ? 'PUT' : 'POST',
             headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
             body: JSON.stringify({
                 cfop,
                 cfop_st: cfopSt || null,
                 descricao,
                 movimenta_estoque: document.getElementById('op-movimenta').checked,
+                recriar_cfops: recriar,
             }),
         });
 
@@ -229,8 +296,15 @@ async function opSalvar() {
             throw new Error(dados?.message ?? `O servidor retornou erro ${resp.status}.`);
         }
 
-        opLista.push(dados);
-        opSelecionar(dados.id);
+        if (editando) {
+            const i = opLista.findIndex(x => String(x.id) === String(dados.id));
+            if (i >= 0) opLista[i] = dados;
+            opAtualizarRotulosSelecionados(dados);
+            opMostrarLista();
+        } else {
+            opLista.push(dados);
+            opSelecionar(dados.id);
+        }
     } catch (e) {
         erro.textContent = e.message;
         erro.classList.remove('hidden');

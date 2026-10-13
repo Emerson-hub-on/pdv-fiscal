@@ -888,6 +888,7 @@ class EntradaNotaController extends Controller
     private function operacoesParaModal()
     {
         $codigos = CfopEntrada::pluck('codigo', 'id');
+        $conversoes = CfopEntradaConversao::get()->groupBy('operacao_entrada_id');
         $mapa = CfopEntradaConversao::whereIn('cfop_origem', ['5102', '6102'])
             ->get()
             ->groupBy('operacao_entrada_id');
@@ -896,17 +897,53 @@ class EntradaNotaController extends Controller
             ->orderBy('ordem')
             ->orderBy('descricao')
             ->get()
-            ->map(fn ($op) => [
-                'id'        => $op->id,
-                'descricao' => $op->descricao,
-                'cfops'     => collect($mapa->get($op->id, []))
-                    ->sortBy('cfop_origem')
-                    ->map(fn ($c) => $codigos->get($c->cfop_entrada_id))
-                    ->filter()
-                    ->unique()
-                    ->implode(' / '),
-            ])
+            ->map(function ($op) use ($codigos, $conversoes, $mapa) {
+                // sufixos (3 últimos dígitos) usados pelas regras desta operação
+                $sufixos = collect($conversoes->get($op->id, []))
+                    ->map(fn ($c) => substr((string) $codigos->get($c->cfop_entrada_id), 1))
+                    ->filter()->unique()->values();
+
+                $baseConversao = collect($mapa->get($op->id, []))->firstWhere('cfop_origem', '5102');
+                $sufBase = $baseConversao ? substr((string) $codigos->get($baseConversao->cfop_entrada_id), 1) : null;
+
+                // operação criada por esta tela usa no máximo 2 sufixos (normal e ST): dá para editar os CFOPs com segurança
+                $editavel = $sufBase && $sufixos->count() <= 2;
+                $sufSt = ($editavel && $sufixos->count() === 2) ? $sufixos->first(fn ($s) => $s !== $sufBase) : null;
+
+                return [
+                    'id'                => $op->id,
+                    'descricao'         => $op->descricao,
+                    'cfops'             => collect($mapa->get($op->id, []))
+                        ->sortBy('cfop_origem')
+                        ->map(fn ($c) => $codigos->get($c->cfop_entrada_id))
+                        ->filter()
+                        ->unique()
+                        ->implode(' / '),
+                    'cfop'              => $sufBase ? '1' . $sufBase : null,
+                    'cfop_st'           => $sufSt ? '1' . $sufSt : null,
+                    'cfop_editavel'     => (bool) $editavel,
+                    'movimenta_estoque' => (bool) $op->movimenta_estoque,
+                ];
+            })
             ->values();
+    }
+
+    /** Garante no catálogo os CFOPs 1xxx/2xxx (e os de ST, se informados) de uma operação. */
+    private function garantirCfopsNoCatalogo(string $descricao, string $sufixo, string $sufixoSt): void
+    {
+        foreach (['1', '2'] as $area) {
+            CfopEntrada::firstOrCreate(
+                ['codigo' => $area . $sufixo],
+                ['descricao' => $descricao, 'ativo' => true]
+            );
+
+            if ($sufixoSt !== $sufixo) {
+                CfopEntrada::firstOrCreate(
+                    ['codigo' => $area . $sufixoSt],
+                    ['descricao' => $descricao . ' (com ST)', 'ativo' => true]
+                );
+            }
+        }
     }
 
     public function criarOperacao(Request $request)
@@ -927,20 +964,7 @@ class EntradaNotaController extends Controller
         $sufixoSt = ! empty($dados['cfop_st']) ? substr($dados['cfop_st'], 1) : $sufixo;
 
         $operacao = DB::transaction(function () use ($dados, $sufixo, $sufixoSt) {
-            // catálogo: cria o 1xxx e o 2xxx (e os de ST, se informados)
-            foreach (['1', '2'] as $area) {
-                CfopEntrada::firstOrCreate(
-                    ['codigo' => $area . $sufixo],
-                    ['descricao' => $dados['descricao'], 'ativo' => true]
-                );
-
-                if ($sufixoSt !== $sufixo) {
-                    CfopEntrada::firstOrCreate(
-                        ['codigo' => $area . $sufixoSt],
-                        ['descricao' => $dados['descricao'] . ' (com ST)', 'ativo' => true]
-                    );
-                }
-            }
+            $this->garantirCfopsNoCatalogo($dados['descricao'], $sufixo, $sufixoSt);
 
             $base = Str::limit(Str::slug($dados['descricao'], '_'), 36, '') ?: 'operacao';
             $codigo = $base;
@@ -961,11 +985,56 @@ class EntradaNotaController extends Controller
             return $operacao;
         });
 
-        return response()->json([
-            'id'        => $operacao->id,
-            'descricao' => $operacao->descricao,
-            'cfops'     => "1{$sufixo} / 2{$sufixo}",
+        return response()->json($this->operacoesParaModal()->firstWhere('id', $operacao->id));
+    }
+
+    /**
+     * Edita uma operação: natureza e "movimenta estoque" sempre; os CFOPs só quando
+     * recriar_cfops = true (recria as regras de conversão da operação).
+     */
+    public function atualizarOperacao(Request $request, OperacaoEntrada $operacao)
+    {
+        $recriar = $request->boolean('recriar_cfops');
+
+        $dados = $request->validate([
+            'cfop'              => [Rule::requiredIf($recriar), 'nullable', 'regex:/^[12]\d{3}$/'],
+            'cfop_st'           => ['nullable', 'regex:/^[12]\d{3}$/'],
+            'descricao'         => ['required', 'string', 'max:60', Rule::unique('operacoes_entrada', 'descricao')->ignore($operacao->id)],
+            'movimenta_estoque' => ['required', 'boolean'],
+        ], [
+            'cfop.required'       => 'Informe o CFOP de entrada.',
+            'cfop.regex'          => 'Informe o CFOP com 4 dígitos, começando por 1 (dentro do estado) ou 2 (outros estados).',
+            'cfop_st.regex'       => 'O CFOP de ST deve ter 4 dígitos, começando por 1 ou 2.',
+            'descricao.required'  => 'Informe a natureza da operação.',
+            'descricao.unique'    => 'Já existe uma operação com esta natureza.',
         ]);
+
+        // o estorno de entradas finalizadas consulta "movimenta estoque": não pode mudar por baixo delas
+        if ((bool) $operacao->movimenta_estoque !== (bool) $dados['movimenta_estoque']
+            && EntradaNota::where('operacao_entrada_id', $operacao->id)->where('status', 'finalizada')->exists()) {
+            throw ValidationException::withMessages([
+                'movimenta_estoque' => 'Não é possível alterar "Movimenta estoque": já existem entradas finalizadas com esta operação.',
+            ]);
+        }
+
+        DB::transaction(function () use ($dados, $operacao, $recriar) {
+            $operacao->update([
+                'descricao'         => $dados['descricao'],
+                'movimenta_estoque' => $dados['movimenta_estoque'],
+            ]);
+
+            if ($recriar) {
+                $sufixo   = substr($dados['cfop'], 1);
+                $sufixoSt = ! empty($dados['cfop_st']) ? substr($dados['cfop_st'], 1) : $sufixo;
+
+                $this->garantirCfopsNoCatalogo($dados['descricao'], $sufixo, $sufixoSt);
+
+                CfopEntradaConversao::where('operacao_entrada_id', $operacao->id)->delete();
+                CfopEntradaConversao::gerar($operacao, $sufixo, $sufixoSt, array_keys(CfopEntradaConversao::ORIGENS));
+            }
+        });
+
+        return response()->json($this->operacoesParaModal()->firstWhere('id', $operacao->id));
     }
 
     private function validar(Request $request, ?EntradaNota $entrada): array
