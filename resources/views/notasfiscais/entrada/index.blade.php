@@ -4,6 +4,17 @@
 
 @section('conteudo')
 <div class="bg-white rounded-lg shadow overflow-visible">
+    @if (session('erro'))
+        <div id="aviso-erro" role="alert"
+             class="m-4 mb-0 border border-red-300 bg-red-50 text-red-800 rounded-lg px-4 py-3 text-sm flex items-start gap-3">
+            <div class="flex-1 whitespace-pre-line">{{ session('erro') }}</div>
+            <button type="button" id="aviso-erro-ok" onclick="fecharAvisoErro()"
+                    class="shrink-0 bg-red-600 text-white rounded-lg px-3 py-1 text-xs font-medium hover:bg-red-700">
+                Ok (<span id="aviso-erro-contador">10</span>)
+            </button>
+        </div>
+    @endif
+
     <form method="GET" action="{{ route('entradas-nota.index') }}"
           class="flex flex-col gap-3 p-4 border-b border-gray-100">
 
@@ -41,6 +52,26 @@
 
 @section('scripts')
 <script>
+let timerAvisoErro = null;
+
+function fecharAvisoErro() {
+    clearInterval(timerAvisoErro);
+    document.getElementById('aviso-erro')?.remove();
+}
+
+// aviso de erro: fecha sozinho em 10s, com contagem no botão Ok
+(function () {
+    const contador = document.getElementById('aviso-erro-contador');
+    if (!contador) return;
+
+    let restante = 10;
+    timerAvisoErro = setInterval(() => {
+        restante--;
+        contador.textContent = restante;
+        if (restante <= 0) fecharAvisoErro();
+    }, 1000);
+})();
+
 function toggleAcoesLinha(id) {
     document.querySelectorAll('[id^="dropdown-acoes-"]').forEach(el => {
         if (el.id !== `dropdown-acoes-${id}`) el.classList.add('hidden');
