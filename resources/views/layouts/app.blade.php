@@ -191,6 +191,31 @@
                 </div>
             </div>
         </div>
+
+        <!-- Menu Dropdown: Financeiro -->
+        <div class="flex flex-col">
+            <button onclick="toggleFinanceiro()"
+                    class="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 text-sm font-medium transition cursor-pointer [.sidebar-oculta_&]:justify-center [.sidebar-oculta_&]:px-0">
+                <span class="flex items-center gap-3">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="whitespace-nowrap [.sidebar-oculta_&]:hidden">Financeiro</span>
+                </span>
+                <svg id="seta-financeiro" class="w-4 h-4 transition-transform duration-200 [.sidebar-oculta_&]:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+
+            <div id="sub-financeiro" class="hidden [.sidebar-oculta_&]:hidden flex flex-col gap-1 pl-4 mt-1 border-l border-white/10 ml-3">
+                @if (auth()->user()?->podeVer('contas-pagar'))
+                    <a href="{{ route('contas-pagar.index') }}"
+                       class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                        Contas a pagar
+                    </a>
+                @endif
+            </div>
+        </div>
     </nav>
 
     <div class="px-3 py-4 border-t border-white/10 shrink-0 [.sidebar-oculta_&]:px-2">
@@ -220,6 +245,7 @@
                     'series-nfe' => ['Faturamento', 'Séries de NF-e'],
                     'transportadores' => ['Cadastros', 'Transportadoras'],
                     'veiculos' => ['Cadastros', 'Veículos'],
+                    'contas-pagar' => ['Financeiro', 'Contas a Pagar'],
                 ];
 
                 $rotaAtual = \Illuminate\Support\Facades\Route::currentRouteName();$prefixoRota = $rotaAtual ? explode('.', $rotaAtual)[0] : null;
@@ -339,6 +365,15 @@ function toggleCadastros() {
 
         document.getElementById('sub-faturamento').classList.toggle('hidden');
         document.getElementById('seta-faturamento').classList.toggle('rotate-180');
+    }
+
+    function toggleFinanceiro() {
+        if (document.body.classList.contains('sidebar-oculta')) {
+            document.body.classList.remove('sidebar-oculta');
+        }
+
+        document.getElementById('sub-financeiro').classList.toggle('hidden');
+        document.getElementById('seta-financeiro').classList.toggle('rotate-180');
     }
 
     function toggleNotaFiscal() {

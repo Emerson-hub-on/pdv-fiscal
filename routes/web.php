@@ -33,6 +33,8 @@ use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\PdvEmissaoController;
 use App\Http\Controllers\EntradaNotaController;
 use App\Http\Controllers\FornecedorController;
+use App\Http\Controllers\ContaPagarController;
+use App\Http\Controllers\TipoContaPagarController;
 
 
 
@@ -165,7 +167,7 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
         // ---------------- NOTA FISCAL - SAÍDA (NF-e modelo 55) ----------------
         Route::middleware('permissao:notas')->group(function () {
 
-        // ---------------- FATURAMENTO - ENTRADAS DE NOTA ----------------
+            // ---------------- FATURAMENTO - ENTRADAS DE NOTA ----------------
             Route::prefix('faturamento/entradas-nota')->name('entradas-nota.')->group(function () {
                 Route::get('produtos', [EntradaNotaController::class, 'buscarProdutos'])->name('produtos');
                 Route::post('importar-xml/analisar', [EntradaNotaController::class, 'analisarXml'])->name('importar-xml.analisar');
@@ -183,6 +185,21 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::put('{entrada}', [EntradaNotaController::class, 'update'])->name('update');
                 Route::post('{entrada}/reabrir', [EntradaNotaController::class, 'reabrir'])->name('reabrir');
                 Route::delete('{entrada}', [EntradaNotaController::class, 'destroy'])->name('destroy');
+            });
+
+            // ---------------- CONTAS A PAGAR (Inserido no mesmo grupo) ----------------
+            Route::prefix('financeiro')->group(function () {
+                Route::resource('contas-pagar', ContaPagarController::class)
+                    ->parameters(['contas-pagar' => 'conta'])
+                    ->except(['show']);
+            
+                Route::post('contas-pagar/parcelas/{parcela}/baixar', [ContaPagarController::class, 'baixar'])
+                    ->name('contas-pagar.parcelas.baixar');
+                Route::post('contas-pagar/parcelas/{parcela}/estornar', [ContaPagarController::class, 'estornar'])
+                    ->name('contas-pagar.parcelas.estornar');
+            
+                Route::post('tipos-conta-pagar/rapido', [TipoContaPagarController::class, 'rapido'])
+                    ->name('tipos-conta-pagar.rapido');
             });
 
             // IMPORTANTE: as buscas precisam vir ANTES do Route::resource, senão
