@@ -1,6 +1,9 @@
 @php
     // duplicatas lidas do XML e gravadas no rascunho (null/vazio em entrada manual)
-    $duplicatasXml = \App\Support\XmlDuplicatas::normalizar($entrada->duplicatas ?? []);
+    // lê o valor bruto da coluna (JSON), sem depender do cast do model
+    $duplicatasXml = \App\Support\XmlDuplicatas::normalizar(
+        json_decode((string) ($entrada->getRawOriginal('duplicatas') ?? ''), true) ?: []
+    );
     $clsCp = 'border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none transition';
 @endphp
 

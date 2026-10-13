@@ -443,9 +443,15 @@ class EntradaNotaController extends Controller
                     'valor_desconto'    => 0, // o desconto do XML já está nos itens
                     'valor_outras'      => max(round($nfe['valor_outras'] - $outrasItens, 2), 0),
                     'valor_total_xml'   => $this->totalComparavelXml($nfe),
-                    'duplicatas'        => XmlDuplicatas::normalizar($nfe['duplicatas'] ?? []) ?: null,
                     'atualizar_custo'   => true,
                 ]);
+
+                // duplicatas do XML (Contas a Pagar): gravadas direto na tabela, sem depender de $fillable/$casts do model
+                $duplicatas = XmlDuplicatas::normalizar($nfe['duplicatas'] ?? []);
+                if ($duplicatas) {
+                    DB::table($entrada->getTable())->where('id', $entrada->id)
+                        ->update(['duplicatas' => json_encode($duplicatas)]);
+                }
 
                 $ignorados = [];
 
