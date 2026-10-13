@@ -283,8 +283,8 @@
                         class="bg-green-700 text-white rounded-lg px-6 py-2.5 text-sm font-medium hover:bg-green-800">
                     {{ $ehEdicao ? 'Salvar Alterações' : 'Salvar Rascunho' }}
                 </button>
-                <button type="submit" name="acao" value="finalizar"
-                        onclick="return confirm('Finalizar a entrada? O estoque será atualizado e a nota não poderá mais ser alterada.')"
+                <button type="submit" id="btn-finalizar" name="acao" value="finalizar"
+                        onclick="return abrirModalContasPagar(event)"
                         class="bg-gray-800 text-white rounded-lg px-6 py-2.5 text-sm font-medium hover:bg-gray-700">
                     Finalizar Entrada
                 </button>

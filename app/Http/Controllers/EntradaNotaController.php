@@ -26,6 +26,8 @@ use App\Services\ConversaoFiscalEntrada;
 use App\Models\CfopEntradaConversao;
 use App\Models\FormaPagamento;
 use App\Models\CstEntradaConversao;
+use App\Services\ContaPagarService;
+use App\Support\XmlDuplicatas;
 
 
 class EntradaNotaController extends Controller
@@ -441,6 +443,7 @@ class EntradaNotaController extends Controller
                     'valor_desconto'    => 0, // o desconto do XML já está nos itens
                     'valor_outras'      => max(round($nfe['valor_outras'] - $outrasItens, 2), 0),
                     'valor_total_xml'   => $this->totalComparavelXml($nfe),
+                    'duplicatas'        => XmlDuplicatas::normalizar($nfe['duplicatas'] ?? []) ?: null,
                     'atualizar_custo'   => true,
                 ]);
 
@@ -685,14 +688,15 @@ class EntradaNotaController extends Controller
 
     public function store(Request $request)
     {
+        $parcelasCp = $this->parcelasContasPagar($request); // valida antes de gravar qualquer coisa
         $entrada = $this->salvar($request, null);
 
         if ($request->input('acao') === 'finalizar') {
             $this->exigirTotalIgualAoXml($entrada);
-            $this->finalizar($entrada);
+            $this->finalizar($entrada, $parcelasCp);
 
             return redirect()->route('entradas-nota.index')
-                ->with('sucesso', 'Entrada finalizada e estoque atualizado.');
+                ->with('sucesso', $this->mensagemFinalizada($parcelasCp));
         }
 
         return redirect()->route('entradas-nota.edit', $entrada)
@@ -708,14 +712,15 @@ class EntradaNotaController extends Controller
     {
         abort_unless($entrada->isRascunho(), 403, 'Esta entrada já foi finalizada e não pode ser alterada.');
 
+        $parcelasCp = $this->parcelasContasPagar($request); // valida antes de gravar qualquer coisa
         $entrada = $this->salvar($request, $entrada);
 
         if ($request->input('acao') === 'finalizar') {
             $this->exigirTotalIgualAoXml($entrada);
-            $this->finalizar($entrada);
+            $this->finalizar($entrada, $parcelasCp);
 
             return redirect()->route('entradas-nota.index')
-                ->with('sucesso', 'Entrada finalizada e estoque atualizado.');
+                ->with('sucesso', $this->mensagemFinalizada($parcelasCp));
         }
 
         return redirect()->route('entradas-nota.edit', $entrada)
@@ -1279,6 +1284,9 @@ class EntradaNotaController extends Controller
                 return; // proteção contra duplo clique / reenvio
             }
 
+            // conta a pagar gerada na finalização: sai junto; se já houver parcela paga, o estorno é bloqueado
+            app(ContaPagarService::class)->removerDaEntrada($entrada);
+
             $entrada->load(['operacao', 'itens']);
             $movimenta = $entrada->operacao?->movimenta_estoque ?? true;
 
@@ -1349,12 +1357,29 @@ class EntradaNotaController extends Controller
         });
     }
 
+    /** Parcelas do Contas a Pagar enviadas pelo modal de finalização (null = não lançar). */
+    private function parcelasContasPagar(Request $request): ?array
+    {
+        if ($request->input('acao') !== 'finalizar' || ! $request->boolean('lancar_contas_pagar')) {
+            return null;
+        }
+
+        return app(ContaPagarService::class)->normalizarParcelas((array) $request->input('cp_parcelas', []));
+    }
+
+    private function mensagemFinalizada(?array $parcelasCp): string
+    {
+        return $parcelasCp === null
+            ? 'Entrada finalizada e estoque atualizado.'
+            : 'Entrada finalizada, estoque atualizado e ' . count($parcelasCp) . ' parcela(s) lançada(s) no Contas a Pagar.';
+    }
+
     /**
      * Aplica a entrada: soma estoque, atualiza custo (opcional) e gera lotes.
      */
-    private function finalizar(EntradaNota $entrada): void
+    private function finalizar(EntradaNota $entrada, ?array $parcelasCp = null): void
     {
-        DB::transaction(function () use ($entrada) {
+        DB::transaction(function () use ($entrada, $parcelasCp) {
             $entrada = EntradaNota::whereKey($entrada->id)->lockForUpdate()->firstOrFail();
 
             if (! $entrada->isRascunho()) {
@@ -1400,6 +1425,11 @@ class EntradaNotaController extends Controller
                 'status'        => 'finalizada',
                 'finalizada_em' => now(),
             ]);
+
+            // lançamento no Contas a Pagar (escolhido no modal); na mesma transação da finalização
+            if ($parcelasCp !== null) {
+                app(ContaPagarService::class)->criarDaEntrada($entrada, $parcelasCp);
+            }
         });
     }
 }

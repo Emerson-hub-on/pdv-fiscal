@@ -139,6 +139,16 @@ class NfeXmlParser
             }
         }
 
+        // duplicatas (cobrança): <cobr><dup> com número, vencimento e valor de cada parcela
+        $duplicatas = [];
+        foreach ($this->xp->query('n:cobr/n:dup', $inf) as $dup) {
+            $duplicatas[] = [
+                'numero'     => $this->v('n:nDup', $dup),
+                'vencimento' => $this->v('n:dVenc', $dup),
+                'valor'      => (float) $this->v('n:vDup', $dup),
+            ];
+        }
+
         return [
             'chave'             => $chave,
             'modelo'            => '55',
@@ -153,6 +163,7 @@ class NfeXmlParser
             'fornecedor'        => $fornecedor,
             'itens'             => $itens,
             'pagamento'         => $pagamento,
+            'duplicatas'        => $duplicatas,
         ];
     }
 
