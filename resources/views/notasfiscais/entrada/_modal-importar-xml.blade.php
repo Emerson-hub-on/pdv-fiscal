@@ -68,6 +68,22 @@
             </table>
         </div>
 
+        {{-- erro geral da conferência --}}
+        <p id="erro-conferencia-xml" class="hidden mx-6 mb-3 text-sm text-red-600 whitespace-pre-line"></p>
+
+        {{-- falhas do cadastro automático: uma por vez --}}
+        <div id="falhas-cadastro-xml"
+             class="hidden mx-6 mb-3 border border-red-200 bg-red-50 rounded-lg px-4 py-3 text-sm text-red-700 items-start gap-3">
+            <div class="flex-1 min-w-0">
+                <p id="falha-cadastro-contador-xml" class="text-xs font-semibold uppercase tracking-wide text-red-500"></p>
+                <p id="falha-cadastro-texto-xml" class="mt-1 break-words"></p>
+            </div>
+            <button type="button" id="btn-proxima-falha-xml" onclick="xmlProximaFalha()"
+                    class="shrink-0 bg-red-600 hover:bg-red-700 text-white rounded-lg px-3 py-1.5 text-xs font-medium transition">
+                Próximo
+            </button>
+        </div>
+
         <div class="px-6 py-4 border-t border-gray-100 flex items-center gap-3">
             <div class="mr-auto">
                 <p id="contador-conferencia-xml" class="text-sm text-gray-500"></p>
@@ -77,7 +93,6 @@
                     class="hidden bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition disabled:opacity-50">
                 Cadastrar produtos não encontrados
             </button>
-            <p id="erro-conferencia-xml" class="hidden text-sm text-red-600 whitespace-pre-line"></p>
             <button type="button" onclick="cancelarConferenciaXml()"
                     class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition">Cancelar</button>
             <button type="button" id="btn-confirmar-xml" onclick="confirmarImportacaoXml()"
@@ -416,6 +431,7 @@ async function cadastrarPendentesXml() {
     btn.disabled = true;
     btn.textContent = 'Cadastrando...';
     xmlLimparErro('erro-conferencia-xml');
+    xmlFecharFalhas();
 
     try {
         const r = await xmlRequisicao(XML_URLS.pendentes, {
@@ -429,10 +445,7 @@ async function cadastrarPendentesXml() {
         });
         renderizarConferenciaXml();
 
-        if (r.falhas.length) {
-            xmlErro('erro-conferencia-xml',
-                r.falhas.map(f => `Item ${f.indice + 1}: ${f.motivo}`).join('\n'));
-        }
+        if (r.falhas.length) xmlMostrarFalhas(r.falhas);
     } catch (e) {
         xmlErro('erro-conferencia-xml', e.message);
     } finally {
@@ -440,6 +453,48 @@ async function cadastrarPendentesXml() {
         renderizarConferenciaXml();
     }
 }
+// ---------- falhas do cadastro automático (uma por vez) ----------
+let xmlFalhas = [];
+let xmlFalhaAtual = 0;
+
+function xmlMostrarFalhas(falhas) {
+    xmlFalhas = falhas;
+    xmlFalhaAtual = 0;
+    xmlRenderizarFalha();
+}
+
+function xmlRenderizarFalha() {
+    const caixa = document.getElementById('falhas-cadastro-xml');
+    const f = xmlFalhas[xmlFalhaAtual];
+
+    if (!f) { xmlFecharFalhas(); return; }
+
+    const item = xmlImportacao?.itens[f.indice];
+    const ultima = xmlFalhaAtual === xmlFalhas.length - 1;
+
+    document.getElementById('falha-cadastro-contador-xml').textContent =
+        `Não foi possível cadastrar — erro ${xmlFalhaAtual + 1} de ${xmlFalhas.length}`;
+    document.getElementById('falha-cadastro-texto-xml').textContent =
+        `Item ${f.indice + 1}${item?.descricao ? ' (' + item.descricao + ')' : ''}: ${f.motivo}`;
+    document.getElementById('btn-proxima-falha-xml').textContent = ultima ? 'Ok' : 'Próximo';
+
+    caixa.classList.remove('hidden');
+    caixa.classList.add('flex');
+}
+
+function xmlProximaFalha() {
+    xmlFalhaAtual++;
+    xmlRenderizarFalha();
+}
+
+function xmlFecharFalhas() {
+    xmlFalhas = [];
+    xmlFalhaAtual = 0;
+    const caixa = document.getElementById('falhas-cadastro-xml');
+    caixa.classList.add('hidden');
+    caixa.classList.remove('flex');
+}
+
 // ---------- utilitários ----------
 function xmlEsc(v) {
     return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -676,6 +731,7 @@ function cancelarConferenciaXml() {
     xmlFechar('modal-conferencia-xml');
     xmlImportacao = null;
     xmlLimparErro('erro-conferencia-xml');
+    xmlFecharFalhas();
 }
 
 async function confirmarImportacaoXml() {
