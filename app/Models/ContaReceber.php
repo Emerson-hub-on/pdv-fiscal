@@ -47,6 +47,15 @@ class ContaReceber extends Model
         return $this->hasMany(ContaReceberParcela::class, 'conta_receber_id');
     }
 
+    /**
+     * Número que identifica a dívida na listagem: o nº do documento, quando informado;
+     * senão um código interno único (CR-000123), para nenhuma conta ficar sem identificação.
+     */
+    public function numeroExibicao(): string
+    {
+        return $this->numero_documento ?: 'CR-' . str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);
+    }
+
     public function temParcelaRecebida(): bool
     {
         return $this->parcelas->contains(fn ($p) => $p->isRecebida());

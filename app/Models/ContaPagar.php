@@ -36,6 +36,15 @@ class ContaPagar extends Model
         return $this->hasMany(ContaPagarParcela::class, 'conta_pagar_id');
     }
 
+    /**
+     * Número que identifica a dívida na listagem: o nº do documento, quando informado;
+     * senão um código interno único (CP-000123), para nenhuma conta ficar sem identificação.
+     */
+    public function numeroExibicao(): string
+    {
+        return $this->numero_documento ?: 'CP-' . str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);
+    }
+
     public function temParcelaPaga(): bool
     {
         return $this->parcelas->contains(fn ($p) => $p->isPaga());

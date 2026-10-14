@@ -9,7 +9,7 @@
 <table class="w-full text-sm">
     <thead class="bg-gray-700 text-amber-50 text-xs uppercase">
         <tr>
-            <th class="text-left px-4 py-2">Descrição</th>
+            <th class="text-left px-4 py-2">Número</th>
             <th class="text-left px-4 py-2">Tipo</th>
             <th class="text-left px-4 py-2">Cliente</th>
             <th class="text-left px-4 py-2">Data da conta</th>
@@ -29,11 +29,9 @@
                 $recebidas     = $conta->parcelas->filter(fn ($p) => $p->isRecebida())->count();
             @endphp
             <tr class="hover:bg-gray-50">
-                <td class="px-4 py-2 cursor-pointer" onclick="location.href='{{ $rotaLinha }}'">
-                    {{ $conta->descricao }}
-                    @if ($conta->numero_documento)
-                        <span class="block text-xs text-gray-400">Doc. {{ $conta->numero_documento }}</span>
-                    @endif
+                <td class="px-4 py-2 cursor-pointer font-medium" onclick="location.href='{{ $rotaLinha }}'">
+                    {{ $conta->numeroExibicao() }}
+                    <span class="block text-xs font-normal text-gray-400">{{ $conta->descricao }}</span>
                 </td>
                 <td class="px-4 py-2 cursor-pointer" onclick="location.href='{{ $rotaLinha }}'">{{ $conta->tipo->descricao }}</td>
                 <td class="px-4 py-2 cursor-pointer" onclick="location.href='{{ $rotaLinha }}'">{{ $conta->nomeCliente() ?? '—' }}</td>
