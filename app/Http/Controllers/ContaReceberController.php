@@ -7,6 +7,7 @@ use App\Models\ContaReceberParcela;
 use App\Models\FormaPagamento;
 use App\Models\Cliente;
 use App\Models\TipoContaReceber;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -60,6 +61,43 @@ class ContaReceberController extends Controller
         $tipos = TipoContaReceber::orderBy('descricao')->get();
 
         return view('financeiro.contas-receber.index', compact('contas', 'resumo', 'tipos'));
+    }
+
+    /** Busca de cliente para o modal do formulário (até 20, por nome ou CPF/CNPJ). */
+    public function buscarCliente(Request $request): JsonResponse
+    {
+        $termo    = trim((string) $request->query('termo', ''));
+        $digitos  = preg_replace('/\D/', '', $termo);
+        $tabela   = (new Cliente)->getTable();
+        $colNome  = $this->colunaNomeCliente();
+        $temDoc   = Schema::hasColumn($tabela, 'cpf_cnpj');
+
+        $consulta = Cliente::query();
+        if (method_exists(Cliente::class, 'scopeAtivos')) {
+            $consulta->ativos();
+        }
+
+        $clientes = $consulta
+            ->when($termo !== '', function ($q) use ($termo, $digitos, $colNome, $temDoc) {
+                $q->where(function ($q) use ($termo, $digitos, $colNome, $temDoc) {
+                    $q->where($colNome, 'like', "%{$termo}%");
+
+                    if ($temDoc && $digitos !== '') {
+                        $q->orWhere('cpf_cnpj', 'like', "%{$digitos}%");
+                    }
+                });
+            })
+            ->orderBy($colNome)
+            ->limit(20)
+            ->get();
+
+        return response()->json($clientes->map(fn ($c) => [
+            'id'       => $c->id,
+            'nome'     => ContaReceber::rotuloCliente($c),
+            'cpf_cnpj' => $c->cpf_cnpj_formatado ?? $c->cpf_cnpj,
+            'uf'       => $c->uf,
+            'telefone' => $c->telefone,
+        ])->values());
     }
 
     public function create()
@@ -179,7 +217,6 @@ class ContaReceberController extends Controller
         return [
             'conta'          => $conta,
             'tipos'          => TipoContaReceber::where('ativo', true)->orderBy('descricao')->get(),
-            'clientes'       => Cliente::orderBy($this->colunaNomeCliente())->get(),
             'formasPagamento' => FormaPagamento::orderBy('descricao')->get(),
         ];
     }

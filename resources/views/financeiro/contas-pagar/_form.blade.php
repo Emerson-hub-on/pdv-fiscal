@@ -85,16 +85,32 @@
                     @error('tipo_conta_pagar_id') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
                 </div>
 
+                @php
+                    $fornecedorAtual = old('fornecedor_id')
+                        ? \App\Models\Fornecedor::find(old('fornecedor_id'))
+                        : $conta->fornecedor;
+                @endphp
+
                 <div>
                     <label class="{{ $labelCls }}">Fornecedor <span class="text-gray-400 font-normal">(opcional)</span></label>
-                    <select name="fornecedor_id" class="{{ $inputCls }}">
-                        <option value="">Não informado</option>
-                        @foreach ($fornecedores as $f)
-                            <option value="{{ $f->id }}" @selected(old('fornecedor_id', $conta->fornecedor_id) == $f->id)>
-                                {{ $f->nome_exibicao }} - {{ $f->documento_formatado }}
-                            </option>
-                        @endforeach
-                    </select>
+                    <input type="hidden" name="fornecedor_id" id="campo-fornecedor"
+                           value="{{ old('fornecedor_id', $conta->fornecedor_id) }}">
+                    <div class="flex gap-2">
+                        <button type="button" onclick="abrirModalFornecedor()"
+                                class="w-full min-w-0 text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
+                            <span id="texto-fornecedor-selecionado" class="block truncate">
+                                @if ($fornecedorAtual)
+                                    {{ $fornecedorAtual->nome_exibicao }} — {{ $fornecedorAtual->documento_formatado }}
+                                @else
+                                    Selecionar fornecedor...
+                                @endif
+                            </span>
+                        </button>
+                        <button type="button" id="limpar-fornecedor" onclick="limparFornecedor()" title="Remover fornecedor"
+                                class="shrink-0 border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50 {{ $fornecedorAtual ? '' : 'hidden' }}">
+                            &times;
+                        </button>
+                    </div>
                     @error('fornecedor_id') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
                 </div>
             </div>
@@ -253,6 +269,33 @@
             </button>
         </div>
     </form>
+</div>
+
+<!-- Modal de busca de fornecedor -->
+<div id="modal-busca-fornecedor" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+            <h2 class="text-lg font-bold text-white">Selecionar Fornecedor</h2>
+            <button type="button" onclick="fecharModalFornecedor()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
+        </div>
+        <div class="p-6">
+            <input type="text" id="busca-fornecedor-modal" placeholder="Buscar por nome ou CPF/CNPJ..."
+                   autocomplete="off"
+                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
+                        <th class="py-2">Nome</th>
+                        <th class="py-2">CPF/CNPJ</th>
+                        <th class="py-2">UF</th>
+                        <th class="py-2">Telefone</th>
+                    </tr>
+                </thead>
+                <tbody id="linhas-busca-fornecedor"></tbody>
+            </table>
+            <p class="text-xs text-gray-400 mt-3">Use ↑ ↓ para navegar e Enter para selecionar.</p>
+        </div>
+    </div>
 </div>
 
 <!-- Modal: cadastro rápido de tipo de conta -->
@@ -553,6 +596,123 @@ async function salvarTipo() {
         erro.classList.remove('hidden');
     }
 }
+
+// ---------------------------------------------------------------
+// Busca de fornecedor (modal)
+// ---------------------------------------------------------------
+const urlBuscaFornecedor    = {{ Illuminate\Support\Js::from(route('contas-pagar.buscar-fornecedor')) }};
+const inputBuscaFornecedor  = document.getElementById('busca-fornecedor-modal');
+const linhasBuscaFornecedor = document.getElementById('linhas-busca-fornecedor');
+let fornecedoresAtuais = [];
+let indiceFornecedor = -1;
+let timeoutBuscaFornecedor;
+let contadorBuscaFornecedor = 0; // descarta respostas antigas se o operador digitar rápido
+
+function abrirModalFornecedor() {
+    const modal = document.getElementById('modal-busca-fornecedor');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    inputBuscaFornecedor.value = '';
+    inputBuscaFornecedor.focus();
+    buscarFornecedores(''); // sem termo = 20 primeiros em ordem alfabética
+}
+
+function fecharModalFornecedor() {
+    const modal = document.getElementById('modal-busca-fornecedor');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    fornecedoresAtuais = [];
+    indiceFornecedor = -1;
+}
+
+async function buscarFornecedores(termo) {
+    const minhaBusca = ++contadorBuscaFornecedor;
+    let dados;
+
+    try {
+        const resp = await fetch(`${urlBuscaFornecedor}?termo=${encodeURIComponent(termo)}`, {
+            headers: { 'Accept': 'application/json' },
+        });
+        if (!resp.ok) throw new Error(`Erro ${resp.status} ao consultar o servidor.`);
+        dados = await resp.json();
+    } catch (e) {
+        if (minhaBusca === contadorBuscaFornecedor) { // erro de busca antiga não interessa
+            mostrarAviso('Falha ao buscar fornecedores:\n' + e.message, 'erro');
+            fornecedoresAtuais = [];
+            indiceFornecedor = -1;
+            renderizarFornecedores();
+        }
+        return;
+    }
+
+    if (minhaBusca !== contadorBuscaFornecedor) return; // chegou uma busca mais nova, ignora esta
+
+    fornecedoresAtuais = dados;
+    indiceFornecedor = dados.length > 0 ? 0 : -1;
+    renderizarFornecedores();
+}
+
+function renderizarFornecedores() {
+    if (fornecedoresAtuais.length === 0) {
+        linhasBuscaFornecedor.innerHTML = '<tr><td colspan="4" class="p-3 text-sm text-gray-400 text-center">Nenhum fornecedor encontrado.</td></tr>';
+        return;
+    }
+
+    linhasBuscaFornecedor.innerHTML = fornecedoresAtuais.map((f, index) => {
+        const destacado = index === indiceFornecedor;
+        return `
+            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
+                onclick="selecionarFornecedor(${index})">
+                <td class="py-3 font-medium">${esc(f.nome)}</td>
+                <td class="py-3 font-mono text-sm ${destacado ? 'text-slate-300' : 'text-gray-500'}">${esc(f.cpf_cnpj)}</td>
+                <td class="py-3">${esc(f.uf)}</td>
+                <td class="py-3">${esc(f.telefone)}</td>
+            </tr>
+        `;
+    }).join('');
+
+    // mantém a linha destacada visível ao navegar com as setas
+    linhasBuscaFornecedor.children[indiceFornecedor]?.scrollIntoView({ block: 'nearest' });
+}
+
+function selecionarFornecedor(index) {
+    const f = fornecedoresAtuais[index];
+    if (!f) return;
+
+    document.getElementById('campo-fornecedor').value = f.id;
+    document.getElementById('texto-fornecedor-selecionado').textContent = `${f.nome} — ${f.cpf_cnpj}`;
+    document.getElementById('limpar-fornecedor').classList.remove('hidden');
+    fecharModalFornecedor();
+}
+
+function limparFornecedor() {
+    document.getElementById('campo-fornecedor').value = '';
+    document.getElementById('texto-fornecedor-selecionado').textContent = 'Selecionar fornecedor...';
+    document.getElementById('limpar-fornecedor').classList.add('hidden');
+}
+
+inputBuscaFornecedor?.addEventListener('input', () => {
+    clearTimeout(timeoutBuscaFornecedor);
+    timeoutBuscaFornecedor = setTimeout(() => buscarFornecedores(inputBuscaFornecedor.value.trim()), 300);
+});
+
+inputBuscaFornecedor?.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { fecharModalFornecedor(); return; }
+    if (fornecedoresAtuais.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        indiceFornecedor = (indiceFornecedor + 1) % fornecedoresAtuais.length;
+        renderizarFornecedores();
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        indiceFornecedor = (indiceFornecedor - 1 + fornecedoresAtuais.length) % fornecedoresAtuais.length;
+        renderizarFornecedores();
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (indiceFornecedor >= 0) selecionarFornecedor(indiceFornecedor);
+    }
+});
 
 renderizar();
 </script>

@@ -7,6 +7,7 @@ use App\Models\ContaPagarParcela;
 use App\Models\FormaPagamento;
 use App\Models\Fornecedor;
 use App\Models\TipoContaPagar;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -58,6 +59,36 @@ class ContaPagarController extends Controller
         $tipos = TipoContaPagar::orderBy('descricao')->get();
 
         return view('financeiro.contas-pagar.index', compact('contas', 'resumo', 'tipos'));
+    }
+
+    /** Busca de fornecedor para o modal do formulário (até 20, por nome, fantasia ou CPF/CNPJ). */
+    public function buscarFornecedor(Request $request): JsonResponse
+    {
+        $termo   = trim((string) $request->query('termo', ''));
+        $digitos = preg_replace('/\D/', '', $termo);
+
+        $fornecedores = Fornecedor::ativos()
+            ->when($termo !== '', function ($q) use ($termo, $digitos) {
+                $q->where(function ($q) use ($termo, $digitos) {
+                    $q->where('nome', 'like', "%{$termo}%")
+                      ->orWhere('nome_fantasia', 'like', "%{$termo}%");
+
+                    if ($digitos !== '') {
+                        $q->orWhere('cpf_cnpj', 'like', "%{$digitos}%");
+                    }
+                });
+            })
+            ->orderBy('nome')
+            ->limit(20)
+            ->get();
+
+        return response()->json($fornecedores->map(fn ($f) => [
+            'id'       => $f->id,
+            'nome'     => $f->nome_exibicao,
+            'cpf_cnpj' => $f->documento_formatado,
+            'uf'       => $f->uf,
+            'telefone' => $f->telefone,
+        ])->values());
     }
 
     public function create()
@@ -168,7 +199,6 @@ class ContaPagarController extends Controller
         return [
             'conta'          => $conta,
             'tipos'          => TipoContaPagar::where('ativo', true)->orderBy('descricao')->get(),
-            'fornecedores'   => Fornecedor::orderBy('nome')->get(),
             'formasPagamento' => FormaPagamento::orderBy('descricao')->get(),
         ];
     }

@@ -191,6 +191,9 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
 
             // ---------------- CONTAS A PAGAR ----------------
             Route::prefix('financeiro')->group(function () {
+                Route::get('contas-pagar/buscar-fornecedor', [ContaPagarController::class, 'buscarFornecedor'])
+                    ->name('contas-pagar.buscar-fornecedor');
+
                 Route::resource('contas-pagar', ContaPagarController::class)
                     ->parameters(['contas-pagar' => 'conta'])
                     ->except(['show']);
@@ -206,6 +209,10 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
 
             // ---------------- CONTAS A RECEBER ----------------
             Route::prefix('financeiro')->group(function () {
+                // busca do modal de cliente (antes do resource)
+                Route::get('contas-receber/buscar-cliente', [ContaReceberController::class, 'buscarCliente'])
+                    ->name('contas-receber.buscar-cliente');
+
                 Route::resource('contas-receber', ContaReceberController::class)
                     ->parameters(['contas-receber' => 'conta'])
                     ->except(['show']);

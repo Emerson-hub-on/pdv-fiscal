@@ -85,16 +85,32 @@
                     @error('tipo_conta_receber_id') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
                 </div>
 
+                @php
+                    $clienteAtual = old('cliente_id')
+                        ? \App\Models\Cliente::find(old('cliente_id'))
+                        : $conta->cliente;
+                @endphp
+
                 <div>
                     <label class="{{ $labelCls }}">Cliente <span class="text-gray-400 font-normal">(opcional)</span></label>
-                    <select name="cliente_id" class="{{ $inputCls }}">
-                        <option value="">Não informado</option>
-                        @foreach ($clientes as $c)
-                            <option value="{{ $c->id }}" @selected(old('cliente_id', $conta->cliente_id) == $c->id)>
-                                {{ \App\Models\ContaReceber::rotuloCliente($c) }}
-                            </option>
-                        @endforeach
-                    </select>
+                    <input type="hidden" name="cliente_id" id="campo-cliente"
+                           value="{{ old('cliente_id', $conta->cliente_id) }}">
+                    <div class="flex gap-2">
+                        <button type="button" onclick="abrirModalCliente()"
+                                class="w-full min-w-0 text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
+                            <span id="texto-cliente-selecionado" class="block truncate">
+                                @if ($clienteAtual)
+                                    {{ \App\Models\ContaReceber::rotuloCliente($clienteAtual) }} — {{ $clienteAtual->cpf_cnpj_formatado ?? $clienteAtual->cpf_cnpj }}
+                                @else
+                                    Selecionar cliente...
+                                @endif
+                            </span>
+                        </button>
+                        <button type="button" id="limpar-cliente" onclick="limparCliente()" title="Remover cliente"
+                                class="shrink-0 border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50 {{ $clienteAtual ? '' : 'hidden' }}">
+                            &times;
+                        </button>
+                    </div>
                     @error('cliente_id') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
                 </div>
             </div>
@@ -253,6 +269,33 @@
             </button>
         </div>
     </form>
+</div>
+
+<!-- Modal de busca de cliente -->
+<div id="modal-busca-cliente" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+            <h2 class="text-lg font-bold text-white">Selecionar Cliente</h2>
+            <button type="button" onclick="fecharModalCliente()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
+        </div>
+        <div class="p-6">
+            <input type="text" id="busca-cliente-modal" placeholder="Buscar por nome ou CPF/CNPJ..."
+                   autocomplete="off"
+                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
+                        <th class="py-2">Nome</th>
+                        <th class="py-2">CPF/CNPJ</th>
+                        <th class="py-2">UF</th>
+                        <th class="py-2">Telefone</th>
+                    </tr>
+                </thead>
+                <tbody id="linhas-busca-cliente"></tbody>
+            </table>
+            <p class="text-xs text-gray-400 mt-3">Use ↑ ↓ para navegar e Enter para selecionar.</p>
+        </div>
+    </div>
 </div>
 
 <!-- Modal: cadastro rápido de tipo de conta -->
@@ -553,6 +596,123 @@ async function salvarTipo() {
         erro.classList.remove('hidden');
     }
 }
+
+// ---------------------------------------------------------------
+// Busca de cliente (modal)
+// ---------------------------------------------------------------
+const urlBuscaCliente    = {{ Illuminate\Support\Js::from(route('contas-receber.buscar-cliente')) }};
+const inputBuscaCliente  = document.getElementById('busca-cliente-modal');
+const linhasBuscaCliente = document.getElementById('linhas-busca-cliente');
+let clientesAtuais = [];
+let indiceCliente = -1;
+let timeoutBuscaCliente;
+let contadorBuscaCliente = 0; // descarta respostas antigas se o operador digitar rápido
+
+function abrirModalCliente() {
+    const modal = document.getElementById('modal-busca-cliente');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    inputBuscaCliente.value = '';
+    inputBuscaCliente.focus();
+    buscarClientes(''); // sem termo = 20 primeiros em ordem alfabética
+}
+
+function fecharModalCliente() {
+    const modal = document.getElementById('modal-busca-cliente');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    clientesAtuais = [];
+    indiceCliente = -1;
+}
+
+async function buscarClientes(termo) {
+    const minhaBusca = ++contadorBuscaCliente;
+    let dados;
+
+    try {
+        const resp = await fetch(`${urlBuscaCliente}?termo=${encodeURIComponent(termo)}`, {
+            headers: { 'Accept': 'application/json' },
+        });
+        if (!resp.ok) throw new Error(`Erro ${resp.status} ao consultar o servidor.`);
+        dados = await resp.json();
+    } catch (e) {
+        if (minhaBusca === contadorBuscaCliente) { // erro de busca antiga não interessa
+            mostrarAviso('Falha ao buscar clientes:\n' + e.message, 'erro');
+            clientesAtuais = [];
+            indiceCliente = -1;
+            renderizarClientes();
+        }
+        return;
+    }
+
+    if (minhaBusca !== contadorBuscaCliente) return; // chegou uma busca mais nova, ignora esta
+
+    clientesAtuais = dados;
+    indiceCliente = dados.length > 0 ? 0 : -1;
+    renderizarClientes();
+}
+
+function renderizarClientes() {
+    if (clientesAtuais.length === 0) {
+        linhasBuscaCliente.innerHTML = '<tr><td colspan="4" class="p-3 text-sm text-gray-400 text-center">Nenhum cliente encontrado.</td></tr>';
+        return;
+    }
+
+    linhasBuscaCliente.innerHTML = clientesAtuais.map((f, index) => {
+        const destacado = index === indiceCliente;
+        return `
+            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
+                onclick="selecionarCliente(${index})">
+                <td class="py-3 font-medium">${esc(f.nome)}</td>
+                <td class="py-3 font-mono text-sm ${destacado ? 'text-slate-300' : 'text-gray-500'}">${esc(f.cpf_cnpj)}</td>
+                <td class="py-3">${esc(f.uf)}</td>
+                <td class="py-3">${esc(f.telefone)}</td>
+            </tr>
+        `;
+    }).join('');
+
+    // mantém a linha destacada visível ao navegar com as setas
+    linhasBuscaCliente.children[indiceCliente]?.scrollIntoView({ block: 'nearest' });
+}
+
+function selecionarCliente(index) {
+    const f = clientesAtuais[index];
+    if (!f) return;
+
+    document.getElementById('campo-cliente').value = f.id;
+    document.getElementById('texto-cliente-selecionado').textContent = `${f.nome} — ${f.cpf_cnpj}`;
+    document.getElementById('limpar-cliente').classList.remove('hidden');
+    fecharModalCliente();
+}
+
+function limparCliente() {
+    document.getElementById('campo-cliente').value = '';
+    document.getElementById('texto-cliente-selecionado').textContent = 'Selecionar cliente...';
+    document.getElementById('limpar-cliente').classList.add('hidden');
+}
+
+inputBuscaCliente?.addEventListener('input', () => {
+    clearTimeout(timeoutBuscaCliente);
+    timeoutBuscaCliente = setTimeout(() => buscarClientes(inputBuscaCliente.value.trim()), 300);
+});
+
+inputBuscaCliente?.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { fecharModalCliente(); return; }
+    if (clientesAtuais.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        indiceCliente = (indiceCliente + 1) % clientesAtuais.length;
+        renderizarClientes();
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        indiceCliente = (indiceCliente - 1 + clientesAtuais.length) % clientesAtuais.length;
+        renderizarClientes();
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (indiceCliente >= 0) selecionarCliente(indiceCliente);
+    }
+});
 
 renderizar();
 </script>
