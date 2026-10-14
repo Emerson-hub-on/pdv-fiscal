@@ -35,6 +35,8 @@ use App\Http\Controllers\EntradaNotaController;
 use App\Http\Controllers\FornecedorController;
 use App\Http\Controllers\ContaPagarController;
 use App\Http\Controllers\TipoContaPagarController;
+use App\Http\Controllers\ContaReceberController;
+use App\Http\Controllers\TipoContaReceberController;
 
 
 
@@ -187,7 +189,7 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::delete('{entrada}', [EntradaNotaController::class, 'destroy'])->name('destroy');
             });
 
-            // ---------------- CONTAS A PAGAR (Inserido no mesmo grupo) ----------------
+            // ---------------- CONTAS A PAGAR ----------------
             Route::prefix('financeiro')->group(function () {
                 Route::resource('contas-pagar', ContaPagarController::class)
                     ->parameters(['contas-pagar' => 'conta'])
@@ -200,6 +202,21 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
             
                 Route::post('tipos-conta-pagar/rapido', [TipoContaPagarController::class, 'rapido'])
                     ->name('tipos-conta-pagar.rapido');
+            });
+
+            // ---------------- CONTAS A RECEBER ----------------
+            Route::prefix('financeiro')->group(function () {
+                Route::resource('contas-receber', ContaReceberController::class)
+                    ->parameters(['contas-receber' => 'conta'])
+                    ->except(['show']);
+
+                Route::post('contas-receber/parcelas/{parcela}/baixar', [ContaReceberController::class, 'baixar'])
+                    ->name('contas-receber.parcelas.baixar');
+                Route::post('contas-receber/parcelas/{parcela}/estornar', [ContaReceberController::class, 'estornar'])
+                    ->name('contas-receber.parcelas.estornar');
+
+                Route::post('tipos-conta-receber/rapido', [TipoContaReceberController::class, 'rapido'])
+                    ->name('tipos-conta-receber.rapido');
             });
 
             // IMPORTANTE: as buscas precisam vir ANTES do Route::resource, senão
