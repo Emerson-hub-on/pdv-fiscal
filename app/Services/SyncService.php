@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Crypt;
 use Exception;
 use App\Support\Maquina;
 use App\Models\Inutilizacao;
+use App\Models\PedidoVenda;
 
 
 class SyncService
@@ -582,6 +583,88 @@ class SyncService
     }
 
     /**
+     * Direcao 1g: espelha no SQLite os pedidos de venda FINALIZADOS (os que ainda podem ser emitidos no caixa).
+     * Troca o espelho inteiro numa transacao: pedido faturado/cancelado no servidor sai do caixa.
+     * Pedido que ja virou venda aqui no caixa (e ainda nao subiu) nao volta para a lista.
+     */
+    public function puxarPedidosVenda(): array
+    {
+        try {
+            $local = DB::connection('sqlite_local');
+
+            $pedidos = PedidoVenda::with(['itens', 'cliente', 'operador'])
+                ->where('status', 'finalizado')
+                ->get();
+
+            $emUsoLocal = $local->table('vendas_pendentes')
+                ->whereNotNull('pedido_venda_id')
+                ->where('status_fiscal', '!=', 'cancelada')
+                ->pluck('pedido_venda_id')
+                ->all();
+
+            $agora = now();
+            $linhasPedidos = [];
+            $linhasItens = [];
+
+            foreach ($pedidos as $p) {
+                if (in_array($p->id, $emUsoLocal, true)) {
+                    continue;
+                }
+
+                $linhasPedidos[] = [
+                    'id' => $p->id,
+                    'numero' => $p->numero,
+                    'data_pedido' => $p->data_pedido->format('Y-m-d'),
+                    'previsao_entrega' => $p->previsao_entrega?->format('Y-m-d'),
+                    'operador_id' => $p->operador_id,
+                    'operador_nome' => $p->operador?->name,
+                    'cliente_id' => $p->cliente_id,
+                    'cliente_nome' => $p->cliente?->nome,
+                    'valor_total' => $p->valor_total,
+                    'descricao' => $p->descricao,
+                    'created_at' => $agora,
+                    'updated_at' => $agora,
+                ];
+
+                foreach ($p->itens as $i) {
+                    $linhasItens[] = [
+                        'id' => $i->id,
+                        'pedido_venda_id' => $p->id,
+                        'produto_id' => $i->produto_id,
+                        'produto_variante_id' => $i->produto_variante_id,
+                        'codigo_barras' => $i->codigo_barras,
+                        'descricao' => $i->descricao,
+                        'unidade' => $i->unidade,
+                        'quantidade' => $i->quantidade,
+                        'valor_unitario' => $i->valor_unitario,
+                        'created_at' => $agora,
+                        'updated_at' => $agora,
+                    ];
+                }
+            }
+
+            $local->transaction(function () use ($local, $linhasPedidos, $linhasItens) {
+                $local->table('pedido_venda_itens_cache')->delete();
+                $local->table('pedidos_venda_cache')->delete();
+
+                // SQLite limita o número de parâmetros por comando: insere em blocos
+                foreach (array_chunk($linhasPedidos, 100) as $bloco) {
+                    $local->table('pedidos_venda_cache')->insert($bloco);
+                }
+                foreach (array_chunk($linhasItens, 50) as $bloco) {
+                    $local->table('pedido_venda_itens_cache')->insert($bloco);
+                }
+            });
+
+            $this->salvarMeta('ultima_sincronizacao_pedidos_venda', now()->toDateTimeString());
+
+            return ['sucesso' => true, 'pedidos_atualizados' => count($linhasPedidos)];
+        } catch (\Throwable $e) {
+            return $this->registrarFalha($e);
+        }
+    }
+
+    /**
      * Direcao 2: sobe vendas pendentes do SQLite local pro MySQL central.
      */
     public function enviarVendasPendentes(): array
@@ -623,6 +706,7 @@ class SyncService
                             'caixa_id' => $caixaId,
                             'operador_id' => $vendaLocal->operador_id_central,
                             'cliente_id' => $vendaLocal->cliente_id,
+                            'pedido_venda_id' => $vendaLocal->pedido_venda_id ?? null,
                             'cpf_na_nota' => $vendaLocal->cpf_na_nota,
                             'total' => $vendaLocal->total,
                             'troco' => $vendaLocal->troco,
@@ -691,6 +775,14 @@ class SyncService
                             }
                         }
                     });
+                }
+
+                // Venda nascida de um pedido: o pedido passa a faturado no servidor (idempotente)
+                if (!empty($vendaLocal->pedido_venda_id) && $vendaLocal->status_fiscal !== 'cancelada') {
+                    DB::table('pedidos_venda')
+                        ->where('id', $vendaLocal->pedido_venda_id)
+                        ->where('status', 'finalizado')
+                        ->update(['status' => 'faturado', 'updated_at' => now()]);
                 }
 
                 DB::connection('sqlite_local')->table('vendas_pendentes')
@@ -792,6 +884,7 @@ class SyncService
             'clientes' => 'puxarClientes',
             'usuarios' => 'puxarUsuarios',
             'pdvs'     => 'puxarPdvs',
+            'pedidos'  => 'puxarPedidosVenda',
 
         ];
 

@@ -114,6 +114,17 @@ class PedidoVendaController extends Controller
         ]);
     }
 
+    /** Cupom no formato de bobina 80 mm (impressora térmica POS-80). */
+    public function cupom(PedidoVenda $pedido)
+    {
+        $pedido->load('itens', 'cliente', 'operador', 'formaPagamento');
+
+        return view('pedidos.venda.cupom', [
+            'pedido'  => $pedido,
+            'empresa' => Empresa::atual(),
+        ]);
+    }
+
     /**
      * Nunca exclui de verdade — só cancela (mesma regra dos produtos).
      */

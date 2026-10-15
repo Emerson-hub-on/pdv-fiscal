@@ -78,10 +78,50 @@
                 class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
             Desconto Item <span class="opacity-60">F4</span>
         </button>
+        <button onclick="abrirModalPedidos()"
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
+            Puxar Pedido <span class="opacity-60">F6</span>
+        </button>
     </div>
 </div>
 
 
+
+<!-- Modal puxar pedido de venda -->
+<div id="modal-pedidos" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+            <h2 class="text-lg font-bold text-white">Puxar Pedido de Venda</h2>
+            <button onclick="fecharModalPedidos()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
+        </div>
+
+        <div class="p-6">
+            <input type="text" id="busca-pedido-modal" placeholder="Buscar por nº do pedido ou nome do cliente..." autocomplete="off"
+                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
+            <table class="w-full text-sm table-fixed">
+                <colgroup>
+                    <col class="w-[14%]">
+                    <col class="w-[16%]">
+                    <col class="w-[40%]">
+                    <col class="w-[10%]">
+                    <col class="w-[20%]">
+                </colgroup>
+                <thead>
+                    <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
+                        <th class="py-2 px-2">Nº</th>
+                        <th class="py-2 px-2">Data</th>
+                        <th class="py-2 px-2">Cliente</th>
+                        <th class="py-2 px-2 text-center">Itens</th>
+                        <th class="py-2 px-2 text-right">Total</th>
+                    </tr>
+                </thead>
+                <tbody id="linhas-pedidos"></tbody>
+            </table>
+
+            <p class="text-xs text-gray-400 mt-3">Use ↑ ↓ para navegar e Enter para puxar os itens para o carrinho.</p>
+        </div>
+    </div>
+</div>
 
 <!-- Modal de busca de produto -->
 <div id="modal-busca-produto" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
@@ -379,6 +419,7 @@
                 <input type="text" id="busca-produto" placeholder="🔍 Buscar por nome, código ou código de barras..."
                     class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition" autofocus>
             </div>
+            <p id="badge-pedido" class="hidden mt-2 text-xs font-semibold text-blue-700 bg-blue-50 rounded-lg px-3 py-1.5"></p>
         </div>
 
         <!-- Container da tabela com scroll interno se passar da altura -->
@@ -439,6 +480,8 @@
 
 
 let carrinho = @json($itensParaCarrinho);
+let pedidoVendaId = @json($pedidoVendaIdInicial ?? null);       // pedido de venda de onde vieram os itens
+let pedidoVendaNumero = @json($pedidoVendaNumeroInicial ?? null);
 let quantidadeMultiplicador = 1;
 let resultadosAtuais = [];
 let indiceSelecionado = -1;
@@ -644,6 +687,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'F2') { e.preventDefault(); abrirModalInutilizacao(); }
     if (e.key === 'F3') { e.preventDefault(); toggleDropdownCancelamento(); }
     if (e.key === 'F4') { e.preventDefault(); abrirModalDescontoItem(); }
+    if (e.key === 'F6') { e.preventDefault(); abrirModalPedidos(); }
     if (e.key === 'Escape') { fecharTodosModais(); }
 });
 
@@ -812,6 +856,7 @@ function fecharTodosModais() {
         'modal-tipo-desconto',
         'modal-busca-produto',
         'modal-balanca',
+        'modal-pedidos',
     ];
 
     idsModais.forEach(id => {
@@ -1764,6 +1809,9 @@ async function executarLimparPdv() {
 
     carrinho = [];
     descontoGlobal = 0;
+    pedidoVendaId = null;
+    pedidoVendaNumero = null;
+    atualizarBadgePedido();
 
     await fetch('{{ route("vendas.limpar-sessao") }}', {
         method: 'POST',
@@ -1801,6 +1849,7 @@ async function irParaPagamento() {
         desconto_item: descontoPorItem,
         desconto_global: descontoGlobal,
         total: Math.round(total * 100) / 100,
+        pedido_venda_id: pedidoVendaId,
     };
 
     const resp = await fetch('{{ route("vendas.preparar-pagamento") }}', {
@@ -1819,6 +1868,154 @@ async function irParaPagamento() {
         document.getElementById('erro-itens').classList.remove('hidden');
     }
 }
+
+// ---------------------------------------------------------------
+// Puxar pedido de venda: os itens do pedido entram no carrinho
+// ---------------------------------------------------------------
+const inputBuscaPedido = document.getElementById('busca-pedido-modal');
+const linhasPedidos = document.getElementById('linhas-pedidos');
+let pedidosModal = [];
+let indicePedido = -1;
+let timeoutBuscaPedido;
+let contadorBuscaPedido = 0; // descarta respostas antigas se o operador digitar rápido
+
+function escPedido(s) {
+    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+}
+
+function atualizarBadgePedido() {
+    const badge = document.getElementById('badge-pedido');
+    if (!badge) return;
+
+    if (pedidoVendaId) {
+        badge.textContent = 'Itens do pedido de venda nº ' + String(pedidoVendaNumero ?? pedidoVendaId).padStart(6, '0');
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
+function abrirModalPedidos() {
+    if (carrinho.length > 0) {
+        alert('Finalize ou cancele o cupom atual antes de puxar um pedido.');
+        return;
+    }
+
+    const modal = document.getElementById('modal-pedidos');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    inputBuscaPedido.value = '';
+    inputBuscaPedido.focus();
+    carregarPedidos('');
+}
+
+function fecharModalPedidos() {
+    const modal = document.getElementById('modal-pedidos');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    pedidosModal = [];
+    indicePedido = -1;
+    inputBusca.focus();
+}
+
+async function carregarPedidos(termo) {
+    const minhaBusca = ++contadorBuscaPedido;
+
+    try {
+        const resp = await fetch(`{{ route('pedidos-caixa.listar') }}?busca=${encodeURIComponent(termo)}`, {
+            headers: { 'Accept': 'application/json' },
+        });
+        if (!resp.ok) throw new Error(`Erro ${resp.status} ao consultar os pedidos.`);
+        const dados = await resp.json();
+
+        if (minhaBusca !== contadorBuscaPedido) return;
+
+        pedidosModal = dados;
+        indicePedido = dados.length > 0 ? 0 : -1;
+        renderizarPedidos();
+    } catch (e) {
+        if (minhaBusca !== contadorBuscaPedido) return;
+        pedidosModal = [];
+        indicePedido = -1;
+        linhasPedidos.innerHTML = `<tr><td colspan="5" class="p-3 text-sm text-red-600 text-center">${escPedido(e.message)}</td></tr>`;
+    }
+}
+
+function renderizarPedidos() {
+    if (pedidosModal.length === 0) {
+        linhasPedidos.innerHTML = '<tr><td colspan="5" class="p-3 text-sm text-gray-400 text-center">Nenhum pedido disponível. Use "Atualizar Caixa" para buscar novos pedidos.</td></tr>';
+        return;
+    }
+
+    linhasPedidos.innerHTML = pedidosModal.map((p, index) => {
+        const destacado = index === indicePedido;
+        const data = String(p.data_pedido).slice(0, 10).split('-').reverse().join('/');
+        const total = 'R$ ' + Number(p.valor_total).toFixed(2).replace('.', ',');
+        return `
+            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
+                onclick="selecionarPedido(${index})">
+                <td class="py-3 px-2 font-mono font-medium">${String(p.numero).padStart(6, '0')}</td>
+                <td class="py-3 px-2 whitespace-nowrap">${data}</td>
+                <td class="py-3 px-2 truncate">${escPedido(p.cliente_nome) || '—'}</td>
+                <td class="py-3 px-2 text-center">${p.itens_count}</td>
+                <td class="py-3 px-2 text-right font-semibold whitespace-nowrap">${total}</td>
+            </tr>
+        `;
+    }).join('');
+
+    linhasPedidos.children[indicePedido]?.scrollIntoView({ block: 'nearest' });
+}
+
+async function selecionarPedido(index) {
+    const p = pedidosModal[index];
+    if (!p) return;
+
+    try {
+        const url = '{{ route('pedidos-caixa.itens', ['id' => '__ID__']) }}'.replace('__ID__', p.id);
+        const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        const json = await resp.json().catch(() => ({}));
+
+        if (!resp.ok) {
+            alert(json.message ?? `Erro ${resp.status} ao carregar o pedido.`);
+            return;
+        }
+
+        carrinho = json.itens;
+        descontoGlobal = 0;
+        pedidoVendaId = json.pedido.id;
+        pedidoVendaNumero = json.pedido.numero;
+
+        fecharModalPedidos();
+        renderizarCarrinho();
+        atualizarBadgePedido();
+    } catch (e) {
+        alert('Falha ao carregar o pedido: ' + e.message);
+    }
+}
+
+inputBuscaPedido.addEventListener('input', () => {
+    clearTimeout(timeoutBuscaPedido);
+    timeoutBuscaPedido = setTimeout(() => carregarPedidos(inputBuscaPedido.value.trim()), 300);
+});
+
+inputBuscaPedido.addEventListener('keydown', (e) => {
+    if (pedidosModal.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        indicePedido = (indicePedido + 1) % pedidosModal.length;
+        renderizarPedidos();
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        indicePedido = (indicePedido - 1 + pedidosModal.length) % pedidosModal.length;
+        renderizarPedidos();
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (indicePedido >= 0) selecionarPedido(indicePedido);
+    }
+});
+
 renderizarCarrinho();
+atualizarBadgePedido();
 </script>
 @endsection

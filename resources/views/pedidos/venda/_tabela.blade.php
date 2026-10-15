@@ -66,6 +66,9 @@
                         <a href="{{ route('pedidos-venda.imprimir', $pedido) }}" target="_blank"
                            class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Imprimir / PDF</a>
 
+                        <a href="{{ route('pedidos-venda.cupom', $pedido) }}" target="_blank"
+                           class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Imprimir cupom (80 mm)</a>
+
                         @if ($pedido->podeCancelar())
                             <div class="border-t border-gray-100 my-1"></div>
                             <form method="POST" action="{{ route('pedidos-venda.cancelar', $pedido) }}"

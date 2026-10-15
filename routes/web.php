@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\PedidoCaixaController;
 use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EmpresaController;
@@ -85,6 +86,12 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
         // Endpoints JSON usados pelo modal "Adicionar consumidor" no caixa
         Route::get('/clientes/buscar', [ClienteController::class, 'buscar'])->name('clientes.buscar');
         Route::post('/clientes/criar-rapido', [ClienteController::class, 'criarRapido'])->name('clientes.criarRapido');
+
+        // Pedidos de venda no caixa (lidos do espelho SQLite local)
+        Route::get('pedidos-caixa', [PedidoCaixaController::class, 'listar'])->name('pedidos-caixa.listar');
+        Route::get('pedidos-caixa/{id}/itens', [PedidoCaixaController::class, 'itens'])
+            ->whereNumber('id')
+            ->name('pedidos-caixa.itens');
     });
 
     // =====================================================================
@@ -253,6 +260,8 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                     ->name('pedidos-venda.buscar-produto');
                 Route::get('venda/{pedido}/imprimir', [PedidoVendaController::class, 'imprimir'])
                     ->name('pedidos-venda.imprimir');
+                Route::get('venda/{pedido}/cupom', [PedidoVendaController::class, 'cupom'])
+                    ->name('pedidos-venda.cupom');
                 Route::patch('venda/{pedido}/cancelar', [PedidoVendaController::class, 'cancelar'])
                     ->name('pedidos-venda.cancelar');
 
