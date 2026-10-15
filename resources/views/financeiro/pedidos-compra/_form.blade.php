@@ -126,7 +126,7 @@
     <div class="bg-white rounded-lg shadow p-6">
         <h2 class="text-sm font-semibold mb-1">Itens do pedido</h2>
         <p class="text-xs text-gray-500 mb-4">
-            Leia ou digite o código de barras e tecle Enter. Se o código não estiver cadastrado, digite a descrição para incluir como item avulso.
+            Leia o código de barras e tecle Enter, ou comece a digitar a descrição para buscar o produto. O que não estiver no cadastro pode ser incluído como item avulso.
         </p>
 
         {{-- Linha de inclusão --}}
@@ -137,7 +137,8 @@
             </div>
             <div class="col-span-5">
                 <label class="{{ $labelCls }}">Descrição</label>
-                <input type="text" id="add-descricao" maxlength="255" autocomplete="off" class="{{ $inputCls }}">
+                <input type="text" id="add-descricao" maxlength="255" autocomplete="off"
+                       placeholder="Digite para buscar o produto..." class="{{ $inputCls }}">
             </div>
             <div class="col-span-1">
                 <label class="{{ $labelCls }}">Un.</label>
@@ -211,6 +212,39 @@
                 <tbody id="linhas-busca-fornecedor"></tbody>
             </table>
             <p class="text-xs text-gray-400 mt-3">Use ↑ ↓ para navegar e Enter para selecionar.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de busca de produto -->
+<div id="modal-busca-produto" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+            <h2 class="text-lg font-bold text-white">Selecionar Produto</h2>
+            <button type="button" onclick="fecharModalProduto()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
+        </div>
+        <div class="p-6">
+            <input type="text" id="busca-produto-modal" placeholder="Buscar por nome, código ou código de barras..."
+                   autocomplete="off"
+                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
+                        <th class="py-2">Código</th>
+                        <th class="py-2">Produto</th>
+                        <th class="py-2">Un.</th>
+                        <th class="py-2 text-right">Estoque</th>
+                    </tr>
+                </thead>
+                <tbody id="linhas-busca-produto"></tbody>
+            </table>
+            <div class="flex items-center justify-between mt-3">
+                <p class="text-xs text-gray-400">Use ↑ ↓ para navegar e Enter para selecionar.</p>
+                <button type="button" onclick="usarComoAvulso()"
+                        class="text-xs text-gray-600 border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50">
+                    Não está no cadastro? Incluir como item avulso
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -310,57 +344,128 @@ const campoDescricao = document.getElementById('add-descricao');
 const campoUnidade   = document.getElementById('add-unidade');
 const campoQtd       = document.getElementById('add-qtd');
 
+const modalProduto       = document.getElementById('modal-busca-produto');
+const inputBuscaProduto  = document.getElementById('busca-produto-modal');
+const linhasBuscaProduto = document.getElementById('linhas-busca-produto');
+
+let resultadosProduto = [];
+let indiceProduto = -1;
+let timeoutDescricao;
+let timeoutBuscaProduto;
+let contadorBuscaProduto = 0;     // descarta respostas antigas se o operador digitar rápido
+let campoFocoAoFechar = campoDescricao;
+let avulso = false;               // true: descrição digitada à mão (item fora do cadastro) — não abre a busca
+
+const modalProdutoAberto = () => !modalProduto.classList.contains('hidden');
+
 function limparLinhaAdicionar() {
     pendente = null;
+    avulso = false;
     campoCodigo.value = '';
     campoDescricao.value = '';
-    campoDescricao.readOnly = false;
-    campoDescricao.classList.remove('bg-gray-50');
     campoUnidade.value = 'UN';
     campoQtd.value = 1;
     campoCodigo.focus();
 }
 
-async function buscarProdutoPorCodigo() {
-    const codigo = campoCodigo.value.trim();
-    if (!codigo) { campoDescricao.focus(); return; }
+// Devolve a lista, ou null se falhou / chegou uma busca mais nova
+async function consultarProdutos(termo) {
+    const minhaBusca = ++contadorBuscaProduto;
 
     try {
-        const resp = await fetch(`${urlBuscaProduto}?codigo=${encodeURIComponent(codigo)}`, {
+        const resp = await fetch(`${urlBuscaProduto}?termo=${encodeURIComponent(termo)}`, {
             headers: { 'Accept': 'application/json' },
         });
-        const json = await resp.json().catch(() => ({}));
-
-        if (resp.status === 404) {
-            pendente = null;
-            mostrarAviso((json.message ?? 'Código não encontrado.') + '\nDigite a descrição para incluir como item avulso.');
-            campoDescricao.focus();
-            return;
-        }
-        if (!resp.ok) {
-            pendente = null;
-            mostrarAviso(json.message ?? `Erro ${resp.status} ao consultar o produto.`);
-            campoCodigo.select();
-            return;
-        }
-
-        pendente = json;
-        campoDescricao.value = json.descricao;
-        campoDescricao.readOnly = true;
-        campoDescricao.classList.add('bg-gray-50');
-        campoUnidade.value = json.unidade || 'UN';
-        campoQtd.focus();
-        campoQtd.select();
+        if (!resp.ok) throw new Error(`Erro ${resp.status} ao consultar o servidor.`);
+        const dados = await resp.json();
+        return minhaBusca === contadorBuscaProduto ? dados : null;
     } catch (e) {
-        mostrarAviso('Falha ao buscar o produto:\n' + e.message);
+        if (minhaBusca === contadorBuscaProduto) mostrarAviso('Falha ao buscar produtos:\n' + e.message);
+        return null;
     }
+}
+
+function abrirModalProduto(termo, resultados, origem) {
+    campoFocoAoFechar = origem === 'codigo' ? campoCodigo : campoDescricao;
+    if (origem === 'descricao') campoDescricao.value = ''; // o texto passa para o campo do modal
+
+    resultadosProduto = resultados;
+    indiceProduto = resultados.length > 0 ? 0 : -1;
+
+    modalProduto.classList.remove('hidden');
+    modalProduto.classList.add('flex');
+    inputBuscaProduto.value = termo;
+    renderizarProdutos();
+    inputBuscaProduto.focus();
+}
+
+function fecharModalProduto() {
+    modalProduto.classList.add('hidden');
+    modalProduto.classList.remove('flex');
+    inputBuscaProduto.value = '';
+    resultadosProduto = [];
+    indiceProduto = -1;
+    campoFocoAoFechar.focus();
+}
+
+function renderizarProdutos() {
+    if (resultadosProduto.length === 0) {
+        linhasBuscaProduto.innerHTML = '<tr><td colspan="4" class="p-3 text-sm text-gray-400 text-center">Nenhum produto encontrado.</td></tr>';
+        return;
+    }
+
+    linhasBuscaProduto.innerHTML = resultadosProduto.map((r, index) => {
+        const destacado = index === indiceProduto;
+        const estoque = r.estoque === null || r.estoque === undefined ? '—' : Number(r.estoque).toLocaleString('pt-BR');
+        return `
+            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
+                onclick="selecionarProduto(${index})">
+                <td class="py-3 font-mono text-sm ${destacado ? 'text-slate-300' : 'text-gray-500'}">${esc(r.codigo_barras || r.codigo_interno)}</td>
+                <td class="py-3 font-medium">${esc(r.descricao)}</td>
+                <td class="py-3">${esc(r.unidade)}</td>
+                <td class="py-3 text-right font-medium">${estoque}</td>
+            </tr>
+        `;
+    }).join('');
+
+    linhasBuscaProduto.children[indiceProduto]?.scrollIntoView({ block: 'nearest' });
+}
+
+function selecionarProduto(index) {
+    const r = resultadosProduto[index];
+    if (!r) return;
+    fecharModalProduto();
+    escolherProduto(r);
+}
+
+// Produto do cadastro escolhido (pelo leitor ou pelo modal): preenche a linha e vai para a quantidade
+function escolherProduto(r) {
+    pendente = r;
+    avulso = false;
+    campoCodigo.value = r.codigo_barras || '';
+    campoDescricao.value = r.descricao;
+    campoUnidade.value = r.unidade || 'UN';
+    campoQtd.focus();
+    campoQtd.select();
+}
+
+function usarComoAvulso() {
+    const termo = inputBuscaProduto.value.trim();
+    campoFocoAoFechar = campoDescricao;
+    fecharModalProduto();
+
+    pendente = null;
+    avulso = true;
+    if (termo) campoDescricao.value = termo;
+    campoDescricao.focus();
+    campoDescricao.setSelectionRange(campoDescricao.value.length, campoDescricao.value.length);
 }
 
 function adicionarItem() {
     const descricao  = campoDescricao.value.trim();
     const quantidade = parseFloat(campoQtd.value);
 
-    if (!descricao) return mostrarAviso('Informe a descrição do item (ou leia um código cadastrado).');
+    if (!descricao) return mostrarAviso('Informe a descrição do item (ou busque um produto cadastrado).');
     if (!(quantidade > 0)) return mostrarAviso('A quantidade deve ser maior que zero.');
 
     // mesmo produto/variação já na lista: soma a quantidade em vez de duplicar a linha
@@ -385,25 +490,114 @@ function adicionarItem() {
     limparLinhaAdicionar();
 }
 
-campoCodigo.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); buscarProdutoPorCodigo(); }
+// --- Código de barras: Enter busca; um resultado exato entra direto, senão abre o modal ---
+campoCodigo.addEventListener('keydown', async (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+
+    const codigo = campoCodigo.value.trim();
+    if (!codigo) { campoDescricao.focus(); return; }
+
+    const dados = await consultarProdutos(codigo);
+    if (dados === null) return;
+
+    const exatos = dados.filter(r => r.codigo_barras === codigo || r.codigo_interno === codigo);
+    if (exatos.length === 1) { escolherProduto(exatos[0]); return; }
+    if (dados.length > 0)    { abrirModalProduto(codigo, dados, 'codigo'); return; }
+
+    avulso = true;
+    mostrarAviso('Código não encontrado no cadastro.\nDigite a descrição para incluir como item avulso.');
+    campoDescricao.focus();
 });
-campoCodigo.addEventListener('input', () => { // código alterado depois da busca: descarta o produto encontrado
+
+campoCodigo.addEventListener('input', () => { // código alterado depois de escolher um produto: descarta a escolha
     if (pendente) {
         pendente = null;
         campoDescricao.value = '';
-        campoDescricao.readOnly = false;
-        campoDescricao.classList.remove('bg-gray-50');
     }
+    avulso = false;
 });
+
+// --- Descrição: ao começar a digitar, abre o modal de busca ---
+async function buscarPelaDescricao() {
+    const termo = campoDescricao.value.trim();
+    if (termo.length < 1 || modalProdutoAberto()) return;
+
+    const dados = await consultarProdutos(termo);
+    if (dados === null) return;
+
+    // o operador pode ter continuado a digitar enquanto a resposta vinha
+    abrirModalProduto(campoDescricao.value.trim() || termo, dados, 'descricao');
+}
+
+campoDescricao.addEventListener('input', () => {
+    if (pendente) { // mexeu no texto do produto escolhido: descarta a escolha e busca de novo
+        pendente = null;
+        campoCodigo.value = '';
+    }
+
+    clearTimeout(timeoutDescricao);
+    if (campoDescricao.value.trim() === '') avulso = false;
+    if (avulso || modalProdutoAberto()) return;
+
+    timeoutDescricao = setTimeout(buscarPelaDescricao, 300);
+});
+
 campoDescricao.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); campoQtd.focus(); campoQtd.select(); }
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+
+    if (pendente || avulso) { campoUnidade.focus(); campoUnidade.select(); return; }
+
+    clearTimeout(timeoutDescricao);
+    buscarPelaDescricao(); // Enter antes dos 300 ms: busca na hora
 });
+
 campoUnidade.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); campoQtd.focus(); campoQtd.select(); }
 });
 campoQtd.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); adicionarItem(); }
+});
+
+// --- Campo de busca dentro do modal ---
+inputBuscaProduto.addEventListener('input', () => {
+    clearTimeout(timeoutBuscaProduto);
+    const valor = inputBuscaProduto.value.trim();
+
+    if (valor.length < 1) {
+        contadorBuscaProduto++; // invalida buscas em andamento
+        resultadosProduto = [];
+        indiceProduto = -1;
+        renderizarProdutos();
+        return;
+    }
+
+    timeoutBuscaProduto = setTimeout(async () => {
+        const dados = await consultarProdutos(valor);
+        if (dados === null) return;
+        resultadosProduto = dados;
+        indiceProduto = dados.length > 0 ? 0 : -1;
+        renderizarProdutos();
+    }, 300);
+});
+
+inputBuscaProduto.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { fecharModalProduto(); return; }
+    if (resultadosProduto.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        indiceProduto = (indiceProduto + 1) % resultadosProduto.length;
+        renderizarProdutos();
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        indiceProduto = (indiceProduto - 1 + resultadosProduto.length) % resultadosProduto.length;
+        renderizarProdutos();
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (indiceProduto >= 0) selecionarProduto(indiceProduto);
+    }
 });
 
 // ---------------------------------------------------------------

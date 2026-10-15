@@ -136,53 +136,71 @@ class PedidoCompraController extends Controller
     }
 
     /**
-     * Busca exata por código de barras (variação ou produto) ou código interno.
-     * Usada pelo leitor/digitação na linha "Adicionar item".
+     * Busca de produtos para o modal da linha "Adicionar item".
+     * Aceita nome, código interno, código de barras ou referência.
+     * Devolve até 30 linhas: produtos sem variação e, para os que têm variação,
+     * uma linha por variação (o pedido precisa saber qual variação foi pedida).
      */
     public function buscarProduto(Request $request): JsonResponse
     {
-        $codigo = trim((string) $request->query('codigo'));
+        $termo = trim((string) $request->query('termo'));
 
-        if ($codigo === '') {
-            return response()->json(['message' => 'Informe o código.'], 422);
+        if ($termo === '') {
+            return response()->json([]);
         }
 
-        $variante = ProdutoVariante::with('produto')->where('codigo_barras', $codigo)->first();
+        $like = '%' . addcslashes($termo, '\\%_') . '%';
 
-        if ($variante) {
-            $produto = $variante->produto;
-
-            return response()->json([
-                'produto_id'          => $produto->id,
-                'produto_variante_id' => $variante->id,
-                'codigo_barras'       => $variante->codigo_barras,
-                'descricao'           => trim($produto->nome . ' - ' . $variante->rotulo(), ' -'),
-                'unidade'             => $produto->unidade_comercial ?: 'UN',
+        $simples = Produto::ativos()
+            ->where('tem_variacao', false)
+            ->where(fn ($q) => $q->where('nome', 'like', $like)
+                ->orWhere('codigo_interno', $termo)
+                ->orWhere('codigo_barras', $termo)
+                ->orWhere('referencia', 'like', $like))
+            ->orderBy('nome')
+            ->limit(30)
+            ->get()
+            ->map(fn ($p) => [
+                'produto_id'          => $p->id,
+                'produto_variante_id' => null,
+                'codigo_barras'       => $p->codigo_barras,
+                'codigo_interno'      => $p->codigo_interno,
+                'descricao'           => $p->nome,
+                'unidade'             => $p->unidade_comercial ?: 'UN',
+                'estoque'             => $p->estoque,
             ]);
-        }
 
-        $produto = Produto::where('codigo_barras', $codigo)
-            ->orWhere('codigo_interno', $codigo)
-            ->first();
+        $variacoes = ProdutoVariante::with('produto')
+            ->whereHas('produto', fn ($p) => $p->ativos()->where('tem_variacao', true))
+            ->where(function ($q) use ($like, $termo) {
+                $q->where('codigo_barras', $termo)
+                    ->orWhereHas('produto', fn ($p) => $p->where(fn ($w) => $w
+                        ->where('nome', 'like', $like)
+                        ->orWhere('codigo_interno', $termo)
+                        ->orWhere('referencia', 'like', $like)));
+            })
+            ->limit(30)
+            ->get()
+            ->map(fn ($v) => [
+                'produto_id'          => $v->produto->id,
+                'produto_variante_id' => $v->id,
+                'codigo_barras'       => $v->codigo_barras,
+                'codigo_interno'      => $v->produto->codigo_interno,
+                'descricao'           => trim($v->produto->nome . ' - ' . $v->rotulo(), ' -'),
+                'unidade'             => $v->produto->unidade_comercial ?: 'UN',
+                'estoque'             => $v->estoque,
+            ]);
 
-        if (! $produto) {
-            return response()->json(['message' => 'Código não encontrado no cadastro de produtos.'], 404);
-        }
+        // código exato primeiro, depois ordem alfabética
+        $resultado = $simples->concat($variacoes)
+            ->sortBy(fn ($r) => [
+                ($r['codigo_barras'] === $termo || $r['codigo_interno'] === $termo) ? 0 : 1,
+                mb_strtolower($r['descricao']),
+            ])
+            ->values()
+            ->take(30);
 
-        // Produto com variação: o pedido precisa saber qual variação, então exige o código dela
-        if ($produto->tem_variacao) {
-            return response()->json([
-                'message' => "\"{$produto->nome}\" tem variações. Leia ou digite o código de barras da variação desejada.",
-            ], 422);
-        }
-
-        return response()->json([
-            'produto_id'          => $produto->id,
-            'produto_variante_id' => null,
-            'codigo_barras'       => $produto->codigo_barras,
-            'descricao'           => $produto->nome,
-            'unidade'             => $produto->unidade_comercial ?: 'UN',
-        ]);
+        return response()->json($resultado);
     }
 
     private function validar(Request $request): array
