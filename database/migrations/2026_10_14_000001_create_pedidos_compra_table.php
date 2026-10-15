@@ -15,7 +15,7 @@ return new class extends Migration
             $table->date('data_pedido');
             $table->date('previsao_entrega')->nullable();
             // usa o nome real da tabela do model Fornecedor, seja qual for
-            $table->foreignId('fornecedor_id')->constrained((new Fornecedor)->getTable());
+            $table->foreignId('fornecedor_id')->nullable()->constrained((new Fornecedor)->getTable());
             $table->string('status', 15)->default('aberto')->index(); // aberto | enviado | recebido | cancelado
             $table->text('observacao')->nullable();
             $table->timestamps();

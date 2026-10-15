@@ -33,7 +33,7 @@
     <section class="mb-6">
         <h2 class="text-xs font-semibold uppercase text-gray-500 mb-2">Fornecedor</h2>
         <p class="text-sm font-medium">
-            {{ $pedido->fornecedor?->nome_exibicao ?? '—' }}
+            {{ $pedido->fornecedor?->nome_exibicao ?? 'Não informado' }}
             @if ($pedido->fornecedor?->documento_formatado)
                 <span class="font-normal text-gray-500">— {{ $pedido->fornecedor->documento_formatado }}</span>
             @endif

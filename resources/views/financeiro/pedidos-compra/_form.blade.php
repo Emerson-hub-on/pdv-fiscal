@@ -75,7 +75,7 @@
                 </div>
 
                 <div>
-                    <label class="{{ $labelCls }}">Fornecedor <span class="text-red-500">*</span></label>
+                    <label class="{{ $labelCls }}">Fornecedor <span class="text-gray-400 font-normal">(opcional)</span></label>
                     <input type="hidden" name="fornecedor_id" id="campo-fornecedor"
                            value="{{ old('fornecedor_id', $pedido->fornecedor_id) }}">
                     <div class="flex gap-2">
@@ -88,6 +88,10 @@
                                     Selecionar fornecedor...
                                 @endif
                             </span>
+                        </button>
+                        <button type="button" id="limpar-fornecedor" onclick="limparFornecedor()" title="Remover fornecedor"
+                                class="shrink-0 border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50 {{ $fornecedorAtual ? '' : 'hidden' }}">
+                            &times;
                         </button>
                     </div>
                     @error('fornecedor_id') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
@@ -227,13 +231,20 @@
             <input type="text" id="busca-produto-modal" placeholder="Buscar por nome, código ou código de barras..."
                    autocomplete="off"
                    class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
-            <table class="w-full text-sm">
+            {{-- Largura fixa: descrição longa é cortada com "…" (a descrição completa fica no cadastro do produto) --}}
+            <table class="w-full text-sm table-fixed">
+                <colgroup>
+                    <col class="w-[22%]">
+                    <col class="w-[52%]">
+                    <col class="w-[10%]">
+                    <col class="w-[16%]">
+                </colgroup>
                 <thead>
                     <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
-                        <th class="py-2">Código</th>
-                        <th class="py-2">Produto</th>
-                        <th class="py-2">Un.</th>
-                        <th class="py-2 text-right">Estoque</th>
+                        <th class="py-2 px-2">Código</th>
+                        <th class="py-2 px-2">Produto</th>
+                        <th class="py-2 px-2">Un.</th>
+                        <th class="py-2 px-2 text-right">Estoque</th>
                     </tr>
                 </thead>
                 <tbody id="linhas-busca-produto"></tbody>
@@ -420,10 +431,10 @@ function renderizarProdutos() {
         return `
             <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
                 onclick="selecionarProduto(${index})">
-                <td class="py-3 font-mono text-sm ${destacado ? 'text-slate-300' : 'text-gray-500'}">${esc(r.codigo_barras || r.codigo_interno)}</td>
-                <td class="py-3 font-medium">${esc(r.descricao)}</td>
-                <td class="py-3">${esc(r.unidade)}</td>
-                <td class="py-3 text-right font-medium">${estoque}</td>
+                <td class="py-3 px-2 font-mono text-sm truncate ${destacado ? 'text-slate-300' : 'text-gray-500'}">${esc(r.codigo_barras || r.codigo_interno)}</td>
+                <td class="py-3 px-2 font-medium truncate">${esc(r.descricao)}</td>
+                <td class="py-3 px-2">${esc(r.unidade)}</td>
+                <td class="py-3 px-2 text-right font-medium">${estoque}</td>
             </tr>
         `;
     }).join('');
@@ -682,7 +693,14 @@ function selecionarFornecedor(index) {
 
     document.getElementById('campo-fornecedor').value = f.id;
     document.getElementById('texto-fornecedor-selecionado').textContent = `${f.nome} — ${f.cpf_cnpj}`;
+    document.getElementById('limpar-fornecedor').classList.remove('hidden');
     fecharModalFornecedor();
+}
+
+function limparFornecedor() {
+    document.getElementById('campo-fornecedor').value = '';
+    document.getElementById('texto-fornecedor-selecionado').textContent = 'Selecionar fornecedor...';
+    document.getElementById('limpar-fornecedor').classList.add('hidden');
 }
 
 inputBuscaFornecedor?.addEventListener('input', () => {

@@ -45,7 +45,7 @@ class PedidoCompraController extends Controller
                 'numero'           => PedidoCompra::proximoNumero(),
                 'data_pedido'      => $dados['data_pedido'],
                 'previsao_entrega' => $dados['previsao_entrega'] ?? null,
-                'fornecedor_id'    => $dados['fornecedor_id'],
+                'fornecedor_id'    => $dados['fornecedor_id'] ?? null,
                 'observacao'       => $dados['observacao'] ?? null,
                 'status'           => 'aberto',
             ]);
@@ -87,7 +87,7 @@ class PedidoCompraController extends Controller
             $pedido->update([
                 'data_pedido'      => $dados['data_pedido'],
                 'previsao_entrega' => $dados['previsao_entrega'] ?? null,
-                'fornecedor_id'    => $dados['fornecedor_id'],
+                'fornecedor_id'    => $dados['fornecedor_id'] ?? null,
                 'observacao'       => $dados['observacao'] ?? null,
             ]);
 
@@ -216,7 +216,7 @@ class PedidoCompraController extends Controller
         return $request->validate([
             'data_pedido'      => 'required|date',
             'previsao_entrega' => 'nullable|date|after_or_equal:data_pedido',
-            'fornecedor_id'    => "required|integer|exists:{$tabelaFornecedor},id",
+            'fornecedor_id'    => "nullable|integer|exists:{$tabelaFornecedor},id",
             'observacao'       => 'nullable|string|max:1000',
 
             'itens'                       => 'required|array|min:1',
@@ -227,7 +227,6 @@ class PedidoCompraController extends Controller
             'itens.*.unidade'             => 'required|string|max:6',
             'itens.*.quantidade'          => 'required|numeric|min:0.001|max:999999999',
         ], [
-            'fornecedor_id.required'     => 'Selecione o fornecedor.',
             'itens.required'             => 'Inclua ao menos um item no pedido.',
             'itens.min'                  => 'Inclua ao menos um item no pedido.',
             'itens.*.descricao.required' => 'Todo item precisa de uma descrição.',
