@@ -224,6 +224,32 @@
                 @endif
             </div>
         </div>
+
+        <!-- Menu Dropdown: Pedidos -->
+        <div class="flex flex-col">
+            <button onclick="togglePedidos()"
+                    class="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 text-sm font-medium transition cursor-pointer [.sidebar-oculta_&]:justify-center [.sidebar-oculta_&]:px-0">
+                <span class="flex items-center gap-3">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                    </svg>
+                    <span class="whitespace-nowrap [.sidebar-oculta_&]:hidden">Pedidos</span>
+                </span>
+                <svg id="seta-pedidos" class="w-4 h-4 transition-transform duration-200 [.sidebar-oculta_&]:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+
+            <div id="sub-pedidos" class="hidden [.sidebar-oculta_&]:hidden flex flex-col gap-1 pl-4 mt-1 border-l border-white/10 ml-3">
+                @if (auth()->user()?->podeVer('notas'))
+                    <a href="{{ route('pedidos-venda.index') }}"
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                        Pedido de Venda
+                    </a>
+                @endif
+            </div>
+        </div>
+
     </nav>
 
     <div class="px-3 py-4 border-t border-white/10 shrink-0 [.sidebar-oculta_&]:px-2">
@@ -256,6 +282,7 @@
                     'contas-pagar' => ['Financeiro', 'Contas a Pagar'],
                     'contas-receber' => ['Financeiro', 'Contas a Receber'],
                     'pedidos-compra' => ['Financeiro', 'Pedidos de Compra'],
+                    'pedidos-venda' => ['Pedidos', 'Pedido de Venda'],
                 ];
 
                 $rotaAtual = \Illuminate\Support\Facades\Route::currentRouteName();$prefixoRota = $rotaAtual ? explode('.', $rotaAtual)[0] : null;
@@ -384,6 +411,15 @@ function toggleCadastros() {
 
         document.getElementById('sub-financeiro').classList.toggle('hidden');
         document.getElementById('seta-financeiro').classList.toggle('rotate-180');
+    }
+
+    function togglePedidos() {
+        if (document.body.classList.contains('sidebar-oculta')) {
+            document.body.classList.remove('sidebar-oculta');
+        }
+
+        document.getElementById('sub-pedidos').classList.toggle('hidden');
+        document.getElementById('seta-pedidos').classList.toggle('rotate-180');
     }
 
     function toggleNotaFiscal() {

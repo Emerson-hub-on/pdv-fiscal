@@ -38,6 +38,7 @@ use App\Http\Controllers\TipoContaPagarController;
 use App\Http\Controllers\ContaReceberController;
 use App\Http\Controllers\TipoContaReceberController;
 use App\Http\Controllers\PedidoCompraController;
+use App\Http\Controllers\PedidoVendaController;
 
 
 
@@ -242,6 +243,22 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
 
                 Route::resource('pedidos-compra', PedidoCompraController::class)
                     ->parameters(['pedidos-compra' => 'pedido'])
+                    ->except(['show', 'destroy']);
+            });
+
+            // ---------------- PEDIDOS DE VENDA ----------------
+            Route::prefix('pedidos')->group(function () {
+                // buscas e ações específicas antes do resource
+                Route::get('venda/buscar-produto', [PedidoVendaController::class, 'buscarProduto'])
+                    ->name('pedidos-venda.buscar-produto');
+                Route::get('venda/{pedido}/imprimir', [PedidoVendaController::class, 'imprimir'])
+                    ->name('pedidos-venda.imprimir');
+                Route::patch('venda/{pedido}/cancelar', [PedidoVendaController::class, 'cancelar'])
+                    ->name('pedidos-venda.cancelar');
+
+                Route::resource('venda', PedidoVendaController::class)
+                    ->names('pedidos-venda')
+                    ->parameters(['venda' => 'pedido'])
                     ->except(['show', 'destroy']);
             });
 
