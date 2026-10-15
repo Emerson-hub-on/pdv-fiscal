@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Pedido de Compra {{ $pedido->numeroExibicao() }}</title>
-    {{-- Cole aqui a MESMA linha que o layouts.app usa para carregar o Tailwind (@vite(...) ou o link do CSS compilado) --}}
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-100 print:bg-white text-gray-900">
 

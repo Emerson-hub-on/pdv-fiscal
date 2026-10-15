@@ -37,6 +37,7 @@ use App\Http\Controllers\ContaPagarController;
 use App\Http\Controllers\TipoContaPagarController;
 use App\Http\Controllers\ContaReceberController;
 use App\Http\Controllers\TipoContaReceberController;
+use App\Http\Controllers\PedidoCompraController;
 
 
 
@@ -224,6 +225,24 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
 
                 Route::post('tipos-conta-receber/rapido', [TipoContaReceberController::class, 'rapido'])
                     ->name('tipos-conta-receber.rapido');
+            });
+
+            // ---------------- PEDIDOS DE COMPRA ----------------
+            Route::prefix('financeiro')->group(function () {
+                // buscas e ações específicas antes do resource
+                Route::get('pedidos-compra/buscar-produto', [PedidoCompraController::class, 'buscarProduto'])
+                    ->name('pedidos-compra.buscar-produto');
+
+                Route::get('pedidos-compra/{pedido}/imprimir', [PedidoCompraController::class, 'imprimir'])
+                    ->name('pedidos-compra.imprimir');
+                Route::patch('pedidos-compra/{pedido}/enviar', [PedidoCompraController::class, 'enviar'])
+                    ->name('pedidos-compra.enviar');
+                Route::patch('pedidos-compra/{pedido}/cancelar', [PedidoCompraController::class, 'cancelar'])
+                    ->name('pedidos-compra.cancelar');
+
+                Route::resource('pedidos-compra', PedidoCompraController::class)
+                    ->parameters(['pedidos-compra' => 'pedido'])
+                    ->except(['show', 'destroy']);
             });
 
             // IMPORTANTE: as buscas precisam vir ANTES do Route::resource, senão

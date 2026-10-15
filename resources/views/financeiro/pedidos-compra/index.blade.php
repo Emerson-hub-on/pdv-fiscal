@@ -7,9 +7,6 @@
     @if (session('erro'))
         <div role="alert" class="m-4 mb-0 border border-red-300 bg-red-50 text-red-800 rounded-lg px-4 py-3 text-sm whitespace-pre-line">{{ session('erro') }}</div>
     @endif
-    @if (session('sucesso'))
-        <div role="status" class="m-4 mb-0 border border-green-300 bg-green-50 text-green-800 rounded-lg px-4 py-3 text-sm">{{ session('sucesso') }}</div>
-    @endif
 
     <form method="GET" action="{{ route('pedidos-compra.index') }}"
           class="flex flex-col gap-3 p-4 border-b border-gray-100">
