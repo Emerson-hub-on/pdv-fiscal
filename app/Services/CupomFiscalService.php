@@ -151,9 +151,18 @@ class CupomFiscalService
         // PDV em emissão pelo servidor (modo de emergência): o XML fica no MySQL central
         if (!CentralStatus::fora()) {
             try {
-                $central = DB::table('vendas')->where('uuid', $venda->uuid)->first(['xml_nfce', 'xml_contingencia']);
+                $central = DB::table('vendas')->where('uuid', $venda->uuid)->first();
 
-                return ($central->xml_nfce ?? null) ?: ($central->xml_contingencia ?? null) ?: null;
+                if ($central) {
+                    if (!empty($central->xml_nfce)) {
+                        return $central->xml_nfce;
+                    }
+                    if (!empty($central->ultimo_arquivo_xml) && is_file($central->ultimo_arquivo_xml)) {
+                        return file_get_contents($central->ultimo_arquivo_xml) ?: null;
+                    }
+
+                    return $central->xml_contingencia ?: null;
+                }
             } catch (\Throwable $e) {
                 if (CentralStatus::erroDeConexao($e)) {
                     CentralStatus::marcarFora();

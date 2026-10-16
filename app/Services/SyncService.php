@@ -665,6 +665,107 @@ class SyncService
     }
 
     /**
+     * Direcao 1h: traz do servidor a situacao fiscal das vendas que o SERVIDOR emitiu/cancelou
+     * (emissao pelo servidor, modo de emergencia ou versoes antigas) e que no caixa ficaram "pendente".
+     * Sem isso o caixa nao sabe que a venda tem NFC-e e nao consegue reimprimir o cupom.
+     * So estados finais (emitida/cancelada): contingencia continua sendo tratada por quem a emitiu.
+     */
+    public function puxarSituacaoFiscal(): array
+    {
+        try {
+            $local = DB::connection('sqlite_local');
+
+            $candidatas = $local->table('vendas_pendentes')
+                ->where('status_fiscal', 'pendente')
+                ->whereNull('numero_nfce')
+                ->where('status', 'sincronizada')
+                ->where('vendida_em', '>=', now()->subDays(90)->toDateTimeString())
+                ->pluck('uuid')
+                ->all();
+
+            $atualizadas = 0;
+
+            foreach (array_chunk($candidatas, 200) as $bloco) {
+                $centrais = DB::table('vendas')
+                    ->whereIn('uuid', $bloco)
+                    ->whereIn('status', ['emitida', 'cancelada'])
+                    ->whereNotNull('numero_nfce')
+                    ->get();
+
+                foreach ($centrais as $c) {
+                    $campos = [
+                        'status_fiscal' => $c->status,
+                        'numero_nfce' => $c->numero_nfce,
+                        'serie_nfce' => $c->serie_nfce,
+                        'chave_nfe' => $c->chave_nfe,
+                        'protocolo_nfe' => $c->protocolo_nfe,
+                        'tp_emis' => $c->tp_emis ?? 1,
+                        'emitida_em' => $c->emitida_em,
+                        'fiscal_sync_pendente' => false, // veio do servidor: nao precisa subir de volta
+                        'updated_at' => now(),
+                    ];
+
+                    if ($c->status === 'cancelada') {
+                        $campos['motivo_cancelamento'] = $c->motivo_cancelamento ?? null;
+                    }
+
+                    $arquivo = $this->guardarXmlDoCentral($c);
+                    if ($arquivo) {
+                        $campos['ultimo_arquivo_xml'] = $arquivo;
+                    }
+
+                    $local->table('vendas_pendentes')->where('uuid', $c->uuid)->update($campos);
+                    $atualizadas++;
+                }
+            }
+
+            return ['sucesso' => true, 'atualizadas' => $atualizadas];
+        } catch (\Throwable $e) {
+            return $this->registrarFalha($e);
+        }
+    }
+
+    /**
+     * Grava o XML autorizado vindo do servidor na mesma pasta/convencao do emissor local
+     * (storage/app/XML_nfce/aa/mm/dd/{chave}-nfe.xml). Devolve o caminho, ou null se o servidor nao tem o XML.
+     */
+    private function guardarXmlDoCentral(object $c): ?string
+    {
+        $chave = (string) ($c->chave_nfe ?? '');
+
+        if ($chave === '') {
+            return null;
+        }
+
+        $referencia = $c->emitida_em ? \Carbon\Carbon::parse($c->emitida_em) : now();
+        $pasta = storage_path('app/XML_nfce/' . $referencia->format('y/m/d'));
+        $arquivo = $pasta . '/' . $chave . '-nfe.xml';
+
+        if (is_file($arquivo)) {
+            return $arquivo;
+        }
+
+        $xml = $c->xml_nfce ?? null;
+
+        // Servidor e caixa na mesma maquina: o arquivo gravado pelo emissor do servidor ja esta ao alcance
+        if (!$xml && !empty($c->ultimo_arquivo_xml) && is_file($c->ultimo_arquivo_xml)) {
+            $xml = file_get_contents($c->ultimo_arquivo_xml);
+        }
+
+        if (!$xml) {
+            return null;
+        }
+
+        if (!is_dir($pasta)) {
+            mkdir($pasta, 0755, true);
+        }
+
+        file_put_contents($arquivo, $xml);
+
+        return $arquivo;
+    }
+
+    /**
      * Direcao 2: sobe vendas pendentes do SQLite local pro MySQL central.
      */
     public function enviarVendasPendentes(): array
@@ -895,6 +996,9 @@ class SyncService
         }
 
         $resultado['vendas'] = $this->enviarVendasPendentes();
+        $resultado['situacao_fiscal'] = CentralStatus::fora()
+            ? ['sucesso' => false, 'erro' => 'Servidor indisponível']
+            : $this->puxarSituacaoFiscal();
         $resultado['inutilizacoes'] = $this->enviarInutilizacoes();
         $resultado['numeracao'] = $this->enviarNumeracao();
 
