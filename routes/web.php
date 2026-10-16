@@ -68,6 +68,7 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
         Route::post('pdv/pagamento/preparar', [VendaController::class, 'prepararPagamento'])->name('vendas.preparar-pagamento');
         Route::get('pdv/pagamento', [VendaController::class, 'telaPagamento'])->name('vendas.pagamento');
         Route::get('pdv/venda/{uuid}/comprovante', [FiscalController::class, 'comprovante'])->name('vendas.comprovante');
+        Route::get('pdv/cupons', [CupomFiscalController::class, 'listar'])->name('vendas.cupons');
         Route::get('pdv/venda/{uuid}/cupom-fiscal', [CupomFiscalController::class, 'imprimir'])->name('vendas.cupom-fiscal');
         Route::post('pdv/venda/{uuid}/emitir', [FiscalController::class, 'emitir'])->name('vendas.emitir');
         Route::post('pdv/limpar-sessao', [VendaController::class, 'limparSessaoCarrinho'])->name('vendas.limpar-sessao');

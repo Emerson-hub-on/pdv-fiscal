@@ -82,10 +82,61 @@
                 class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
             Puxar Pedido <span class="opacity-60">F6</span>
         </button>
+        <button onclick="abrirModalReimpressao()"
+                class="bg-sky-500/20 hover:bg-sky-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
+            Reimprimir Cupom <span class="opacity-60">F7</span>
+        </button>
     </div>
 </div>
 
 
+
+<!-- Modal reimprimir cupom fiscal -->
+<div id="modal-reimpressao" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+            <h2 class="text-lg font-bold text-white">Reimprimir Cupom Fiscal</h2>
+            <button onclick="fecharModalReimpressao()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
+        </div>
+
+        <div class="p-6">
+            <div class="flex flex-wrap items-end gap-3 mb-4">
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Nº da NFC-e</label>
+                    <input type="text" id="reimp-numero" inputmode="numeric" autocomplete="off" placeholder="Ex.: 123"
+                           class="w-40 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-slate-800 outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Data da venda</label>
+                    <input type="date" id="reimp-data"
+                           class="border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-slate-800 outline-none transition">
+                </div>
+                <p class="text-xs text-gray-400 flex-1 min-w-48">Com o número da NFC-e a busca ignora a data. Sem número, mostra as vendas da data escolhida.</p>
+            </div>
+
+            <table class="w-full text-sm table-fixed">
+                <colgroup>
+                    <col class="w-[22%]">
+                    <col class="w-[30%]">
+                    <col class="w-[24%]">
+                    <col class="w-[24%]">
+                </colgroup>
+                <thead>
+                    <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
+                        <th class="py-2 px-2">NFC-e / Série</th>
+                        <th class="py-2 px-2">Data e hora</th>
+                        <th class="py-2 px-2 text-right">Total</th>
+                        <th class="py-2 px-2">Situação</th>
+                    </tr>
+                </thead>
+                <tbody id="linhas-reimpressao"></tbody>
+            </table>
+
+            <p id="msg-reimpressao" class="hidden text-sm text-center mt-3"></p>
+            <p class="text-xs text-gray-400 mt-3">Use ↑ ↓ para navegar e Enter (ou clique) para escolher o cupom.</p>
+        </div>
+    </div>
+</div>
 
 <!-- Modal puxar pedido de venda -->
 <div id="modal-pedidos" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
@@ -462,6 +513,7 @@
 @endsection
 
 @section('scripts')
+<script src="{{ asset('js/cupom-fiscal.js') }}"></script>
 
 
 @php
@@ -688,6 +740,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'F3') { e.preventDefault(); toggleDropdownCancelamento(); }
     if (e.key === 'F4') { e.preventDefault(); abrirModalDescontoItem(); }
     if (e.key === 'F6') { e.preventDefault(); abrirModalPedidos(); }
+    if (e.key === 'F7') { e.preventDefault(); abrirModalReimpressao(); }
     if (e.key === 'Escape') { fecharTodosModais(); }
 });
 
@@ -857,6 +910,7 @@ function fecharTodosModais() {
         'modal-busca-produto',
         'modal-balanca',
         'modal-pedidos',
+        'modal-reimpressao',
     ];
 
     idsModais.forEach(id => {
@@ -2013,6 +2067,144 @@ inputBuscaPedido.addEventListener('keydown', (e) => {
         e.preventDefault();
         if (indicePedido >= 0) selecionarPedido(indicePedido);
     }
+});
+
+
+// ---------------------------------------------------------------
+// Reimprimir cupom fiscal (vendas do dia, ou busca pelo nº da NFC-e)
+// ---------------------------------------------------------------
+const inputNumeroCupom = document.getElementById('reimp-numero');
+const inputDataCupom = document.getElementById('reimp-data');
+const linhasReimpressao = document.getElementById('linhas-reimpressao');
+const msgReimpressao = document.getElementById('msg-reimpressao');
+const dataDeHoje = @json(now()->format('Y-m-d'));
+
+let cuponsModal = [];
+let indiceCupom = -1;
+let timeoutBuscaCupom;
+let contadorBuscaCupom = 0;
+let imprimindoCupom = false;
+
+function abrirModalReimpressao() {
+    const modal = document.getElementById('modal-reimpressao');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    inputNumeroCupom.value = '';
+    inputDataCupom.value = dataDeHoje; // por padrão: vendas do dia
+    msgReimpressao.classList.add('hidden');
+    inputNumeroCupom.focus();
+    carregarCupons();
+}
+
+function fecharModalReimpressao() {
+    const modal = document.getElementById('modal-reimpressao');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    cuponsModal = [];
+    indiceCupom = -1;
+    inputBusca.focus();
+}
+
+async function carregarCupons() {
+    const minhaBusca = ++contadorBuscaCupom;
+    const params = new URLSearchParams({
+        numero: inputNumeroCupom.value.trim(),
+        data: inputDataCupom.value || dataDeHoje,
+    });
+
+    try {
+        const resp = await fetch(`{{ route('vendas.cupons') }}?${params}`, { headers: { 'Accept': 'application/json' } });
+        if (!resp.ok) throw new Error(`Erro ${resp.status} ao consultar as vendas.`);
+        const dados = await resp.json();
+
+        if (minhaBusca !== contadorBuscaCupom) return;
+
+        cuponsModal = dados;
+        indiceCupom = dados.length > 0 ? 0 : -1;
+        renderizarCupons();
+    } catch (e) {
+        if (minhaBusca !== contadorBuscaCupom) return;
+        cuponsModal = [];
+        indiceCupom = -1;
+        linhasReimpressao.innerHTML = `<tr><td colspan="4" class="p-3 text-sm text-red-600 text-center">${escPedido(e.message)}</td></tr>`;
+    }
+}
+
+function renderizarCupons() {
+    if (cuponsModal.length === 0) {
+        linhasReimpressao.innerHTML = '<tr><td colspan="4" class="p-3 text-sm text-gray-400 text-center">Nenhuma NFC-e encontrada.</td></tr>';
+        return;
+    }
+
+    linhasReimpressao.innerHTML = cuponsModal.map((c, index) => {
+        const destacado = index === indiceCupom;
+        const [dia, hora] = String(c.vendida_em).replace('T', ' ').split(' ');
+        const dataHora = dia.split('-').reverse().join('/') + ' ' + (hora ?? '').slice(0, 5);
+        const total = 'R$ ' + Number(c.total).toFixed(2).replace('.', ',');
+        const situacao = c.status_fiscal === 'contingencia'
+            ? '<span class="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-800">Contingência</span>'
+            : '<span class="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-100 text-green-700">Autorizada</span>';
+
+        return `
+            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
+                onclick="selecionarCupom(${index})">
+                <td class="py-3 px-2 font-mono font-medium">${escPedido(c.numero_nfce)} / ${escPedido(c.serie_nfce)}</td>
+                <td class="py-3 px-2 whitespace-nowrap">${dataHora}</td>
+                <td class="py-3 px-2 text-right font-semibold whitespace-nowrap">${total}</td>
+                <td class="py-3 px-2">${situacao}</td>
+            </tr>
+        `;
+    }).join('');
+
+    linhasReimpressao.children[indiceCupom]?.scrollIntoView({ block: 'nearest' });
+}
+
+async function selecionarCupom(index) {
+    const c = cuponsModal[index];
+    if (!c || imprimindoCupom) return;
+
+    if (!confirm(`Deseja imprimir o cupom da NFC-e nº ${c.numero_nfce}?`)) return;
+
+    imprimindoCupom = true;
+    msgReimpressao.className = 'text-sm text-center mt-3 text-gray-600';
+    msgReimpressao.innerText = 'Imprimindo cupom fiscal...';
+
+    try {
+        await imprimirCupomFiscal(c.uuid);
+        msgReimpressao.className = 'text-sm text-center mt-3 text-green-700';
+        msgReimpressao.innerText = `✓ Cupom da NFC-e nº ${c.numero_nfce} enviado para a impressora.`;
+    } catch (e) {
+        msgReimpressao.className = 'text-sm text-center mt-3 text-red-600';
+        msgReimpressao.innerText = 'Não foi possível imprimir o cupom: ' + e.message;
+    } finally {
+        imprimindoCupom = false;
+    }
+}
+
+inputNumeroCupom.addEventListener('input', () => {
+    clearTimeout(timeoutBuscaCupom);
+    timeoutBuscaCupom = setTimeout(carregarCupons, 300);
+});
+inputDataCupom.addEventListener('change', carregarCupons);
+
+[inputNumeroCupom, inputDataCupom].forEach((campo) => {
+    campo.addEventListener('keydown', (e) => {
+        if (cuponsModal.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            indiceCupom = (indiceCupom + 1) % cuponsModal.length;
+            renderizarCupons();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            indiceCupom = (indiceCupom - 1 + cuponsModal.length) % cuponsModal.length;
+            renderizarCupons();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (indiceCupom >= 0) selecionarCupom(indiceCupom);
+        }
+    });
 });
 
 renderizarCarrinho();
