@@ -105,6 +105,11 @@
         @if ($status === 'emitida')
             <p class="text-green-700 text-sm mb-2">✓ Cupom fiscal emitido</p>
             <p class="text-xs text-gray-500 break-all">Chave: {{ $chave_nfe }}</p>
+            <button id="btn-reimprimir" onclick="reimprimirCupom()"
+                    class="w-full mt-4 border border-gray-300 hover:bg-gray-50 text-gray-700 py-2.5 rounded font-medium text-sm">
+                Imprimir cupom fiscal
+            </button>
+            <p id="msg-impressao" class="text-sm mt-3 text-center hidden"></p>
         @elseif ($status !== 'aguardando_sincronizacao')
             <button id="btn-emitir" onclick="emitirCupom()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded font-bold">
                 Emitir Cupom Fiscal
@@ -115,14 +120,48 @@
 @endsection
 
 @section('scripts')
+<script src="{{ asset('js/cupom-fiscal.js') }}"></script>
 <script>
+const uuidVenda = @json(request()->route('uuid'));
+let ocupado = false; // emitindo/imprimindo: Enter não troca de tela
+
+// Imprime o cupom e mostra o resultado na mensagem informada
+async function imprimirComMensagem(msg) {
+    msg.className = 'text-sm mt-1 text-center text-gray-600';
+    msg.innerText = 'Imprimindo cupom fiscal...';
+    msg.classList.remove('hidden');
+
+    try {
+        await imprimirCupomFiscal(uuidVenda);
+        msg.innerText = '✓ Cupom fiscal enviado para a impressora.';
+        msg.className = 'text-sm mt-1 text-center text-green-700';
+    } catch (e) {
+        msg.innerText = 'Não foi possível imprimir o cupom: ' + e.message;
+        msg.className = 'text-sm mt-1 text-center text-red-600';
+    }
+}
+
+async function reimprimirCupom() {
+    const btn = document.getElementById('btn-reimprimir');
+    const msg = document.getElementById('msg-impressao');
+
+    ocupado = true;
+    btn.disabled = true;
+    await imprimirComMensagem(msg);
+    btn.disabled = false;
+    ocupado = false;
+}
+
 async function emitirCupom() {
     const btn = document.getElementById('btn-emitir');
     const msg = document.getElementById('msg-emissao');
 
+    ocupado = true;
     btn.disabled = true;
     btn.innerText = 'Processando...';
     msg.classList.add('hidden');
+
+    let imprimir = false;
 
     try {
         const resp = await fetch('{{ route("vendas.emitir", request()->route("uuid")) }}', {
@@ -140,9 +179,11 @@ async function emitirCupom() {
             msg.innerText = resultado.ja_emitida
                 ? 'Esta venda já havia sido emitida.'
                 : '✓ Cupom fiscal emitido com sucesso!';
+            imprimir = !resultado.ja_emitida; // nota autorizada agora: imprime
         } else if (resultado.contingencia) {
             msg.className = 'text-sm mt-3 text-center text-orange-600';
             msg.innerText = 'Sem conexão no momento. Venda será emitida em contingência assim que possível.';
+            imprimir = true; // contingência: o cupom sai (em 2 vias) com o aviso de pendente de autorização
         } else {
             msg.className = 'text-sm mt-3 text-center text-red-600';
             msg.innerText = resultado.erro;
@@ -155,6 +196,12 @@ async function emitirCupom() {
         msg.classList.remove('hidden');
     }
 
+    if (imprimir) {
+        const msgImpressao = document.createElement('p');
+        msg.insertAdjacentElement('afterend', msgImpressao);
+        await imprimirComMensagem(msgImpressao); // só segue quando a impressão terminar
+    }
+
     // Volta pra tela de nova venda automaticamente, dando tempo do operador ler a mensagem
     setTimeout(() => {
         window.location.href = '{{ route("vendas.pdv") }}';
@@ -165,6 +212,7 @@ async function emitirCupom() {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
         e.preventDefault();
+        if (ocupado) return; // não sai da tela no meio da emissão ou da impressão
         window.location.href = '{{ route("vendas.pdv") }}';
     }
 });
