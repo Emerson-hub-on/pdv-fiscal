@@ -16,6 +16,6 @@ class CupomFiscalController extends Controller
             abort(422, $e->getMessage());
         }
 
-        return view('caixa.cupom-fiscal', ['c' => $cupom]);
+        return view('vendas.cupom-fiscal', ['c' => $cupom]);
     }
 }
