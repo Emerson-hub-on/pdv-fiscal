@@ -43,8 +43,24 @@
 @endphp
 
 @if ($errors->any())
+    @php
+        $camposPorAba = [
+            'cabecalho'   => ['data_abertura', 'previsao_entrega', 'operador_id', 'tecnico_id', 'cliente_id', 'status', 'prioridade', 'garantia_dias'],
+            'equipamento' => ['equipamento', 'marca', 'modelo', 'numero_serie', 'acessorios', 'defeito_relatado', 'condicao_entrada'],
+            'laudo'       => ['laudo_tecnico', 'servico_executado'],
+            'valores'     => ['valor_servico', 'desconto', 'forma_pagamento_id'],
+        ];
+        $abaComErro = null;
+        foreach ($camposPorAba as $aba => $campos) {
+            if ($errors->hasAny($campos)) { $abaComErro = $aba; break; }
+        }
+        if (! $abaComErro && collect($errors->keys())->contains(fn ($k) => str_starts_with($k, 'itens'))) {
+            $abaComErro = 'pecas';
+        }
+    @endphp
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            @if ($abaComErro) trocarTab({{ Illuminate\Support\Js::from($abaComErro) }}); @endif
             mostrarAviso({{ Illuminate\Support\Js::from($errors->all()) }}.join('\n'), 'erro');
         });
     </script>
@@ -56,9 +72,10 @@
     @csrf
     @if ($ehEdicao) @method('PUT') @endif
 
-    {{-- ===================== Cabeçalho da OS ===================== --}}
-    <div class="bg-white rounded-lg shadow p-6">
-        <div class="flex items-center gap-3 mb-4">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+
+        {{-- Título --}}
+        <div class="flex items-center gap-3 px-6 pt-6 pb-4">
             <a href="{{ route('ordens-servico.index') }}" title="Voltar para Ordens de Serviço"
                class="text-gray-500 hover:text-gray-800 transition">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -70,7 +87,32 @@
             </h1>
         </div>
 
-        <div class="flex flex-col gap-4">
+        {{-- Tabs --}}
+        <div class="flex border-b border-gray-200 overflow-x-auto">
+            <button type="button" onclick="trocarTab('cabecalho')" id="tab-btn-cabecalho"
+                    class="tab-btn px-6 py-4 text-sm font-medium border-b-2 border-blue-600 text-blue-600 transition whitespace-nowrap">
+                Cabeçalho
+            </button>
+            <button type="button" onclick="trocarTab('equipamento')" id="tab-btn-equipamento"
+                    class="tab-btn px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition whitespace-nowrap">
+                Equipamento
+            </button>
+            <button type="button" onclick="trocarTab('laudo')" id="tab-btn-laudo"
+                    class="tab-btn px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition whitespace-nowrap">
+                Laudo técnico
+            </button>
+            <button type="button" onclick="trocarTab('pecas')" id="tab-btn-pecas"
+                    class="tab-btn px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition whitespace-nowrap">
+                Peças
+            </button>
+            <button type="button" onclick="trocarTab('valores')" id="tab-btn-valores"
+                    class="tab-btn px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition whitespace-nowrap">
+                Valores
+            </button>
+        </div>
+
+        {{-- Tab: Cabeçalho --}}
+        <div id="tab-cabecalho" class="tab-painel p-6 flex flex-col gap-4">
             <div class="grid grid-cols-3 gap-4">
                 <div>
                     <label class="{{ $labelCls }}">Nº da OS</label>
@@ -182,12 +224,9 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    {{-- ===================== Equipamento e defeito ===================== --}}
-    <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-sm font-semibold mb-4">Equipamento</h2>
-
+        {{-- Tab: Equipamento e defeito --}}
+        <div id="tab-equipamento" class="tab-painel p-6 hidden">
         <div class="flex flex-col gap-4">
             <div class="grid grid-cols-4 gap-4">
                 <div class="col-span-2">
@@ -242,9 +281,8 @@
         </div>
     </div>
 
-    {{-- ===================== Laudo técnico ===================== --}}
-    <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-sm font-semibold mb-1">Laudo técnico e serviço executado</h2>
+        {{-- Tab: Laudo técnico --}}
+        <div id="tab-laudo" class="tab-painel p-6 hidden">
         <p class="text-xs text-gray-500 mb-4">Preenchidos pelo técnico durante a análise e o reparo. Podem ficar em branco na abertura da OS.</p>
 
         <div class="grid grid-cols-2 gap-4">
@@ -265,11 +303,10 @@
         </div>
     </div>
 
-    {{-- ===================== Peças ===================== --}}
-    <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-sm font-semibold mb-1">Peças para troca <span class="text-gray-400 font-normal">(opcional)</span></h2>
+        {{-- Tab: Peças --}}
+        <div id="tab-pecas" class="tab-painel p-6 hidden">
         <p class="text-xs text-gray-500 mb-4">
-            Se o equipamento precisar de peças, leia o código de barras e tecle Enter, ou comece a digitar a descrição para buscar o produto. Só produtos cadastrados podem ser incluídos.
+            Opcional: se o equipamento precisar de peças, leia o código de barras e tecle Enter, ou comece a digitar a descrição para buscar o produto. Só produtos cadastrados podem ser incluídos.
         </p>
 
         {{-- Linha de inclusão --}}
@@ -334,9 +371,8 @@
         @endforeach
     </div>
 
-    {{-- ===================== Valores ===================== --}}
-    <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-sm font-semibold mb-4">Valores</h2>
+        {{-- Tab: Valores --}}
+        <div id="tab-valores" class="tab-painel p-6 hidden">
 
         <div class="grid grid-cols-3 gap-4 mb-5">
             <div>
@@ -374,15 +410,21 @@
                 <dd id="total-os" class="text-lg font-semibold text-gray-900">R$ 0,00</dd>
             </div>
         </dl>
-    </div>
+        </div>
 
-    <div class="flex gap-3">
+    </div>{{-- fim do card com tabs --}}
+
+    <div class="flex items-center gap-3">
         <button type="button" onclick="abrirModalFinalizar()"
                 class="bg-green-700 hover:bg-green-800 text-white rounded-lg px-6 py-2.5 text-sm font-medium">
             {{ $ehEdicao ? 'Salvar alterações' : 'Abrir ordem de serviço' }}
         </button>
         <a href="{{ route('ordens-servico.index') }}"
            class="border border-gray-300 rounded-lg px-6 py-2.5 text-sm hover:bg-gray-50">Cancelar</a>
+
+        <p class="ml-auto text-sm text-gray-600">Total da OS:
+            <span id="total-os-rodape" class="text-lg font-semibold text-gray-900">R$ 0,00</span>
+        </p>
     </div>
 </form>
 
@@ -498,6 +540,7 @@ function atualizarTotais() {
     document.getElementById('resumo-servico').textContent  = brl(numero('campo-valor-servico'));
     document.getElementById('resumo-desconto').textContent = '- ' + brl(numero('campo-desconto'));
     document.getElementById('total-os').textContent        = brl(totalOS());
+    document.getElementById('total-os-rodape').textContent = brl(totalOS());
 }
 
 let itens = itensIniciais.map(i => ({ ...i }));
@@ -514,6 +557,27 @@ function mostrarAviso(mensagem, tipo = 'erro') {
     div.textContent = mensagem;
     area.appendChild(div);
     setTimeout(() => div.remove(), 8000);
+}
+
+// ---------------------------------------------------------------
+// Tabs
+// ---------------------------------------------------------------
+function trocarTab(tab) {
+    document.querySelectorAll('.tab-painel').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('border-blue-600', 'text-blue-600');
+        b.classList.add('border-transparent', 'text-gray-500');
+    });
+    document.getElementById('tab-' + tab).classList.remove('hidden');
+    const btn = document.getElementById('tab-btn-' + tab);
+    btn.classList.add('border-blue-600', 'text-blue-600');
+    btn.classList.remove('border-transparent', 'text-gray-500');
+}
+
+// mostra o aviso já na aba onde está o campo com problema
+function avisarNaAba(aba, mensagem) {
+    trocarTab(aba);
+    mostrarAviso(mensagem);
 }
 
 // Enter dentro de um input nunca envia o formulário (o leitor de código de barras manda Enter)
@@ -961,15 +1025,15 @@ inputBuscaCliente?.addEventListener('keydown', (e) => {
 const modalFinalizar = document.getElementById('modal-finalizar');
 
 function abrirModalFinalizar() {
-    if (!document.getElementById('campo-data-abertura').value)       return mostrarAviso('Informe a data de abertura.');
-    if (!document.getElementById('campo-operador').value)            return mostrarAviso('Selecione o operador.');
-    if (!document.getElementById('campo-cliente').value)             return mostrarAviso('Selecione o cliente.');
-    if (!document.getElementById('campo-equipamento').value.trim())  return mostrarAviso('Informe o equipamento.');
-    if (!document.getElementById('campo-defeito').value.trim())      return mostrarAviso('Descreva o defeito relatado pelo cliente.');
+    if (!document.getElementById('campo-data-abertura').value)       return avisarNaAba('cabecalho', 'Informe a data de abertura.');
+    if (!document.getElementById('campo-operador').value)            return avisarNaAba('cabecalho', 'Selecione o operador.');
+    if (!document.getElementById('campo-cliente').value)             return avisarNaAba('cabecalho', 'Selecione o cliente.');
+    if (!document.getElementById('campo-equipamento').value.trim())  return avisarNaAba('equipamento', 'Informe o equipamento.');
+    if (!document.getElementById('campo-defeito').value.trim())      return avisarNaAba('equipamento', 'Descreva o defeito relatado pelo cliente.');
 
-    if (itens.some(i => !(parseFloat(i.quantidade) > 0))) return mostrarAviso('A quantidade de cada peça deve ser maior que zero.');
+    if (itens.some(i => !(parseFloat(i.quantidade) > 0))) return avisarNaAba('pecas', 'A quantidade de cada peça deve ser maior que zero.');
     if (numero('campo-desconto') > totalPedido() + numero('campo-valor-servico')) {
-        return mostrarAviso('O desconto não pode ser maior que o total de peças e serviços.');
+        return avisarNaAba('valores', 'O desconto não pode ser maior que o total de peças e serviços.');
     }
 
     const pecas = itens.length === 0 ? 'sem peças' : `${itens.length} ${itens.length === 1 ? 'peça' : 'peças'}`;
@@ -1001,5 +1065,5 @@ document.getElementById('form-os').addEventListener('submit', () => {
 });
 
 renderizarItens();
-document.getElementById('campo-equipamento').focus();
+document.getElementById('campo-data-abertura').focus();
 </script>
