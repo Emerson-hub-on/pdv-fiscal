@@ -1,6 +1,33 @@
 @php $produto = $produto ?? null; @endphp
 
 @php
+    $unidades = $unidades ?? \App\Models\Unidade::ativas()->orderBy('sigla')->get();
+    $siglaComercial = old('unidade_comercial', $produto->unidade_comercial ?? 'UN');
+    $siglaTributavel = old('unidade_tributavel', $produto->unidade_tributavel ?? 'UN');
+
+    // unidade inativada depois do cadastro continua aparecendo no produto que já a usa
+    foreach (array_unique([$siglaComercial, $siglaTributavel]) as $sigla) {
+        if ($sigla && ! $unidades->contains('sigla', $sigla)) {
+            $unidades = $unidades->push(\App\Models\Unidade::where('sigla', $sigla)->first()
+                ?? new \App\Models\Unidade(['sigla' => $sigla, 'descricao' => $sigla, 'permite_fracionado' => false]));
+        }
+    }
+
+    $permiteFracionado = (bool) $unidades->firstWhere('sigla', $siglaComercial)?->permite_fracionado;
+    $passoQtd = $permiteFracionado ? '0.001' : '1';
+    $fmtQtd = fn ($v) => rtrim(rtrim(number_format((float) $v, 3, '.', ''), '0'), '.') ?: '0';
+
+    $rotuloUnidade = function ($sigla) use ($unidades) {
+        $un = $unidades->firstWhere('sigla', $sigla);
+
+        return $un
+            ? $un->sigla . ' — ' . $un->descricao . ($un->permite_fracionado ? ' (fracionada)' : '')
+            : 'Clique para selecionar...';
+    };
+    $fracTributavel = (bool) $unidades->firstWhere('sigla', $siglaTributavel)?->permite_fracionado;
+@endphp
+
+@php
     $ncmSelecionado = old('ncm_id')
         ? \App\Models\Ncm::find(old('ncm_id'))
         : $produto?->ncm;
@@ -243,14 +270,20 @@
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Unidade comercial <span class="text-red-500">*</span></label>
-            <input type="text" name="unidade_comercial" maxlength="6" value="{{ old('unidade_comercial', $produto->unidade_comercial ?? 'UN') }}" required
-                   class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+            <input type="hidden" name="unidade_comercial" id="unidade_comercial" value="{{ $siglaComercial }}" data-fracionado="{{ $permiteFracionado ? 1 : 0 }}">
+            <button type="button" onclick="abrirModalUnidade('unidade_comercial')"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                <span id="unidade_comercial_label" class="text-gray-600">{{ $rotuloUnidade($siglaComercial) }}</span>
+            </button>
         </div>
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Unidade tributável <span class="text-red-500">*</span></label>
-            <input type="text" name="unidade_tributavel" maxlength="6" value="{{ old('unidade_tributavel', $produto->unidade_tributavel ?? 'UN') }}" required
-                   class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+            <input type="hidden" name="unidade_tributavel" id="unidade_tributavel" value="{{ $siglaTributavel }}" data-fracionado="{{ $fracTributavel ? 1 : 0 }}">
+            <button type="button" onclick="abrirModalUnidade('unidade_tributavel')"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                <span id="unidade_tributavel_label" class="text-gray-600">{{ $rotuloUnidade($siglaTributavel) }}</span>
+            </button>
         </div>
 
         <div>
@@ -300,12 +333,14 @@
         <div id="bloco-estoque-simples" class="col-span-2 grid grid-cols-2 gap-5 {{ old('tem_variacao', $produto->tem_variacao ?? false) ? 'hidden' : '' }}">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Estoque</label>
-                <input type="number" name="estoque" value="{{ old('estoque', $produto->estoque ?? 0) }}"
+                <input type="number" name="estoque" min="0" step="{{ $passoQtd }}" data-qtd-fracionada
+                       value="{{ old('estoque', $fmtQtd($produto->estoque ?? 0)) }}"
                        class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Estoque mínimo</label>
-                <input type="number" name="estoque_minimo" value="{{ old('estoque_minimo', $produto->estoque_minimo ?? 0) }}"
+                <input type="number" name="estoque_minimo" min="0" step="{{ $passoQtd }}" data-qtd-fracionada
+                       value="{{ old('estoque_minimo', $fmtQtd($produto->estoque_minimo ?? 0)) }}"
                        class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
             </div>
         </div>
@@ -385,7 +420,7 @@
                 A partir de
                 <span id="unidade-atacado-label" class="text-gray-400 font-normal">({{ $produto->unidade_comercial ?? 'UN' }})</span>
             </label>
-            <input type="number" step="0.001" name="quantidade_minima_atacado"
+            <input type="number" step="{{ $passoQtd }}" min="0" data-qtd-fracionada name="quantidade_minima_atacado"
                    value="{{ old('quantidade_minima_atacado', $produto->quantidade_minima_atacado ?? '') }}"
                    placeholder="Ex: 10"
                    class="w-full max-w-xs border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
@@ -657,12 +692,12 @@ const validacoes = [
     {
         mensagem: 'O campo <strong>Unidade comercial</strong> é obrigatório. Preencha em <em>Dados Fiscais</em>.',
         tab: 'fiscal',
-        checar: () => !document.querySelector('input[name="unidade_comercial"]').value.trim(),
+        checar: () => !document.querySelector('[name="unidade_comercial"]').value.trim(),
     },
     {
         mensagem: 'O campo <strong>Unidade tributável</strong> é obrigatório. Preencha em <em>Dados Fiscais</em>.',
         tab: 'fiscal',
-        checar: () => !document.querySelector('input[name="unidade_tributavel"]').value.trim(),
+        checar: () => !document.querySelector('[name="unidade_tributavel"]').value.trim(),
     },
     {
         mensagem: 'O campo <strong>Preço de venda</strong> é obrigatório. Preencha em <em>Preço e Estoque</em>.',
@@ -694,10 +729,31 @@ function salvarProduto() {
     document.querySelector('form').submit();
 }
 
+// ===================== UNIDADE FRACIONADA =====================
+
+// Unidade comercial marcada como "fracionada": estoque com até 3 casas; senão só inteiro
+function unidadePermiteFracionado() {
+    return document.getElementById('unidade_comercial')?.dataset.fracionado === '1';
+}
+
+function passoQuantidade() {
+    return unidadePermiteFracionado() ? '0.001' : '1';
+}
+
+function aplicarUnidadeFracionada() {
+    const passo = passoQuantidade();
+
+    document.querySelectorAll('[data-qtd-fracionada]').forEach(input => {
+        input.step = passo;
+    });
+}
+
+document.querySelector('[name="unidade_comercial"]')?.addEventListener('change', aplicarUnidadeFracionada);
+
 // ===================== BALANÇA =====================
 
 function validarProdutoBalanca(checkbox) {
-    const unidade = document.querySelector('input[name="unidade_comercial"]').value.toUpperCase().trim();
+    const unidade = document.querySelector('[name="unidade_comercial"]').value.toUpperCase().trim();
     if (checkbox.checked && unidade !== 'KG') {
         checkbox.checked = false;
         document.getElementById('aviso-balanca').classList.remove('hidden');
@@ -705,9 +761,9 @@ function validarProdutoBalanca(checkbox) {
     }
 }
 
-document.querySelector('input[name="unidade_comercial"]')?.addEventListener('input', () => {
+document.querySelector('[name="unidade_comercial"]')?.addEventListener('input', () => {
     const checkbox = document.getElementById('produto_balanca');
-    const unidade = document.querySelector('input[name="unidade_comercial"]').value.toUpperCase().trim();
+    const unidade = document.querySelector('[name="unidade_comercial"]').value.toUpperCase().trim();
     if (checkbox.checked && unidade !== 'KG') {
         checkbox.checked = false;
         document.getElementById('aviso-balanca').classList.remove('hidden');
@@ -756,11 +812,11 @@ function adicionarLinhaVariante(cor = '', tamanho = '', estoque = 0, estoqueMini
                   class="font-mono text-sm text-gray-600">${codigoBarras || codigoInterno || 'Gerado ao salvar'}</span>
         </td>
         <td class="px-3 py-2">
-            <input type="number" name="variantes[${i}][estoque]" value="${estoque}"
+            <input type="number" name="variantes[${i}][estoque]" value="${estoque}" min="0" step="${passoQuantidade()}" data-qtd-fracionada
                    class="w-20 border border-gray-200 rounded px-2 py-1 text-sm">
         </td>
         <td class="px-3 py-2">
-            <input type="number" name="variantes[${i}][estoque_minimo]" value="${estoqueMinimo}"
+            <input type="number" name="variantes[${i}][estoque_minimo]" value="${estoqueMinimo}" min="0" step="${passoQuantidade()}" data-qtd-fracionada
                    class="w-20 border border-gray-200 rounded px-2 py-1 text-sm">
         </td>
         <td class="px-3 py-2">
@@ -785,8 +841,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     // EAN real aparece no campo; o código interno gerado aparece só como legenda
                     'codigo_barras' => $v->codigo_barras_valido ? $v->codigo_barras : '',
                     'codigo_interno' => $v->codigo_barras_valido ? '' : $v->codigo_barras,
-                    'estoque' => $v->estoque,
-                    'estoque_minimo' => $v->estoque_minimo,
+                    'estoque' => (float) $v->estoque,
+                    'estoque_minimo' => (float) $v->estoque_minimo,
                 ])->values()->all()
                 : []);
     @endphp
@@ -817,7 +873,7 @@ function toggleAtacadoPrazo(ativo) {
  
 // Mantém o label "A partir de (UN)" sincronizado com a Unidade comercial da aba Dados Fiscais
 document.addEventListener('DOMContentLoaded', () => {
-    const unidadeInput = document.querySelector('input[name="unidade_comercial"]');
+    const unidadeInput = document.querySelector('[name="unidade_comercial"]');
     const labelUnidade = document.getElementById('unidade-atacado-label');
  
     if (unidadeInput && labelUnidade) {
@@ -825,5 +881,262 @@ document.addEventListener('DOMContentLoaded', () => {
         atualizar();
         unidadeInput.addEventListener('input', atualizar);
     }
+});
+</script>
+
+{{-- ===================== Modal de unidades ===================== --}}
+<div id="modal-unidade" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+            <h2 id="modal-unidade-titulo" class="text-lg font-bold text-white">Selecionar Unidade</h2>
+            <button type="button" onclick="fecharModalUnidade()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
+        </div>
+        <div class="p-6">
+            <input type="text" id="busca-unidade-modal" placeholder="Buscar por sigla ou descrição..." autocomplete="off"
+                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-3 focus:ring-2 focus:ring-slate-800 outline-none transition">
+            <p id="unidade-erro" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3"></p>
+
+            <table class="w-full text-sm table-fixed">
+                <colgroup>
+                    <col class="w-[14%]"><col class="w-[34%]"><col class="w-[30%]"><col class="w-[22%]">
+                </colgroup>
+                <thead>
+                    <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
+                        <th class="py-2 px-2">Sigla</th>
+                        <th class="py-2 px-2">Descrição</th>
+                        <th class="py-2 px-2">Fracionada</th>
+                        <th class="py-2 px-2 text-right">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="linhas-unidades"></tbody>
+            </table>
+            <p class="text-xs text-gray-400 mt-3">
+                Clique na linha para selecionar. Alterar "Fracionada" vale para todos os produtos que usam a unidade.
+            </p>
+        </div>
+    </div>
+</div>
+
+@php
+    // A diretiva de JSON do Blade separa os argumentos por vírgula e quebra com array literal:
+    // os dados são montados aqui e passados já prontos
+    $unidadesParaJs = $unidades->map(fn ($u) => [
+        'id' => $u->id,
+        'sigla' => $u->sigla,
+        'descricao' => $u->descricao,
+        'fracionada' => (bool) $u->permite_fracionado,
+    ])->values();
+    $urlFracionadoUnidade = route('unidades.fracionado', ['unidade' => '__ID__']);
+    $tokenCsrf = csrf_token();
+@endphp
+
+<script>
+const unidadesLista = @json($unidadesParaJs);
+const urlFracionadoUnidade = @json($urlFracionadoUnidade);
+const csrfUnidade = @json($tokenCsrf);
+
+let unidadeAlvo = null;          // 'unidade_comercial' | 'unidade_tributavel'
+let unidadeEditandoId = null;    // linha em modo de edição (toggle)
+let unidadesVisiveis = [];
+let indiceUnidade = -1;
+
+const modalUnidade = document.getElementById('modal-unidade');
+const inputBuscaUnidade = document.getElementById('busca-unidade-modal');
+const linhasUnidades = document.getElementById('linhas-unidades');
+const erroUnidade = document.getElementById('unidade-erro');
+
+const escUn = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+function rotuloDaUnidade(u) {
+    return `${u.sigla} — ${u.descricao}${u.fracionada ? ' (fracionada)' : ''}`;
+}
+
+function mostrarErroUnidade(msg) {
+    erroUnidade.textContent = msg || '';
+    erroUnidade.classList.toggle('hidden', !msg);
+}
+
+function abrirModalUnidade(alvo) {
+    unidadeAlvo = alvo;
+    unidadeEditandoId = null;
+    mostrarErroUnidade('');
+
+    document.getElementById('modal-unidade-titulo').textContent =
+        alvo === 'unidade_comercial' ? 'Selecionar Unidade Comercial' : 'Selecionar Unidade Tributável';
+
+    inputBuscaUnidade.value = '';
+    modalUnidade.classList.remove('hidden');
+    modalUnidade.classList.add('flex');
+    renderizarUnidades();
+    inputBuscaUnidade.focus();
+}
+
+function fecharModalUnidade() {
+    modalUnidade.classList.add('hidden');
+    modalUnidade.classList.remove('flex');
+    unidadeEditandoId = null;
+}
+
+function renderizarUnidades() {
+    const termo = inputBuscaUnidade.value.trim().toLowerCase();
+    const atual = document.getElementById(unidadeAlvo)?.value;
+
+    unidadesVisiveis = unidadesLista.filter(u =>
+        !termo || u.sigla.toLowerCase().includes(termo) || u.descricao.toLowerCase().includes(termo));
+
+    if (unidadesVisiveis.length === 0) {
+        indiceUnidade = -1;
+        linhasUnidades.innerHTML = '<tr><td colspan="4" class="p-3 text-sm text-gray-400 text-center">Nenhuma unidade encontrada.</td></tr>';
+        return;
+    }
+
+    if (indiceUnidade < 0 || indiceUnidade >= unidadesVisiveis.length) indiceUnidade = 0;
+
+    linhasUnidades.innerHTML = unidadesVisiveis.map((u, index) => {
+        const destacado = index === indiceUnidade;
+        const selecionada = u.sigla === atual;
+        const editando = u.id !== null && u.id === unidadeEditandoId;
+
+        const base = `border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}`;
+
+        if (editando) {
+            return `
+                <tr class="border-b border-gray-100 bg-amber-50">
+                    <td class="py-3 px-2 font-mono font-medium">${escUn(u.sigla)}</td>
+                    <td class="py-3 px-2 truncate" title="${escUn(u.descricao)}">${escUn(u.descricao)}</td>
+                    <td class="py-3 px-2">
+                        <label class="inline-flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="toggle-fracionada" class="sr-only peer" ${u.fracionada ? 'checked' : ''}
+                                   onchange="document.getElementById('texto-toggle-fracionada').textContent = this.checked ? 'Sim' : 'Não'">
+                            <span class="relative w-11 h-6 bg-gray-300 rounded-full transition peer-checked:bg-green-600
+                                         after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5
+                                         after:bg-white after:rounded-full after:transition-all peer-checked:after:translate-x-5"></span>
+                            <span id="texto-toggle-fracionada" class="text-sm font-medium text-gray-700">${u.fracionada ? 'Sim' : 'Não'}</span>
+                        </label>
+                    </td>
+                    <td class="py-3 px-2 text-right whitespace-nowrap">
+                        <button type="button" onclick="salvarFracionada(${u.id})" class="text-green-700 font-medium hover:underline mr-2">Salvar</button>
+                        <button type="button" onclick="cancelarEdicaoUnidade()" class="text-gray-500 hover:underline">Cancelar</button>
+                    </td>
+                </tr>`;
+        }
+
+        return `
+            <tr class="cursor-pointer ${base}" onclick="selecionarUnidade('${escUn(u.sigla)}')">
+                <td class="py-3 px-2 font-mono font-medium">${escUn(u.sigla)}${selecionada ? ' ✓' : ''}</td>
+                <td class="py-3 px-2 truncate" title="${escUn(u.descricao)}">${escUn(u.descricao)}</td>
+                <td class="py-3 px-2">${u.fracionada ? 'Sim' : 'Não'}</td>
+                <td class="py-3 px-2 text-right">
+                    ${u.id !== null
+                        ? `<button type="button" onclick="event.stopPropagation(); editarUnidade(${u.id})"
+                                   class="${destacado ? 'text-amber-200' : 'text-gray-600'} hover:underline">Editar</button>`
+                        : ''}
+                </td>
+            </tr>`;
+    }).join('');
+
+    linhasUnidades.children[indiceUnidade]?.scrollIntoView({ block: 'nearest' });
+}
+
+function editarUnidade(id) {
+    mostrarErroUnidade('');
+    unidadeEditandoId = id;
+    renderizarUnidades();
+}
+
+function cancelarEdicaoUnidade() {
+    unidadeEditandoId = null;
+    mostrarErroUnidade('');
+    renderizarUnidades();
+}
+
+async function salvarFracionada(id) {
+    const fracionada = document.getElementById('toggle-fracionada').checked;
+    const unidade = unidadesLista.find(u => u.id === id);
+    if (!unidade) return;
+
+    if (fracionada === unidade.fracionada) {   // nada mudou
+        cancelarEdicaoUnidade();
+        return;
+    }
+
+    try {
+        const resp = await fetch(urlFracionadoUnidade.replace('__ID__', id), {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfUnidade,
+            },
+            body: JSON.stringify({ permite_fracionado: fracionada }),
+        });
+        const json = await resp.json().catch(() => ({}));
+
+        if (!resp.ok) {
+            mostrarErroUnidade(json.message ?? `Erro ${resp.status} ao salvar a unidade.`);
+            return;
+        }
+
+        unidade.fracionada = !!json.permite_fracionado;
+        unidadeEditandoId = null;
+        mostrarErroUnidade('');
+
+        // se a unidade editada é a que está escolhida nos campos, atualiza rótulo e passo do estoque
+        ['unidade_comercial', 'unidade_tributavel'].forEach(campo => {
+            const input = document.getElementById(campo);
+            if (input && input.value === unidade.sigla) {
+                input.dataset.fracionado = unidade.fracionada ? '1' : '0';
+                document.getElementById(campo + '_label').textContent = rotuloDaUnidade(unidade);
+            }
+        });
+        aplicarUnidadeFracionada();
+
+        renderizarUnidades();
+    } catch (e) {
+        mostrarErroUnidade('Falha ao salvar a unidade: ' + e.message);
+    }
+}
+
+function selecionarUnidade(sigla) {
+    const u = unidadesLista.find(x => x.sigla === sigla);
+    const input = document.getElementById(unidadeAlvo);
+    if (!u || !input) return;
+
+    input.value = u.sigla;
+    input.dataset.fracionado = u.fracionada ? '1' : '0';
+    document.getElementById(unidadeAlvo + '_label').textContent = rotuloDaUnidade(u);
+
+    // avisa quem escuta o campo (rótulo do atacado, trava da balança, passo do estoque)
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+
+    fecharModalUnidade();
+}
+
+inputBuscaUnidade.addEventListener('input', () => {
+    indiceUnidade = 0;
+    renderizarUnidades();
+});
+
+inputBuscaUnidade.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { fecharModalUnidade(); return; }
+    if (unidadeEditandoId !== null || unidadesVisiveis.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        indiceUnidade = (indiceUnidade + 1) % unidadesVisiveis.length;
+        renderizarUnidades();
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        indiceUnidade = (indiceUnidade - 1 + unidadesVisiveis.length) % unidadesVisiveis.length;
+        renderizarUnidades();
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (indiceUnidade >= 0) selecionarUnidade(unidadesVisiveis[indiceUnidade].sigla);
+    }
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modalUnidade.classList.contains('hidden')) fecharModalUnidade();
 });
 </script>

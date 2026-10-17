@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CupomFiscalController;
 use App\Http\Controllers\PedidoCaixaController;
 use App\Http\Controllers\ProdutoController;
+use App\Http\Controllers\UnidadeController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\CaixaController;
@@ -119,6 +120,12 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
             Route::get('/produtos/verificar-codigo-barras', [ProdutoController::class, 'verificarCodigoBarras'])
                 ->name('produtos.verificarCodigoBarras');
 
+            Route::resource('unidades', UnidadeController::class)->except(['destroy', 'show']);
+            Route::patch('unidades/{unidade}/toggle-ativo', [UnidadeController::class, 'toggleAtivo'])
+                ->name('unidades.toggle-ativo');
+             Route::patch('unidades/{unidade}/fracionado', [UnidadeController::class, 'atualizarFracionado'])
+                ->name('unidades.fracionado');
+
             Route::get('catalogo/listar', [CatalogoController::class, 'listar'])->name('catalogo.listar');
             Route::post('catalogo/criar', [CatalogoController::class, 'criar'])->name('catalogo.criar');
             Route::post('catalogo/editar', [CatalogoController::class, 'editar'])->name('catalogo.editar');
@@ -221,7 +228,6 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
 
             // ---------------- CONTAS A RECEBER ----------------
             Route::prefix('financeiro')->group(function () {
-                // busca do modal de cliente (antes do resource)
                 Route::get('contas-receber/buscar-cliente', [ContaReceberController::class, 'buscarCliente'])
                     ->name('contas-receber.buscar-cliente');
 
@@ -240,7 +246,6 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
 
             // ---------------- PEDIDOS DE COMPRA ----------------
             Route::prefix('financeiro')->group(function () {
-                // buscas e ações específicas antes do resource
                 Route::get('pedidos-compra/buscar-produto', [PedidoCompraController::class, 'buscarProduto'])
                     ->name('pedidos-compra.buscar-produto');
 
@@ -258,7 +263,6 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
 
             // ---------------- PEDIDOS DE VENDA ----------------
             Route::prefix('pedidos')->group(function () {
-                // buscas e ações específicas antes do resource
                 Route::get('venda/buscar-produto', [PedidoVendaController::class, 'buscarProduto'])
                     ->name('pedidos-venda.buscar-produto');
                 Route::get('venda/{pedido}/imprimir', [PedidoVendaController::class, 'imprimir'])
@@ -274,8 +278,6 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                     ->except(['show', 'destroy']);
             });
 
-            // IMPORTANTE: as buscas precisam vir ANTES do Route::resource, senão
-            // "notasfiscais/buscar-produto" é capturado por "notasfiscais/{notaFiscal}".
             Route::get('notasfiscais/buscar-produto', [NotaFiscalController::class, 'buscarProduto'])
                 ->name('notasfiscais.buscar-produto');
             Route::get('notasfiscais/buscar-cliente', [NotaFiscalController::class, 'buscarCliente'])
@@ -283,7 +285,7 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
             Route::get('notasfiscais/buscar-operador', [NotaFiscalController::class, 'buscarOperador'])
                 ->name('notasfiscais.buscar-operador');
             Route::post('notasfiscais/autorizar-operador', [NotaFiscalController::class, 'autorizarOperador'])
-                ->middleware('throttle:10,1') // evita tentativa em massa de senha
+                ->middleware('throttle:10,1')
                 ->name('notasfiscais.autorizar-operador');
             Route::resource('notasfiscais', NotaFiscalController::class)
                 ->parameters(['notasfiscais' => 'notaFiscal']);
@@ -315,7 +317,6 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
             Route::post('inutilizacao-nfe/executar', [InutilizacaoNfeController::class, 'executar'])
                 ->name('inutilizacao-nfe.executar');
 
-            // Buscas usadas dentro do modal "Confirmar Nota Fiscal" (só leitura)
             Route::get('transportadores/listar', [TransportadorController::class, 'listar'])->name('transportadores.listar');
             Route::get('veiculos/listar', [VeiculoController::class, 'listar'])->name('veiculos.listar');
         });
@@ -368,5 +369,4 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
             Route::get('{perfil}/{usuario}/permissoes', [UsuarioController::class, 'permissoes'])->name('usuarios.permissoes');
             Route::put('{perfil}/{usuario}/permissoes', [UsuarioController::class, 'salvarPermissoes'])->name('usuarios.permissoes.salvar');
             Route::post('{perfil}/vincular', [UsuarioController::class, 'vincular'])->name('usuarios.vincular');
-        
         });

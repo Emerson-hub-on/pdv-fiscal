@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Produto;
 use App\Models\ProdutoVariante;
+use App\Models\Unidade;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
@@ -49,7 +50,9 @@ class ProdutoController extends Controller
     public function create()
     {
         $proximoCodigo = Produto::proximoCodigoInterno();
-        return view('produtos.create', compact('proximoCodigo'));
+        $unidades = Unidade::ativas()->orderBy('sigla')->get();
+
+        return view('produtos.create', compact('proximoCodigo', 'unidades'));
     }
 
 
@@ -159,6 +162,16 @@ class ProdutoController extends Controller
      */
     public function criarAPartirDeDados(array $dados): Produto
     {
+        foreach (['unidade_comercial', 'unidade_tributavel'] as $campo) {
+            $sigla = strtoupper(trim((string) ($dados[$campo] ?? '')));
+            $dados[$campo] = $sigla !== '' ? mb_substr($sigla, 0, 6) : 'UN';
+
+            Unidade::firstOrCreate(
+                ['sigla' => $dados[$campo]],
+                ['descricao' => $dados[$campo], 'permite_fracionado' => false, 'ativo' => true]
+            );
+        }
+
         $request = Request::create('/', 'POST', array_merge($dados, [
             'codigo_interno' => Produto::proximoCodigoInterno(),
             'tem_variacao'   => '0',
@@ -173,7 +186,9 @@ class ProdutoController extends Controller
     public function edit(Produto $produto)
     {
         $produto->load('variantes');
-        return view('produtos.edit', compact('produto'));
+        $unidades = Unidade::ativas()->orderBy('sigla')->get();
+
+        return view('produtos.edit', compact('produto', 'unidades'));
     }
 
     public function update(Request $request, Produto $produto)
@@ -266,8 +281,12 @@ class ProdutoController extends Controller
 
         $linhas = $request->input('variantes', []);
 
+        $regraQtd = $this->regraQuantidade($request);
+
         $request->validate([
             'variantes' => 'nullable|array',
+            'variantes.*.estoque' => ['nullable', 'numeric', 'min:0', $regraQtd],
+            'variantes.*.estoque_minimo' => ['nullable', 'numeric', 'min:0', $regraQtd],
             'variantes.*.codigo_barras' => [
                 'nullable', 'string', 'max:50',
                 function ($attribute, $value, $fail) use ($linhas) {
@@ -314,11 +333,39 @@ class ProdutoController extends Controller
                     }
                 },
             ],
-        ]);
+        ], $this->mensagensQuantidade());
+    }
+
+    /** Unidade comercial fracionada: até 3 casas. Caso contrário, só inteiro. */
+    private function regraQuantidade(Request $request): string
+    {
+        return Unidade::permiteFracionado($request->input('unidade_comercial'))
+            ? 'decimal:0,3'
+            : 'integer';
+    }
+
+    private function mensagensQuantidade(): array
+    {
+        $inteiro = 'A unidade comercial selecionada não permite quantidade fracionada: informe um número inteiro.';
+
+        return [
+            'estoque.integer' => $inteiro,
+            'estoque_minimo.integer' => $inteiro,
+            'quantidade_minima_atacado.integer' => $inteiro,
+            'variantes.*.estoque.integer' => $inteiro,
+            'variantes.*.estoque_minimo.integer' => $inteiro,
+            'estoque.decimal' => 'Use no máximo 3 casas decimais.',
+            'estoque_minimo.decimal' => 'Use no máximo 3 casas decimais.',
+            'quantidade_minima_atacado.decimal' => 'Use no máximo 3 casas decimais.',
+            'variantes.*.estoque.decimal' => 'Use no máximo 3 casas decimais.',
+            'variantes.*.estoque_minimo.decimal' => 'Use no máximo 3 casas decimais.',
+        ];
     }
 
     private function validarProduto(Request $request, $idAtual = null): array
     {
+        $regraQtd = $this->regraQuantidade($request);
+
         $validado = $request->validate([
             'nome' => 'required|string|max:255',
             'descricao' => 'nullable|string',
@@ -374,23 +421,23 @@ class ProdutoController extends Controller
             'pis_cofins_id' => 'nullable|exists:classificacoes_pis_cofins,id',
             'ipi_id' => 'nullable|exists:classificacoes_ipi,id',
             'tributacao_id' => 'required|exists:tributacoes,id',
-            'unidade_comercial' => 'required|string|max:6',
-            'unidade_tributavel' => 'required|string|max:6',
+            'unidade_comercial' => ['required', 'string', 'max:6', Rule::exists('unidades', 'sigla')],
+            'unidade_tributavel' => ['required', 'string', 'max:6', Rule::exists('unidades', 'sigla')],
             'origem_mercadoria' => 'required|integer|between:0,8',
             'preco_venda' => 'required|numeric|min:0',
             'preco_custo' => 'nullable|numeric|min:0',
             'tem_variacao' => 'boolean',
             'produto_balanca' => 'boolean',
-            'estoque' => 'required_if:tem_variacao,false|integer|min:0',
-            'estoque_minimo' => 'nullable|integer|min:0',
+            'estoque' => ['required_if:tem_variacao,false', 'numeric', 'min:0', $regraQtd],
+            'estoque_minimo' => ['nullable', 'numeric', 'min:0', $regraQtd],
  
             // Atacado
             'preco_atacado' => 'nullable|numeric|min:0',
-            'quantidade_minima_atacado' => 'nullable|numeric|min:0',
+            'quantidade_minima_atacado' => ['nullable', 'numeric', 'min:0', $regraQtd],
             'atacado_tem_prazo' => 'boolean',
             'atacado_data_inicio' => 'required_if:atacado_tem_prazo,1|nullable|date',
             'atacado_data_fim' => 'required_if:atacado_tem_prazo,1|nullable|date|after_or_equal:atacado_data_inicio',
-        ]);
+        ], $this->mensagensQuantidade());
  
         // Se o operador desligou o toggle "tem preço de atacado", zera tudo -
         // fica limpo em vez de guardar valores antigos escondidos

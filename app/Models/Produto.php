@@ -47,6 +47,8 @@ class Produto extends Model
         'preco_custo' => 'decimal:2',
         'produto_balanca' => 'boolean',
         'codigo_barras_valido' => 'boolean',
+        'estoque' => 'float',
+        'estoque_minimo' => 'float',
     ];
 
     public function categoria()
@@ -112,11 +114,11 @@ class Produto extends Model
     /**
      * Estoque total do produto, seja simples ou somado das variantes.
      */
-    public function getEstoqueTotalAttribute(): int
+    public function getEstoqueTotalAttribute(): float
     {
-        return $this->tem_variacao
+        return (float) ($this->tem_variacao
             ? $this->variantes()->sum('estoque')
-            : $this->estoque;
+            : $this->estoque);
     }
 
     public function scopeAtivos($query)
