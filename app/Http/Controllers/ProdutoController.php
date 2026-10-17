@@ -50,7 +50,7 @@ class ProdutoController extends Controller
     public function create()
     {
         $proximoCodigo = Produto::proximoCodigoInterno();
-        $unidades = Unidade::ativas()->orderBy('sigla')->get();
+        $unidades = Unidade::ativas()->orderBy('sigla','desc')->get();
 
         return view('produtos.create', compact('proximoCodigo', 'unidades'));
     }
@@ -186,7 +186,7 @@ class ProdutoController extends Controller
     public function edit(Produto $produto)
     {
         $produto->load('variantes');
-        $unidades = Unidade::ativas()->orderBy('sigla')->get();
+        $unidades = Unidade::ativas()->orderBy('sigla','desc')->get();
 
         return view('produtos.edit', compact('produto', 'unidades'));
     }
