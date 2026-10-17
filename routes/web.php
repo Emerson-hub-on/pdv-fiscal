@@ -42,6 +42,7 @@ use App\Http\Controllers\ContaReceberController;
 use App\Http\Controllers\TipoContaReceberController;
 use App\Http\Controllers\PedidoCompraController;
 use App\Http\Controllers\PedidoVendaController;
+use App\Http\Controllers\OrdemServicoController;
 
 
 
@@ -273,6 +274,23 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::resource('venda', PedidoVendaController::class)
                     ->names('pedidos-venda')
                     ->parameters(['venda' => 'pedido'])
+                    ->except(['show', 'destroy']);
+            });
+
+            // ---------------- ORDENS DE SERVIÇO ----------------
+            Route::prefix('pedidos')->group(function () {
+                Route::get('ordem-servico/{ordem}/imprimir', [OrdemServicoController::class, 'imprimir'])
+                    ->name('ordens-servico.imprimir');
+                Route::get('ordem-servico/{ordem}/cupom', [OrdemServicoController::class, 'cupom'])
+                    ->name('ordens-servico.cupom');
+                Route::patch('ordem-servico/{ordem}/status', [OrdemServicoController::class, 'alterarStatus'])
+                    ->name('ordens-servico.status');
+                Route::patch('ordem-servico/{ordem}/cancelar', [OrdemServicoController::class, 'cancelar'])
+                    ->name('ordens-servico.cancelar');
+
+                Route::resource('ordem-servico', OrdemServicoController::class)
+                    ->names('ordens-servico')
+                    ->parameters(['ordem-servico' => 'ordem'])
                     ->except(['show', 'destroy']);
             });
 

@@ -246,6 +246,10 @@
                     class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
                         Pedido de Venda
                     </a>
+                    <a href="{{ route('ordens-servico.index') }}"
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                        Ordem de Serviço
+                    </a>
                 @endif
             </div>
         </div>
@@ -283,6 +287,7 @@
                     'contas-receber' => ['Financeiro', 'Contas a Receber'],
                     'pedidos-compra' => ['Financeiro', 'Pedidos de Compra'],
                     'pedidos-venda' => ['Pedidos', 'Pedido de Venda'],
+                    'ordens-servico' => ['Pedidos', 'Ordem de Serviço'],
                 ];
 
                 $rotaAtual = \Illuminate\Support\Facades\Route::currentRouteName();$prefixoRota = $rotaAtual ? explode('.', $rotaAtual)[0] : null;
