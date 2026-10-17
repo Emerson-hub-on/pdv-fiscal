@@ -191,6 +191,7 @@ class ProdutoController extends Controller
         return view('produtos.edit', compact('produto', 'unidades'));
     }
 
+
     public function update(Request $request, Produto $produto)
     {   
         $this->resolverCodigoBarras($request, $produto);

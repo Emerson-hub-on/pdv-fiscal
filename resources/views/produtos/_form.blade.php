@@ -894,6 +894,44 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="p-6">
             <input type="text" id="busca-unidade-modal" placeholder="Buscar por sigla ou descrição..." autocomplete="off"
                    class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-3 focus:ring-2 focus:ring-slate-800 outline-none transition">
+            <div class="flex justify-end mb-3">
+                <button type="button" id="btn-nova-unidade" onclick="alternarNovaUnidade()"
+                        class="text-sm font-medium text-gray-700 border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50">
+                    + Nova unidade
+                </button>
+            </div>
+
+            <div id="painel-nova-unidade" class="hidden border border-amber-200 bg-amber-50 rounded-lg p-4 mb-3">
+                <div class="grid grid-cols-4 gap-3 items-end">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Sigla *</label>
+                        <input type="text" id="nova-unidade-sigla" maxlength="6" autocomplete="off" style="text-transform: uppercase"
+                               class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm uppercase focus:ring-2 focus:ring-slate-800 outline-none">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Descrição *</label>
+                        <input type="text" id="nova-unidade-descricao" maxlength="60" autocomplete="off"
+                               class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-slate-800 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Fracionada</label>
+                        <label class="inline-flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="toggle-nova-fracionada" class="sr-only peer"
+                                   onchange="document.getElementById('texto-nova-fracionada').textContent = this.checked ? 'Sim' : 'Não'">
+                            <span class="relative w-11 h-6 bg-gray-300 rounded-full transition peer-checked:bg-green-600
+                                         after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5
+                                         after:bg-white after:rounded-full after:transition-all peer-checked:after:translate-x-5"></span>
+                            <span id="texto-nova-fracionada" class="text-sm font-medium text-gray-700">Não</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-3">
+                    <button type="button" onclick="fecharNovaUnidade()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
+                    <button type="button" onclick="salvarNovaUnidade()"
+                            class="bg-gray-700 text-amber-50 rounded-lg px-4 py-1.5 text-sm hover:bg-gray-500">Cadastrar</button>
+                </div>
+            </div>
+
             <p id="unidade-erro" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3"></p>
 
             <table class="w-full text-sm table-fixed">
@@ -927,12 +965,14 @@ document.addEventListener('DOMContentLoaded', () => {
         'fracionada' => (bool) $u->permite_fracionado,
     ])->values();
     $urlFracionadoUnidade = route('unidades.fracionado', ['unidade' => '__ID__']);
+    $urlNovaUnidade = route('unidades.store');
     $tokenCsrf = csrf_token();
 @endphp
 
 <script>
 const unidadesLista = @json($unidadesParaJs);
 const urlFracionadoUnidade = @json($urlFracionadoUnidade);
+const urlNovaUnidade = @json($urlNovaUnidade);
 const csrfUnidade = @json($tokenCsrf);
 
 let unidadeAlvo = null;          // 'unidade_comercial' | 'unidade_tributavel'
@@ -960,6 +1000,7 @@ function abrirModalUnidade(alvo) {
     unidadeAlvo = alvo;
     unidadeEditandoId = null;
     mostrarErroUnidade('');
+    fecharNovaUnidade();
 
     document.getElementById('modal-unidade-titulo').textContent =
         alvo === 'unidade_comercial' ? 'Selecionar Unidade Comercial' : 'Selecionar Unidade Tributável';
@@ -1111,6 +1152,76 @@ function selecionarUnidade(sigla) {
     input.dispatchEvent(new Event('change', { bubbles: true }));
 
     fecharModalUnidade();
+}
+
+function alternarNovaUnidade() {
+    const painel = document.getElementById('painel-nova-unidade');
+    const abrir = painel.classList.contains('hidden');
+
+    mostrarErroUnidade('');
+    unidadeEditandoId = null;
+    renderizarUnidades();
+
+    if (abrir) {
+        painel.classList.remove('hidden');
+        document.getElementById('nova-unidade-sigla').focus();
+    } else {
+        fecharNovaUnidade();
+    }
+}
+
+function fecharNovaUnidade() {
+    document.getElementById('painel-nova-unidade').classList.add('hidden');
+    document.getElementById('nova-unidade-sigla').value = '';
+    document.getElementById('nova-unidade-descricao').value = '';
+    document.getElementById('toggle-nova-fracionada').checked = false;
+    document.getElementById('texto-nova-fracionada').textContent = 'Não';
+}
+
+async function salvarNovaUnidade() {
+    const sigla = document.getElementById('nova-unidade-sigla').value.trim().toUpperCase();
+    const descricao = document.getElementById('nova-unidade-descricao').value.trim();
+    const fracionada = document.getElementById('toggle-nova-fracionada').checked;
+
+    if (!sigla || !descricao) {
+        mostrarErroUnidade('Informe a sigla e a descrição da nova unidade.');
+        return;
+    }
+
+    try {
+        const resp = await fetch(urlNovaUnidade, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfUnidade,
+            },
+            body: JSON.stringify({ sigla, descricao, permite_fracionado: fracionada }),
+        });
+        const json = await resp.json().catch(() => ({}));
+
+        if (!resp.ok) {
+            const primeiroErro = json.errors ? Object.values(json.errors)[0]?.[0] : null;
+            mostrarErroUnidade(primeiroErro ?? json.message ?? `Erro ${resp.status} ao cadastrar a unidade.`);
+            return;
+        }
+
+        unidadesLista.push({
+            id: json.id,
+            sigla: json.sigla,
+            descricao: json.descricao,
+            fracionada: !!json.permite_fracionado,
+        });
+        unidadesLista.sort((a, b) => a.sigla.localeCompare(b.sigla));
+
+        fecharNovaUnidade();
+        mostrarErroUnidade('');
+        inputBuscaUnidade.value = json.sigla;   // deixa a unidade nova à vista para selecionar
+        indiceUnidade = 0;
+        renderizarUnidades();
+    } catch (e) {
+        mostrarErroUnidade('Falha ao cadastrar a unidade: ' + e.message);
+    }
 }
 
 inputBuscaUnidade.addEventListener('input', () => {

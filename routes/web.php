@@ -120,10 +120,8 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
             Route::get('/produtos/verificar-codigo-barras', [ProdutoController::class, 'verificarCodigoBarras'])
                 ->name('produtos.verificarCodigoBarras');
 
-            Route::resource('unidades', UnidadeController::class)->except(['destroy', 'show']);
-            Route::patch('unidades/{unidade}/toggle-ativo', [UnidadeController::class, 'toggleAtivo'])
-                ->name('unidades.toggle-ativo');
-             Route::patch('unidades/{unidade}/fracionado', [UnidadeController::class, 'atualizarFracionado'])
+            Route::post('unidades', [UnidadeController::class, 'store'])->name('unidades.store');
+            Route::patch('unidades/{unidade}/fracionado', [UnidadeController::class, 'atualizarFracionado'])
                 ->name('unidades.fracionado');
 
             Route::get('catalogo/listar', [CatalogoController::class, 'listar'])->name('catalogo.listar');
