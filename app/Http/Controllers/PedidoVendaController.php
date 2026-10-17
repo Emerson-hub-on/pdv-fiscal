@@ -143,7 +143,7 @@ class PedidoVendaController extends Controller
      * Busca de produtos para o modal da linha "Adicionar item".
      * Aceita nome, código interno, código de barras ou referência.
      * Produto com variação aparece uma linha por variação.
-     */
+    */
     public function buscarProduto(Request $request): JsonResponse
     {
         $termo = trim((string) $request->query('termo'));

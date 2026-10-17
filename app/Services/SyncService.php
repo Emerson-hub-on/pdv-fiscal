@@ -878,12 +878,12 @@ class SyncService
                     });
                 }
 
-                // Venda nascida de um pedido: o pedido passa a faturado no servidor (idempotente)
+                // Venda nascida de um pedido: o pedido passa a "emitido" no servidor (idempotente)
                 if (!empty($vendaLocal->pedido_venda_id) && $vendaLocal->status_fiscal !== 'cancelada') {
                     DB::table('pedidos_venda')
                         ->where('id', $vendaLocal->pedido_venda_id)
-                        ->where('status', 'finalizado')
-                        ->update(['status' => 'faturado', 'updated_at' => now()]);
+                        ->where('status', '!=', 'emitido')
+                        ->update(['status' => 'emitido', 'updated_at' => now()]);
                 }
 
                 DB::connection('sqlite_local')->table('vendas_pendentes')

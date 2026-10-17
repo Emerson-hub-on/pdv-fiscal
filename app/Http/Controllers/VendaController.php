@@ -47,8 +47,16 @@ class VendaController extends Controller
 
         $pdvInativo = $this->pdvInativo($caixa);
 
-        return view('vendas.pdv', compact('caixa', 'itensIniciais', 'descontoGlobalInicial', 'liberacoes', 'pdvInativo'));
-        
+        $pedidoVendaIdInicial = $carrinhoSalvo['pedido_venda_id'] ?? null;
+        $pedidoVendaNumeroInicial = $pedidoVendaIdInicial
+            ? DB::connection('sqlite_local')->table('pedidos_venda_cache')
+                ->where('id', $pedidoVendaIdInicial)->value('numero')
+            : null;
+
+        return view('vendas.pdv', compact(
+            'caixa', 'itensIniciais', 'descontoGlobalInicial', 'liberacoes', 'pdvInativo',
+            'pedidoVendaIdInicial', 'pedidoVendaNumeroInicial'
+        ));
         
     }
 
@@ -164,6 +172,7 @@ class VendaController extends Controller
             'desconto_global' => 'required|numeric',
             'total' => 'required|numeric',
             'itens.*.desconto_bruto' => 'nullable|numeric',
+            'pedido_venda_id' => 'nullable|integer',
         ]);
 
         session(['venda_carrinho' => $validado]);
@@ -239,6 +248,9 @@ class VendaController extends Controller
  
     public function finalizar(Request $request)
     {
+        // 1. Lê o ID do pedido da sessão ANTES de ela ser limpa (previne adulteração via request)
+        $pedidoVendaId = session('venda_carrinho.pedido_venda_id');
+
         $validado = $request->validate([
             'itens' => 'required|array|min:1',
             'itens.*.produto_id' => 'required|integer',
@@ -284,7 +296,7 @@ class VendaController extends Controller
 
             // Baixa de estoque, conferências e gravação da venda pendente na MESMA transação:
             // se qualquer conferência falhar, a baixa de estoque é desfeita junto.
-            DB::connection('sqlite_local')->transaction(function () use ($validado, $caixa, $uuid, &$totalComDesconto) {
+            DB::connection('sqlite_local')->transaction(function () use ($validado, $caixa, $uuid, &$totalComDesconto, $pedidoVendaId) {
                 $total = 0;
                 $itensParaSalvar = [];
 
@@ -348,8 +360,27 @@ class VendaController extends Controller
                     throw new \Exception('A soma dos pagamentos é menor que o total da venda.');
                 }
 
+
+                if ($pedidoVendaId) {
+                    $db = DB::connection('sqlite_local');
+
+                    if (! $db->table('pedidos_venda_cache')->where('id', $pedidoVendaId)->exists()) {
+                        throw new \Exception('Pedido não encontrado no caixa. Use "Atualizar Caixa" e tente de novo.');
+                    }
+
+                    $jaUsado = $db->table('vendas_pendentes')
+                        ->where('pedido_venda_id', $pedidoVendaId)
+                        ->where('status_fiscal', '!=', 'cancelada')
+                        ->exists();
+
+                    if ($jaUsado) {
+                        throw new \Exception('Este pedido já foi emitido neste caixa.');
+                    }
+                }
+
                 DB::connection('sqlite_local')->table('vendas_pendentes')->insert([
                     'uuid' => $uuid,
+                    'pedido_venda_id' => $pedidoVendaId, // <--- Vinculando o ID seguro da sessão aqui
                     'caixa_id_central' => $caixa->id_central,
                     'caixa_uuid' => $caixa->uuid,
                     'operador_id_central' => Auth::id(),
@@ -362,6 +393,7 @@ class VendaController extends Controller
                     'pagamentos' => json_encode($validado['pagamentos']),
                     'itens' => json_encode($itensParaSalvar),
                     'status' => 'pendente_sync',
+                    'pedido_venda_id' => $pedidoVendaId,
                     'vendida_em' => now(),
                     'created_at' => now(),
                     'updated_at' => now(),

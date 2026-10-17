@@ -76,11 +76,14 @@ class PedidoCaixaController extends Controller
         $problemas = [];
         foreach ($itens as $i) {
             $p = $produtos->get($i->produto_id);
+            $quantidade = (float) $i->quantidade;
 
             if (!$p || !$p->ativo) {
                 $problemas[] = "• {$i->descricao}: produto inativo ou ausente no caixa";
             } elseif ($i->produto_variante_id && !$variantes->has($i->produto_variante_id)) {
                 $problemas[] = "• {$i->descricao}: variação ausente no caixa";
+            } elseif (!$p->produto_balanca && floor($quantidade) != $quantidade) {
+                $problemas[] = "• {$i->descricao}: quantidade fracionada não é aceita para este produto";
             }
         }
 

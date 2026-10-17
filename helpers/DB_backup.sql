@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS `acessos` (
   CONSTRAINT `acessos_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.acessos: ~8 rows (aproximadamente)
+-- Copiando dados para a tabela pdv_fiscal.acessos: ~13 rows (aproximadamente)
 REPLACE INTO `acessos` (`id`, `user_id`, `tipo_operador_id`, `permissoes`, `ativo`, `created_at`, `updated_at`) VALUES
 	(1, 2, 3, '{"produtos": "consulta"}', 1, '2026-10-05 11:53:15', '2026-10-05 16:19:38'),
 	(2, 4, 1, NULL, 1, '2026-10-05 11:53:15', '2026-10-05 11:53:15'),
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS `cache` (
   KEY `cache_expiration_index` (`expiration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.cache: ~2 rows (aproximadamente)
+-- Copiando dados para a tabela pdv_fiscal.cache: ~10 rows (aproximadamente)
 REPLACE INTO `cache` (`key`, `value`, `expiration`) VALUES
 	('laravel-cache-1b6453892473a467d07372d45eb05abc2031647a', 'i:2;', 1791199272),
 	('laravel-cache-1b6453892473a467d07372d45eb05abc2031647a:timer', 'i:1791199272;', 1791199272),
@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS `cache_locks` (
 -- Copiando estrutura para tabela pdv_fiscal.caixas
 CREATE TABLE IF NOT EXISTS `caixas` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `uuid` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `operador_id` bigint unsigned NOT NULL,
   `pdv_id` bigint unsigned DEFAULT NULL,
   `data_abertura` timestamp NOT NULL,
@@ -99,25 +100,26 @@ CREATE TABLE IF NOT EXISTS `caixas` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `caixas_uuid_unique` (`uuid`),
   KEY `caixas_operador_id_foreign` (`operador_id`),
   KEY `caixas_pdv_id_foreign` (`pdv_id`),
   CONSTRAINT `caixas_operador_id_foreign` FOREIGN KEY (`operador_id`) REFERENCES `users` (`id`),
   CONSTRAINT `caixas_pdv_id_foreign` FOREIGN KEY (`pdv_id`) REFERENCES `pdvs` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.caixas: ~9 rows (aproximadamente)
-REPLACE INTO `caixas` (`id`, `operador_id`, `pdv_id`, `data_abertura`, `valor_abertura`, `data_fechamento`, `valor_fechamento_informado`, `valor_fechamento_esperado`, `status`, `observacao`, `created_at`, `updated_at`) VALUES
-	(1, 1, 1, '2026-07-31 04:51:34', 10.00, '2026-07-31 19:55:42', 31.70, 31.70, 'fechado', NULL, '2026-07-31 04:51:34', '2026-07-31 21:36:23'),
-	(2, 1, 1, '2026-07-31 04:53:44', 10.00, '2026-07-31 19:57:12', 10.00, 10.00, 'fechado', NULL, '2026-07-31 04:53:44', '2026-07-31 21:36:23'),
-	(3, 1, 1, '2026-07-31 04:53:55', 10.00, '2026-07-31 20:22:39', 10.00, 10.00, 'fechado', NULL, '2026-07-31 04:53:55', '2026-07-31 21:36:23'),
-	(4, 1, 1, '2026-07-31 04:53:58', 10.00, '2026-07-31 21:41:56', 10.00, 10.00, 'fechado', NULL, '2026-07-31 04:53:58', '2026-07-31 21:41:56'),
-	(5, 1, 1, '2026-07-31 04:54:09', 10.00, '2026-08-01 01:24:47', 10.00, 10.00, 'fechado', NULL, '2026-07-31 04:54:09', '2026-08-01 01:24:47'),
-	(6, 1, NULL, '2026-08-01 01:27:18', 10.00, '2026-08-01 01:29:41', 10.00, 10.00, 'fechado', NULL, '2026-08-01 01:27:18', '2026-08-01 01:29:41'),
-	(7, 1, 1, '2026-08-01 01:29:46', 10.00, '2026-08-01 04:56:32', 10.00, 10.00, 'fechado', NULL, '2026-08-01 01:29:46', '2026-08-01 04:56:32'),
-	(8, 1, 1, '2026-08-01 04:56:46', 10.00, '2026-08-14 12:34:43', 300.00, 285.64, 'fechado', NULL, '2026-08-01 04:56:46', '2026-08-14 12:34:43'),
-	(9, 1, 1, '2026-08-14 12:34:56', 100.00, NULL, NULL, NULL, 'aberto', NULL, '2026-08-14 12:34:56', '2026-08-14 12:34:56'),
-	(10, 4, 1, '2026-10-03 14:28:36', 2.00, NULL, NULL, NULL, 'aberto', NULL, '2026-10-03 14:28:36', '2026-10-03 14:28:36'),
-	(11, 13, 1, '2026-10-05 17:17:09', 2.00, NULL, NULL, NULL, 'aberto', NULL, '2026-10-05 17:17:09', '2026-10-05 17:17:09');
+-- Copiando dados para a tabela pdv_fiscal.caixas: ~11 rows (aproximadamente)
+REPLACE INTO `caixas` (`id`, `uuid`, `operador_id`, `pdv_id`, `data_abertura`, `valor_abertura`, `data_fechamento`, `valor_fechamento_informado`, `valor_fechamento_esperado`, `status`, `observacao`, `created_at`, `updated_at`) VALUES
+	(1, 'd503d4bc-4dbd-49a6-a012-e707dc3d90ef', 1, 1, '2026-07-31 04:51:34', 10.00, '2026-07-31 19:55:42', 31.70, 31.70, 'fechado', NULL, '2026-07-31 04:51:34', '2026-07-31 21:36:23'),
+	(2, '8aea0dd6-3af9-4ca8-af9a-95a96eaf817b', 1, 1, '2026-07-31 04:53:44', 10.00, '2026-07-31 19:57:12', 10.00, 10.00, 'fechado', NULL, '2026-07-31 04:53:44', '2026-07-31 21:36:23'),
+	(3, '5e3cc19c-9ac9-4353-8180-c5d6e134ebb3', 1, 1, '2026-07-31 04:53:55', 10.00, '2026-07-31 20:22:39', 10.00, 10.00, 'fechado', NULL, '2026-07-31 04:53:55', '2026-07-31 21:36:23'),
+	(4, '988af541-c693-4196-b855-4bc0d9093aef', 1, 1, '2026-07-31 04:53:58', 10.00, '2026-07-31 21:41:56', 10.00, 10.00, 'fechado', NULL, '2026-07-31 04:53:58', '2026-07-31 21:41:56'),
+	(5, '318ee7ef-5647-40a7-a380-6b5a53cec2ba', 1, 1, '2026-07-31 04:54:09', 10.00, '2026-08-01 01:24:47', 10.00, 10.00, 'fechado', NULL, '2026-07-31 04:54:09', '2026-08-01 01:24:47'),
+	(6, '3d33eef9-83d0-460c-bf40-e10dbb411d79', 1, NULL, '2026-08-01 01:27:18', 10.00, '2026-08-01 01:29:41', 10.00, 10.00, 'fechado', NULL, '2026-08-01 01:27:18', '2026-08-01 01:29:41'),
+	(7, '6145e1fc-4a71-4aba-a25b-adf2a2dc2de9', 1, 1, '2026-08-01 01:29:46', 10.00, '2026-08-01 04:56:32', 10.00, 10.00, 'fechado', NULL, '2026-08-01 01:29:46', '2026-08-01 04:56:32'),
+	(8, '7f4448d8-8e76-44a6-b382-652b290a452f', 1, 1, '2026-08-01 04:56:46', 10.00, '2026-08-14 12:34:43', 300.00, 285.64, 'fechado', NULL, '2026-08-01 04:56:46', '2026-08-14 12:34:43'),
+	(9, '158c8c96-1ea4-4561-af5e-131d76fdd33a', 1, 1, '2026-08-14 12:34:56', 100.00, NULL, NULL, NULL, 'aberto', NULL, '2026-08-14 12:34:56', '2026-08-14 12:34:56'),
+	(10, 'bb0a43dc-f3d1-4923-96af-f90bd0d175b3', 4, 1, '2026-10-03 14:28:36', 2.00, NULL, NULL, NULL, 'aberto', NULL, '2026-10-03 14:28:36', '2026-10-03 14:28:36'),
+	(11, 'acd7d90b-668e-4ae7-ad7d-4b865d481876', 13, 1, '2026-10-05 17:17:09', 2.00, NULL, NULL, NULL, 'aberto', NULL, '2026-10-05 17:17:09', '2026-10-05 17:17:09');
 
 -- Copiando estrutura para tabela pdv_fiscal.categorias
 CREATE TABLE IF NOT EXISTS `categorias` (
@@ -129,7 +131,7 @@ CREATE TABLE IF NOT EXISTS `categorias` (
   UNIQUE KEY `categorias_nome_unique` (`nome`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.categorias: ~1 rows (aproximadamente)
+-- Copiando dados para a tabela pdv_fiscal.categorias: ~0 rows (aproximadamente)
 REPLACE INTO `categorias` (`id`, `nome`, `created_at`, `updated_at`) VALUES
 	(1, 'Alimentos', '2026-08-21 11:27:32', '2026-08-21 11:27:32');
 
@@ -2399,13 +2401,152 @@ REPLACE INTO `cest_ncm` (`id`, `cest_id`, `ncm`, `created_at`, `updated_at`) VAL
 	(1222, 1598, '65069900', '2026-08-23 12:51:04', '2026-08-23 12:51:04'),
 	(1223, 1599, '95059000', '2026-08-23 12:51:04', '2026-08-23 12:51:04');
 
+-- Copiando estrutura para tabela pdv_fiscal.cfops_entrada
+CREATE TABLE IF NOT EXISTS `cfops_entrada` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `codigo` char(4) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `descricao` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ativo` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `cfops_entrada_codigo_unique` (`codigo`)
+) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.cfops_entrada: ~22 rows (aproximadamente)
+REPLACE INTO `cfops_entrada` (`id`, `codigo`, `descricao`, `ativo`, `created_at`, `updated_at`) VALUES
+	(1, '1101', 'Compra para industrialização ou produção rural', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(2, '1102', 'Compra para comercialização', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(3, '1401', 'Compra para industrialização ou produção rural em operação com mercadoria sujeita ao regime de substituição tributária', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(4, '1403', 'Compra para comercialização em operação com mercadoria sujeita ao regime de substituição tributária', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(5, '1406', 'Compra de bem para o ativo imobilizado cuja mercadoria está sujeita ao regime de substituição tributária', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(6, '1407', 'Compra de mercadoria para uso ou consumo cuja mercadoria está sujeita ao regime de substituição tributária', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(7, '1551', 'Compra de bem para o ativo imobilizado', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(8, '1556', 'Compra de material para uso ou consumo', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(9, '1910', 'Entrada de bonificação, doação ou brinde', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(10, '1911', 'Entrada de amostra grátis', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(11, '1949', 'Outra entrada de mercadoria ou prestação de serviço não especificada', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(12, '2101', 'Compra para industrialização ou produção rural', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(13, '2102', 'Compra para comercialização', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(14, '2401', 'Compra para industrialização ou produção rural em operação com mercadoria sujeita ao regime de substituição tributária', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(15, '2403', 'Compra para comercialização em operação com mercadoria sujeita ao regime de substituição tributária', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(16, '2406', 'Compra de bem para o ativo imobilizado cuja mercadoria está sujeita ao regime de substituição tributária', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(17, '2407', 'Compra de mercadoria para uso ou consumo cuja mercadoria está sujeita ao regime de substituição tributária', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(18, '2551', 'Compra de bem para o ativo imobilizado', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(19, '2556', 'Compra de material para uso ou consumo', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(20, '2910', 'Entrada de bonificação, doação ou brinde', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(21, '2911', 'Entrada de amostra grátis', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(22, '2949', 'Outra entrada de mercadoria ou prestação de serviço não especificada', 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03');
+
+-- Copiando estrutura para tabela pdv_fiscal.cfop_entrada_conversoes
+CREATE TABLE IF NOT EXISTS `cfop_entrada_conversoes` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `operacao_entrada_id` bigint unsigned NOT NULL,
+  `cfop_origem` char(4) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cfop_entrada_id` bigint unsigned NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `cfop_entrada_conversoes_operacao_entrada_id_cfop_origem_unique` (`operacao_entrada_id`,`cfop_origem`),
+  KEY `cfop_entrada_conversoes_cfop_entrada_id_foreign` (`cfop_entrada_id`),
+  CONSTRAINT `cfop_entrada_conversoes_cfop_entrada_id_foreign` FOREIGN KEY (`cfop_entrada_id`) REFERENCES `cfops_entrada` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `cfop_entrada_conversoes_operacao_entrada_id_foreign` FOREIGN KEY (`operacao_entrada_id`) REFERENCES `operacoes_entrada` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=85 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.cfop_entrada_conversoes: ~79 rows (aproximadamente)
+REPLACE INTO `cfop_entrada_conversoes` (`id`, `operacao_entrada_id`, `cfop_origem`, `cfop_entrada_id`, `created_at`, `updated_at`) VALUES
+	(1, 1, '5101', 2, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(2, 1, '5102', 2, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(3, 1, '6101', 13, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(4, 1, '6102', 13, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(5, 1, '5401', 4, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(6, 1, '5403', 4, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(7, 1, '6401', 15, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(8, 1, '6403', 15, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(9, 2, '5101', 1, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(10, 2, '5102', 1, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(11, 2, '6101', 12, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(12, 2, '6102', 12, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(13, 2, '5401', 3, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(14, 2, '5403', 3, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(15, 2, '6401', 14, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(16, 2, '6403', 14, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(17, 3, '5101', 8, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(18, 3, '5102', 8, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(19, 3, '6101', 19, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(20, 3, '6102', 19, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(21, 3, '5401', 6, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(22, 3, '5403', 6, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(23, 3, '6401', 17, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(24, 3, '6403', 17, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(25, 4, '5101', 7, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(26, 4, '5102', 7, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(27, 4, '6101', 18, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(28, 4, '6102', 18, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(29, 4, '5401', 5, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(30, 4, '5403', 5, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(31, 4, '6401', 16, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(32, 4, '6403', 16, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(33, 5, '5101', 9, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(34, 5, '5102', 9, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(35, 5, '6101', 20, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(36, 5, '6102', 20, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(37, 5, '5401', 9, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(38, 5, '5403', 9, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(39, 5, '6401', 20, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(40, 5, '6403', 20, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(41, 5, '5910', 9, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(42, 5, '6910', 20, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(43, 5, '5949', 9, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(44, 5, '6949', 20, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(45, 6, '5101', 10, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(46, 6, '5102', 10, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(47, 6, '6101', 21, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(48, 6, '6102', 21, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(49, 6, '5401', 10, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(50, 6, '5403', 10, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(51, 6, '6401', 21, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(52, 6, '6403', 21, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(53, 6, '5911', 10, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(54, 6, '6911', 21, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(55, 6, '5949', 10, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(56, 6, '6949', 21, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(57, 7, '5101', 11, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(58, 7, '5102', 11, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(59, 7, '6101', 22, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(60, 7, '6102', 22, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(61, 7, '5401', 11, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(62, 7, '5403', 11, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(63, 7, '6401', 22, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(64, 7, '6403', 22, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(65, 7, '5910', 11, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(66, 7, '6910', 22, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(67, 7, '5911', 11, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(68, 7, '6911', 22, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(69, 7, '5949', 11, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(70, 7, '6949', 22, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(71, 1, '5108', 2, '2026-10-13 17:26:30', '2026-10-13 17:26:30'),
+	(72, 1, '6108', 13, '2026-10-13 17:26:30', '2026-10-13 17:26:30'),
+	(73, 2, '5108', 1, '2026-10-13 17:26:30', '2026-10-13 17:26:30'),
+	(74, 2, '6108', 12, '2026-10-13 17:26:30', '2026-10-13 17:26:30'),
+	(75, 3, '5108', 8, '2026-10-13 17:26:30', '2026-10-13 17:26:30'),
+	(76, 3, '6108', 19, '2026-10-13 17:26:30', '2026-10-13 17:26:30'),
+	(77, 4, '5108', 7, '2026-10-13 17:26:30', '2026-10-13 17:26:30'),
+	(78, 4, '6108', 18, '2026-10-13 17:26:30', '2026-10-13 17:26:30'),
+	(79, 5, '5108', 9, '2026-10-13 17:26:30', '2026-10-13 17:26:30'),
+	(80, 5, '6108', 20, '2026-10-13 17:26:30', '2026-10-13 17:26:30'),
+	(81, 6, '5108', 10, '2026-10-13 17:26:30', '2026-10-13 17:26:30'),
+	(82, 6, '6108', 21, '2026-10-13 17:26:30', '2026-10-13 17:26:30'),
+	(83, 7, '5108', 11, '2026-10-13 17:26:31', '2026-10-13 17:26:31'),
+	(84, 7, '6108', 22, '2026-10-13 17:26:31', '2026-10-13 17:26:31');
+
 -- Copiando estrutura para tabela pdv_fiscal.cfop_saida
 CREATE TABLE IF NOT EXISTS `cfop_saida` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `codigo` varchar(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `descricao` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `tipo_operacao` enum('entrada','saida') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'saida',
-  `natureza_operacao_padrao` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `tipo_operacao` enum('entrada','saida') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'saida',
+  `natureza_operacao_padrao` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `finalidade_padrao` tinyint unsigned NOT NULL DEFAULT '1',
   `ordem` int unsigned DEFAULT NULL,
   `movimenta_estoque` tinyint(1) NOT NULL DEFAULT '1',
@@ -2706,6 +2847,165 @@ REPLACE INTO `clientes` (`id`, `tipo_pessoa`, `nome`, `nome_fantasia`, `cpf_cnpj
 	(3, 'fisica', 'Cliente Teste 3', NULL, '65537687281', 'nao_contribuinte', NULL, NULL, NULL, '58401000', 'Rua teste 3', '123', NULL, 'Bairro teste', 'Campina Grande', '2504009', 'PB', 1, '2026-10-01 16:28:37', '2026-10-01 16:29:38'),
 	(4, 'fisica', 'Cliente teste 4', NULL, '00000000909', 'nao_contribuinte', NULL, NULL, NULL, '56789012', 'Rua Teste 4', '123', NULL, 'Bairro teste 4', NULL, '2504009', 'PE', 1, '2026-10-01 16:29:27', '2026-10-01 16:29:45');
 
+-- Copiando estrutura para tabela pdv_fiscal.contas_pagar
+CREATE TABLE IF NOT EXISTS `contas_pagar` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `tipo_conta_pagar_id` bigint unsigned NOT NULL,
+  `fornecedor_id` bigint unsigned DEFAULT NULL,
+  `entrada_nota_id` bigint unsigned DEFAULT NULL,
+  `descricao` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `numero_documento` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `data_conta` date NOT NULL,
+  `valor_total` decimal(12,2) NOT NULL,
+  `observacao` text COLLATE utf8mb4_unicode_ci,
+  `status` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'aberta',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `contas_pagar_tipo_conta_pagar_id_foreign` (`tipo_conta_pagar_id`),
+  KEY `contas_pagar_fornecedor_id_foreign` (`fornecedor_id`),
+  KEY `contas_pagar_status_index` (`status`),
+  KEY `contas_pagar_data_conta_index` (`data_conta`),
+  KEY `contas_pagar_entrada_nota_id_index` (`entrada_nota_id`),
+  CONSTRAINT `contas_pagar_fornecedor_id_foreign` FOREIGN KEY (`fornecedor_id`) REFERENCES `fornecedores` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `contas_pagar_tipo_conta_pagar_id_foreign` FOREIGN KEY (`tipo_conta_pagar_id`) REFERENCES `tipos_conta_pagar` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.contas_pagar: ~2 rows (aproximadamente)
+REPLACE INTO `contas_pagar` (`id`, `tipo_conta_pagar_id`, `fornecedor_id`, `entrada_nota_id`, `descricao`, `numero_documento`, `data_conta`, `valor_total`, `observacao`, `status`, `created_at`, `updated_at`) VALUES
+	(3, 2, 1, 9, 'NF-e 3325775/1 — TERABYTESHOP', '3325775', '2026-10-14', 752.64, NULL, 'aberta', '2026-10-14 12:02:25', '2026-10-14 12:02:25'),
+	(4, 5, NULL, NULL, 'outros', NULL, '2026-10-14', 250.00, NULL, 'aberta', '2026-10-14 12:03:05', '2026-10-14 12:03:05');
+
+-- Copiando estrutura para tabela pdv_fiscal.contas_pagar_parcelas
+CREATE TABLE IF NOT EXISTS `contas_pagar_parcelas` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `conta_pagar_id` bigint unsigned NOT NULL,
+  `numero` smallint unsigned NOT NULL,
+  `vencimento` date NOT NULL,
+  `valor` decimal(12,2) NOT NULL,
+  `data_pagamento` date DEFAULT NULL,
+  `valor_pago` decimal(12,2) DEFAULT NULL,
+  `forma_pagamento_id` bigint unsigned DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `contas_pagar_parcelas_conta_pagar_id_foreign` (`conta_pagar_id`),
+  KEY `contas_pagar_parcelas_vencimento_data_pagamento_index` (`vencimento`,`data_pagamento`),
+  CONSTRAINT `contas_pagar_parcelas_conta_pagar_id_foreign` FOREIGN KEY (`conta_pagar_id`) REFERENCES `contas_pagar` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.contas_pagar_parcelas: ~4 rows (aproximadamente)
+REPLACE INTO `contas_pagar_parcelas` (`id`, `conta_pagar_id`, `numero`, `vencimento`, `valor`, `data_pagamento`, `valor_pago`, `forma_pagamento_id`, `created_at`, `updated_at`) VALUES
+	(9, 3, 1, '2026-05-01', 250.88, NULL, NULL, NULL, '2026-10-14 12:02:25', '2026-10-14 12:02:25'),
+	(10, 3, 2, '2026-06-01', 250.88, NULL, NULL, NULL, '2026-10-14 12:02:25', '2026-10-14 12:02:25'),
+	(11, 3, 3, '2026-07-01', 250.88, NULL, NULL, NULL, '2026-10-14 12:02:25', '2026-10-14 12:02:25'),
+	(12, 4, 1, '2026-10-30', 250.00, NULL, NULL, NULL, '2026-10-14 12:03:05', '2026-10-14 12:03:05');
+
+-- Copiando estrutura para tabela pdv_fiscal.contas_receber
+CREATE TABLE IF NOT EXISTS `contas_receber` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `tipo_conta_receber_id` bigint unsigned NOT NULL,
+  `cliente_id` bigint unsigned DEFAULT NULL,
+  `venda_id` bigint unsigned DEFAULT NULL,
+  `descricao` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `numero_documento` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `data_conta` date NOT NULL,
+  `valor_total` decimal(12,2) NOT NULL,
+  `observacao` text COLLATE utf8mb4_unicode_ci,
+  `status` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'aberta',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `contas_receber_tipo_conta_receber_id_foreign` (`tipo_conta_receber_id`),
+  KEY `contas_receber_cliente_id_foreign` (`cliente_id`),
+  KEY `contas_receber_status_index` (`status`),
+  KEY `contas_receber_data_conta_index` (`data_conta`),
+  KEY `contas_receber_venda_id_index` (`venda_id`),
+  CONSTRAINT `contas_receber_cliente_id_foreign` FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `contas_receber_tipo_conta_receber_id_foreign` FOREIGN KEY (`tipo_conta_receber_id`) REFERENCES `tipos_conta_receber` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.contas_receber: ~0 rows (aproximadamente)
+
+-- Copiando estrutura para tabela pdv_fiscal.contas_receber_parcelas
+CREATE TABLE IF NOT EXISTS `contas_receber_parcelas` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `conta_receber_id` bigint unsigned NOT NULL,
+  `numero` smallint unsigned NOT NULL,
+  `vencimento` date NOT NULL,
+  `valor` decimal(12,2) NOT NULL,
+  `data_recebimento` date DEFAULT NULL,
+  `valor_recebido` decimal(12,2) DEFAULT NULL,
+  `forma_pagamento_id` bigint unsigned DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `contas_receber_parcelas_conta_receber_id_foreign` (`conta_receber_id`),
+  KEY `contas_receber_parcelas_vencimento_data_recebimento_index` (`vencimento`,`data_recebimento`),
+  CONSTRAINT `contas_receber_parcelas_conta_receber_id_foreign` FOREIGN KEY (`conta_receber_id`) REFERENCES `contas_receber` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.contas_receber_parcelas: ~0 rows (aproximadamente)
+
+-- Copiando estrutura para tabela pdv_fiscal.cst_entrada_conversoes
+CREATE TABLE IF NOT EXISTS `cst_entrada_conversoes` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `regime` enum('simples','normal') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `tipo_origem` enum('cst','csosn') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `codigo_origem` varchar(3) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `codigo_entrada` varchar(3) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `gera_credito` tinyint(1) NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `cst_entrada_conversoes_regime_tipo_origem_codigo_origem_unique` (`regime`,`tipo_origem`,`codigo_origem`)
+) ENGINE=InnoDB AUTO_INCREMENT=43 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.cst_entrada_conversoes: ~42 rows (aproximadamente)
+REPLACE INTO `cst_entrada_conversoes` (`id`, `regime`, `tipo_origem`, `codigo_origem`, `codigo_entrada`, `gera_credito`, `created_at`, `updated_at`) VALUES
+	(1, 'simples', 'cst', '00', '102', 0, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(2, 'simples', 'cst', '10', '500', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(3, 'simples', 'cst', '20', '102', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(4, 'simples', 'cst', '30', '500', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(5, 'simples', 'cst', '40', '400', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(6, 'simples', 'cst', '41', '400', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(7, 'simples', 'cst', '50', '400', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(8, 'simples', 'cst', '51', '900', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(9, 'simples', 'cst', '60', '500', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(10, 'simples', 'cst', '70', '500', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(11, 'simples', 'cst', '90', '900', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(12, 'simples', 'csosn', '101', '102', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(13, 'simples', 'csosn', '102', '102', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(14, 'simples', 'csosn', '103', '400', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(15, 'simples', 'csosn', '201', '500', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(16, 'simples', 'csosn', '202', '500', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(17, 'simples', 'csosn', '203', '500', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(18, 'simples', 'csosn', '300', '300', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(19, 'simples', 'csosn', '400', '400', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(20, 'simples', 'csosn', '500', '500', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(21, 'simples', 'csosn', '900', '900', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(22, 'normal', 'cst', '00', '00', 1, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(23, 'normal', 'cst', '10', '60', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(24, 'normal', 'cst', '20', '20', 1, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(25, 'normal', 'cst', '30', '60', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(26, 'normal', 'cst', '40', '40', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(27, 'normal', 'cst', '41', '41', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(28, 'normal', 'cst', '50', '50', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(29, 'normal', 'cst', '51', '51', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(30, 'normal', 'cst', '60', '60', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(31, 'normal', 'cst', '70', '60', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(32, 'normal', 'cst', '90', '90', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(33, 'normal', 'csosn', '101', '90', 1, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(34, 'normal', 'csosn', '102', '90', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(35, 'normal', 'csosn', '103', '40', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(36, 'normal', 'csosn', '201', '60', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(37, 'normal', 'csosn', '202', '60', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(38, 'normal', 'csosn', '203', '60', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(39, 'normal', 'csosn', '300', '40', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(40, 'normal', 'csosn', '400', '41', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(41, 'normal', 'csosn', '500', '60', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38'),
+	(42, 'normal', 'csosn', '900', '90', 0, '2026-10-13 14:04:38', '2026-10-13 14:04:38');
+
 -- Copiando estrutura para tabela pdv_fiscal.empresa
 CREATE TABLE IF NOT EXISTS `empresa` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -2731,13 +3031,108 @@ CREATE TABLE IF NOT EXISTS `empresa` (
   `ambiente` tinyint unsigned NOT NULL DEFAULT '2',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
+  `entrada_tributacao_padrao_id` bigint unsigned DEFAULT NULL,
+  `entrada_tributacao_st_padrao_id` bigint unsigned DEFAULT NULL,
+  `entrada_pis_cofins_padrao_id` bigint unsigned DEFAULT NULL,
+  `entrada_margem_padrao` decimal(6,2) NOT NULL DEFAULT '0.00',
   PRIMARY KEY (`id`),
   UNIQUE KEY `empresa_cnpj_unique` (`cnpj`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Copiando dados para a tabela pdv_fiscal.empresa: ~1 rows (aproximadamente)
-REPLACE INTO `empresa` (`id`, `cnpj`, `razao_social`, `nome_fantasia`, `ie`, `im`, `crt`, `logradouro`, `numero`, `complemento`, `bairro`, `cep`, `municipio`, `cod_municipio`, `uf`, `certificado_base64`, `certificado_senha`, `certificado_validade`, `serie_nfe`, `numero_atual_nfe`, `ambiente`, `created_at`, `updated_at`) VALUES
-	(1, '24057254000104', 'R B LIMEIRA LTDA', 'GRANJA LETICIA', '162661940', NULL, 1, 'Rua Jornalista Evandro Barros', '246', NULL, 'Malvinas', '58433545', 'Campina Grande', '2504009', 'PB', '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', '12345678', '2027-03-19', 1, 0, 2, '2026-07-31 04:33:46', '2026-09-29 19:20:21');
+REPLACE INTO `empresa` (`id`, `cnpj`, `razao_social`, `nome_fantasia`, `ie`, `im`, `crt`, `logradouro`, `numero`, `complemento`, `bairro`, `cep`, `municipio`, `cod_municipio`, `uf`, `certificado_base64`, `certificado_senha`, `certificado_validade`, `serie_nfe`, `numero_atual_nfe`, `ambiente`, `created_at`, `updated_at`, `entrada_tributacao_padrao_id`, `entrada_tributacao_st_padrao_id`, `entrada_pis_cofins_padrao_id`, `entrada_margem_padrao`) VALUES
+	(1, '24057254000104', 'R B LIMEIRA LTDA', 'GRANJA LETICIA', '162661940', NULL, 1, 'Rua Jornalista Evandro Barros', '246', NULL, 'Malvinas', '58433545', 'Campina Grande', '2504009', 'PB', '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', '12345678', '2027-03-19', 1, 0, 2, '2026-07-31 04:33:46', '2026-10-14 13:37:41', 1, 4, NULL, 30.00);
+
+-- Copiando estrutura para tabela pdv_fiscal.entradas_nota
+CREATE TABLE IF NOT EXISTS `entradas_nota` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `fornecedor_id` bigint unsigned NOT NULL,
+  `user_id` bigint unsigned DEFAULT NULL,
+  `tipo_entrada` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'manual',
+  `status` varchar(12) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'rascunho',
+  `chave_acesso` varchar(44) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `modelo` varchar(2) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '55',
+  `serie` varchar(3) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `numero` varchar(9) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `data_emissao` date NOT NULL,
+  `data_entrada` date NOT NULL,
+  `natureza_operacao` varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `valor_produtos` decimal(14,2) NOT NULL DEFAULT '0.00',
+  `valor_frete` decimal(14,2) NOT NULL DEFAULT '0.00',
+  `valor_desconto` decimal(14,2) NOT NULL DEFAULT '0.00',
+  `valor_outras` decimal(14,2) NOT NULL DEFAULT '0.00',
+  `valor_total` decimal(14,2) NOT NULL DEFAULT '0.00',
+  `valor_total_xml` decimal(15,2) DEFAULT NULL,
+  `atualizar_custo` tinyint(1) NOT NULL DEFAULT '1',
+  `observacao` text COLLATE utf8mb4_unicode_ci,
+  `finalizada_em` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `operacao_entrada_id` bigint unsigned DEFAULT NULL,
+  `forma_pagamento_id` bigint unsigned DEFAULT NULL,
+  `duplicatas` json DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `entradas_nota_chave_acesso_unique` (`chave_acesso`),
+  KEY `entradas_nota_user_id_foreign` (`user_id`),
+  KEY `entradas_nota_fornecedor_id_modelo_serie_numero_index` (`fornecedor_id`,`modelo`,`serie`,`numero`),
+  KEY `entradas_nota_status_data_entrada_index` (`status`,`data_entrada`),
+  KEY `entradas_nota_operacao_entrada_id_foreign` (`operacao_entrada_id`),
+  KEY `entradas_nota_forma_pagamento_id_foreign` (`forma_pagamento_id`),
+  CONSTRAINT `entradas_nota_forma_pagamento_id_foreign` FOREIGN KEY (`forma_pagamento_id`) REFERENCES `formas_pagamento` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `entradas_nota_fornecedor_id_foreign` FOREIGN KEY (`fornecedor_id`) REFERENCES `fornecedores` (`id`),
+  CONSTRAINT `entradas_nota_operacao_entrada_id_foreign` FOREIGN KEY (`operacao_entrada_id`) REFERENCES `operacoes_entrada` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `entradas_nota_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.entradas_nota: ~1 rows (aproximadamente)
+REPLACE INTO `entradas_nota` (`id`, `fornecedor_id`, `user_id`, `tipo_entrada`, `status`, `chave_acesso`, `modelo`, `serie`, `numero`, `data_emissao`, `data_entrada`, `natureza_operacao`, `valor_produtos`, `valor_frete`, `valor_desconto`, `valor_outras`, `valor_total`, `valor_total_xml`, `atualizar_custo`, `observacao`, `finalizada_em`, `created_at`, `updated_at`, `operacao_entrada_id`, `forma_pagamento_id`, `duplicatas`) VALUES
+	(9, 1, 1, 'xml', 'finalizada', '42260407993973000380550010033257751951660764', '55', '1', '3325775', '2026-04-30', '2026-10-14', 'Compra para comercialização', 689.97, 0.00, 0.00, 0.00, 752.64, 752.64, 1, NULL, '2026-10-14 12:02:25', '2026-10-14 12:02:07', '2026-10-14 12:02:25', 1, 1, '[{"valor": 250.88, "numero": "001", "vencimento": "2026-05-01"}, {"valor": 250.88, "numero": "002", "vencimento": "2026-06-01"}, {"valor": 250.88, "numero": "003", "vencimento": "2026-07-01"}]');
+
+-- Copiando estrutura para tabela pdv_fiscal.entrada_nota_itens
+CREATE TABLE IF NOT EXISTS `entrada_nota_itens` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `entrada_nota_id` bigint unsigned NOT NULL,
+  `produto_id` bigint unsigned NOT NULL,
+  `produto_variante_id` bigint unsigned DEFAULT NULL,
+  `codigo_fornecedor` varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `descricao` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `unidade` varchar(6) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `quantidade` decimal(12,3) NOT NULL,
+  `qtd_por_caixa` int unsigned NOT NULL DEFAULT '1',
+  `valor_unitario` decimal(14,4) NOT NULL,
+  `valor_desconto` decimal(14,2) NOT NULL DEFAULT '0.00',
+  `valor_total` decimal(14,2) NOT NULL,
+  `valor_outras_despesas` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `valor_frete` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `bc_icms` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `valor_icms` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `aliquota_icms` decimal(7,4) NOT NULL DEFAULT '0.0000',
+  `valor_ipi` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `aliquota_ipi` decimal(7,4) NOT NULL DEFAULT '0.0000',
+  `lote` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `validade` date DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `cfop_origem` char(4) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `cst_origem` varchar(3) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `csosn_origem` varchar(3) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `origem_mercadoria` tinyint unsigned DEFAULT NULL,
+  `cfop_entrada_id` bigint unsigned DEFAULT NULL,
+  `cst_csosn_entrada` varchar(3) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `gera_credito` tinyint(1) DEFAULT NULL,
+  `fiscal_manual` tinyint(1) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `entrada_nota_itens_entrada_nota_id_foreign` (`entrada_nota_id`),
+  KEY `entrada_nota_itens_produto_id_foreign` (`produto_id`),
+  KEY `entrada_nota_itens_cfop_entrada_id_foreign` (`cfop_entrada_id`),
+  CONSTRAINT `entrada_nota_itens_cfop_entrada_id_foreign` FOREIGN KEY (`cfop_entrada_id`) REFERENCES `cfops_entrada` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `entrada_nota_itens_entrada_nota_id_foreign` FOREIGN KEY (`entrada_nota_id`) REFERENCES `entradas_nota` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `entrada_nota_itens_produto_id_foreign` FOREIGN KEY (`produto_id`) REFERENCES `produtos` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.entrada_nota_itens: ~1 rows (aproximadamente)
+REPLACE INTO `entrada_nota_itens` (`id`, `entrada_nota_id`, `produto_id`, `produto_variante_id`, `codigo_fornecedor`, `descricao`, `unidade`, `quantidade`, `qtd_por_caixa`, `valor_unitario`, `valor_desconto`, `valor_total`, `valor_outras_despesas`, `valor_frete`, `bc_icms`, `valor_icms`, `aliquota_icms`, `valor_ipi`, `aliquota_ipi`, `lote`, `validade`, `created_at`, `updated_at`, `cfop_origem`, `cst_origem`, `csosn_origem`, `origem_mercadoria`, `cfop_entrada_id`, `cst_csosn_entrada`, `gera_credito`, `fiscal_manual`) VALUES
+	(14, 9, 10, NULL, '7893979700100', 'Fonte Duex DX 600FSE++ White Series, 600W, 80 Plus Bronze, Full Modular, PFC Ativo', 'UN', 3.000, 1, 229.9900, 0.00, 689.97, 0.00, 62.67, 752.64, 52.68, 7.0000, 0.00, 0.0000, NULL, NULL, '2026-10-14 12:02:25', '2026-10-14 12:02:25', '6108', '00', NULL, 0, 13, '102', 0, 0);
 
 -- Copiando estrutura para tabela pdv_fiscal.failed_jobs
 CREATE TABLE IF NOT EXISTS `failed_jobs` (
@@ -2758,24 +3153,56 @@ CREATE TABLE IF NOT EXISTS `failed_jobs` (
 -- Copiando estrutura para tabela pdv_fiscal.formas_pagamento
 CREATE TABLE IF NOT EXISTS `formas_pagamento` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `descricao` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `meio_pagamento` char(2) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '99',
+  `descricao` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `meio_pagamento` char(2) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '99',
   `ind_pag` tinyint NOT NULL DEFAULT '0',
   `ordem` int unsigned DEFAULT NULL,
   `ativo` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
+  `uso_saida` tinyint(1) NOT NULL DEFAULT '1',
+  `uso_entrada` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Copiando dados para a tabela pdv_fiscal.formas_pagamento: ~6 rows (aproximadamente)
-REPLACE INTO `formas_pagamento` (`id`, `descricao`, `meio_pagamento`, `ind_pag`, `ordem`, `ativo`, `created_at`, `updated_at`) VALUES
-	(1, 'Dinheiro', '01', 0, 1, 1, '2026-09-24 01:42:43', '2026-10-02 12:52:31'),
-	(2, 'Pix', '17', 0, 2, 1, '2026-09-24 01:42:43', '2026-09-24 01:42:43'),
-	(3, 'Boleto', '15', 0, 3, 1, '2026-09-24 01:42:43', '2026-09-24 01:42:43'),
-	(4, 'Cartão de Crédito', '03', 1, 4, 1, '2026-09-24 01:42:43', '2026-10-02 12:51:08'),
-	(5, 'Cartão de Débito', '04', 1, 5, 1, '2026-09-24 01:42:43', '2026-10-02 12:51:47'),
-	(6, 'Bonificação', '99', 0, 6, 1, '2026-10-02 12:52:17', '2026-10-02 12:52:17');
+REPLACE INTO `formas_pagamento` (`id`, `descricao`, `meio_pagamento`, `ind_pag`, `ordem`, `ativo`, `created_at`, `updated_at`, `uso_saida`, `uso_entrada`) VALUES
+	(1, 'Dinheiro', '01', 0, 1, 1, '2026-09-24 01:42:43', '2026-10-02 12:52:31', 1, 1),
+	(2, 'Pix', '17', 0, 2, 1, '2026-09-24 01:42:43', '2026-09-24 01:42:43', 1, 1),
+	(3, 'Boleto', '15', 0, 3, 1, '2026-09-24 01:42:43', '2026-09-24 01:42:43', 1, 1),
+	(4, 'Cartão de Crédito', '03', 1, 4, 1, '2026-09-24 01:42:43', '2026-10-02 12:51:08', 1, 1),
+	(5, 'Cartão de Débito', '04', 1, 5, 1, '2026-09-24 01:42:43', '2026-10-02 12:51:47', 1, 1),
+	(6, 'Bonificação', '99', 0, 6, 1, '2026-10-02 12:52:17', '2026-10-02 12:52:17', 1, 1);
+
+-- Copiando estrutura para tabela pdv_fiscal.fornecedores
+CREATE TABLE IF NOT EXISTS `fornecedores` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `tipo_pessoa` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'juridica',
+  `cpf_cnpj` varchar(14) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nome` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nome_fantasia` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `indicador_ie` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'nao_contribuinte',
+  `ie` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `logradouro` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `numero` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `complemento` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `bairro` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `cep` varchar(8) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `municipio` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `cod_municipio` varchar(7) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `uf` varchar(2) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `telefone` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ativo` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `fornecedores_cnpj_cpf_unique` (`cpf_cnpj`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.fornecedores: ~0 rows (aproximadamente)
+REPLACE INTO `fornecedores` (`id`, `tipo_pessoa`, `cpf_cnpj`, `nome`, `nome_fantasia`, `indicador_ie`, `ie`, `logradouro`, `numero`, `complemento`, `bairro`, `cep`, `municipio`, `cod_municipio`, `uf`, `telefone`, `email`, `ativo`, `created_at`, `updated_at`) VALUES
+	(1, 'juridica', '07993973000380', 'TERABYTE ATACADO E VAREJO DE PRODUTOS DE INFORMATICA LTDA', 'TERABYTESHOP', 'contribuinte', '257944265', 'Rua Ottokar Doerffel', '1112', NULL, 'Atiradores', '89203212', 'Joinville', '4209102', 'SC', '4130862957', NULL, 1, '2026-10-13 17:03:51', '2026-10-13 17:03:51');
 
 -- Copiando estrutura para tabela pdv_fiscal.grupos
 CREATE TABLE IF NOT EXISTS `grupos` (
@@ -2787,7 +3214,7 @@ CREATE TABLE IF NOT EXISTS `grupos` (
   UNIQUE KEY `grupos_nome_unique` (`nome`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.grupos: ~1 rows (aproximadamente)
+-- Copiando dados para a tabela pdv_fiscal.grupos: ~0 rows (aproximadamente)
 REPLACE INTO `grupos` (`id`, `nome`, `created_at`, `updated_at`) VALUES
 	(1, 'Graõs', '2026-08-21 11:28:34', '2026-08-21 11:28:34');
 
@@ -2832,10 +3259,10 @@ CREATE TABLE IF NOT EXISTS `inutilizacoes_nfe` (
   `serie` int unsigned NOT NULL,
   `numero_inicial` bigint unsigned NOT NULL,
   `numero_final` bigint unsigned NOT NULL,
-  `justificativa` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` enum('sucesso','erro') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'sucesso',
-  `protocolo` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `motivo` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `justificativa` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` enum('sucesso','erro') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'sucesso',
+  `protocolo` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `motivo` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `operador_id` bigint unsigned DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -2904,9 +3331,9 @@ CREATE TABLE IF NOT EXISTS `migrations` (
   `migration` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `batch` int NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=107 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=132 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.migrations: ~90 rows (aproximadamente)
+-- Copiando dados para a tabela pdv_fiscal.migrations: ~123 rows (aproximadamente)
 REPLACE INTO `migrations` (`id`, `migration`, `batch`) VALUES
 	(1, '0001_01_01_000000_create_users_table', 1),
 	(2, '0001_01_01_000001_create_cache_table', 1),
@@ -3013,7 +3440,31 @@ REPLACE INTO `migrations` (`id`, `migration`, `batch`) VALUES
 	(103, '2026_10_04_000006_preenche_acessos_a_partir_de_users', 69),
 	(104, '2026_10_04_000007_add_nome_plural_to_tipos_operador', 70),
 	(105, '2026_10_04_000008_recria_usuarios_cache_com_acessos', 71),
-	(106, '2026_10_04_000009_remove_colunas_antigas_de_users', 72);
+	(106, '2026_10_04_000009_remove_colunas_antigas_de_users', 72),
+	(107, '2026_10_05_000002_add_uuid_to_caixas', 73),
+	(108, '2026_10_06_000002_emissao_local_no_servidor', 73),
+	(109, '2026_10_07_000001_emissor_padrao_caixa', 73),
+	(110, '2026_10_07_000001_ipconfig_pdv_cache', 73),
+	(111, '2026_10_08_000002_add_codigo_barras_valido_to_produto_variantes_table', 74),
+	(112, '2026_10_08_000003_drop_sku_from_produto_variantes_table', 74),
+	(113, '2026_10_09_000001_create_fornecedores_table', 74),
+	(114, '2026_10_09_000002_create_entradas_nota_tables', 74),
+	(115, '2026_10_09_000003_ajustar_empresa', 74),
+	(116, '2026_10_09_000003_ajustar_fornecedores_como_clientes', 74),
+	(117, '2026_10_10_000003_create_entrada_fiscal_tables', 74),
+	(118, '2026_10_10_00032_add_fiscal_manual_to_entrada_nota_itens_table', 74),
+	(119, '2026_10_10_00032_update_formas_pagamento_and_entradas_nota_tables', 74),
+	(120, '2026_10_11_000000_add_valores_fiscais_to_entrada_nota_itens_table', 74),
+	(121, '2026_10_11_001_add_qtd_por_caixa_to_entrada_nota_itens_table', 74),
+	(122, '2026_10_12_000000_add_valor_total_xml_to_entradas_nota', 74),
+	(123, '2026_10_13_000001_create_contas_pagar_tables', 74),
+	(124, '2026_10_13_002_add_referencia_produtos', 75),
+	(125, '2026_10_13_000002_add_duplicatas_to_entrada_nota', 76),
+	(126, '2026_10_13_000003_create_contas_receber_tables', 77),
+	(128, '2026_10_14_000001_create_pedidos_compra_table', 78),
+	(129, '2026_10_15_000001_create_pedidos_venda_table', 79),
+	(130, '2026_10_15_000002_create_pedidos_venda_cache_sqlite', 80),
+	(131, '2026_10_15_000003_add_pedido_venda_id_to_vendas', 81);
 
 -- Copiando estrutura para tabela pdv_fiscal.ncms
 CREATE TABLE IF NOT EXISTS `ncms` (
@@ -3027,7 +3478,7 @@ CREATE TABLE IF NOT EXISTS `ncms` (
   UNIQUE KEY `ncms_codigo_unique` (`codigo`)
 ) ENGINE=InnoDB AUTO_INCREMENT=26981 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.ncms: ~10.374 rows (aproximadamente)
+-- Copiando dados para a tabela pdv_fiscal.ncms: ~10.465 rows (aproximadamente)
 REPLACE INTO `ncms` (`id`, `codigo`, `descricao`, `cadastro_avulso`, `created_at`, `updated_at`) VALUES
 	(1, '00000000', 'NCM genérico', 1, '2026-08-21 11:24:53', '2026-08-21 11:24:53'),
 	(1505, '01012100', '-- Reprodutores de raça pura', 0, '2026-08-21 21:47:45', '2026-08-21 21:54:37'),
@@ -13480,7 +13931,7 @@ CREATE TABLE IF NOT EXISTS `notas_fiscais` (
   `numero` bigint unsigned DEFAULT NULL,
   `natureza_operacao` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `finalidade` tinyint unsigned NOT NULL DEFAULT '1',
-  `motivo_ajuste` varchar(2) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `motivo_ajuste` varchar(2) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `cfop_saida_id` bigint unsigned DEFAULT NULL,
   `forma_pagamento_id` bigint unsigned DEFAULT NULL,
   `tipo_operacao` enum('entrada','saida') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'saida',
@@ -13489,7 +13940,7 @@ CREATE TABLE IF NOT EXISTS `notas_fiscais` (
   `status` enum('rascunho','emitida','cancelada','contingencia','inutilizada') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'rascunho',
   `chave_acesso` varchar(44) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `protocolo` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `protocolo_cancelamento` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `protocolo_cancelamento` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `xml` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `motivo_cancelamento` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `motivo_rejeicao` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
@@ -13502,15 +13953,15 @@ CREATE TABLE IF NOT EXISTS `notas_fiscais` (
   `mod_frete` tinyint unsigned NOT NULL DEFAULT '9',
   `transportador_id` bigint unsigned DEFAULT NULL,
   `veiculo_id` bigint unsigned DEFAULT NULL,
-  `informacoes_complementares` text COLLATE utf8mb4_unicode_ci,
+  `informacoes_complementares` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `notas_referenciadas` json DEFAULT NULL,
   `valor_total` decimal(12,2) NOT NULL DEFAULT '0.00',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `vol_quantidade` int unsigned DEFAULT NULL,
-  `vol_especie` varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `vol_marca` varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `vol_numeracao` varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `vol_especie` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `vol_marca` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `vol_numeracao` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `vol_peso_liquido` decimal(15,3) DEFAULT NULL,
   `vol_peso_bruto` decimal(15,3) DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -13529,9 +13980,9 @@ CREATE TABLE IF NOT EXISTS `notas_fiscais` (
   CONSTRAINT `notas_fiscais_transportador_id_foreign` FOREIGN KEY (`transportador_id`) REFERENCES `transportadores` (`id`) ON DELETE SET NULL,
   CONSTRAINT `notas_fiscais_veiculo_id_foreign` FOREIGN KEY (`veiculo_id`) REFERENCES `veiculos` (`id`) ON DELETE SET NULL,
   CONSTRAINT `notas_fiscais_venda_id_foreign` FOREIGN KEY (`venda_id`) REFERENCES `vendas` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=47 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=48 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.notas_fiscais: ~40 rows (aproximadamente)
+-- Copiando dados para a tabela pdv_fiscal.notas_fiscais: ~28 rows (aproximadamente)
 REPLACE INTO `notas_fiscais` (`id`, `cliente_id`, `operador_id`, `serie_nfe_id`, `modelo`, `serie`, `numero`, `natureza_operacao`, `finalidade`, `motivo_ajuste`, `cfop_saida_id`, `forma_pagamento_id`, `tipo_operacao`, `origem_tipo`, `venda_id`, `status`, `chave_acesso`, `protocolo`, `protocolo_cancelamento`, `xml`, `motivo_cancelamento`, `motivo_rejeicao`, `emitida_em`, `cancelado_em`, `valor_produtos`, `valor_desconto`, `valor_frete`, `frete_por_item`, `mod_frete`, `transportador_id`, `veiculo_id`, `informacoes_complementares`, `notas_referenciadas`, `valor_total`, `created_at`, `updated_at`, `vol_quantidade`, `vol_especie`, `vol_marca`, `vol_numeracao`, `vol_peso_liquido`, `vol_peso_bruto`) VALUES
 	(1, 1, 1, 1, 55, 1, 7, 'Venda de mercadoria', 1, NULL, 2, 1, 'saida', 'manual', NULL, 'cancelada', '25260924057254000104550010000000071301316292', '325260000036305', '325260000036312', '<?xml version="1.0" encoding="UTF-8"?><nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe Id="NFe25260924057254000104550010000000071301316292" versao="4.00"><ide><cUF>25</cUF><cNF>30131629</cNF><natOp>Venda de mercadoria</natOp><mod>55</mod><serie>1</serie><nNF>7</nNF><dhEmi>2026-09-25T23:08:39-03:00</dhEmi><tpNF>1</tpNF><idDest>1</idDest><cMunFG>2504009</cMunFG><tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>2</cDV><tpAmb>2</tpAmb><finNFe>1</finNFe><indFinal>1</indFinal><indPres>9</indPres><indIntermed>0</indIntermed><procEmi>0</procEmi><verProc>1.0.0</verProc></ide><emit><CNPJ>24057254000104</CNPJ><xNome>R B LIMEIRA LTDA</xNome><xFant>GRANJA LETICIA</xFant><enderEmit><xLgr>Rua Jornalista Evandro Barros</xLgr><nro>246</nro><xBairro>Malvinas</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58433545</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderEmit><IE>162661940</IE><CRT>1</CRT></emit><dest><CPF>51083298062</CPF><xNome>NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL</xNome><enderDest><xLgr>RUA Teste</xLgr><nro>200</nro><xBairro>Teste</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58060200</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderDest><indIEDest>9</indIEDest></dest><det nItem="1"><prod><cProd>4</cProd><cEAN>SEM GTIN</cEAN><xProd>Arroz</xProd><NCM>10064000</NCM><CEST>0100100</CEST><CFOP>5102</CFOP><uCom>UN</uCom><qCom>1.0000</qCom><vUnCom>2.2500000000</vUnCom><vProd>2.25</vProd><cEANTrib>SEM GTIN</cEANTrib><uTrib>UN</uTrib><qTrib>1.0000</qTrib><vUnTrib>2.2500000000</vUnTrib><indTot>1</indTot></prod><imposto><vTotTrib>0.00</vTotTrib><ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS><PIS><PISOutr><CST>99</CST><vBC>0.00</vBC><pPIS>0.0000</pPIS><vPIS>0.00</vPIS></PISOutr></PIS><COFINS><COFINSOutr><CST>99</CST><vBC>0.00</vBC><pCOFINS>0.0000</pCOFINS><vCOFINS>0.00</vCOFINS></COFINSOutr></COFINS><IBSCBS><CST>000</CST><cClassTrib>000001</cClassTrib><gIBSCBS><vBC>2.25</vBC><gIBSUF><pIBSUF>0.1000</pIBSUF><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><pIBSMun>0.00</pIBSMun><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><gCBS><pCBS>0.9000</pCBS><vCBS>0.02</vCBS></gCBS></gIBSCBS></IBSCBS></imposto><vItem>2.25</vItem></det><total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>2.25</vProd><vFrete>0.00</vFrete><vSeg>0.00</vSeg><vDesc>0.00</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS><vOutro>0.00</vOutro><vNF>2.25</vNF></ICMSTot><IBSCBSTot><vBCIBSCBS>2.25</vBCIBSCBS><gIBS><gIBSUF><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gIBS><gCBS><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vCBS>0.02</vCBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gCBS><gMono><vIBSMono>0.00</vIBSMono><vCBSMono>0.00</vCBSMono><vIBSMonoReten>0.00</vIBSMonoReten><vCBSMonoReten>0.00</vCBSMonoReten><vIBSMonoRet>0.00</vIBSMonoRet><vCBSMonoRet>0.00</vCBSMonoRet></gMono></IBSCBSTot><vNFTot>2.25</vNFTot></total><transp><modFrete>9</modFrete></transp><pag><detPag><indPag>0</indPag><tPag>90</tPag><vPag>0.00</vPag></detPag></pag></infNFe><Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/><Reference URI="#NFe25260924057254000104550010000000071301316292"><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><DigestValue>Sx06dbt2cTA2yGHDxAXobqYKxxc=</DigestValue></Reference></SignedInfo><SignatureValue>rn0qjy4+smj68ImDOOMqUNutKnBYzOkLWFlBXRIzPB/Pq+PRDs8SFBuSWimnei/LamouNLGLDlpehoPTAcfbBbcKpIXDnmm9mOCN2PCveZQnsEk9quSt6KkDAO6Gi+1pOWWhRlGVh8BPQqqXnIqu4K5TkehXVzUyVKyUU++u0wEd0TxBw7lMAE+Pb5PC7O0Pqg/qaehT6JPn1W4lnbTk8HroR1dGfTuaCWGG3HHLLZhIPHKHwU8Oqu2s5yjT3xnp6p1xNZmwqK6aOGqspw68w+NquuaaKI0YtF0uRScDH3iGVj0sbmbaqWcniNG4UF8vpM/WpUDue9QmdIt6SDh6bg==</SignatureValue><KeyInfo><X509Data><X509Certificate>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</X509Certificate></X509Data></KeyInfo></Signature></NFe><protNFe versao="4.00"><infProt><tpAmb>2</tpAmb><verAplic>SVRS2609250804</verAplic><chNFe>25260924057254000104550010000000071301316292</chNFe><dhRecbto>2026-09-25T23:08:42-03:00</dhRecbto><nProt>325260000036305</nProt><digVal>Sx06dbt2cTA2yGHDxAXobqYKxxc=</digVal><cStat>100</cStat><xMotivo>Autorizado o uso da NF-e</xMotivo></infProt></protNFe></nfeProc>', 'Dados divergentes', NULL, '2026-09-26 02:08:40', '2026-09-26 12:26:13', 2.25, 0.00, 0.00, 0, 9, NULL, NULL, NULL, NULL, 2.25, '2026-09-10 19:06:36', '2026-09-26 12:26:13', NULL, NULL, NULL, NULL, NULL, NULL),
 	(2, 1, 1, 1, 55, 1, 5, 'Venda de mercadoria', 1, NULL, 2, 2, 'saida', 'manual', NULL, 'cancelada', '25260924057254000104550010000000051916297694', '325260000036301', '325260000036302', '<?xml version="1.0" encoding="UTF-8"?><nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe Id="NFe25260924057254000104550010000000051916297694" versao="4.00"><ide><cUF>25</cUF><cNF>91629769</cNF><natOp>Venda de mercadoria</natOp><mod>55</mod><serie>1</serie><nNF>5</nNF><dhEmi>2026-09-25T22:50:29-03:00</dhEmi><tpNF>1</tpNF><idDest>1</idDest><cMunFG>2504009</cMunFG><tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>4</cDV><tpAmb>2</tpAmb><finNFe>1</finNFe><indFinal>1</indFinal><indPres>9</indPres><indIntermed>0</indIntermed><procEmi>0</procEmi><verProc>1.0.0</verProc></ide><emit><CNPJ>24057254000104</CNPJ><xNome>R B LIMEIRA LTDA</xNome><xFant>GRANJA LETICIA</xFant><enderEmit><xLgr>Rua Jornalista Evandro Barros</xLgr><nro>246</nro><xBairro>Malvinas</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58433545</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderEmit><IE>162661940</IE><CRT>1</CRT></emit><dest><CPF>51083298062</CPF><xNome>NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL</xNome><enderDest><xLgr>RUA Teste</xLgr><nro>200</nro><xBairro>Teste</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58060200</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderDest><indIEDest>9</indIEDest></dest><det nItem="1"><prod><cProd>4</cProd><cEAN>7896012300916</cEAN><xProd>Arroz</xProd><NCM>10064000</NCM><CEST>0100100</CEST><CFOP>5102</CFOP><uCom>UN</uCom><qCom>1.0000</qCom><vUnCom>2.2500000000</vUnCom><vProd>2.25</vProd><cEANTrib>7896012300916</cEANTrib><uTrib>UN</uTrib><qTrib>1.0000</qTrib><vUnTrib>2.2500000000</vUnTrib><indTot>1</indTot></prod><imposto><vTotTrib>0.00</vTotTrib><ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS><IPI><cEnq>999</cEnq><IPITrib><CST>50</CST><vBC>2.25</vBC><pIPI>0.0000</pIPI><vIPI>0.00</vIPI></IPITrib></IPI><PIS><PISOutr><CST>99</CST><vBC>0.00</vBC><pPIS>0.0000</pPIS><vPIS>0.00</vPIS></PISOutr></PIS><COFINS><COFINSOutr><CST>99</CST><vBC>0.00</vBC><pCOFINS>0.0000</pCOFINS><vCOFINS>0.00</vCOFINS></COFINSOutr></COFINS></imposto></det><total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>2.25</vProd><vFrete>0.00</vFrete><vSeg>0.00</vSeg><vDesc>0.00</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS><vOutro>0.00</vOutro><vNF>2.25</vNF></ICMSTot></total><transp><modFrete>9</modFrete></transp><pag><detPag><indPag>0</indPag><tPag>90</tPag><vPag>0.00</vPag></detPag></pag></infNFe><Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/><Reference URI="#NFe25260924057254000104550010000000051916297694"><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><DigestValue>VOYPMQ+sQxN0UP0d50VwIFZbPPk=</DigestValue></Reference></SignedInfo><SignatureValue>HeX2QQQOee6Y77rzvMX8kTftZi1uc2fE9Ul4AzZYvlYLWlRlnM71ODcM2ICKCz+kAcByoe4khTd6s3urQTvqokP6xZLsDbj0ZsIkRK4hhTz62WNQHB735dQUSyZJKO6Tt7TWYutEetVxJKIM0FGUXwd48fp2mvNfG4yRNdzlZ912N0O070t71fmVMzg41GgsHNvfnMNb7RLV7hUoBeXY8LL3CVEO5mNW54R2xV7V0uZBJ5Nmmqc40NYhspADmdbtggx0Xwz49sucDjHMQb5878FJjAqgiHt4Yxtj/iEFtRPSMCeqC8CzofNUE4k7luCcR+r57XLclOuKb/nYVNkiNA==</SignatureValue><KeyInfo><X509Data><X509Certificate>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</X509Certificate></X509Data></KeyInfo></Signature></NFe><protNFe versao="4.00"><infProt><tpAmb>2</tpAmb><verAplic>SVRS2609250804</verAplic><chNFe>25260924057254000104550010000000051916297694</chNFe><dhRecbto>2026-09-25T22:50:31-03:00</dhRecbto><nProt>325260000036301</nProt><digVal>VOYPMQ+sQxN0UP0d50VwIFZbPPk=</digVal><cStat>100</cStat><xMotivo>Autorizado o uso da NF-e</xMotivo></infProt></protNFe></nfeProc>', 'Dados divergentes', 'Rejeitada pela SEFAZ: Rejeicao: Duplicidade de NF-e, com diferença na Chave de Acesso [chNFe:25260924057254000104550010000000041816501500]', '2026-09-26 01:50:29', '2026-09-26 02:01:30', 2.25, 0.00, 0.00, 0, 9, NULL, NULL, NULL, NULL, 2.25, '2026-09-10 19:09:33', '2026-09-26 02:01:30', NULL, NULL, NULL, NULL, NULL, NULL),
@@ -13572,7 +14023,8 @@ REPLACE INTO `notas_fiscais` (`id`, `cliente_id`, `operador_id`, `serie_nfe_id`,
 	(43, 1, 1, 1, 55, 1, 34, 'Venda de mercadoria', 1, NULL, 2, 4, 'saida', 'manual', NULL, 'emitida', '25261024057254000104550010000000341864733091', '325260000046639', NULL, '<?xml version="1.0" encoding="UTF-8"?><nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe Id="NFe25261024057254000104550010000000341864733091" versao="4.00"><ide><cUF>25</cUF><cNF>86473309</cNF><natOp>Venda de mercadoria</natOp><mod>55</mod><serie>1</serie><nNF>34</nNF><dhEmi>2026-10-02T09:54:31-03:00</dhEmi><tpNF>1</tpNF><idDest>1</idDest><cMunFG>2504009</cMunFG><tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>1</cDV><tpAmb>2</tpAmb><finNFe>1</finNFe><indFinal>1</indFinal><indPres>9</indPres><indIntermed>0</indIntermed><procEmi>0</procEmi><verProc>1.0.0</verProc></ide><emit><CNPJ>24057254000104</CNPJ><xNome>R B LIMEIRA LTDA</xNome><xFant>GRANJA LETICIA</xFant><enderEmit><xLgr>Rua Jornalista Evandro Barros</xLgr><nro>246</nro><xBairro>Malvinas</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58433545</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderEmit><IE>162661940</IE><CRT>1</CRT></emit><dest><CPF>51083298062</CPF><xNome>NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL</xNome><enderDest><xLgr>RUA Teste</xLgr><nro>200</nro><xBairro>Teste</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58060200</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderDest><indIEDest>9</indIEDest></dest><det nItem="1"><prod><cProd>4</cProd><cEAN>SEM GTIN</cEAN><xProd>Arroz ? BRANCO 1</xProd><NCM>10064000</NCM><CFOP>5102</CFOP><uCom>UN</uCom><qCom>1.0000</qCom><vUnCom>2.2500000000</vUnCom><vProd>2.25</vProd><cEANTrib>SEM GTIN</cEANTrib><uTrib>UN</uTrib><qTrib>1.0000</qTrib><vUnTrib>2.2500000000</vUnTrib><indTot>1</indTot></prod><imposto><vTotTrib>0.00</vTotTrib><ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS><PIS><PISOutr><CST>99</CST><vBC>0.00</vBC><pPIS>0.0000</pPIS><vPIS>0.00</vPIS></PISOutr></PIS><COFINS><COFINSOutr><CST>99</CST><vBC>0.00</vBC><pCOFINS>0.0000</pCOFINS><vCOFINS>0.00</vCOFINS></COFINSOutr></COFINS><IBSCBS><CST>000</CST><cClassTrib>000001</cClassTrib><gIBSCBS><vBC>2.25</vBC><gIBSUF><pIBSUF>0.1000</pIBSUF><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><pIBSMun>0.00</pIBSMun><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><gCBS><pCBS>0.9000</pCBS><vCBS>0.02</vCBS></gCBS></gIBSCBS></IBSCBS></imposto><vItem>2.25</vItem></det><total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>2.25</vProd><vFrete>0.00</vFrete><vSeg>0.00</vSeg><vDesc>0.00</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS><vOutro>0.00</vOutro><vNF>2.25</vNF></ICMSTot><IBSCBSTot><vBCIBSCBS>2.25</vBCIBSCBS><gIBS><gIBSUF><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gIBS><gCBS><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vCBS>0.02</vCBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gCBS><gMono><vIBSMono>0.00</vIBSMono><vCBSMono>0.00</vCBSMono><vIBSMonoReten>0.00</vIBSMonoReten><vCBSMonoReten>0.00</vCBSMonoReten><vIBSMonoRet>0.00</vIBSMonoRet><vCBSMonoRet>0.00</vCBSMonoRet></gMono></IBSCBSTot><vNFTot>2.25</vNFTot></total><transp><modFrete>9</modFrete></transp><pag><detPag><indPag>1</indPag><tPag>03</tPag><vPag>2.25</vPag></detPag></pag></infNFe><Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/><Reference URI="#NFe25261024057254000104550010000000341864733091"><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><DigestValue>KJJx2qj0SqwNniZZnFJ2Izv1S3Q=</DigestValue></Reference></SignedInfo><SignatureValue>sdjtQtgzCMEsD8Fpo2rI4xF6L5GPN7w/zq6mpK06aV7IXf2ImJyY6Q/KY0U6CLdJD/pISSJpNEfD0Xi8vvm0Os9cc8CJw5GQwIIYZWXqORV4AuJpOud3jPRtNr6JV5owvunHwvptKJ1Dt2LOmVI1KzBR4UFd0DPnYTr/W+o/jKu70jyaa6CztjTfP86NPFoqW24pxP+w5WA7SKSRx9fnd+PJO6WXIIcRxU8ymjq4F9japCNhfJyVQBDDbyLt7/VdjRqR5kFM3HZ4RdNCHdRVmpWXTv83rEO8U1jrR1Y6LzuRNIzXbJ9BTpWN++Z2ViVbDY6kC9BElIqUo31hxK4WSw==</SignatureValue><KeyInfo><X509Data><X509Certificate>MIIH5TCCBc2gAwIBAgIQHmzF6JMbd61DhAmd1yVHxDANBgkqhkiG9w0BAQ0FADB0MQswCQYDVQQGEwJCUjETMBEGA1UEChMKSUNQLUJyYXNpbDE2MDQGA1UECxMtU2VjcmV0YXJpYSBkYSBSZWNlaXRhIEZlZGVyYWwgZG8gQnJhc2lsIC0gUkZCMRgwFgYDVQQDEw9BQyBDT05TVUxUSSBSRkIwHhcNMjYwMzE5MTQ0MTI5WhcNMjcwMzE5MTQ0MTI5WjCB9jELMAkGA1UEBhMCQlIxCzAJBgNVBAgTAlBCMRcwFQYDVQQHEw5DYW1waW5hIEdyYW5kZTETMBEGA1UEChMKSUNQLUJyYXNpbDEZMBcGA1UECxMQdmlkZW9jb25mZXJlbmNpYTEXMBUGA1UECxMONTc5Nzc1MTcwMDAxNTIxNjA0BgNVBAsTLVNlY3JldGFyaWEgZGEgUmVjZWl0YSBGZWRlcmFsIGRvIEJyYXNpbCAtIFJGQjEWMBQGA1UECxMNUkZCIGUtQ05QSiBBMTEoMCYGA1UEAxMfUiBCIExJTUVJUkEgTFREQToyNDA1NzI1NDAwMDEwNDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAOSIsFtY8u4QVvtFr0ThIaXWOiiBU3zjEk/5D59TsuGupu4ITqjKPPYdgSERugBQeElIOuJ77xipqkRyFSzYRZVRRTEuzwJN0LygJBoh4VellcFT01ApMzAPJFej4uptERLlXycNYXbCV06HB5ZGjTokQcf7Rlm/aJV7NgfN60DXqyXh0enoL3iUsTSiuQDBp5idKEXRzqkm5FHyS93ULF7yaNF/5THZnT96TEyxvepHpAKGs1TBHIWYmkQaZ1ot0L4R9A1rIr+i5KeZqaeAX/+1QW0JATD7KLXB6CJnvVMOJQGa5DGQ9leFcGKf33QULWUoNK6Gt6IniexPrbBCYq0CAwEAAaOCAu4wggLqMAkGA1UdEwQCMAAwHwYDVR0jBBgwFoAU3mG37QLvCgJHOcPCFjDzVDnUvl4wDgYDVR0PAQH/BAQDAgXgMIG9BgNVHREEgbUwgbKgOAYFYEwBAwSgLwQtMjAwODE5ODMwNjYwMTI0NTQ4ODAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwoCUGBWBMAQMCoBwEGlJBUVVFTElBTkEgQkFSQk9TQSBMSU1FSVJBoBkGBWBMAQMDoBAEDjI0MDU3MjU0MDAwMTA0oBcGBWBMAQMHoA4EDDAwMDAwMDAwMDAwMIEbR3JhbmphbGV0aWNpYTIwMjBAZ21haWwuY29tMGwGA1UdIARlMGMwYQYGYEwBAgFBMFcwVQYIKwYBBQUHAgEWSWh0dHBzOi8vcmVwb3NpdG9yaW8uY29uc3VsdGlicmFzaWxwc3MuY29tLmJyL2RvY3MvYWMtY29uc3VsdGktcmZiLWRwYy5wZGYwgaQGA1UdHwSBnDCBmTBKoEigRoZEaHR0cDovL3JlcG9zaXRvcmlvLmNvbnN1bHRpYnJhc2lscHNzLmNvbS5ici9jcmxzL2FjLWNvbnN1bHRpLXJmYi5jcmwwS6BJoEeGRWh0dHA6Ly9yZXBvc2l0b3JpbzIuY29uc3VsdGlicmFzaWxwc3MuY29tLmJyL2NybHMvYWMtY29uc3VsdGktcmZiLmNybDAdBgNVHSUEFjAUBggrBgEFBQcDAgYIKwYBBQUHAwQwgbcGCCsGAQUFBwEBBIGqMIGnMFEGCCsGAQUFBzAChkVodHRwOi8vcmVwb3NpdG9yaW8uY29uc3VsdGlicmFzaWxwc3MuY29tLmJyL2NlcnRzL2FjLWNvbnN1bHRpLXJmYi5wN2IwUgYIKwYBBQUHMAKGRmh0dHA6Ly9yZXBvc2l0b3JpbzIuY29uc3VsdGlicmFzaWxwc3MuY29tLmJyL2NlcnRzL2FjLWNvbnN1bHRpLXJmYi5wN2IwDQYJKoZIhvcNAQENBQADggIBADyWst43cEW1nZ/1WR+X5UKoey3ZBuWBMEZaELP5hGYjv6BhN9Vp310HQa+VcZsFwtwPQnpjVPXlajDlE1ngmJfk2uMCarJoyy3A/DZM4dVtQiXUfSnUTtNIuRb6kVRkMX004bOb9UhjOdmcCYX6y2HkoP0UMfM1jQ03eCd3bvnoCxMnctmkyr/pAUVWUy8jf7HnFWiIXZW0z6ViTUtmlvlk+VwA36Xt4R3RSpi1nGfQnidzWgsslBI+CW2SVrY14Me9sLUi93vWY1w6jlPTM7aZd7w6sv7WB1gPSPaHZ8y13YA3FL5jWLTkOoR7CuymvZ7YvLjDK8PzOYfiX6bvT6tX+HFk22Q+Ncb/D9VFdAMT8Fr7OTw1Y7FDRn5P/CosphAgHdh+wWIyVVkcdnv4K0mDn9a2h17Rd9IdJNXcMbzOeCb/VUQXf5GLI6jcdnny7A88/gk/iIXzpSgRVAeQaKZx4pr9eYbeJh4O3M786SXtivB8uZNNy+HIJjvFvCkli1Rf21Z2BvSKwpAbjS1YVCPQ/A+OyEfcubO9IeEAtpvqX8dmBgEzoosJ+qM5ab8yzDfISi7OUankiUR1izi10kXa0OnDbVPbU7r09dC5IIyoc+lWSynQOPPaiv7Doba6NR+CGjmjPx7sPd7G+VcqpKZ3dFEOdJRA07RC86Zqq5B1</X509Certificate></X509Data></KeyInfo></Signature></NFe><protNFe versao="4.00"><infProt><tpAmb>2</tpAmb><verAplic>SVRS2610020940</verAplic><chNFe>25261024057254000104550010000000341864733091</chNFe><dhRecbto>2026-10-02T09:54:31-03:00</dhRecbto><nProt>325260000046639</nProt><digVal>KJJx2qj0SqwNniZZnFJ2Izv1S3Q=</digVal><cStat>100</cStat><xMotivo>Autorizado o uso da NF-e</xMotivo></infProt></protNFe></nfeProc>', NULL, 'Rejeitada pela SEFAZ: Rejeicao: CSOSN incompativel na operacao com Nao Contribuinte [nItem:1]', '2026-10-02 12:54:31', NULL, 2.25, 0.00, 0.00, 0, 9, NULL, NULL, NULL, '[]', 2.25, '2026-10-02 12:53:43', '2026-10-02 12:54:31', NULL, NULL, NULL, NULL, NULL, NULL),
 	(44, 2, 1, 1, 55, 1, 36, 'Venda de produção própria', 1, NULL, 1, 1, 'saida', 'manual', NULL, 'emitida', '25261024057254000104550010000000361811434132', '325260000046751', NULL, '<?xml version="1.0" encoding="UTF-8"?><nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe Id="NFe25261024057254000104550010000000361811434132" versao="4.00"><ide><cUF>25</cUF><cNF>81143413</cNF><natOp>Venda de produção própria</natOp><mod>55</mod><serie>1</serie><nNF>36</nNF><dhEmi>2026-10-02T20:39:54-03:00</dhEmi><tpNF>1</tpNF><idDest>1</idDest><cMunFG>2504009</cMunFG><tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>2</cDV><tpAmb>2</tpAmb><finNFe>1</finNFe><indFinal>0</indFinal><indPres>9</indPres><indIntermed>0</indIntermed><procEmi>0</procEmi><verProc>1.0.0</verProc></ide><emit><CNPJ>24057254000104</CNPJ><xNome>R B LIMEIRA LTDA</xNome><xFant>GRANJA LETICIA</xFant><enderEmit><xLgr>Rua Jornalista Evandro Barros</xLgr><nro>246</nro><xBairro>Malvinas</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58433545</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderEmit><IE>162661940</IE><CRT>1</CRT></emit><dest><CNPJ>24057254000104</CNPJ><xNome>NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL</xNome><enderDest><xLgr>JORNALISTA EVANDRO BARROS</xLgr><nro>246</nro><xCpl>BOX B</xCpl><xBairro>MALVINAS</xBairro><cMun>2504009</cMun><xMun>CAMPINA GRANDE</xMun><UF>PB</UF><CEP>58433545</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderDest><indIEDest>1</indIEDest><IE>162661940</IE></dest><det nItem="1"><prod><cProd>4</cProd><cEAN>SEM GTIN</cEAN><xProd>Arroz ? INTEGRAL 1</xProd><NCM>10064000</NCM><CFOP>5101</CFOP><uCom>UN</uCom><qCom>1.0000</qCom><vUnCom>2.2500000000</vUnCom><vProd>2.25</vProd><cEANTrib>SEM GTIN</cEANTrib><uTrib>UN</uTrib><qTrib>1.0000</qTrib><vUnTrib>2.2500000000</vUnTrib><vFrete>10.00</vFrete><indTot>1</indTot></prod><imposto><vTotTrib>0.00</vTotTrib><ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS><PIS><PISOutr><CST>99</CST><vBC>0.00</vBC><pPIS>0.0000</pPIS><vPIS>0.00</vPIS></PISOutr></PIS><COFINS><COFINSOutr><CST>99</CST><vBC>0.00</vBC><pCOFINS>0.0000</pCOFINS><vCOFINS>0.00</vCOFINS></COFINSOutr></COFINS><IBSCBS><CST>000</CST><cClassTrib>000001</cClassTrib><gIBSCBS><vBC>2.25</vBC><gIBSUF><pIBSUF>0.1000</pIBSUF><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><pIBSMun>0.00</pIBSMun><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><gCBS><pCBS>0.9000</pCBS><vCBS>0.02</vCBS></gCBS></gIBSCBS></IBSCBS></imposto><vItem>12.25</vItem></det><total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>2.25</vProd><vFrete>10.00</vFrete><vSeg>0.00</vSeg><vDesc>0.00</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS><vOutro>0.00</vOutro><vNF>12.25</vNF></ICMSTot><IBSCBSTot><vBCIBSCBS>2.25</vBCIBSCBS><gIBS><gIBSUF><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gIBS><gCBS><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vCBS>0.02</vCBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gCBS><gMono><vIBSMono>0.00</vIBSMono><vCBSMono>0.00</vCBSMono><vIBSMonoReten>0.00</vIBSMonoReten><vCBSMonoReten>0.00</vCBSMonoReten><vIBSMonoRet>0.00</vIBSMonoRet><vCBSMonoRet>0.00</vCBSMonoRet></gMono></IBSCBSTot><vNFTot>12.25</vNFTot></total><transp><modFrete>0</modFrete><transporta><CNPJ>49746070000182</CNPJ><xNome>Transportadora Teste</xNome><xEnder>Rua Teste 2, S/N, GURIRI NORTE</xEnder><xMun>SAO MATEUS</xMun><UF>ES</UF></transporta></transp><pag><detPag><indPag>0</indPag><tPag>01</tPag><vPag>12.25</vPag></detPag></pag></infNFe><Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/><Reference URI="#NFe25261024057254000104550010000000361811434132"><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><DigestValue>N6BIxkApu7IeLv5ENw2QJVGbarA=</DigestValue></Reference></SignedInfo><SignatureValue>y4DYfcxUinbL5dDHxnJvqUgRyHlR/XttT1LzAVQ8qI6biJHB3eN5a1NF996kVCz5FZJNnVfsH7YJr4/xAlAPfEhycyJ93PcgkVbT93uBxWJQF0EjcslayCSEXlflawHOJno44hZU3hCNanM4ke7Myi/fTGoSqVmljmTjdjNDs3LPVSabeyPdbzFmGugPLIUYsdndpZHBf7Ua8/o9NssQaIncVAB+fg4gtAcIiaz+8cGVjRzuLOGZrGeWFxrHjP+1+/JmBwAUsyfBP9TJ2FLZUmytZog8nF/9YgswEw3BcP/5rhoBnwwGgl0x5DhdbFEFRp8Z568et4lqjWqVyVOtOw==</SignatureValue><KeyInfo><X509Data><X509Certificate>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</X509Certificate></X509Data></KeyInfo></Signature></NFe><protNFe versao="4.00"><infProt><tpAmb>2</tpAmb><verAplic>SVRS2610020940</verAplic><chNFe>25261024057254000104550010000000361811434132</chNFe><dhRecbto>2026-10-02T20:39:54-03:00</dhRecbto><nProt>325260000046751</nProt><digVal>N6BIxkApu7IeLv5ENw2QJVGbarA=</digVal><cStat>100</cStat><xMotivo>Autorizado o uso da NF-e</xMotivo></infProt></protNFe></nfeProc>', NULL, NULL, '2026-10-02 23:39:55', NULL, 2.25, 0.00, 10.00, 0, 0, 2, NULL, NULL, '[]', 12.25, '2026-10-02 13:36:27', '2026-10-02 23:39:55', NULL, NULL, NULL, NULL, NULL, NULL),
 	(45, 1, 1, 1, 55, 1, 35, 'Venda de mercadoria', 1, NULL, 2, 1, 'saida', 'manual', NULL, 'emitida', '25261024057254000104550010000000351974651267', '325260000046697', NULL, '<?xml version="1.0" encoding="UTF-8"?><nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe Id="NFe25261024057254000104550010000000351974651267" versao="4.00"><ide><cUF>25</cUF><cNF>97465126</cNF><natOp>Venda de mercadoria</natOp><mod>55</mod><serie>1</serie><nNF>35</nNF><dhEmi>2026-10-02T15:03:58-03:00</dhEmi><tpNF>1</tpNF><idDest>1</idDest><cMunFG>2504009</cMunFG><tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>7</cDV><tpAmb>2</tpAmb><finNFe>1</finNFe><indFinal>1</indFinal><indPres>9</indPres><indIntermed>0</indIntermed><procEmi>0</procEmi><verProc>1.0.0</verProc></ide><emit><CNPJ>24057254000104</CNPJ><xNome>R B LIMEIRA LTDA</xNome><xFant>GRANJA LETICIA</xFant><enderEmit><xLgr>Rua Jornalista Evandro Barros</xLgr><nro>246</nro><xBairro>Malvinas</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58433545</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderEmit><IE>162661940</IE><CRT>1</CRT></emit><dest><CPF>51083298062</CPF><xNome>NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL</xNome><enderDest><xLgr>RUA Teste</xLgr><nro>200</nro><xBairro>Teste</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58060200</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderDest><indIEDest>9</indIEDest></dest><det nItem="1"><prod><cProd>4</cProd><cEAN>SEM GTIN</cEAN><xProd>Arroz ? BRANCO 1</xProd><NCM>10064000</NCM><CFOP>5102</CFOP><uCom>UN</uCom><qCom>1.0000</qCom><vUnCom>2.2500000000</vUnCom><vProd>2.25</vProd><cEANTrib>SEM GTIN</cEANTrib><uTrib>UN</uTrib><qTrib>1.0000</qTrib><vUnTrib>2.2500000000</vUnTrib><vFrete>10.00</vFrete><indTot>1</indTot></prod><imposto><vTotTrib>0.00</vTotTrib><ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS><PIS><PISOutr><CST>99</CST><vBC>0.00</vBC><pPIS>0.0000</pPIS><vPIS>0.00</vPIS></PISOutr></PIS><COFINS><COFINSOutr><CST>99</CST><vBC>0.00</vBC><pCOFINS>0.0000</pCOFINS><vCOFINS>0.00</vCOFINS></COFINSOutr></COFINS><IBSCBS><CST>000</CST><cClassTrib>000001</cClassTrib><gIBSCBS><vBC>2.25</vBC><gIBSUF><pIBSUF>0.1000</pIBSUF><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><pIBSMun>0.00</pIBSMun><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><gCBS><pCBS>0.9000</pCBS><vCBS>0.02</vCBS></gCBS></gIBSCBS></IBSCBS></imposto><vItem>12.25</vItem></det><total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>2.25</vProd><vFrete>10.00</vFrete><vSeg>0.00</vSeg><vDesc>0.00</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS><vOutro>0.00</vOutro><vNF>12.25</vNF></ICMSTot><IBSCBSTot><vBCIBSCBS>2.25</vBCIBSCBS><gIBS><gIBSUF><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gIBS><gCBS><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vCBS>0.02</vCBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gCBS><gMono><vIBSMono>0.00</vIBSMono><vCBSMono>0.00</vCBSMono><vIBSMonoReten>0.00</vIBSMonoReten><vCBSMonoReten>0.00</vCBSMonoReten><vIBSMonoRet>0.00</vIBSMonoRet><vCBSMonoRet>0.00</vCBSMonoRet></gMono></IBSCBSTot><vNFTot>12.25</vNFTot></total><transp><modFrete>0</modFrete></transp><pag><detPag><indPag>0</indPag><tPag>01</tPag><vPag>12.25</vPag></detPag></pag></infNFe><Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/><Reference URI="#NFe25261024057254000104550010000000351974651267"><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><DigestValue>Au38ySkaBPtMxv614RWJZgGtfO0=</DigestValue></Reference></SignedInfo><SignatureValue>kqGavqlMtBxtpxCQCnfN3yq9EGo/C429yJmcLObDGYEoA8Mh41zfd5rsnxt1NZD+dNxTdA5V+kynrfou9Hu8eo5HMc/3hMWTwWkMHm3N+iZNiVd8uBK8NDv2pbw2QPYKT6WWd6hEZLEuwEo+FSoc2hXvWVAvbIsP90F1V1kOOFUSuyy4P6+v2xwgbrIbRcdtaTcdwH8Vn6arLqZdBNOAHoBFXKxeXy7Rc10ZvJ2wAV6IbSTc0kqEKg7/rf5IOF65mX6wzYVGK7x4eCTDkhJrun8ofEunC5GgYQF3lKs4mv7X8FlsBp2mLOSXpGpGaw7GHKmCQWk5Yyts3MoMk0t3Ag==</SignatureValue><KeyInfo><X509Data><X509Certificate>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</X509Certificate></X509Data></KeyInfo></Signature></NFe><protNFe versao="4.00"><infProt><tpAmb>2</tpAmb><verAplic>SVRS2610020940</verAplic><chNFe>25261024057254000104550010000000351974651267</chNFe><dhRecbto>2026-10-02T15:03:58-03:00</dhRecbto><nProt>325260000046697</nProt><digVal>Au38ySkaBPtMxv614RWJZgGtfO0=</digVal><cStat>100</cStat><xMotivo>Autorizado o uso da NF-e</xMotivo></infProt></protNFe></nfeProc>', NULL, NULL, '2026-10-02 18:03:59', NULL, 2.25, 0.00, 10.00, 0, 9, NULL, NULL, NULL, '[]', 12.25, '2026-10-02 18:03:18', '2026-10-02 18:03:59', NULL, NULL, NULL, NULL, NULL, NULL),
-	(46, 1, 1, 1, 55, 1, 37, 'Venda de mercadoria', 1, NULL, 2, 2, 'saida', 'manual', NULL, 'emitida', '25261024057254000104550010000000371012109270', '325260000046752', NULL, '<?xml version="1.0" encoding="UTF-8"?><nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe Id="NFe25261024057254000104550010000000371012109270" versao="4.00"><ide><cUF>25</cUF><cNF>01210927</cNF><natOp>Venda de mercadoria</natOp><mod>55</mod><serie>1</serie><nNF>37</nNF><dhEmi>2026-10-02T22:21:19-03:00</dhEmi><tpNF>1</tpNF><idDest>1</idDest><cMunFG>2504009</cMunFG><tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>0</cDV><tpAmb>2</tpAmb><finNFe>1</finNFe><indFinal>1</indFinal><indPres>9</indPres><indIntermed>0</indIntermed><procEmi>0</procEmi><verProc>1.0.0</verProc></ide><emit><CNPJ>24057254000104</CNPJ><xNome>R B LIMEIRA LTDA</xNome><xFant>GRANJA LETICIA</xFant><enderEmit><xLgr>Rua Jornalista Evandro Barros</xLgr><nro>246</nro><xBairro>Malvinas</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58433545</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderEmit><IE>162661940</IE><CRT>1</CRT></emit><dest><CPF>51083298062</CPF><xNome>NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL</xNome><enderDest><xLgr>RUA Teste</xLgr><nro>200</nro><xBairro>Teste</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58060200</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderDest><indIEDest>9</indIEDest></dest><det nItem="1"><prod><cProd>4</cProd><cEAN>SEM GTIN</cEAN><xProd>Arroz ? BRANCO 1</xProd><NCM>10064000</NCM><CFOP>5102</CFOP><uCom>UN</uCom><qCom>2.0000</qCom><vUnCom>2.2500000000</vUnCom><vProd>4.50</vProd><cEANTrib>SEM GTIN</cEANTrib><uTrib>UN</uTrib><qTrib>2.0000</qTrib><vUnTrib>2.2500000000</vUnTrib><vFrete>2.00</vFrete><indTot>1</indTot></prod><imposto><vTotTrib>0.00</vTotTrib><ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS><PIS><PISOutr><CST>99</CST><vBC>0.00</vBC><pPIS>0.0000</pPIS><vPIS>0.00</vPIS></PISOutr></PIS><COFINS><COFINSOutr><CST>99</CST><vBC>0.00</vBC><pCOFINS>0.0000</pCOFINS><vCOFINS>0.00</vCOFINS></COFINSOutr></COFINS><IBSCBS><CST>000</CST><cClassTrib>000001</cClassTrib><gIBSCBS><vBC>4.50</vBC><gIBSUF><pIBSUF>0.1000</pIBSUF><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><pIBSMun>0.00</pIBSMun><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><gCBS><pCBS>0.9000</pCBS><vCBS>0.04</vCBS></gCBS></gIBSCBS></IBSCBS></imposto><vItem>6.50</vItem></det><total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>4.50</vProd><vFrete>2.00</vFrete><vSeg>0.00</vSeg><vDesc>0.00</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS><vOutro>0.00</vOutro><vNF>6.50</vNF></ICMSTot><IBSCBSTot><vBCIBSCBS>4.50</vBCIBSCBS><gIBS><gIBSUF><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gIBS><gCBS><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vCBS>0.04</vCBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gCBS><gMono><vIBSMono>0.00</vIBSMono><vCBSMono>0.00</vCBSMono><vIBSMonoReten>0.00</vIBSMonoReten><vCBSMonoReten>0.00</vCBSMonoReten><vIBSMonoRet>0.00</vIBSMonoRet><vCBSMonoRet>0.00</vCBSMonoRet></gMono></IBSCBSTot><vNFTot>6.50</vNFTot></total><transp><modFrete>0</modFrete><transporta><CPF>90651080096</CPF><xNome>Motorista Teste</xNome><xEnder>Rua Teste, 123, Bairro Teste</xEnder><xMun>Campina Grande</xMun><UF>PB</UF></transporta><veicTransp><placa>ABC1D38</placa><UF>PB</UF></veicTransp><vol><qVol>2</qVol><esp>Fardos</esp><pesoL>2.000</pesoL><pesoB>2.000</pesoB></vol></transp><pag><detPag><indPag>0</indPag><tPag>17</tPag><vPag>6.50</vPag></detPag></pag></infNFe><Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/><Reference URI="#NFe25261024057254000104550010000000371012109270"><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><DigestValue>KQFpwvGGW50DzSbz2fnCjR1baU0=</DigestValue></Reference></SignedInfo><SignatureValue>HIIMssc7k2Y5wMMbJ7ouqw9GdbNtLBW42nRLcKoqGyZf+3Pxw7I6fzd5KwUwQ8I/10stk2rDIV9mGUk4cvencO+voCDAnEJMpWsZt8xSxbtREQBOeEGsfklb9EIgOOkWqaf8jYYx3Rfq5eKhO1fQ6hRITLPv3WdJHITvCvqEyiP2u16pRU50xNVk1p9SbYxWoYu0klp/4zWkyseaXZjDLdkRaJxqRrlSm6Ss5PQS+Poz4pt3dkNwq2yCL/XAf+Ua4pn1jefnFFhzi/3TmdvndUs2kgla+p2ofAYM/OeotcLxAUkEOhVRYwDGjosam5ggvVOoEaygyHIcp/IDiun+HQ==</SignatureValue><KeyInfo><X509Data><X509Certificate>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</X509Certificate></X509Data></KeyInfo></Signature></NFe><protNFe versao="4.00"><infProt><tpAmb>2</tpAmb><verAplic>SVRS2610020940</verAplic><chNFe>25261024057254000104550010000000371012109270</chNFe><dhRecbto>2026-10-02T22:21:19-03:00</dhRecbto><nProt>325260000046752</nProt><digVal>KQFpwvGGW50DzSbz2fnCjR1baU0=</digVal><cStat>100</cStat><xMotivo>Autorizado o uso da NF-e</xMotivo></infProt></protNFe></nfeProc>', NULL, NULL, '2026-10-03 01:21:20', NULL, 4.50, 0.00, 2.00, 0, 0, 1, 1, NULL, '[]', 6.50, '2026-10-03 01:20:40', '2026-10-03 01:21:20', 2, 'Fardos', NULL, NULL, 2.000, 2.000);
+	(46, 1, 1, 1, 55, 1, 37, 'Venda de mercadoria', 1, NULL, 2, 2, 'saida', 'manual', NULL, 'emitida', '25261024057254000104550010000000371012109270', '325260000046752', NULL, '<?xml version="1.0" encoding="UTF-8"?><nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe Id="NFe25261024057254000104550010000000371012109270" versao="4.00"><ide><cUF>25</cUF><cNF>01210927</cNF><natOp>Venda de mercadoria</natOp><mod>55</mod><serie>1</serie><nNF>37</nNF><dhEmi>2026-10-02T22:21:19-03:00</dhEmi><tpNF>1</tpNF><idDest>1</idDest><cMunFG>2504009</cMunFG><tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>0</cDV><tpAmb>2</tpAmb><finNFe>1</finNFe><indFinal>1</indFinal><indPres>9</indPres><indIntermed>0</indIntermed><procEmi>0</procEmi><verProc>1.0.0</verProc></ide><emit><CNPJ>24057254000104</CNPJ><xNome>R B LIMEIRA LTDA</xNome><xFant>GRANJA LETICIA</xFant><enderEmit><xLgr>Rua Jornalista Evandro Barros</xLgr><nro>246</nro><xBairro>Malvinas</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58433545</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderEmit><IE>162661940</IE><CRT>1</CRT></emit><dest><CPF>51083298062</CPF><xNome>NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL</xNome><enderDest><xLgr>RUA Teste</xLgr><nro>200</nro><xBairro>Teste</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58060200</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderDest><indIEDest>9</indIEDest></dest><det nItem="1"><prod><cProd>4</cProd><cEAN>SEM GTIN</cEAN><xProd>Arroz ? BRANCO 1</xProd><NCM>10064000</NCM><CFOP>5102</CFOP><uCom>UN</uCom><qCom>2.0000</qCom><vUnCom>2.2500000000</vUnCom><vProd>4.50</vProd><cEANTrib>SEM GTIN</cEANTrib><uTrib>UN</uTrib><qTrib>2.0000</qTrib><vUnTrib>2.2500000000</vUnTrib><vFrete>2.00</vFrete><indTot>1</indTot></prod><imposto><vTotTrib>0.00</vTotTrib><ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS><PIS><PISOutr><CST>99</CST><vBC>0.00</vBC><pPIS>0.0000</pPIS><vPIS>0.00</vPIS></PISOutr></PIS><COFINS><COFINSOutr><CST>99</CST><vBC>0.00</vBC><pCOFINS>0.0000</pCOFINS><vCOFINS>0.00</vCOFINS></COFINSOutr></COFINS><IBSCBS><CST>000</CST><cClassTrib>000001</cClassTrib><gIBSCBS><vBC>4.50</vBC><gIBSUF><pIBSUF>0.1000</pIBSUF><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><pIBSMun>0.00</pIBSMun><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><gCBS><pCBS>0.9000</pCBS><vCBS>0.04</vCBS></gCBS></gIBSCBS></IBSCBS></imposto><vItem>6.50</vItem></det><total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>4.50</vProd><vFrete>2.00</vFrete><vSeg>0.00</vSeg><vDesc>0.00</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS><vOutro>0.00</vOutro><vNF>6.50</vNF></ICMSTot><IBSCBSTot><vBCIBSCBS>4.50</vBCIBSCBS><gIBS><gIBSUF><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gIBS><gCBS><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vCBS>0.04</vCBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gCBS><gMono><vIBSMono>0.00</vIBSMono><vCBSMono>0.00</vCBSMono><vIBSMonoReten>0.00</vIBSMonoReten><vCBSMonoReten>0.00</vCBSMonoReten><vIBSMonoRet>0.00</vIBSMonoRet><vCBSMonoRet>0.00</vCBSMonoRet></gMono></IBSCBSTot><vNFTot>6.50</vNFTot></total><transp><modFrete>0</modFrete><transporta><CPF>90651080096</CPF><xNome>Motorista Teste</xNome><xEnder>Rua Teste, 123, Bairro Teste</xEnder><xMun>Campina Grande</xMun><UF>PB</UF></transporta><veicTransp><placa>ABC1D38</placa><UF>PB</UF></veicTransp><vol><qVol>2</qVol><esp>Fardos</esp><pesoL>2.000</pesoL><pesoB>2.000</pesoB></vol></transp><pag><detPag><indPag>0</indPag><tPag>17</tPag><vPag>6.50</vPag></detPag></pag></infNFe><Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/><Reference URI="#NFe25261024057254000104550010000000371012109270"><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><DigestValue>KQFpwvGGW50DzSbz2fnCjR1baU0=</DigestValue></Reference></SignedInfo><SignatureValue>HIIMssc7k2Y5wMMbJ7ouqw9GdbNtLBW42nRLcKoqGyZf+3Pxw7I6fzd5KwUwQ8I/10stk2rDIV9mGUk4cvencO+voCDAnEJMpWsZt8xSxbtREQBOeEGsfklb9EIgOOkWqaf8jYYx3Rfq5eKhO1fQ6hRITLPv3WdJHITvCvqEyiP2u16pRU50xNVk1p9SbYxWoYu0klp/4zWkyseaXZjDLdkRaJxqRrlSm6Ss5PQS+Poz4pt3dkNwq2yCL/XAf+Ua4pn1jefnFFhzi/3TmdvndUs2kgla+p2ofAYM/OeotcLxAUkEOhVRYwDGjosam5ggvVOoEaygyHIcp/IDiun+HQ==</SignatureValue><KeyInfo><X509Data><X509Certificate>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</X509Certificate></X509Data></KeyInfo></Signature></NFe><protNFe versao="4.00"><infProt><tpAmb>2</tpAmb><verAplic>SVRS2610020940</verAplic><chNFe>25261024057254000104550010000000371012109270</chNFe><dhRecbto>2026-10-02T22:21:19-03:00</dhRecbto><nProt>325260000046752</nProt><digVal>KQFpwvGGW50DzSbz2fnCjR1baU0=</digVal><cStat>100</cStat><xMotivo>Autorizado o uso da NF-e</xMotivo></infProt></protNFe></nfeProc>', NULL, NULL, '2026-10-03 01:21:20', NULL, 4.50, 0.00, 2.00, 0, 0, 1, 1, NULL, '[]', 6.50, '2026-10-03 01:20:40', '2026-10-03 01:21:20', 2, 'Fardos', NULL, NULL, 2.000, 2.000),
+	(47, 1, 1, 1, 55, 1, 41, 'Venda de mercadoria', 1, NULL, 2, 2, 'saida', 'manual', NULL, 'emitida', '25261024057254000104550010000000411823777420', '325260000048013', NULL, '<?xml version="1.0" encoding="UTF-8"?><nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe Id="NFe25261024057254000104550010000000411823777420" versao="4.00"><ide><cUF>25</cUF><cNF>82377742</cNF><natOp>Venda de mercadoria</natOp><mod>55</mod><serie>1</serie><nNF>41</nNF><dhEmi>2026-10-13T11:10:07-03:00</dhEmi><tpNF>1</tpNF><idDest>1</idDest><cMunFG>2504009</cMunFG><tpImp>1</tpImp><tpEmis>1</tpEmis><cDV>0</cDV><tpAmb>2</tpAmb><finNFe>1</finNFe><indFinal>1</indFinal><indPres>9</indPres><indIntermed>0</indIntermed><procEmi>0</procEmi><verProc>1.0.0</verProc></ide><emit><CNPJ>24057254000104</CNPJ><xNome>R B LIMEIRA LTDA</xNome><xFant>GRANJA LETICIA</xFant><enderEmit><xLgr>Rua Jornalista Evandro Barros</xLgr><nro>246</nro><xBairro>Malvinas</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58433545</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderEmit><IE>162661940</IE><CRT>1</CRT></emit><dest><CPF>51083298062</CPF><xNome>NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL</xNome><enderDest><xLgr>RUA Teste</xLgr><nro>200</nro><xBairro>Teste</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58060200</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderDest><indIEDest>9</indIEDest></dest><det nItem="1"><prod><cProd>4</cProd><cEAN>SEM GTIN</cEAN><xProd>Arroz ? BRANCO 1</xProd><NCM>10064000</NCM><CFOP>5102</CFOP><uCom>UN</uCom><qCom>1.0000</qCom><vUnCom>2.2500000000</vUnCom><vProd>2.25</vProd><cEANTrib>SEM GTIN</cEANTrib><uTrib>UN</uTrib><qTrib>1.0000</qTrib><vUnTrib>2.2500000000</vUnTrib><indTot>1</indTot></prod><imposto><vTotTrib>0.00</vTotTrib><ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS><PIS><PISOutr><CST>99</CST><vBC>0.00</vBC><pPIS>0.0000</pPIS><vPIS>0.00</vPIS></PISOutr></PIS><COFINS><COFINSOutr><CST>99</CST><vBC>0.00</vBC><pCOFINS>0.0000</pCOFINS><vCOFINS>0.00</vCOFINS></COFINSOutr></COFINS><IBSCBS><CST>000</CST><cClassTrib>000001</cClassTrib><gIBSCBS><vBC>2.25</vBC><gIBSUF><pIBSUF>0.1000</pIBSUF><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><pIBSMun>0.00</pIBSMun><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><gCBS><pCBS>0.9000</pCBS><vCBS>0.02</vCBS></gCBS></gIBSCBS></IBSCBS></imposto><vItem>2.25</vItem></det><total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>2.25</vProd><vFrete>0.00</vFrete><vSeg>0.00</vSeg><vDesc>0.00</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS><vOutro>0.00</vOutro><vNF>2.25</vNF></ICMSTot><IBSCBSTot><vBCIBSCBS>2.25</vBCIBSCBS><gIBS><gIBSUF><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gIBS><gCBS><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vCBS>0.02</vCBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gCBS><gMono><vIBSMono>0.00</vIBSMono><vCBSMono>0.00</vCBSMono><vIBSMonoReten>0.00</vIBSMonoReten><vCBSMonoReten>0.00</vCBSMonoReten><vIBSMonoRet>0.00</vIBSMonoRet><vCBSMonoRet>0.00</vCBSMonoRet></gMono></IBSCBSTot><vNFTot>2.25</vNFTot></total><transp><modFrete>9</modFrete></transp><pag><detPag><indPag>0</indPag><tPag>17</tPag><vPag>2.25</vPag></detPag></pag></infNFe><Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/><Reference URI="#NFe25261024057254000104550010000000411823777420"><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><DigestValue>gCcYa1/03y+n8wwmc7Jk9Qw1FkI=</DigestValue></Reference></SignedInfo><SignatureValue>PeACUCudbpePnqkEKb/YThmSjeGsw8gdKbFwEVqLZvfx3+mwSre8/fdJGD4mGv/w973v/0W208H6Ngz4RPH3jVz5lVCJz+QUVaSNLgKVqeh+YW3R+Z4r2caOQBTE5iPsoEeFzu6V4NxBq94L0DPm+y/WUwSCoqTKqTlf4nRT+mgasndsKkaR0MbvD3yM2YsT9jrHUxjOy5D4Bj/irfxlwq6TfPXu0r7hBpLctsyKudbp0fCIslpHW5VyiFFQYBkoHI4LO3gDu5RMEYrDGFpts5dREIRh/CkQGH3MqgiF+dgCoMSN0uAKsep/oZ4HVTnJlDArdBdmBbMMeofJkgLrbA==</SignatureValue><KeyInfo><X509Data><X509Certificate>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</X509Certificate></X509Data></KeyInfo></Signature></NFe><protNFe versao="4.00"><infProt><tpAmb>2</tpAmb><verAplic>SVRS2610090823</verAplic><chNFe>25261024057254000104550010000000411823777420</chNFe><dhRecbto>2026-10-13T11:10:07-03:00</dhRecbto><nProt>325260000048013</nProt><digVal>gCcYa1/03y+n8wwmc7Jk9Qw1FkI=</digVal><cStat>100</cStat><xMotivo>Autorizado o uso da NF-e</xMotivo></infProt></protNFe></nfeProc>', NULL, 'Rejeitada pela SEFAZ: Rejeicao: Duplicidade de NF-e, com diferença na Chave de Acesso [chNFe:25261024057254000104550010000000391522551387]', '2026-10-13 14:10:08', NULL, 2.25, 0.00, 0.00, 0, 9, NULL, NULL, NULL, '[]', 2.25, '2026-10-13 14:07:02', '2026-10-13 14:10:08', NULL, NULL, NULL, NULL, NULL, NULL);
 
 -- Copiando estrutura para tabela pdv_fiscal.nota_fiscal_itens
 CREATE TABLE IF NOT EXISTS `nota_fiscal_itens` (
@@ -13580,8 +14032,8 @@ CREATE TABLE IF NOT EXISTS `nota_fiscal_itens` (
   `nota_fiscal_id` bigint unsigned NOT NULL,
   `produto_id` bigint unsigned NOT NULL,
   `produto_variante_id` bigint unsigned DEFAULT NULL,
-  `descricao` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `ref_chave_acesso` varchar(44) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `descricao` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ref_chave_acesso` varchar(44) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `ref_nitem` int unsigned DEFAULT NULL,
   `bc_icms_manual` decimal(12,2) DEFAULT NULL,
   `valor_icms_manual` decimal(12,2) DEFAULT NULL,
@@ -13621,9 +14073,9 @@ CREATE TABLE IF NOT EXISTS `nota_fiscal_itens` (
   CONSTRAINT `nota_fiscal_itens_produto_id_foreign` FOREIGN KEY (`produto_id`) REFERENCES `produtos` (`id`),
   CONSTRAINT `nota_fiscal_itens_produto_variante_id_foreign` FOREIGN KEY (`produto_variante_id`) REFERENCES `produto_variantes` (`id`),
   CONSTRAINT `nota_fiscal_itens_tributacao_id_foreign` FOREIGN KEY (`tributacao_id`) REFERENCES `tributacoes` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=223 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=227 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.nota_fiscal_itens: ~48 rows (aproximadamente)
+-- Copiando dados para a tabela pdv_fiscal.nota_fiscal_itens: ~51 rows (aproximadamente)
 REPLACE INTO `nota_fiscal_itens` (`id`, `nota_fiscal_id`, `produto_id`, `produto_variante_id`, `descricao`, `ref_chave_acesso`, `ref_nitem`, `bc_icms_manual`, `valor_icms_manual`, `aliquota_icms_manual`, `valor_ipi_manual`, `aliquota_ipi_manual`, `ncm_id`, `cest_id`, `class_trib_ibs_cbs_id`, `tributacao_id`, `pis_cofins_id`, `ipi_id`, `quantidade`, `valor_unitario`, `valor_desconto`, `valor_outras_despesas`, `valor_frete`, `valor_total`, `created_at`, `updated_at`) VALUES
 	(30, 5, 2, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2143, NULL, 1, 3, 4, NULL, 1.000, 3.5000, 0.00, 0.00, 0.00, 3.50, '2026-09-24 22:25:01', '2026-09-24 22:25:01'),
 	(31, 5, 4, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2637, 601, 1, 1, 1, NULL, 1.000, 2.2500, 0.00, 0.00, 0.00, 2.25, '2026-09-24 22:25:01', '2026-09-24 22:25:01'),
@@ -13674,7 +14126,32 @@ REPLACE INTO `nota_fiscal_itens` (`id`, `nota_fiscal_id`, `produto_id`, `produto
 	(211, 43, 4, 1, 'Arroz — BRANCO 1', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2637, NULL, 1, 1, 1, NULL, 1.000, 2.2500, 0.00, 0.00, 0.00, 2.25, '2026-10-02 12:54:28', '2026-10-02 12:54:28'),
 	(218, 45, 4, 1, 'Arroz — BRANCO 1', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2637, NULL, 1, 1, 1, NULL, 1.000, 2.2500, 0.00, 0.00, 10.00, 2.25, '2026-10-02 18:03:18', '2026-10-02 18:03:18'),
 	(221, 44, 4, 2, 'Arroz — INTEGRAL 1', NULL, NULL, 0.00, 0.00, 0.0000, 0.00, 0.0000, 2637, NULL, 1, 1, 1, NULL, 1.000, 2.2500, 0.00, 0.00, 10.00, 2.25, '2026-10-02 23:39:37', '2026-10-02 23:39:37'),
-	(222, 46, 4, 1, 'Arroz — BRANCO 1', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2637, NULL, 1, 1, 1, NULL, 2.000, 2.2500, 0.00, 0.00, 2.00, 4.50, '2026-10-03 01:20:40', '2026-10-03 01:20:40');
+	(222, 46, 4, 1, 'Arroz — BRANCO 1', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2637, NULL, 1, 1, 1, NULL, 2.000, 2.2500, 0.00, 0.00, 2.00, 4.50, '2026-10-03 01:20:40', '2026-10-03 01:20:40'),
+	(226, 47, 4, 1, 'Arroz — BRANCO 1', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2637, NULL, 1, 1, 1, NULL, 1.000, 2.2500, 0.00, 0.00, 0.00, 2.25, '2026-10-13 14:10:05', '2026-10-13 14:10:05');
+
+-- Copiando estrutura para tabela pdv_fiscal.operacoes_entrada
+CREATE TABLE IF NOT EXISTS `operacoes_entrada` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `codigo` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `descricao` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `movimenta_estoque` tinyint(1) NOT NULL DEFAULT '1',
+  `ordem` smallint unsigned NOT NULL DEFAULT '0',
+  `ativo` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `operacoes_entrada_codigo_unique` (`codigo`)
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.operacoes_entrada: ~7 rows (aproximadamente)
+REPLACE INTO `operacoes_entrada` (`id`, `codigo`, `descricao`, `movimenta_estoque`, `ordem`, `ativo`, `created_at`, `updated_at`) VALUES
+	(1, 'compra_comercializacao', 'Compra para comercialização', 1, 1, 1, '2026-10-13 13:48:03', '2026-10-13 13:48:03'),
+	(2, 'compra_industrializacao', 'Compra para industrialização ou produção rural', 1, 2, 1, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(3, 'compra_uso_consumo', 'Compra de material para uso ou consumo', 0, 3, 1, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(4, 'compra_ativo_imobilizado', 'Compra de bem para o ativo imobilizado', 0, 4, 1, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(5, 'bonificacao', 'Entrada de bonificação, doação ou brinde', 1, 5, 1, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(6, 'amostra_gratis', 'Entrada de amostra grátis', 0, 6, 1, '2026-10-13 14:04:37', '2026-10-13 14:04:37'),
+	(7, 'outras_entradas', 'Outras entradas não especificadas', 1, 7, 1, '2026-10-13 14:04:37', '2026-10-13 14:04:37');
 
 -- Copiando estrutura para tabela pdv_fiscal.password_reset_tokens
 CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
@@ -13690,20 +14167,133 @@ CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
 CREATE TABLE IF NOT EXISTS `pdvs` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `nome` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `maquina` varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `serie_nfce` int unsigned NOT NULL,
   `numero_atual_nfce` bigint unsigned NOT NULL DEFAULT '0',
   `csc` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `csc_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `ativo` tinyint(1) NOT NULL DEFAULT '1',
+  `emissao_local` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  `emissor_alterado_em` datetime DEFAULT NULL,
+  `emissor_alterado_por` bigint unsigned DEFAULT NULL,
+  `emissor_motivo` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `pdvs_maquina_unique` (`maquina`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Copiando dados para a tabela pdv_fiscal.pdvs: ~2 rows (aproximadamente)
-REPLACE INTO `pdvs` (`id`, `nome`, `serie_nfce`, `numero_atual_nfce`, `csc`, `csc_id`, `ativo`, `created_at`, `updated_at`) VALUES
-	(1, 'Caixa 1', 1, 126, '8BFB5889-12B8-0068-B361-A61C5A772ED6', '000001', 1, '2026-07-31 19:47:17', '2026-10-05 01:53:03'),
-	(2, 'Caixa 2', 2, 1, '8BFB5889-12B8-0068-B361-A61C5A772ED6', '000001', 0, '2026-07-31 20:43:15', '2026-08-01 05:02:08');
+REPLACE INTO `pdvs` (`id`, `nome`, `maquina`, `serie_nfce`, `numero_atual_nfce`, `csc`, `csc_id`, `ativo`, `emissao_local`, `created_at`, `updated_at`, `emissor_alterado_em`, `emissor_alterado_por`, `emissor_motivo`) VALUES
+	(1, 'Caixa 1', NULL, 1, 158, '8BFB5889-12B8-0068-B361-A61C5A772ED6', '000001', 1, 1, '2026-07-31 19:47:17', '2026-10-16 14:20:55', NULL, NULL, NULL),
+	(2, 'Caixa 2', NULL, 2, 1, '8BFB5889-12B8-0068-B361-A61C5A772ED6', '000001', 0, 1, '2026-07-31 20:43:15', '2026-08-01 05:02:08', NULL, NULL, NULL);
+
+-- Copiando estrutura para tabela pdv_fiscal.pedidos_compra
+CREATE TABLE IF NOT EXISTS `pedidos_compra` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `numero` int unsigned NOT NULL,
+  `data_pedido` date NOT NULL,
+  `previsao_entrega` date DEFAULT NULL,
+  `fornecedor_id` bigint unsigned DEFAULT NULL,
+  `status` varchar(15) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'aberto',
+  `observacao` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `pedidos_compra_numero_unique` (`numero`),
+  KEY `pedidos_compra_fornecedor_id_foreign` (`fornecedor_id`),
+  KEY `pedidos_compra_status_index` (`status`),
+  CONSTRAINT `pedidos_compra_fornecedor_id_foreign` FOREIGN KEY (`fornecedor_id`) REFERENCES `fornecedores` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.pedidos_compra: ~0 rows (aproximadamente)
+REPLACE INTO `pedidos_compra` (`id`, `numero`, `data_pedido`, `previsao_entrega`, `fornecedor_id`, `status`, `observacao`, `created_at`, `updated_at`) VALUES
+	(1, 1, '2026-10-15', NULL, NULL, 'aberto', NULL, '2026-10-15 12:25:24', '2026-10-15 12:25:24');
+
+-- Copiando estrutura para tabela pdv_fiscal.pedidos_venda
+CREATE TABLE IF NOT EXISTS `pedidos_venda` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `numero` int unsigned NOT NULL,
+  `data_pedido` date NOT NULL,
+  `previsao_entrega` date DEFAULT NULL,
+  `operador_id` bigint unsigned NOT NULL,
+  `cliente_id` bigint unsigned DEFAULT NULL,
+  `forma_pagamento_id` bigint unsigned DEFAULT NULL,
+  `valor_total` decimal(14,2) NOT NULL DEFAULT '0.00',
+  `status` varchar(15) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'finalizado',
+  `descricao` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `pedidos_venda_numero_unique` (`numero`),
+  KEY `pedidos_venda_operador_id_foreign` (`operador_id`),
+  KEY `pedidos_venda_cliente_id_foreign` (`cliente_id`),
+  KEY `pedidos_venda_forma_pagamento_id_foreign` (`forma_pagamento_id`),
+  KEY `pedidos_venda_status_index` (`status`),
+  CONSTRAINT `pedidos_venda_cliente_id_foreign` FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`id`),
+  CONSTRAINT `pedidos_venda_forma_pagamento_id_foreign` FOREIGN KEY (`forma_pagamento_id`) REFERENCES `formas_pagamento` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `pedidos_venda_operador_id_foreign` FOREIGN KEY (`operador_id`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.pedidos_venda: ~2 rows (aproximadamente)
+REPLACE INTO `pedidos_venda` (`id`, `numero`, `data_pedido`, `previsao_entrega`, `operador_id`, `cliente_id`, `forma_pagamento_id`, `valor_total`, `status`, `descricao`, `created_at`, `updated_at`) VALUES
+	(1, 1, '2026-10-15', NULL, 2, NULL, 1, 298.99, 'finalizado', NULL, '2026-10-15 13:27:10', '2026-10-15 13:27:10'),
+	(2, 2, '2026-10-16', NULL, 2, NULL, 2, 4.50, 'cancelado', NULL, '2026-10-16 13:51:08', '2026-10-16 14:10:12'),
+	(3, 3, '2026-10-16', NULL, 2, NULL, NULL, 2.00, 'finalizado', NULL, '2026-10-16 14:10:32', '2026-10-16 14:10:32');
+
+-- Copiando estrutura para tabela pdv_fiscal.pedido_compra_itens
+CREATE TABLE IF NOT EXISTS `pedido_compra_itens` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `pedido_compra_id` bigint unsigned NOT NULL,
+  `produto_id` bigint unsigned DEFAULT NULL,
+  `produto_variante_id` bigint unsigned DEFAULT NULL,
+  `codigo_barras` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `descricao` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `unidade` varchar(6) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'UN',
+  `quantidade` decimal(12,3) NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `pedido_compra_itens_pedido_compra_id_foreign` (`pedido_compra_id`),
+  KEY `pedido_compra_itens_produto_id_foreign` (`produto_id`),
+  KEY `pedido_compra_itens_produto_variante_id_foreign` (`produto_variante_id`),
+  CONSTRAINT `pedido_compra_itens_pedido_compra_id_foreign` FOREIGN KEY (`pedido_compra_id`) REFERENCES `pedidos_compra` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `pedido_compra_itens_produto_id_foreign` FOREIGN KEY (`produto_id`) REFERENCES `produtos` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `pedido_compra_itens_produto_variante_id_foreign` FOREIGN KEY (`produto_variante_id`) REFERENCES `produto_variantes` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.pedido_compra_itens: ~0 rows (aproximadamente)
+REPLACE INTO `pedido_compra_itens` (`id`, `pedido_compra_id`, `produto_id`, `produto_variante_id`, `codigo_barras`, `descricao`, `unidade`, `quantidade`, `created_at`, `updated_at`) VALUES
+	(1, 1, 1, NULL, '0000000000001', 'Iorgute Isis 170g', 'UN', 1.000, '2026-10-15 12:25:24', '2026-10-15 12:25:24');
+
+-- Copiando estrutura para tabela pdv_fiscal.pedido_venda_itens
+CREATE TABLE IF NOT EXISTS `pedido_venda_itens` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `pedido_venda_id` bigint unsigned NOT NULL,
+  `produto_id` bigint unsigned NOT NULL,
+  `produto_variante_id` bigint unsigned DEFAULT NULL,
+  `codigo_barras` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `descricao` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `unidade` varchar(6) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'UN',
+  `quantidade` decimal(12,3) NOT NULL,
+  `valor_unitario` decimal(12,2) NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `pedido_venda_itens_pedido_venda_id_foreign` (`pedido_venda_id`),
+  KEY `pedido_venda_itens_produto_id_foreign` (`produto_id`),
+  KEY `pedido_venda_itens_produto_variante_id_foreign` (`produto_variante_id`),
+  CONSTRAINT `pedido_venda_itens_pedido_venda_id_foreign` FOREIGN KEY (`pedido_venda_id`) REFERENCES `pedidos_venda` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `pedido_venda_itens_produto_id_foreign` FOREIGN KEY (`produto_id`) REFERENCES `produtos` (`id`),
+  CONSTRAINT `pedido_venda_itens_produto_variante_id_foreign` FOREIGN KEY (`produto_variante_id`) REFERENCES `produto_variantes` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.pedido_venda_itens: ~3 rows (aproximadamente)
+REPLACE INTO `pedido_venda_itens` (`id`, `pedido_venda_id`, `produto_id`, `produto_variante_id`, `codigo_barras`, `descricao`, `unidade`, `quantidade`, `valor_unitario`, `created_at`, `updated_at`) VALUES
+	(2, 1, 10, NULL, '7893979700100', 'Fonte Duex DX 600FSE++ White Series, 600W, 80 Plus Bronze, Full Modular, PFC Ativo', 'UN', 1.000, 298.99, '2026-10-15 16:32:30', '2026-10-15 16:32:30'),
+	(4, 2, 4, 1, '9900000000011', 'Arroz - BRANCO / 1', 'UN', 1.000, 2.25, '2026-10-16 13:54:11', '2026-10-16 13:54:11'),
+	(5, 2, 4, 2, '9900000000028', 'Arroz - INTEGRAL / 1', 'UN', 1.000, 2.25, '2026-10-16 13:54:11', '2026-10-16 13:54:11'),
+	(6, 3, 5, NULL, '0000000000005', 'Farinha', 'KG', 1.000, 2.00, '2026-10-16 14:10:32', '2026-10-16 14:10:32');
 
 -- Copiando estrutura para tabela pdv_fiscal.produtos
 CREATE TABLE IF NOT EXISTS `produtos` (
@@ -13712,6 +14302,7 @@ CREATE TABLE IF NOT EXISTS `produtos` (
   `descricao` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `codigo_interno` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `codigo_barras` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `referencia` varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `codigo_barras_valido` tinyint(1) NOT NULL DEFAULT '1',
   `unidade_comercial` varchar(6) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `unidade_tributavel` varchar(6) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -13751,6 +14342,7 @@ CREATE TABLE IF NOT EXISTS `produtos` (
   KEY `produtos_class_trib_ibs_cbs_id_foreign` (`class_trib_ibs_cbs_id`),
   KEY `produtos_pis_cofins_id_foreign` (`pis_cofins_id`),
   KEY `produtos_ipi_id_foreign` (`ipi_id`),
+  KEY `produtos_referencia_index` (`referencia`),
   CONSTRAINT `produtos_categoria_id_foreign` FOREIGN KEY (`categoria_id`) REFERENCES `categorias` (`id`) ON DELETE SET NULL,
   CONSTRAINT `produtos_cest_id_foreign` FOREIGN KEY (`cest_id`) REFERENCES `cests` (`id`),
   CONSTRAINT `produtos_class_trib_ibs_cbs_id_foreign` FOREIGN KEY (`class_trib_ibs_cbs_id`) REFERENCES `classificacoes_tributarias` (`id`),
@@ -13760,33 +14352,34 @@ CREATE TABLE IF NOT EXISTS `produtos` (
   CONSTRAINT `produtos_ncm_id_foreign` FOREIGN KEY (`ncm_id`) REFERENCES `ncms` (`id`) ON DELETE SET NULL,
   CONSTRAINT `produtos_pis_cofins_id_foreign` FOREIGN KEY (`pis_cofins_id`) REFERENCES `classificacoes_pis_cofins` (`id`),
   CONSTRAINT `produtos_tributacao_id_foreign` FOREIGN KEY (`tributacao_id`) REFERENCES `tributacoes` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.produtos: ~8 rows (aproximadamente)
-REPLACE INTO `produtos` (`id`, `nome`, `descricao`, `codigo_interno`, `codigo_barras`, `codigo_barras_valido`, `unidade_comercial`, `unidade_tributavel`, `origem_mercadoria`, `preco_venda`, `preco_custo`, `tem_variacao`, `produto_balanca`, `estoque`, `estoque_minimo`, `ativo`, `created_at`, `updated_at`, `categoria_id`, `marca_id`, `grupo_id`, `ncm_id`, `cest_id`, `class_trib_ibs_cbs_id`, `tributacao_id`, `pis_cofins_id`, `ipi_id`, `preco_atacado`, `quantidade_minima_atacado`, `atacado_tem_prazo`, `atacado_data_inicio`, `atacado_data_fim`) VALUES
-	(1, 'Iorgute Isis 170g', 'Iorgute Isis 170g', '1', '0000000000001', 0, 'UN', 'UN', 0, 4.00, 2.95, 0, 0, 87, 0, 1, '2026-07-31 04:01:01', '2026-10-01 23:00:32', NULL, NULL, NULL, 2143, 1066, 1, 3, 1, NULL, NULL, NULL, 0, NULL, NULL),
-	(2, 'Iorgute Isis 300g Promo', NULL, '2', '0000000000002', 0, 'UN', 'UN', 0, 3.50, 2.10, 0, 0, 165, 0, 1, '2026-08-03 12:16:34', '2026-10-01 23:08:01', NULL, NULL, NULL, 2143, NULL, 1, 3, 4, NULL, NULL, NULL, 0, NULL, NULL),
-	(3, 'Ovo', NULL, '3', '0000000000003', 0, 'UN', 'UN', 0, 0.50, NULL, 0, 0, 199, 0, 1, '2026-08-20 13:39:37', '2026-08-25 22:27:54', NULL, NULL, NULL, 2171, NULL, 26, 13, 6, NULL, NULL, NULL, 0, NULL, NULL),
-	(4, 'Arroz', NULL, '4', '0000000000004', 0, 'UN', 'UN', 0, 2.25, 1.00, 1, 0, 107, 0, 1, '2026-08-20 13:40:29', '2026-10-02 12:54:04', NULL, 1, NULL, 2637, NULL, 1, 1, 1, NULL, NULL, NULL, 0, NULL, NULL),
-	(5, 'Farinha', NULL, '5', '0000000000005', 0, 'KG', 'KG', 0, 2.00, 0.50, 0, 1, 50, 0, 1, '2026-08-20 16:25:14', '2026-09-29 19:46:41', NULL, NULL, NULL, 1, NULL, 1, 1, 1, NULL, NULL, NULL, 0, NULL, NULL),
-	(6, 'Produto teste', NULL, '6', '0000000000006', 0, 'UN', 'UN', 0, 2.00, NULL, 0, 0, 0, 0, 1, '2026-08-31 12:16:08', '2026-08-31 12:35:14', NULL, NULL, NULL, 1, NULL, NULL, 11, 1, NULL, NULL, NULL, 0, NULL, NULL),
-	(8, 'Teste 2', NULL, '7', '0000000000007', 0, 'UN', 'UN', 0, 2.00, NULL, 0, 0, 49, 0, 1, '2026-09-06 14:24:33', '2026-09-06 14:42:28', NULL, NULL, NULL, 1, NULL, 1, 11, 1, NULL, NULL, NULL, 0, NULL, NULL),
-	(9, 'Teste 3', NULL, '8', '0000000000008', 0, 'UN', 'UN', 0, 3.00, NULL, 0, 0, 0, 0, 1, '2026-09-06 14:40:16', '2026-09-06 14:40:16', NULL, NULL, NULL, 1, NULL, 1, 11, 1, NULL, NULL, NULL, 0, NULL, NULL);
+-- Copiando dados para a tabela pdv_fiscal.produtos: ~9 rows (aproximadamente)
+REPLACE INTO `produtos` (`id`, `nome`, `descricao`, `codigo_interno`, `codigo_barras`, `referencia`, `codigo_barras_valido`, `unidade_comercial`, `unidade_tributavel`, `origem_mercadoria`, `preco_venda`, `preco_custo`, `tem_variacao`, `produto_balanca`, `estoque`, `estoque_minimo`, `ativo`, `created_at`, `updated_at`, `categoria_id`, `marca_id`, `grupo_id`, `ncm_id`, `cest_id`, `class_trib_ibs_cbs_id`, `tributacao_id`, `pis_cofins_id`, `ipi_id`, `preco_atacado`, `quantidade_minima_atacado`, `atacado_tem_prazo`, `atacado_data_inicio`, `atacado_data_fim`) VALUES
+	(1, 'Iorgute Isis 170g', 'Iorgute Isis 170g', '1', '0000000000001', NULL, 0, 'UN', 'UN', 0, 4.00, 2.95, 0, 0, 87, 0, 1, '2026-07-31 04:01:01', '2026-10-01 23:00:32', NULL, NULL, NULL, 2143, 1066, 1, 3, 1, NULL, NULL, NULL, 0, NULL, NULL),
+	(2, 'Iorgute Isis 300g Promo', NULL, '2', '0000000000002', NULL, 0, 'UN', 'UN', 0, 3.50, 2.10, 0, 0, 165, 0, 1, '2026-08-03 12:16:34', '2026-10-01 23:08:01', NULL, NULL, NULL, 2143, NULL, 1, 3, 4, NULL, NULL, NULL, 0, NULL, NULL),
+	(3, 'Ovo', NULL, '3', '0000000000003', NULL, 0, 'UN', 'UN', 0, 0.50, NULL, 0, 0, 199, 0, 1, '2026-08-20 13:39:37', '2026-08-25 22:27:54', NULL, NULL, NULL, 2171, NULL, 26, 13, 6, NULL, NULL, NULL, 0, NULL, NULL),
+	(4, 'Arroz', NULL, '4', '0000000000004', NULL, 0, 'UN', 'UN', 0, 2.25, 1.00, 1, 0, 107, 0, 1, '2026-08-20 13:40:29', '2026-10-02 12:54:04', NULL, 1, NULL, 2637, NULL, 1, 1, 1, NULL, NULL, NULL, 0, NULL, NULL),
+	(5, 'Farinha', NULL, '5', '0000000000005', NULL, 0, 'KG', 'KG', 0, 2.00, 0.50, 0, 1, 50, 0, 1, '2026-08-20 16:25:14', '2026-09-29 19:46:41', NULL, NULL, NULL, 1, NULL, 1, 1, 1, NULL, NULL, NULL, 0, NULL, NULL),
+	(6, 'Produto teste', NULL, '6', '0000000000006', NULL, 0, 'UN', 'UN', 0, 2.00, NULL, 0, 0, 0, 0, 1, '2026-08-31 12:16:08', '2026-08-31 12:35:14', NULL, NULL, NULL, 1, NULL, NULL, 11, 1, NULL, NULL, NULL, 0, NULL, NULL),
+	(8, 'Teste 2', NULL, '7', '0000000000007', NULL, 0, 'UN', 'UN', 0, 2.00, NULL, 0, 0, 49, 0, 1, '2026-09-06 14:24:33', '2026-09-06 14:42:28', NULL, NULL, NULL, 1, NULL, 1, 11, 1, NULL, NULL, NULL, 0, NULL, NULL),
+	(9, 'Teste 3', NULL, '8', '0000000000008', NULL, 0, 'UN', 'UN', 0, 3.00, NULL, 0, 0, 0, 0, 1, '2026-09-06 14:40:16', '2026-09-06 14:40:16', NULL, NULL, NULL, 1, NULL, 1, 11, 1, NULL, NULL, NULL, 0, NULL, NULL),
+	(10, 'Fonte Duex DX 600FSE++ White Series, 600W, 80 Plus Bronze, Full Modular, PFC Ativo', NULL, '9', '7893979700100', NULL, 1, 'UN', 'UN', 0, 298.99, 229.99, 0, 0, 3, 0, 1, '2026-10-13 17:03:48', '2026-10-14 12:02:25', NULL, NULL, NULL, 14357, NULL, NULL, 1, NULL, NULL, NULL, NULL, 0, NULL, NULL);
 
 -- Copiando estrutura para tabela pdv_fiscal.produtos_cache
 CREATE TABLE IF NOT EXISTS `produtos_cache` (
   `id` bigint unsigned NOT NULL,
-  `nome` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `codigo_interno` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `codigo_barras` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `ncm` varchar(8) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `cest` varchar(7) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `cfop_padrao` varchar(4) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `unidade_comercial` varchar(6) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `unidade_tributavel` varchar(6) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nome` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `codigo_interno` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `codigo_barras` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ncm` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cest` varchar(7) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `cfop_padrao` varchar(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `unidade_comercial` varchar(6) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `unidade_tributavel` varchar(6) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `origem_mercadoria` tinyint unsigned NOT NULL DEFAULT '0',
-  `csosn` varchar(3) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `class_trib_ibs_cbs` varchar(6) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `csosn` varchar(3) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `class_trib_ibs_cbs` varchar(6) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `preco_venda` decimal(12,2) NOT NULL,
   `preco_custo` decimal(12,2) DEFAULT NULL,
   `tem_variacao` tinyint(1) NOT NULL DEFAULT '0',
@@ -13801,33 +14394,55 @@ CREATE TABLE IF NOT EXISTS `produtos_cache` (
 
 -- Copiando dados para a tabela pdv_fiscal.produtos_cache: ~0 rows (aproximadamente)
 
+-- Copiando estrutura para tabela pdv_fiscal.produto_lotes
+CREATE TABLE IF NOT EXISTS `produto_lotes` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `produto_id` bigint unsigned NOT NULL,
+  `produto_variante_id` bigint unsigned DEFAULT NULL,
+  `entrada_nota_item_id` bigint unsigned DEFAULT NULL,
+  `lote` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `validade` date DEFAULT NULL,
+  `quantidade_inicial` decimal(12,3) NOT NULL,
+  `quantidade_atual` decimal(12,3) NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `produto_lotes_entrada_nota_item_id_foreign` (`entrada_nota_item_id`),
+  KEY `produto_lotes_produto_id_validade_index` (`produto_id`,`validade`),
+  CONSTRAINT `produto_lotes_entrada_nota_item_id_foreign` FOREIGN KEY (`entrada_nota_item_id`) REFERENCES `entrada_nota_itens` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `produto_lotes_produto_id_foreign` FOREIGN KEY (`produto_id`) REFERENCES `produtos` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.produto_lotes: ~0 rows (aproximadamente)
+
 -- Copiando estrutura para tabela pdv_fiscal.produto_variantes
 CREATE TABLE IF NOT EXISTS `produto_variantes` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `produto_id` bigint unsigned NOT NULL,
   `cor` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `tamanho` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `sku` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `estoque` int NOT NULL DEFAULT '0',
   `estoque_minimo` int NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
+  `codigo_barras_valido` tinyint(1) NOT NULL DEFAULT '0',
+  `codigo_barras` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `produto_variantes_produto_id_foreign` (`produto_id`),
   CONSTRAINT `produto_variantes_produto_id_foreign` FOREIGN KEY (`produto_id`) REFERENCES `produtos` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Copiando dados para a tabela pdv_fiscal.produto_variantes: ~2 rows (aproximadamente)
-REPLACE INTO `produto_variantes` (`id`, `produto_id`, `cor`, `tamanho`, `sku`, `estoque`, `estoque_minimo`, `created_at`, `updated_at`) VALUES
-	(1, 4, 'BRANCO', '1', '27', 85, 0, '2026-08-22 00:34:43', '2026-10-03 01:21:20'),
-	(2, 4, 'INTEGRAL', '1', '27', 88, 0, '2026-08-22 00:34:43', '2026-10-02 23:39:55');
+REPLACE INTO `produto_variantes` (`id`, `produto_id`, `cor`, `tamanho`, `estoque`, `estoque_minimo`, `created_at`, `updated_at`, `codigo_barras_valido`, `codigo_barras`) VALUES
+	(1, 4, 'BRANCO', '1', 84, 0, '2026-08-22 00:34:43', '2026-10-13 14:10:08', 0, '9900000000011'),
+	(2, 4, 'INTEGRAL', '1', 88, 0, '2026-08-22 00:34:43', '2026-10-02 23:39:55', 0, '9900000000028');
 
 -- Copiando estrutura para tabela pdv_fiscal.produto_variantes_cache
 CREATE TABLE IF NOT EXISTS `produto_variantes_cache` (
   `id` bigint unsigned NOT NULL,
   `produto_id` bigint unsigned NOT NULL,
-  `cor` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `tamanho` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `cor` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `tamanho` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `estoque` int NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -13851,7 +14466,7 @@ CREATE TABLE IF NOT EXISTS `series_nfe` (
 
 -- Copiando dados para a tabela pdv_fiscal.series_nfe: ~1 rows (aproximadamente)
 REPLACE INTO `series_nfe` (`id`, `serie`, `numero_atual`, `descricao`, `ativa`, `created_at`, `updated_at`) VALUES
-	(1, 1, 37, NULL, 1, '2026-09-10 19:08:36', '2026-10-03 01:21:17');
+	(1, 1, 41, NULL, 1, '2026-09-10 19:08:36', '2026-10-13 14:10:07');
 
 -- Copiando estrutura para tabela pdv_fiscal.sessions
 CREATE TABLE IF NOT EXISTS `sessions` (
@@ -13873,8 +14488,8 @@ REPLACE INTO `sessions` (`id`, `user_id`, `ip_address`, `user_agent`, `payload`,
 
 -- Copiando estrutura para tabela pdv_fiscal.sync_meta
 CREATE TABLE IF NOT EXISTS `sync_meta` (
-  `chave` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `valor` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `chave` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `valor` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`chave`)
@@ -13882,13 +14497,58 @@ CREATE TABLE IF NOT EXISTS `sync_meta` (
 
 -- Copiando dados para a tabela pdv_fiscal.sync_meta: ~0 rows (aproximadamente)
 
+-- Copiando estrutura para tabela pdv_fiscal.tipos_conta_pagar
+CREATE TABLE IF NOT EXISTS `tipos_conta_pagar` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `descricao` varchar(60) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ativo` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `tipos_conta_pagar_descricao_unique` (`descricao`)
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.tipos_conta_pagar: ~11 rows (aproximadamente)
+REPLACE INTO `tipos_conta_pagar` (`id`, `descricao`, `ativo`, `created_at`, `updated_at`) VALUES
+	(1, 'Compra', 1, '2026-10-13 18:03:10', '2026-10-13 18:03:10'),
+	(2, 'Fornecedor / Compra de mercadoria', 1, '2026-10-13 22:54:32', '2026-10-13 22:54:32'),
+	(3, 'Aluguel', 1, '2026-10-14 11:51:34', '2026-10-14 11:51:34'),
+	(4, 'Energia elétrica', 1, '2026-10-14 11:51:34', '2026-10-14 11:51:34'),
+	(5, 'Água e esgoto', 1, '2026-10-14 11:51:34', '2026-10-14 11:51:34'),
+	(6, 'Internet / Telefone', 1, '2026-10-14 11:51:34', '2026-10-14 11:51:34'),
+	(7, 'Impostos e taxas', 1, '2026-10-14 11:51:34', '2026-10-14 11:51:34'),
+	(8, 'Folha de pagamento', 1, '2026-10-14 11:51:34', '2026-10-14 11:51:34'),
+	(9, 'Frete', 1, '2026-10-14 11:51:34', '2026-10-14 11:51:34'),
+	(10, 'Manutenção', 1, '2026-10-14 11:51:34', '2026-10-14 11:51:34'),
+	(11, 'Outros', 1, '2026-10-14 11:51:34', '2026-10-14 11:51:34');
+
+-- Copiando estrutura para tabela pdv_fiscal.tipos_conta_receber
+CREATE TABLE IF NOT EXISTS `tipos_conta_receber` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `descricao` varchar(60) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ativo` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `tipos_conta_receber_descricao_unique` (`descricao`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Copiando dados para a tabela pdv_fiscal.tipos_conta_receber: ~6 rows (aproximadamente)
+REPLACE INTO `tipos_conta_receber` (`id`, `descricao`, `ativo`, `created_at`, `updated_at`) VALUES
+	(1, 'Venda a prazo / Crediário', 1, '2026-10-14 11:33:12', '2026-10-14 11:33:12'),
+	(2, 'Serviço prestado', 1, '2026-10-14 11:33:13', '2026-10-14 11:33:13'),
+	(3, 'Aluguel recebido', 1, '2026-10-14 11:33:13', '2026-10-14 11:33:13'),
+	(4, 'Comissão', 1, '2026-10-14 11:33:13', '2026-10-14 11:33:13'),
+	(5, 'Adiantamento de cliente', 1, '2026-10-14 11:33:13', '2026-10-14 11:33:13'),
+	(6, 'Outros', 1, '2026-10-14 11:33:13', '2026-10-14 11:33:13');
+
 -- Copiando estrutura para tabela pdv_fiscal.tipos_operador
 CREATE TABLE IF NOT EXISTS `tipos_operador` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `nome` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `nome_plural` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `contexto` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `slug` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nome` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nome_plural` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `contexto` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `permite_login` tinyint(1) NOT NULL DEFAULT '1',
   `ativo` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT NULL,
@@ -13906,15 +14566,15 @@ REPLACE INTO `tipos_operador` (`id`, `slug`, `nome`, `nome_plural`, `contexto`, 
 -- Copiando estrutura para tabela pdv_fiscal.transportadores
 CREATE TABLE IF NOT EXISTS `transportadores` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `tipo_pessoa` char(1) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `documento` varchar(14) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `nome` varchar(60) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `ie` varchar(14) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `logradouro` varchar(60) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `numero` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `bairro` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `municipio` varchar(60) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `uf` char(2) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `tipo_pessoa` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `documento` varchar(14) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nome` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ie` varchar(14) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `logradouro` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `numero` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `bairro` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `municipio` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `uf` char(2) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `ativo` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -13981,7 +14641,7 @@ CREATE TABLE IF NOT EXISTS `users` (
 
 -- Copiando dados para a tabela pdv_fiscal.users: ~14 rows (aproximadamente)
 REPLACE INTO `users` (`id`, `name`, `codigo`, `email`, `email_verified_at`, `password`, `is_admin`, `ativo`, `remember_token`, `created_at`, `updated_at`) VALUES
-	(1, 'Administrador', 1, NULL, NULL, '$2y$12$Ews791ogdoixwysDuSwj/eT/0yJx/4tdNJznmtpO5UVZfNGFsWA4a', 1, 1, NULL, '2026-07-31 03:28:13', '2026-07-31 03:28:13'),
+	(1, 'Administrador', 1, NULL, NULL, '$2y$12$L6AEarDbD7S.6riY5l42OePovO5Xk/VX9YjowMyyGQ7T47aENOnvu', 1, 1, NULL, '2026-07-31 03:28:13', '2026-10-13 13:48:26'),
 	(2, 'Operador Fiscal', 2, NULL, NULL, '$2y$12$abaCGuO1.JsUilSVV6gZFesOqqhFbEJ9vjfA1eUBDj9vw71ck6VF.', 0, 1, NULL, '2026-10-03 12:28:52', '2026-10-03 15:13:01'),
 	(3, 'Supervisor Teste', 3, NULL, NULL, '$2y$12$QEZR5qQopHv1ggAB7.VcVu4PDHXtzkJk8qwwf8mZHDvqbbUlwExFW', 0, 1, NULL, '2026-10-03 14:26:47', '2026-10-05 01:12:05'),
 	(4, 'Operador de Caixa', 4, NULL, NULL, '$2y$12$hWusM8SXWQlJRumytzrtR.lQcW8VY1hU6au.SuHy6CyvgsK8mTc/6', 0, 1, NULL, '2026-10-03 14:27:40', '2026-10-03 15:49:36'),
@@ -14000,9 +14660,9 @@ REPLACE INTO `users` (`id`, `name`, `codigo`, `email`, `email_verified_at`, `pas
 CREATE TABLE IF NOT EXISTS `veiculos` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `transportador_id` bigint unsigned DEFAULT NULL,
-  `placa` varchar(7) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `uf` char(2) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `rntrc` varchar(8) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `placa` varchar(7) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `uf` char(2) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `rntrc` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `ativo` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -14022,6 +14682,7 @@ CREATE TABLE IF NOT EXISTS `vendas` (
   `uuid` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `caixa_id` bigint unsigned NOT NULL,
   `cliente_id` bigint unsigned DEFAULT NULL,
+  `pedido_venda_id` bigint unsigned DEFAULT NULL,
   `cpf_na_nota` varchar(11) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `operador_id` bigint unsigned NOT NULL,
   `total` decimal(12,2) NOT NULL,
@@ -14043,209 +14704,212 @@ CREATE TABLE IF NOT EXISTS `vendas` (
   `ultimo_arquivo_xml` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
+  `xml_nfce` longtext COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`id`),
   UNIQUE KEY `vendas_uuid_unique` (`uuid`),
   KEY `vendas_caixa_id_foreign` (`caixa_id`),
   KEY `vendas_operador_id_foreign` (`operador_id`),
+  KEY `vendas_pedido_venda_id_foreign` (`pedido_venda_id`),
   CONSTRAINT `vendas_caixa_id_foreign` FOREIGN KEY (`caixa_id`) REFERENCES `caixas` (`id`),
-  CONSTRAINT `vendas_operador_id_foreign` FOREIGN KEY (`operador_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=179 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  CONSTRAINT `vendas_operador_id_foreign` FOREIGN KEY (`operador_id`) REFERENCES `users` (`id`),
+  CONSTRAINT `vendas_pedido_venda_id_foreign` FOREIGN KEY (`pedido_venda_id`) REFERENCES `pedidos_venda` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=309 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.vendas: ~174 rows (aproximadamente)
-REPLACE INTO `vendas` (`id`, `uuid`, `caixa_id`, `cliente_id`, `cpf_na_nota`, `operador_id`, `total`, `desconto`, `troco`, `forma_pagamento`, `status`, `chave_nfe`, `protocolo_nfe`, `emitida_em`, `numero_nfce`, `tp_emis`, `dh_cont`, `x_just`, `xml_contingencia`, `serie_nfce`, `motivo_cancelamento`, `motivo_rejeicao`, `ultimo_arquivo_xml`, `created_at`, `updated_at`) VALUES
-	(1, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 04:58:12', '2026-07-31 04:58:12'),
-	(2, NULL, 1, NULL, NULL, 1, 7.00, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:11:13', '2026-07-31 05:11:13'),
-	(3, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:29:15', '2026-07-31 05:29:15'),
-	(4, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:36:55', '2026-07-31 05:36:55'),
-	(5, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:41:03', '2026-07-31 05:41:03'),
-	(6, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:43:12', '2026-07-31 05:43:12'),
-	(7, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:46:27', '2026-07-31 05:46:27'),
-	(8, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:47:22', '2026-07-31 05:47:22'),
-	(9, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:49:55', '2026-07-31 05:49:55'),
-	(10, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:51:52', '2026-07-31 05:51:52'),
-	(11, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:55:29', '2026-07-31 05:55:29'),
-	(12, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:58:49', '2026-07-31 05:58:49'),
-	(13, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:59:56', '2026-07-31 05:59:56'),
-	(14, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:00:55', '2026-07-31 06:00:55'),
-	(15, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:01:47', '2026-07-31 06:01:47'),
-	(16, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:03:06', '2026-07-31 06:03:06'),
-	(17, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:06:02', '2026-07-31 06:06:02'),
-	(18, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:08:44', '2026-07-31 06:08:44'),
-	(19, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:12:58', '2026-07-31 06:12:58'),
-	(20, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:14:27', '2026-07-31 06:14:27'),
-	(21, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:15:07', '2026-07-31 06:15:07'),
-	(22, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:15:45', '2026-07-31 06:15:45'),
-	(23, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:17:30', '2026-07-31 06:17:30'),
-	(24, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:18:04', '2026-07-31 06:18:04'),
-	(25, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:20:45', '2026-07-31 06:20:45'),
-	(26, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 13:27:39', '2026-07-31 13:27:39'),
-	(27, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 13:29:31', '2026-07-31 13:29:31'),
-	(28, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 13:31:55', '2026-07-31 13:31:55'),
-	(29, NULL, 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 13:36:47', '2026-07-31 13:36:47'),
-	(30, '5f6b0691-031e-4eba-b8f2-89a42e371fe1', 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 15:21:38', '2026-07-31 15:21:38'),
-	(31, '550a1b7d-22b8-4e13-b926-9e98250e3450', 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 15:33:12', '2026-07-31 15:33:12'),
-	(32, '5ae001d1-dd72-414d-945b-96bed25b2e24', 1, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'emitida', '25260724057254000104650010000500011060797034', '325260000030585', NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 15:46:55', '2026-07-31 15:46:57'),
-	(33, '55f09a5e-2051-4a72-bf3f-d263ebdcdbef', 1, NULL, NULL, 1, 3.60, 0.00, 0.00, 'dinheiro', 'emitida', '25260724057254000104650010000500021675218254', '325260000030589', NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 16:04:29', '2026-07-31 16:04:37'),
-	(34, 'a1d7dcb6-bbca-43c3-be5c-0f46ea3c1935', 1, NULL, NULL, 1, 3.65, 0.00, 0.00, 'dinheiro', 'emitida', '25260724057254000104650010000500031002804648', '325260000030597', NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 16:36:44', '2026-07-31 16:36:47'),
-	(35, 'c9340cf8-fa68-447d-9e57-8e776a0df657', 1, NULL, NULL, 1, 3.65, 0.00, 0.00, 'dinheiro', 'emitida', '25260724057254000104650010000000111279427641', '325260000030598', NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 16:39:46', '2026-07-31 16:39:48'),
-	(36, 'ec12c631-1a51-4c3d-b996-ecc0c4d738c9', 1, NULL, NULL, 1, 3.65, 0.00, 0.00, 'dinheiro', 'emitida', '25260724057254000104650010000000121578619817', '325260000030599', NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 16:41:01', '2026-07-31 16:41:04'),
-	(37, '03ae8716-a78b-44bf-b8f6-23aad1b2ef7c', 1, NULL, NULL, 1, 3.65, 0.00, 0.00, 'dinheiro', 'emitida', '25260724057254000104650010000000021030644425', '325260000030600', NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 16:41:57', '2026-07-31 16:42:00'),
-	(38, '3eaeae8f-9a31-41a7-ad0a-956087eea606', 4, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 20:22:51', '2026-07-31 20:22:51'),
-	(39, '11f5b597-80e2-4c7d-babf-cd6b229d9662', 4, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 20:26:21', '2026-07-31 20:26:21'),
-	(40, '2aa10177-678a-440e-ba32-892baabe0647', 4, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 20:27:18', '2026-07-31 20:27:18'),
-	(41, '64f0f05f-b1c6-47d4-a53c-6bb4234a7a05', 4, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 20:39:53', '2026-07-31 20:39:53'),
-	(42, '99054f2d-9d20-41c4-83e3-22f93d497181', 4, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 20:43:54', '2026-07-31 20:43:54'),
-	(43, '45b6875c-e715-4b17-b611-40e022535214', 4, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 21:08:20', '2026-07-31 21:08:20'),
-	(44, '71a676db-7151-4e69-91d0-78061d58e184', 4, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 21:27:24', '2026-07-31 21:27:24'),
-	(45, '19cd9d3a-e83d-45b4-9b38-c5f825d99782', 4, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 21:29:10', '2026-07-31 21:29:10'),
-	(46, '99c16001-52ea-49c2-a749-7172273bd2de', 5, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 21:48:16', '2026-07-31 21:48:16'),
-	(47, '56b821d0-f9bd-4e70-97bf-06696db8e9e0', 5, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 00:58:00', '2026-08-01 00:58:00'),
-	(48, '6dfc3cbd-2674-44ab-93fc-a486f7681b53', 5, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 01:17:17', '2026-08-01 01:17:17'),
-	(49, '36d16fbd-2c3b-4929-a470-6f75c4ebcea0', 5, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 01:23:08', '2026-08-01 01:23:08'),
-	(50, 'ed83f079-ab21-40dd-ac50-a8b24b455fda', 6, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 01:27:23', '2026-08-01 01:27:23'),
-	(51, 'dd2e5f2e-febf-4938-a022-061dd6297886', 6, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 01:29:16', '2026-08-01 01:29:16'),
-	(52, '98602cd8-1447-4de8-8af7-b32a069546e5', 7, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 01:29:51', '2026-08-01 01:29:51'),
-	(53, '3b7d5b5e-4d6b-411d-bf11-5bbb08f07e0c', 7, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 04:46:35', '2026-08-01 04:46:35'),
-	(54, 'c91b34eb-538b-423c-9d99-c3bcec329c8c', 7, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 04:53:27', '2026-08-01 04:53:27'),
-	(55, 'f15a5a4e-f4ab-4036-9c5f-0d58dee7c396', 7, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 04:54:47', '2026-08-01 04:54:47'),
-	(56, 'a5e1d371-c876-478f-bfa7-9d0567b82401', 8, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 04:56:52', '2026-08-01 04:56:52'),
-	(57, '09f276ad-a7e3-4b16-948d-467c6dfc7fe6', 8, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 05:01:08', '2026-08-01 05:01:08'),
-	(58, '79302279-d5c4-490a-a6b0-d5a37f463766', 8, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 05:08:59', '2026-08-01 05:08:59'),
-	(59, '1da35ad8-5205-446e-8091-3a4628aceffa', 8, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 05:54:24', '2026-08-01 05:54:24'),
-	(60, 'a194a4d7-0a31-4105-b827-c95cd9339899', 8, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000131919266995', '325260000030840', NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 06:00:43', '2026-08-01 06:00:46'),
-	(61, '3d511b69-6ee9-4b5d-9b7a-ea0dd2d8ec93', 8, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000141979820830', '325260000030841', NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 06:25:06', '2026-08-01 06:25:10'),
-	(62, '25e76d7e-bad4-40ac-95c7-45ea808bb9b1', 8, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000151745786799', '325260000030842', NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 06:26:41', '2026-08-01 06:26:44'),
-	(63, 'a46cf99a-04ba-4a42-a4a4-3de63701e1f8', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000211527076231', '325260000030843', NULL, 21, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 06:28:46', '2026-08-01 06:34:12'),
-	(64, 'bf285794-7d9b-4b83-b720-314af5048478', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000221587327610', '325260000030844', NULL, 22, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 06:29:17', '2026-08-01 06:42:17'),
-	(65, '70d5cb34-1282-4112-a2d5-0c3b3d0c4529', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000201252231145', '325260000030845', NULL, 20, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 06:32:48', '2026-08-01 06:42:19'),
-	(66, '87420566-4c56-40ec-b9b1-172df02a333a', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'pix', 'cancelada', NULL, NULL, NULL, 23, 1, NULL, NULL, NULL, 1, 'Numero inutilizado manualmente durante testes', 'Rejeicao: Nao informados os dados do cartao de credito/debito nas Formas de Pagamento da Nota Fiscal [Ocorr:1]', NULL, '2026-08-01 06:44:32', '2026-08-01 06:44:35'),
-	(67, '7102f671-63a4-4580-96ce-bb0a98e91625', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'credito', 'cancelada', NULL, NULL, NULL, 24, 1, NULL, NULL, NULL, 1, 'Numero inutilizado manualmente durante testes', 'Rejeicao: Nao informados os dados do cartao de credito/debito nas Formas de Pagamento da Nota Fiscal [Ocorr:1]', NULL, '2026-08-01 06:45:00', '2026-08-01 06:45:02'),
-	(68, '3069bd69-0ecf-4a62-8bc0-8a48928730cf', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'credito', 'cancelada', NULL, NULL, NULL, 25, 1, NULL, NULL, NULL, 1, 'Número inutilizado (protocolo 325260000030850). Venda não será emitida.', 'Rejeicao: Nao informados os dados do cartao de credito/debito nas Formas de Pagamento da Nota Fiscal [Ocorr:1]', NULL, '2026-08-01 15:40:15', '2026-08-01 15:40:40'),
-	(69, 'd5842524-b08b-4f4b-9f1a-d0ea885b21fb', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 15:49:51', '2026-08-01 15:49:51'),
-	(70, '5c06ac0c-7a35-4a0f-8173-cbfedd056735', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'credito', 'cancelada', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, 'Numero inutilizado manualmente durante testes', 'Número liberado após duplicidade causada por teste no PC de backup - será remunerado na próxima emissão', NULL, '2026-08-01 15:50:14', '2026-08-01 15:50:17'),
-	(71, 'ee79b11e-c4e5-4f81-ae96-caffd79f0eff', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'pix', 'cancelada', NULL, NULL, NULL, 27, 1, NULL, NULL, NULL, 1, 'Número inutilizado (protocolo 325260000030854). Venda não será emitida.', 'Rejeicao: Nao informados os dados do cartao de credito/debito nas Formas de Pagamento da Nota Fiscal [Ocorr:1]', NULL, '2026-08-01 16:08:32', '2026-08-01 16:09:31'),
-	(72, 'a2b726e0-93ae-4ee8-a1e6-eecc6766a586', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'pix', 'cancelada', NULL, NULL, NULL, 28, 1, NULL, NULL, NULL, 1, 'Número inutilizado (protocolo 325260000030855). Venda não será emitida.', 'Rejeicao: Nao informados os dados do cartao de credito/debito nas Formas de Pagamento da Nota Fiscal [Ocorr:1]', NULL, '2026-08-01 16:12:46', '2026-08-01 16:14:28'),
-	(73, '602401e1-576b-48cf-b5f6-2d028bfae9dc', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'pix', 'emitida', '25260824057254000104650010000000291897360706', '325260000030858', NULL, 29, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 16:17:04', '2026-08-01 16:29:41'),
-	(74, '27f357b7-787d-4355-a495-2068c5a3ab40', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'credito', 'emitida', '25260824057254000104650010000000301352059170', '325260000030856', NULL, 30, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 16:21:08', '2026-08-01 16:21:11'),
-	(75, 'aaaf44f1-9838-42d4-97ea-9ecaf54d3bc4', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'pix', 'emitida', '25260824057254000104650010000000311881912400', '325260000030859', NULL, 31, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 16:21:19', '2026-08-01 16:29:42'),
-	(76, '7587f56d-8ffb-4d36-86bf-1dece08fe6ad', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'pix', 'pendente', NULL, NULL, NULL, 32, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 16:25:38', '2026-08-01 16:25:40'),
-	(77, '10db307d-797f-4498-8680-ec90ae938169', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'pix', 'emitida', '25260824057254000104650010000000331838319820', '325260000030857', NULL, 33, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 16:28:51', '2026-08-01 16:28:54'),
-	(78, '824fb0ae-c6f9-478f-af25-117148bcd926', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'cancelada', '25260824057254000104650010000000341872764340', '325260000030861', NULL, 34, 1, NULL, NULL, NULL, 1, 'Cancelado pelo operador: Dados divergentes (protocolo cancelamento: 325260000030863)', NULL, NULL, '2026-08-01 16:38:58', '2026-08-01 16:42:43'),
-	(79, 'ab0fc533-9f9f-4a8b-955b-978896ce5938', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 17:10:20', '2026-08-01 17:10:20'),
-	(80, 'e8ab853b-71fb-43a5-87a0-10ab62771aa7', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000351756416052', '325260000030867', NULL, 35, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 17:12:38', '2026-08-01 17:12:41'),
-	(81, '4aa411f3-376f-4c31-9e49-851e44019c1d', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000361156517815', '325260000030868', NULL, 36, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 17:17:42', '2026-08-01 17:17:44'),
-	(82, '5efd30d0-d45d-48de-aa38-4aa38b1a77f9', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000371469329705', '325260000030869', NULL, 37, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 17:18:19', '2026-08-01 17:18:22'),
-	(83, 'ec55b56c-7b77-456f-b1a7-35f94950fe2a', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000381289173542', '325260000030870', NULL, 38, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 17:24:00', '2026-08-01 17:24:50'),
-	(84, '63a0a0d7-b37f-4346-9913-f7561c6a0571', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000391696599791', '325260000030871', NULL, 39, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 17:35:40', '2026-08-01 17:35:42'),
-	(85, '8558e33a-d3c8-4fb2-9873-d29116080c0b', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000401212152620', '325260000030873', NULL, 40, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 17:36:13', '2026-08-01 17:37:25'),
-	(86, '63354369-9cdf-479a-8bde-d1f47f1b4989', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000411553120768', '325260000030872', NULL, 41, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 17:37:09', '2026-08-01 17:37:11'),
-	(87, '48546dfb-61fc-48dc-9ce8-1b7d68130ca3', 8, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000421775127189', '325260000030874', NULL, 42, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 17:38:29', '2026-08-01 17:45:58'),
-	(88, 'cce26f64-ab0c-47fd-b54d-6d78aba84b06', 8, NULL, NULL, 1, 30.16, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000431980022331', '325260000030920', NULL, 43, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 02:22:31', '2026-08-02 02:22:40'),
-	(89, '90b59eec-0c8a-463d-b884-b514743af4ee', 8, NULL, NULL, 1, 30.16, 0.00, 0.84, NULL, 'emitida', '25260824057254000104650010000000441182448088', '325260000030921', NULL, 44, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 02:37:01', '2026-08-02 02:37:24'),
-	(90, '4241a063-8af9-435a-9ab0-cf85e13606b4', 8, NULL, NULL, 1, 3.77, 0.00, 0.23, NULL, 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-02 02:37:55', '2026-08-02 02:37:55'),
-	(91, 'dc569b33-7427-4bc1-be7c-f976ff61857f', 8, NULL, NULL, 1, 18.85, 0.00, 0.15, NULL, 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-02 02:44:41', '2026-08-02 02:44:41'),
-	(92, 'd355139d-d7f3-42f5-b95a-a8121b708515', 8, NULL, NULL, 1, 1.77, 0.00, 0.23, NULL, 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-02 04:07:25', '2026-08-02 04:07:25'),
-	(93, '4ed811ad-bebe-43e2-a82c-1ca750ea81cb', 8, NULL, NULL, 1, 2.77, 0.00, 1.23, NULL, 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-02 04:11:07', '2026-08-02 04:11:07'),
-	(94, 'c75d11b3-b0ca-411e-a07c-2fcd389acb9e', 8, NULL, NULL, 1, 2.77, 0.00, 1.23, NULL, 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-02 04:12:27', '2026-08-02 04:12:27'),
-	(95, 'a3b29205-8f75-483d-ab7b-fbefa769aa62', 8, NULL, NULL, 1, 2.77, 0.00, 1.23, NULL, 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-02 04:13:40', '2026-08-02 04:13:40'),
-	(96, 'e756d23e-0c48-43a5-b4ab-f81402509e67', 8, NULL, NULL, 1, 2.77, 1.00, 0.23, NULL, 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-02 04:16:49', '2026-08-02 04:16:49'),
-	(97, 'b1be60a1-e20e-4086-a83a-6abd1f1f8415', 8, NULL, NULL, 1, 2.50, 1.27, 0.50, NULL, 'emitida', '25260824057254000104650010000000451795626441', '325260000030922', NULL, 45, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 04:33:27', '2026-08-02 04:35:40'),
-	(98, 'd3474545-e34c-4aaa-9c2f-1bad11658182', 8, NULL, NULL, 1, 1.77, 2.00, 0.23, NULL, 'emitida', '25260824057254000104650010000000461205838000', '325260000030923', NULL, 46, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 04:37:35', '2026-08-02 04:37:37'),
-	(99, 'a4e99566-01c2-4728-ac0f-ecbcd47450d7', 8, NULL, NULL, 1, 2.00, 1.77, 1.00, NULL, 'emitida', '25260824057254000104650010000000471137557525', '325260000030926', NULL, 47, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 15:39:25', '2026-08-02 15:39:35'),
-	(100, '39e2d95e-0955-48b3-86c8-1034d07165bc', 8, NULL, NULL, 1, 9.31, 2.00, 0.69, NULL, 'emitida', '25260824057254000104650010000000481866864902', '325260000030927', NULL, 48, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 15:55:22', '2026-08-02 15:55:26'),
-	(101, 'a4b7b571-e554-465f-9956-4f94d212a8f8', 8, NULL, NULL, 1, 5.54, 2.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000491717847566', '325260000030928', NULL, 49, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 16:27:05', '2026-08-02 16:27:18'),
-	(102, 'e903c8f7-5d9b-4bd1-8813-64318688a815', 8, NULL, NULL, 1, 9.31, 2.00, 0.50, NULL, 'emitida', '25260824057254000104650010000000501110032214', '325260000030929', NULL, 50, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 16:34:29', '2026-08-02 16:34:32'),
-	(103, 'b7cfa085-6c9a-455f-b025-6239fe9905b7', 8, NULL, NULL, 1, 3.77, 0.00, 0.23, NULL, 'emitida', '25260824057254000104650010000000511826250542', '325260000030931', NULL, 51, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 16:39:48', '2026-08-02 16:59:01'),
-	(104, 'b86cb53b-3a5b-437b-a172-b16409537981', 8, NULL, NULL, 1, 3.77, 0.00, 0.23, NULL, 'emitida', '25260824057254000104650010000000521625251980', '325260000030932', NULL, 52, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 16:45:14', '2026-08-02 16:59:02'),
-	(105, '2aacf7bd-9622-41d3-bf13-90584e734f18', 8, NULL, NULL, 1, 3.77, 0.00, 0.23, NULL, 'emitida', '25260824057254000104650010000000531605328810', '325260000030933', NULL, 53, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 16:56:39', '2026-08-02 16:59:04'),
-	(106, '06d536a4-c2e7-4846-b54b-e334e4c98e77', 8, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000541449278650', '325260000030937', NULL, 54, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/02/25260824057254000104650010000000541449278650-nfe.xml', '2026-08-02 23:21:51', '2026-08-02 23:24:08'),
-	(107, 'd32a773e-35d7-4150-846c-a1d469827de6', 8, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000551162050503', '325260000030938', NULL, 55, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/02/25260824057254000104650010000000551162050503-nfe.xml', '2026-08-02 23:25:01', '2026-08-02 23:25:04'),
-	(108, 'ac628cc7-956c-4863-bb00-48c6ad5de4e7', 8, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000561112830146', '325260000030940', NULL, 56, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/02/25260824057254000104650010000000561112830146-nfe.xml', '2026-08-02 23:28:44', '2026-08-02 23:28:48'),
-	(109, '5226e1f7-e8ed-4630-9243-2aeaa22adcfb', 8, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000571104385373', '325260000030941', NULL, 57, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/02/25260824057254000104650010000000571104385373-nfe.xml', '2026-08-02 23:31:45', '2026-08-02 23:31:48'),
-	(110, '72690012-9e19-4a8b-9bce-992d0bfd397e', 8, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000581519091022', '325260000030942', '2026-08-03 00:14:37', 58, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/02/25260824057254000104650010000000581519091022-nfe.xml', '2026-08-02 23:33:37', '2026-08-03 00:14:37'),
-	(111, 'a542f42d-a4c8-43d7-b5db-0fde143d65cb', 8, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'cancelada', NULL, NULL, NULL, 59, 1, NULL, NULL, NULL, 1, NULL, 'Rejeicao: NF-e ja esta inutilizada na Base de dados da SEFAZ', 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/02/25260824057254000104650010000000591519606208-contingencia.xml', '2026-08-03 00:13:24', '2026-08-03 01:41:54'),
-	(112, '8c2fe21a-b37e-4639-a13a-d46f1f914fe4', 8, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000601756799752', '325260000030943', '2026-08-02 21:17:06', 60, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/02/25260824057254000104650010000000601756799752-nfe.xml', '2026-08-02 21:17:04', '2026-08-02 21:17:06'),
-	(113, 'd73a7d0f-ac10-4d1b-afad-52370c9464bf', 8, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'cancelada', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-02 22:46:59', '2026-08-02 22:46:59'),
-	(114, '962a9d82-53b6-4758-bbba-821be6fe2fc8', 8, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000611967024626', '325260000030945', '2026-08-02 22:49:33', 61, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/02/25260824057254000104650010000000611967024626-nfe.xml', '2026-08-02 22:49:31', '2026-08-02 22:49:33'),
-	(115, 'fcef4d23-1fd4-4692-bd6c-9691279169d4', 8, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000621814180068', '325260000030947', '2026-08-03 02:23:37', 62, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/02/25260824057254000104650010000000621814180068-nfe.xml', '2026-08-03 02:23:36', '2026-08-03 02:23:37'),
-	(116, '0bc2ecfd-d0f9-4468-b374-160ee32a7527', 8, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000631579089504', '325260000030948', '2026-08-03 02:30:20', 63, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/02/25260824057254000104650010000000631579089504-nfe.xml', '2026-08-03 02:30:19', '2026-08-03 02:30:20'),
-	(117, '916a6cf2-7479-4d8d-8d4c-af89aca3fd4a', 8, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'cancelada', NULL, NULL, NULL, 64, 1, NULL, NULL, NULL, 1, 'Número inutilizado (protocolo 325260000030949). Venda não será emitida.', NULL, NULL, '2026-08-03 02:58:47', '2026-08-03 03:01:05'),
-	(118, 'a566b83c-eff0-4e88-b560-d905e919b315', 8, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000651584339275', '325260000030950', '2026-08-03 03:02:09', 65, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/03/25260824057254000104650010000000651584339275-nfe.xml', '2026-08-03 03:02:08', '2026-08-03 03:02:09'),
-	(119, '52f064cd-90d8-4eab-9180-8e821c2e5b2d', 8, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'cancelada', '25260824057254000104650010000000661676344523', '325260000030956', '2026-08-03 10:18:47', 66, 1, NULL, NULL, NULL, 1, 'Cancelado pelo operador: Dados divergentes (protocolo cancelamento: 325260000030957)', NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/03/25260824057254000104650010000000661676344523-nfe.xml', '2026-08-03 10:18:44', '2026-08-03 10:19:50'),
-	(120, '1d357ee8-931d-45bf-866a-4d4ca2b14f9b', 8, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000671798827950', '325260000030958', '2026-08-03 10:39:56', 67, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/03/25260824057254000104650010000000671798827950-nfe.xml', '2026-08-03 10:28:13', '2026-08-03 10:39:56'),
-	(121, '46d92b0d-1037-4897-801e-6127361e142f', 8, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000681162943700', '325260000030959', '2026-08-03 10:39:57', 68, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/03/25260824057254000104650010000000681162943700-nfe.xml', '2026-08-03 10:38:51', '2026-08-03 10:39:57'),
-	(122, '57cbdbdd-8a6c-49bc-a0ee-791be038d43f', 8, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000691763680973', '325260000030962', '2026-08-03 12:03:38', 69, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/03/25260824057254000104650010000000691763680973-nfe.xml', '2026-08-03 12:03:37', '2026-08-03 12:03:38'),
-	(123, '1de87a33-39ed-4fc5-a13f-e8b595b9d67c', 8, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000741455600618', '325260000031086', '2026-08-04 10:38:22', NULL, 1, NULL, NULL, NULL, NULL, NULL, 'Número liberado após duplicidade causada por teste no PC de backup - será remunerado na próxima emissão', 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/04/25260824057254000104650010000000741455600618-nfe.xml', '2026-08-04 10:22:00', '2026-08-04 10:38:22'),
-	(124, '4745ae01-6c84-47a5-8524-df2afda64251', 8, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000751243048943', '325260000031087', '2026-08-04 10:53:01', 75, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/04/25260824057254000104650010000000751243048943-nfe.xml', '2026-08-04 10:52:58', '2026-08-04 10:53:01'),
-	(125, '43644d0b-7a40-47e4-8c21-b3ea922ace7f', 8, NULL, NULL, 1, 3.50, 0.00, 16.50, NULL, 'emitida', '25260824057254000104650010000000761482964336', '325260000032032', '2026-08-10 12:14:30', 76, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/10/25260824057254000104650010000000761482964336-nfe.xml', '2026-08-10 12:14:25', '2026-08-10 12:14:30'),
-	(126, '7bdbe629-8f15-45a9-afe2-bc2a0bcd149b', 8, NULL, NULL, 1, 3.50, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000771344136214', '325260000032206', '2026-08-10 18:02:45', 77, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/10/25260824057254000104650010000000771344136214-nfe.xml', '2026-08-10 18:02:40', '2026-08-10 18:02:45'),
-	(127, '2e7947b9-4b91-4f82-8108-1083ad79fb4a', 8, NULL, NULL, 1, 10.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000781888665006', '325260000032272', '2026-08-11 03:12:35', 78, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/11/25260824057254000104650010000000781888665006-nfe.xml', '2026-08-11 03:12:29', '2026-08-11 03:12:35'),
-	(128, '25deacc9-7b9e-4289-a27f-6fdc6909aae8', 8, NULL, NULL, 1, 3.50, 0.00, 1.50, NULL, 'emitida', '25260824057254000104650010000000791482848036', '325260000032582', '2026-08-12 02:10:22', 79, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/11/25260824057254000104650010000000791482848036-nfe.xml', '2026-08-12 02:10:18', '2026-08-12 02:10:22'),
-	(129, 'b8b62a18-8346-49fb-b85e-4b535b1836ba', 8, NULL, NULL, 1, 17.50, 0.00, 2.50, NULL, 'emitida', '25260824057254000104650010000000801615234743', '325260000032583', '2026-08-12 02:11:27', 80, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/11/25260824057254000104650010000000801615234743-nfe.xml', '2026-08-12 02:11:26', '2026-08-12 02:11:27'),
-	(130, '2f1c74ad-aaa2-43bb-9e71-17586fd07aa4', 8, NULL, NULL, 1, 3.75, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000811371312861', '325260000032584', '2026-08-12 02:11:58', 81, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/11/25260824057254000104650010000000811371312861-nfe.xml', '2026-08-12 02:11:58', '2026-08-12 02:11:58'),
-	(131, '97b9c564-0e51-4d61-8019-ca85638332f5', 8, NULL, NULL, 1, 3.50, 0.00, 1.50, NULL, 'emitida', '25260824057254000104650010000000821654996815', '325260000032593', '2026-08-12 12:05:46', 82, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/12/25260824057254000104650010000000821654996815-nfe.xml', '2026-08-12 12:05:45', '2026-08-12 12:05:46'),
-	(132, '0357739b-ea82-4f7c-a915-5d58d95eb0a4', 8, NULL, NULL, 1, 3.50, 0.00, 16.50, NULL, 'emitida', '25260824057254000104650010000000831310716754', '325260000032814', '2026-08-12 16:43:00', 83, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/12/25260824057254000104650010000000831310716754-nfe.xml', '2026-08-12 16:42:58', '2026-08-12 16:43:00'),
-	(133, '7f63e81b-45ce-46e2-8cdc-7aa28634d4fd', 9, NULL, NULL, 1, 2.50, 1.00, 0.50, NULL, 'emitida', '25260824057254000104650010000000841481035694', '325260000034761', '2026-08-18 17:36:54', 84, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/18/25260824057254000104650010000000841481035694-nfe.xml', '2026-08-18 17:36:48', '2026-08-18 17:36:54'),
-	(134, 'aa435216-d498-4e4b-9a0a-45438ac11802', 9, NULL, NULL, 1, 12.50, 2.00, 2.50, NULL, 'emitida', '25260824057254000104650010000000851551766517', '325260000034768', '2026-08-18 17:51:51', 85, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/18/25260824057254000104650010000000851551766517-nfe.xml', '2026-08-18 17:51:51', '2026-08-18 17:51:51'),
-	(135, 'e9d03d84-c5cb-4de0-8e84-3c9b76adb00f', 9, NULL, NULL, 1, 3.50, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000861086780875', '325260000034829', '2026-08-18 20:55:52', 86, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/18/25260824057254000104650010000000861086780875-nfe.xml', '2026-08-18 20:55:46', '2026-08-18 20:55:52'),
-	(136, '1bf9ef3e-f169-4bde-a71c-6c39b9cc7747', 9, NULL, NULL, 1, 3.50, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000871330347796', '325260000034830', '2026-08-18 20:56:01', 87, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/18/25260824057254000104650010000000871330347796-nfe.xml', '2026-08-18 20:56:00', '2026-08-18 20:56:01'),
-	(137, '3c1d985b-3489-4366-a42b-11a35ec99db1', 9, NULL, NULL, 1, 3.50, 0.00, 0.00, NULL, 'cancelada', '25260824057254000104650010000000881345724970', '325260000034883', '2026-08-19 13:26:37', 88, 1, NULL, NULL, NULL, 1, 'Cancelado pelo operador: Dados divergentes (protocolo cancelamento: 325260000034884)', NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/19/25260824057254000104650010000000881345724970-nfe.xml', '2026-08-19 13:26:32', '2026-08-19 13:26:58'),
-	(138, '3799428c-f205-403b-9f97-c77c3c553953', 9, NULL, NULL, 1, 3.50, 0.00, 0.00, NULL, 'cancelada', '25260824057254000104650010000000891887989936', '325260000034926', '2026-08-19 16:26:15', 89, 1, NULL, NULL, NULL, 1, 'Cancelado pelo operador: Dados divergentes (protocolo cancelamento: 325260000034927)', NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/19/25260824057254000104650010000000891887989936-nfe.xml', '2026-08-19 16:26:12', '2026-08-19 16:26:36'),
-	(139, '809a735d-a63d-492b-8e02-98a8455a0617', 9, NULL, NULL, 1, 1.75, 2.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000901752348771', '325260000034932', '2026-08-19 16:53:33', 90, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/19/25260824057254000104650010000000901752348771-nfe.xml', '2026-08-19 16:48:11', '2026-08-19 16:53:33'),
-	(140, '90fe5dc5-beb9-4bc0-b5ae-a5ea0aae320e', 9, NULL, NULL, 1, 1.75, 2.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000911917154290', '325260000035001', '2026-08-20 11:23:16', 91, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/20/25260824057254000104650010000000911917154290-nfe.xml', '2026-08-20 11:08:35', '2026-08-20 11:23:16'),
-	(141, '002f5652-be64-44f8-8caf-551024152097', 9, NULL, NULL, 1, 3.50, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000921911248398', '325260000035002', '2026-08-20 11:23:29', 92, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/20/25260824057254000104650010000000921911248398-nfe.xml', '2026-08-20 11:23:29', '2026-08-20 11:23:29'),
-	(142, '8df6ea52-164a-4213-a89e-c09ccea7c2c4', 9, NULL, NULL, 1, 1.75, 2.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000931197253665', '325260000035003', '2026-08-20 11:24:32', 93, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/20/25260824057254000104650010000000931197253665-nfe.xml', '2026-08-20 11:24:31', '2026-08-20 11:24:32'),
-	(143, '6a9619cd-0c08-4d08-9175-0935556da2f6', 9, NULL, NULL, 1, 0.87, 2.63, 0.00, NULL, 'emitida', '25260824057254000104650010000000941830610547', '325260000035023', '2026-08-20 12:24:07', 94, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/20/25260824057254000104650010000000941830610547-nfe.xml', '2026-08-20 12:24:07', '2026-08-20 12:24:07'),
-	(144, '26bed04e-737e-4230-896f-6585c2842353', 9, NULL, NULL, 1, 3.50, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000951697577332', '325260000035026', '2026-08-20 12:53:02', 95, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/20/25260824057254000104650010000000951697577332-nfe.xml', '2026-08-20 12:53:02', '2026-08-20 12:53:02'),
-	(145, 'b0e8a58b-587b-4527-a887-14bd93986764', 9, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000961695300799', '325260000036025', '2026-08-23 02:41:54', 96, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/22/25260824057254000104650010000000961695300799-nfe.xml', '2026-08-22 13:56:06', '2026-08-23 02:41:54'),
-	(146, '4a0b60a2-17de-410e-9fd4-91f98fed9cff', 9, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000971705281012', '325260000036026', '2026-08-23 02:42:06', 97, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/22/25260824057254000104650010000000971705281012-nfe.xml', '2026-08-23 02:42:06', '2026-08-23 02:42:06'),
-	(147, '0b8ab378-fe51-47c6-87cd-3b84949addfe', 9, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000981846352851', '325260000036027', '2026-08-23 02:44:02', 98, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/22/25260824057254000104650010000000981846352851-nfe.xml', '2026-08-23 02:44:02', '2026-08-23 02:44:02'),
-	(148, 'ec0e8b22-1b7f-4a1d-85a0-d1c3a3b9ba4c', 9, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000991873989900', '325260000036140', '2026-08-23 13:14:42', 99, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/23/25260824057254000104650010000000991873989900-nfe.xml', '2026-08-23 13:14:41', '2026-08-23 13:14:42'),
-	(149, '217b3531-4c05-4e96-a4bd-428d00f502fe', 9, NULL, NULL, 1, 3.75, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001001056852674', '325260000036275', '2026-08-23 18:44:06', 100, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/23/25260824057254000104650010000001001056852674-nfe.xml', '2026-08-23 18:44:03', '2026-08-23 18:44:06'),
-	(150, '35dce40e-5a89-4bea-8956-e16c2f8e0f7f', 9, NULL, NULL, 1, 3.75, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001011768003944', '325260000036346', '2026-08-24 01:27:15', 101, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/23/25260824057254000104650010000001011768003944-nfe.xml', '2026-08-23 19:59:21', '2026-08-24 01:27:15'),
-	(151, 'f20f1c0d-121c-4753-99cc-2b9d377ea5d8', 9, NULL, NULL, 1, 7.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001021595973774', '325260000036347', '2026-08-24 01:32:16', 102, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/23/25260824057254000104650010000001021595973774-nfe.xml', '2026-08-24 01:31:05', '2026-08-24 01:32:16'),
-	(152, '4bd42722-40da-4819-a4d1-af1a285771a9', 9, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001031054032213', '325260000037141', '2026-08-25 21:45:19', 103, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/25/25260824057254000104650010000001031054032213-nfe.xml', '2026-08-24 12:10:53', '2026-08-25 21:45:19'),
-	(153, '6a793e3c-def4-4714-969a-91e53fff3a97', 9, NULL, NULL, 1, 5.75, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001041258497319', '325260000037155', '2026-08-25 21:57:08', 104, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/25/25260824057254000104650010000001041258497319-nfe.xml', '2026-08-24 17:45:39', '2026-08-25 21:57:08'),
-	(154, 'f5970fba-989d-415e-94ea-00789b57646b', 9, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001051234490150', '325260000037142', '2026-08-25 21:45:56', 105, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/25/25260824057254000104650010000001051234490150-nfe.xml', '2026-08-24 18:04:35', '2026-08-25 21:45:56'),
-	(155, '8639e65c-c316-48e0-8cee-f80cd3a269d4', 9, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001061841895370', '325260000037143', '2026-08-25 21:45:57', 106, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/25/25260824057254000104650010000001061841895370-nfe.xml', '2026-08-25 00:45:18', '2026-08-25 21:45:57'),
-	(156, '07dd24fa-78b6-43e3-9156-f70b6b658078', 9, NULL, NULL, 1, 3.75, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001071524307417', '325260000037144', '2026-08-25 21:45:58', 107, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/25/25260824057254000104650010000001071524307417-nfe.xml', '2026-08-25 00:52:37', '2026-08-25 21:45:58'),
-	(157, '5095be1c-3266-41bb-8a42-fa7a5fcbacb4', 9, NULL, NULL, 1, 3.75, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001081081117573', '325260000037145', '2026-08-25 21:45:59', 108, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/25/25260824057254000104650010000001081081117573-nfe.xml', '2026-08-25 01:34:32', '2026-08-25 21:45:59'),
-	(158, '1d67b9dc-3fda-4dfc-b64b-97408b9545ec', 9, NULL, NULL, 1, 3.50, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001091166392029', '325260000037156', '2026-08-25 21:57:09', 109, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/25/25260824057254000104650010000001091166392029-nfe.xml', '2026-08-25 02:11:05', '2026-08-25 21:57:09'),
-	(159, '0a8099ed-fb3b-4b03-abf3-a9c826a37c61', 9, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001101971018941', '325260000037146', '2026-08-25 21:46:00', 110, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/25/25260824057254000104650010000001101971018941-nfe.xml', '2026-08-25 16:33:45', '2026-08-25 21:46:00'),
-	(160, '95f9538d-d267-4828-b7bd-b81f551a14fe', 9, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001111836658307', '325260000037139', '2026-08-25 21:25:09', 111, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/25/25260824057254000104650010000001111836658307-nfe.xml', '2026-08-25 21:25:06', '2026-08-25 21:25:09'),
-	(161, '60574eca-87cf-4dde-9641-db26a36348ad', 9, NULL, NULL, 1, 0.50, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001121350771890', '325260000037165', '2026-08-26 02:13:08', 112, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/25/25260824057254000104650010000001121350771890-nfe.xml', '2026-08-25 22:09:48', '2026-08-26 02:13:08'),
-	(162, '03748f93-b55b-4abf-9b4b-fc323c1a0452', 9, NULL, NULL, 1, 6.50, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001131664767167', '325260000037186', '2026-08-26 11:11:25', 113, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/26/25260824057254000104650010000001131664767167-nfe.xml', '2026-08-26 03:03:37', '2026-08-26 11:11:25'),
-	(163, '7b8c3685-7a2e-44e8-a8ff-785dc1200d62', 9, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001141276449157', '325260000037212', '2026-08-26 12:02:09', 114, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/26/25260824057254000104650010000001141276449157-nfe.xml', '2026-08-26 12:02:08', '2026-08-26 12:02:09'),
-	(164, 'fed91407-62c4-4f59-accf-f0d3e3bc0bb4', 9, NULL, NULL, 1, 3.75, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001151359083270', '325260000037521', '2026-08-27 02:04:48', 115, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/26/25260824057254000104650010000001151359083270-nfe.xml', '2026-08-27 02:04:45', '2026-08-27 02:04:48'),
-	(165, 'd80f5cdd-9a32-4341-b176-9106b0edd5bd', 9, NULL, NULL, 1, 3.75, 0.00, 0.00, NULL, 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-27 02:29:44', '2026-08-27 02:29:44'),
-	(166, '61dc462f-e2b1-436a-8ba1-988dd10b0142', 9, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-27 02:30:32', '2026-08-27 02:30:32'),
-	(167, '8c410b20-1879-495d-a02e-30ca7e5a3cff', 9, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-27 02:31:22', '2026-08-27 02:31:22'),
-	(168, '24bb5249-3f44-41a8-8818-c6fbbb86432d', 9, 1, NULL, 1, 3.75, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001161213451442', '325260000037535', '2026-08-27 10:32:38', 116, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/27/25260824057254000104650010000001161213451442-nfe.xml', '2026-08-27 10:32:35', '2026-08-27 10:32:38'),
-	(169, 'db99513f-6efd-4234-a3a3-af024777ef5a', 9, NULL, NULL, 1, 3.50, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001171912430190', '325260000037844', '2026-08-28 11:34:50', 117, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/28/25260824057254000104650010000001171912430190-nfe.xml', '2026-08-28 11:34:46', '2026-08-28 11:34:50'),
-	(170, '4aad2394-11cf-4ff6-a1e6-c27ea7500727', 9, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001181300027864', '325260000038342', '2026-08-31 12:35:59', 118, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/31/25260824057254000104650010000001181300027864-nfe.xml', '2026-08-31 12:35:55', '2026-08-31 12:35:59'),
-	(171, '9d07c9be-ad1c-4a18-8f9a-b0293bdb206e', 9, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001191610265191', '325260000038344', '2026-08-31 12:38:12', 119, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/31/25260824057254000104650010000001191610265191-nfe.xml', '2026-08-31 12:38:12', '2026-08-31 12:38:12'),
-	(172, '6af8d881-79e7-4e8b-882d-a72e0533c1a7', 9, NULL, NULL, 1, 3.75, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001201744703356', '325260000038482', '2026-08-31 19:06:56', 120, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/31/25260824057254000104650010000001201744703356-nfe.xml', '2026-08-31 19:06:53', '2026-08-31 19:06:57'),
-	(173, '90197070-3b61-49b5-81e5-06ef629c1cdc', 9, NULL, NULL, 1, 3.00, 1.00, 0.00, NULL, 'cancelada', '25260924057254000104650010000001211630746316', '325260000039943', '2026-09-05 20:24:27', 121, 1, NULL, NULL, NULL, 1, 'Cancelado pelo operador: Dados divergentes (protocolo cancelamento: 325260000039945)', NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/09/05/25260924057254000104650010000001211630746316-nfe.xml', '2026-09-05 20:23:43', '2026-09-05 20:26:36'),
-	(174, 'e164c757-2acf-4c78-a0ac-6db69bf52adc', 9, NULL, NULL, 1, 2.00, 0.00, 0.00, NULL, 'emitida', '25260924057254000104650010000001221241898201', '325260000039967', '2026-09-06 14:42:40', 122, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/09/06/25260924057254000104650010000001221241898201-nfe.xml', '2026-09-06 14:25:41', '2026-09-06 14:42:40'),
-	(175, '7c031f3f-c4c5-49b8-aa1e-4f5a81995b5e', 9, NULL, NULL, 1, 2.25, 0.00, 0.75, NULL, 'emitida', '25260924057254000104650010000001231416557588', '325260000042437', '2026-09-26 19:09:58', 123, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\pdv-fiscal\\storage\\app/XML_nfce/26/09/26/25260924057254000104650010000001231416557588-nfe.xml', '2026-09-26 19:09:57', '2026-09-26 19:09:58'),
-	(176, '54995176-75a8-413b-b04a-5e6f89868942', 9, NULL, NULL, 1, 2.00, 0.00, 0.00, NULL, 'emitida', '25260924057254000104650010000001249992261653', '325260000043229', '2026-09-30 16:46:09', 124, 9, '2026-09-30 16:39:41', 'Falha de conectividade com a internet no momento da emissão.', '<?xml version="1.0"?><NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe Id="NFe25260924057254000104650010000001249992261653" versao="4.00"><ide><cUF>25</cUF><cNF>99226165</cNF><natOp>Venda de mercadoria</natOp><mod>65</mod><serie>1</serie><nNF>124</nNF><dhEmi>2026-09-30T13:39:41-03:00</dhEmi><tpNF>1</tpNF><idDest>1</idDest><cMunFG>2504009</cMunFG><tpImp>4</tpImp><tpEmis>9</tpEmis><cDV>3</cDV><tpAmb>2</tpAmb><finNFe>1</finNFe><indFinal>1</indFinal><indPres>1</indPres><procEmi>0</procEmi><verProc>1.0.0</verProc><dhCont>2026-09-30T13:39:41-03:00</dhCont><xJust>Falha de conectividade com a internet no momento da emiss&#xE3;o.</xJust></ide><emit><CNPJ>24057254000104</CNPJ><xNome>R B LIMEIRA LTDA</xNome><xFant>GRANJA LETICIA</xFant><enderEmit><xLgr>Rua Jornalista Evandro Barros</xLgr><nro>246</nro><xBairro>Malvinas</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58433545</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderEmit><IE>162661940</IE><CRT>1</CRT></emit><det nItem="1"><prod><cProd>5</cProd><cEAN>SEM GTIN</cEAN><xProd>NOTA FISCAL EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL</xProd><NCM>00000000</NCM><CFOP>5102</CFOP><uCom>KG</uCom><qCom>1.0000</qCom><vUnCom>2.0000000000</vUnCom><vProd>2.00</vProd><cEANTrib>SEM GTIN</cEANTrib><uTrib>KG</uTrib><qTrib>1.0000</qTrib><vUnTrib>2.0000000000</vUnTrib><indTot>1</indTot></prod><imposto><vTotTrib>0.00</vTotTrib><ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS><PIS><PISOutr><CST>99</CST><vBC>0.00</vBC><pPIS>0.0000</pPIS><vPIS>0.00</vPIS></PISOutr></PIS><COFINS><COFINSOutr><CST>99</CST><vBC>0.00</vBC><pCOFINS>0.0000</pCOFINS><vCOFINS>0.00</vCOFINS></COFINSOutr></COFINS><IBSCBS><CST>000</CST><cClassTrib>000001</cClassTrib><gIBSCBS><vBC>2.00</vBC><gIBSUF><pIBSUF>0.1000</pIBSUF><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><pIBSMun>0.00</pIBSMun><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><gCBS><pCBS>0.9000</pCBS><vCBS>0.02</vCBS></gCBS></gIBSCBS></IBSCBS></imposto><vItem>2.00</vItem></det><total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>2.00</vProd><vFrete>0.00</vFrete><vSeg>0.00</vSeg><vDesc>0.00</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS><vOutro>0.00</vOutro><vNF>2.00</vNF></ICMSTot><IBSCBSTot><vBCIBSCBS>2.00</vBCIBSCBS><gIBS><gIBSUF><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gIBS><gCBS><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vCBS>0.02</vCBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gCBS><gMono><vIBSMono>0.00</vIBSMono><vCBSMono>0.00</vCBSMono><vIBSMonoReten>0.00</vIBSMonoReten><vCBSMonoReten>0.00</vCBSMonoReten><vIBSMonoRet>0.00</vIBSMonoRet><vCBSMonoRet>0.00</vCBSMonoRet></gMono></IBSCBSTot><vNFTot>2.00</vNFTot></total><transp><modFrete>9</modFrete></transp><pag><detPag><indPag>0</indPag><tPag>01</tPag><vPag>2.00</vPag></detPag><vTroco>0.00</vTroco></pag></infNFe><infNFeSupl><qrCode>http://www.sefaz.pb.gov.br/nfcehom?p=25260924057254000104650010000001249992261653|3|2|30|2.00|||prOYppPT5LkNLjNhit/aZHbo1V2TsZnTyE74DlSdc+pK2TDyJZIt6Yl5MwEbPh6p5rHiSqvxDRA2zqTSHHrnBq0Pj0ZVqpS/BE5abLC/ReEWPjVVlqhARlVxG6I5mpKVF9GFFB+p4PTNMT+yGpD2Z9sEcqriBMRT7j14PBrNcAHcs6dAVv+RyPPmhoRmPo4+fjezsvfTQIaTilXgByXrBE0XGtSOFo8sP8biNbsyWIG9WB9EMvRoTafOjp7ILQshceSIR35rk1uA4b2zXLE0cTFhrBAJFfHuBK9mIZepbZQc3MRYhBL8uJn4NK08k0DUVTrR/ff9BeKBtZmObnzfHw==</qrCode><urlChave>www.sefaz.pb.gov.br/nfcehom</urlChave></infNFeSupl><Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/><Reference URI="#NFe25260924057254000104650010000001249992261653"><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><DigestValue>2e5gwDpSbcEdO2ffzQnpE5ouePU=</DigestValue></Reference></SignedInfo><SignatureValue>o+7rB8tJuXJ/28X7kACjIeu3Ybzg85VW5vUYLJbDRUEsnC1k5CZzRbk9QFtIEww5XArCEXOxGpsi7ufJx5nOsSOXzUpkzvUgSZDMOtc63BDyvRqmTqHHHNSgkqIrhTFgVOm1tefKnVM8DSNmJSCg255H5m8qcnfoy5Bcq0LFKxf4Yd7KVdP7wyXxJY4pxyencpZokBJazMe0QrOs7q4tz32kDzTptv4XtexiYL2mrfPjDE1O6hVYAHoyYVwqus63qyndvUUxGcdEMa/fnJ5Cl5iHccmE8UMCOOeuXF7xXe5gSHnwnHITL0PxRJVetdSNHVIrfRIaS7xZCMWAFCwO8w==</SignatureValue><KeyInfo><X509Data><X509Certificate>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</X509Certificate></X509Data></KeyInfo></Signature></NFe>', 1, NULL, NULL, 'C:\\pdv-fiscal\\storage\\app/XML_nfce/26/09/30/25260924057254000104650010000001249992261653-nfe.xml', '2026-09-30 16:39:20', '2026-09-30 16:46:09'),
-	(177, '95727516-b7ee-4adb-8bbf-ed18fc14b13f', 9, NULL, NULL, 1, 9.75, 0.00, 0.00, NULL, 'emitida', '25261024057254000104650010000001251150079544', '325260000043816', '2026-10-01 23:09:56', 125, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\pdv-fiscal\\storage\\app/XML_nfce/26/10/01/25261024057254000104650010000001251150079544-nfe.xml', '2026-10-01 23:05:16', '2026-10-01 23:09:56'),
-	(178, 'f59e56aa-00f4-4001-b595-d28946fbd245', 9, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25261024057254000104650010000001261154802990', '325260000044270', '2026-10-05 01:53:06', 126, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\pdv-fiscal\\storage\\app/XML_nfce/26/10/04/25261024057254000104650010000001261154802990-nfe.xml', '2026-10-05 01:53:03', '2026-10-05 01:53:06');
+-- Copiando dados para a tabela pdv_fiscal.vendas: ~178 rows (aproximadamente)
+REPLACE INTO `vendas` (`id`, `uuid`, `caixa_id`, `cliente_id`, `pedido_venda_id`, `cpf_na_nota`, `operador_id`, `total`, `desconto`, `troco`, `forma_pagamento`, `status`, `chave_nfe`, `protocolo_nfe`, `emitida_em`, `numero_nfce`, `tp_emis`, `dh_cont`, `x_just`, `xml_contingencia`, `serie_nfce`, `motivo_cancelamento`, `motivo_rejeicao`, `ultimo_arquivo_xml`, `created_at`, `updated_at`, `xml_nfce`) VALUES
+	(1, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 04:58:12', '2026-07-31 04:58:12', NULL),
+	(2, NULL, 1, NULL, NULL, NULL, 1, 7.00, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:11:13', '2026-07-31 05:11:13', NULL),
+	(3, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:29:15', '2026-07-31 05:29:15', NULL),
+	(4, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:36:55', '2026-07-31 05:36:55', NULL),
+	(5, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:41:03', '2026-07-31 05:41:03', NULL),
+	(6, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:43:12', '2026-07-31 05:43:12', NULL),
+	(7, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:46:27', '2026-07-31 05:46:27', NULL),
+	(8, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:47:22', '2026-07-31 05:47:22', NULL),
+	(9, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:49:55', '2026-07-31 05:49:55', NULL),
+	(10, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:51:52', '2026-07-31 05:51:52', NULL),
+	(11, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:55:29', '2026-07-31 05:55:29', NULL),
+	(12, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:58:49', '2026-07-31 05:58:49', NULL),
+	(13, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 05:59:56', '2026-07-31 05:59:56', NULL),
+	(14, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:00:55', '2026-07-31 06:00:55', NULL),
+	(15, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:01:47', '2026-07-31 06:01:47', NULL),
+	(16, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:03:06', '2026-07-31 06:03:06', NULL),
+	(17, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:06:02', '2026-07-31 06:06:02', NULL),
+	(18, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:08:44', '2026-07-31 06:08:44', NULL),
+	(19, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:12:58', '2026-07-31 06:12:58', NULL),
+	(20, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:14:27', '2026-07-31 06:14:27', NULL),
+	(21, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:15:07', '2026-07-31 06:15:07', NULL),
+	(22, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:15:45', '2026-07-31 06:15:45', NULL),
+	(23, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:17:30', '2026-07-31 06:17:30', NULL),
+	(24, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:18:04', '2026-07-31 06:18:04', NULL),
+	(25, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 06:20:45', '2026-07-31 06:20:45', NULL),
+	(26, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 13:27:39', '2026-07-31 13:27:39', NULL),
+	(27, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 13:29:31', '2026-07-31 13:29:31', NULL),
+	(28, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 13:31:55', '2026-07-31 13:31:55', NULL),
+	(29, NULL, 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 13:36:47', '2026-07-31 13:36:47', NULL),
+	(30, '5f6b0691-031e-4eba-b8f2-89a42e371fe1', 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 15:21:38', '2026-07-31 15:21:38', NULL),
+	(31, '550a1b7d-22b8-4e13-b926-9e98250e3450', 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 15:33:12', '2026-07-31 15:33:12', NULL),
+	(32, '5ae001d1-dd72-414d-945b-96bed25b2e24', 1, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, 'dinheiro', 'emitida', '25260724057254000104650010000500011060797034', '325260000030585', NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 15:46:55', '2026-07-31 15:46:57', NULL),
+	(33, '55f09a5e-2051-4a72-bf3f-d263ebdcdbef', 1, NULL, NULL, NULL, 1, 3.60, 0.00, 0.00, 'dinheiro', 'emitida', '25260724057254000104650010000500021675218254', '325260000030589', NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 16:04:29', '2026-07-31 16:04:37', NULL),
+	(34, 'a1d7dcb6-bbca-43c3-be5c-0f46ea3c1935', 1, NULL, NULL, NULL, 1, 3.65, 0.00, 0.00, 'dinheiro', 'emitida', '25260724057254000104650010000500031002804648', '325260000030597', NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 16:36:44', '2026-07-31 16:36:47', NULL),
+	(35, 'c9340cf8-fa68-447d-9e57-8e776a0df657', 1, NULL, NULL, NULL, 1, 3.65, 0.00, 0.00, 'dinheiro', 'emitida', '25260724057254000104650010000000111279427641', '325260000030598', NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 16:39:46', '2026-07-31 16:39:48', NULL),
+	(36, 'ec12c631-1a51-4c3d-b996-ecc0c4d738c9', 1, NULL, NULL, NULL, 1, 3.65, 0.00, 0.00, 'dinheiro', 'emitida', '25260724057254000104650010000000121578619817', '325260000030599', NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 16:41:01', '2026-07-31 16:41:04', NULL),
+	(37, '03ae8716-a78b-44bf-b8f6-23aad1b2ef7c', 1, NULL, NULL, NULL, 1, 3.65, 0.00, 0.00, 'dinheiro', 'emitida', '25260724057254000104650010000000021030644425', '325260000030600', NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 16:41:57', '2026-07-31 16:42:00', NULL),
+	(38, '3eaeae8f-9a31-41a7-ad0a-956087eea606', 4, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 20:22:51', '2026-07-31 20:22:51', NULL),
+	(39, '11f5b597-80e2-4c7d-babf-cd6b229d9662', 4, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 20:26:21', '2026-07-31 20:26:21', NULL),
+	(40, '2aa10177-678a-440e-ba32-892baabe0647', 4, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 20:27:18', '2026-07-31 20:27:18', NULL),
+	(41, '64f0f05f-b1c6-47d4-a53c-6bb4234a7a05', 4, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 20:39:53', '2026-07-31 20:39:53', NULL),
+	(42, '99054f2d-9d20-41c4-83e3-22f93d497181', 4, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 20:43:54', '2026-07-31 20:43:54', NULL),
+	(43, '45b6875c-e715-4b17-b611-40e022535214', 4, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 21:08:20', '2026-07-31 21:08:20', NULL),
+	(44, '71a676db-7151-4e69-91d0-78061d58e184', 4, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 21:27:24', '2026-07-31 21:27:24', NULL),
+	(45, '19cd9d3a-e83d-45b4-9b38-c5f825d99782', 4, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 21:29:10', '2026-07-31 21:29:10', NULL),
+	(46, '99c16001-52ea-49c2-a749-7172273bd2de', 5, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-31 21:48:16', '2026-07-31 21:48:16', NULL),
+	(47, '56b821d0-f9bd-4e70-97bf-06696db8e9e0', 5, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 00:58:00', '2026-08-01 00:58:00', NULL),
+	(48, '6dfc3cbd-2674-44ab-93fc-a486f7681b53', 5, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 01:17:17', '2026-08-01 01:17:17', NULL),
+	(49, '36d16fbd-2c3b-4929-a470-6f75c4ebcea0', 5, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 01:23:08', '2026-08-01 01:23:08', NULL),
+	(50, 'ed83f079-ab21-40dd-ac50-a8b24b455fda', 6, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 01:27:23', '2026-08-01 01:27:23', NULL),
+	(51, 'dd2e5f2e-febf-4938-a022-061dd6297886', 6, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 01:29:16', '2026-08-01 01:29:16', NULL),
+	(52, '98602cd8-1447-4de8-8af7-b32a069546e5', 7, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 01:29:51', '2026-08-01 01:29:51', NULL),
+	(53, '3b7d5b5e-4d6b-411d-bf11-5bbb08f07e0c', 7, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 04:46:35', '2026-08-01 04:46:35', NULL),
+	(54, 'c91b34eb-538b-423c-9d99-c3bcec329c8c', 7, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 04:53:27', '2026-08-01 04:53:27', NULL),
+	(55, 'f15a5a4e-f4ab-4036-9c5f-0d58dee7c396', 7, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 04:54:47', '2026-08-01 04:54:47', NULL),
+	(56, 'a5e1d371-c876-478f-bfa7-9d0567b82401', 8, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 04:56:52', '2026-08-01 04:56:52', NULL),
+	(57, '09f276ad-a7e3-4b16-948d-467c6dfc7fe6', 8, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 05:01:08', '2026-08-01 05:01:08', NULL),
+	(58, '79302279-d5c4-490a-a6b0-d5a37f463766', 8, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 05:08:59', '2026-08-01 05:08:59', NULL),
+	(59, '1da35ad8-5205-446e-8091-3a4628aceffa', 8, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 05:54:24', '2026-08-01 05:54:24', NULL),
+	(60, 'a194a4d7-0a31-4105-b827-c95cd9339899', 8, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000131919266995', '325260000030840', NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 06:00:43', '2026-08-01 06:00:46', NULL),
+	(61, '3d511b69-6ee9-4b5d-9b7a-ea0dd2d8ec93', 8, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000141979820830', '325260000030841', NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 06:25:06', '2026-08-01 06:25:10', NULL),
+	(62, '25e76d7e-bad4-40ac-95c7-45ea808bb9b1', 8, NULL, NULL, NULL, 1, 3.76, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000151745786799', '325260000030842', NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 06:26:41', '2026-08-01 06:26:44', NULL),
+	(63, 'a46cf99a-04ba-4a42-a4a4-3de63701e1f8', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000211527076231', '325260000030843', NULL, 21, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 06:28:46', '2026-08-01 06:34:12', NULL),
+	(64, 'bf285794-7d9b-4b83-b720-314af5048478', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000221587327610', '325260000030844', NULL, 22, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 06:29:17', '2026-08-01 06:42:17', NULL),
+	(65, '70d5cb34-1282-4112-a2d5-0c3b3d0c4529', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000201252231145', '325260000030845', NULL, 20, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 06:32:48', '2026-08-01 06:42:19', NULL),
+	(66, '87420566-4c56-40ec-b9b1-172df02a333a', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'pix', 'cancelada', NULL, NULL, NULL, 23, 1, NULL, NULL, NULL, 1, 'Numero inutilizado manualmente durante testes', 'Rejeicao: Nao informados os dados do cartao de credito/debito nas Formas de Pagamento da Nota Fiscal [Ocorr:1]', NULL, '2026-08-01 06:44:32', '2026-08-01 06:44:35', NULL),
+	(67, '7102f671-63a4-4580-96ce-bb0a98e91625', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'credito', 'cancelada', NULL, NULL, NULL, 24, 1, NULL, NULL, NULL, 1, 'Numero inutilizado manualmente durante testes', 'Rejeicao: Nao informados os dados do cartao de credito/debito nas Formas de Pagamento da Nota Fiscal [Ocorr:1]', NULL, '2026-08-01 06:45:00', '2026-08-01 06:45:02', NULL),
+	(68, '3069bd69-0ecf-4a62-8bc0-8a48928730cf', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'credito', 'cancelada', NULL, NULL, NULL, 25, 1, NULL, NULL, NULL, 1, 'Número inutilizado (protocolo 325260000030850). Venda não será emitida.', 'Rejeicao: Nao informados os dados do cartao de credito/debito nas Formas de Pagamento da Nota Fiscal [Ocorr:1]', NULL, '2026-08-01 15:40:15', '2026-08-01 15:40:40', NULL),
+	(69, 'd5842524-b08b-4f4b-9f1a-d0ea885b21fb', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 15:49:51', '2026-08-01 15:49:51', NULL),
+	(70, '5c06ac0c-7a35-4a0f-8173-cbfedd056735', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'credito', 'cancelada', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, 'Numero inutilizado manualmente durante testes', 'Número liberado após duplicidade causada por teste no PC de backup - será remunerado na próxima emissão', NULL, '2026-08-01 15:50:14', '2026-08-01 15:50:17', NULL),
+	(71, 'ee79b11e-c4e5-4f81-ae96-caffd79f0eff', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'pix', 'cancelada', NULL, NULL, NULL, 27, 1, NULL, NULL, NULL, 1, 'Número inutilizado (protocolo 325260000030854). Venda não será emitida.', 'Rejeicao: Nao informados os dados do cartao de credito/debito nas Formas de Pagamento da Nota Fiscal [Ocorr:1]', NULL, '2026-08-01 16:08:32', '2026-08-01 16:09:31', NULL),
+	(72, 'a2b726e0-93ae-4ee8-a1e6-eecc6766a586', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'pix', 'cancelada', NULL, NULL, NULL, 28, 1, NULL, NULL, NULL, 1, 'Número inutilizado (protocolo 325260000030855). Venda não será emitida.', 'Rejeicao: Nao informados os dados do cartao de credito/debito nas Formas de Pagamento da Nota Fiscal [Ocorr:1]', NULL, '2026-08-01 16:12:46', '2026-08-01 16:14:28', NULL),
+	(73, '602401e1-576b-48cf-b5f6-2d028bfae9dc', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'pix', 'emitida', '25260824057254000104650010000000291897360706', '325260000030858', NULL, 29, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 16:17:04', '2026-08-01 16:29:41', NULL),
+	(74, '27f357b7-787d-4355-a495-2068c5a3ab40', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'credito', 'emitida', '25260824057254000104650010000000301352059170', '325260000030856', NULL, 30, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 16:21:08', '2026-08-01 16:21:11', NULL),
+	(75, 'aaaf44f1-9838-42d4-97ea-9ecaf54d3bc4', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'pix', 'emitida', '25260824057254000104650010000000311881912400', '325260000030859', NULL, 31, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 16:21:19', '2026-08-01 16:29:42', NULL),
+	(76, '7587f56d-8ffb-4d36-86bf-1dece08fe6ad', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'pix', 'pendente', NULL, NULL, NULL, 32, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 16:25:38', '2026-08-01 16:25:40', NULL),
+	(77, '10db307d-797f-4498-8680-ec90ae938169', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'pix', 'emitida', '25260824057254000104650010000000331838319820', '325260000030857', NULL, 33, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 16:28:51', '2026-08-01 16:28:54', NULL),
+	(78, '824fb0ae-c6f9-478f-af25-117148bcd926', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'cancelada', '25260824057254000104650010000000341872764340', '325260000030861', NULL, 34, 1, NULL, NULL, NULL, 1, 'Cancelado pelo operador: Dados divergentes (protocolo cancelamento: 325260000030863)', NULL, NULL, '2026-08-01 16:38:58', '2026-08-01 16:42:43', NULL),
+	(79, 'ab0fc533-9f9f-4a8b-955b-978896ce5938', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-01 17:10:20', '2026-08-01 17:10:20', NULL),
+	(80, 'e8ab853b-71fb-43a5-87a0-10ab62771aa7', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000351756416052', '325260000030867', NULL, 35, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 17:12:38', '2026-08-01 17:12:41', NULL),
+	(81, '4aa411f3-376f-4c31-9e49-851e44019c1d', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000361156517815', '325260000030868', NULL, 36, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 17:17:42', '2026-08-01 17:17:44', NULL),
+	(82, '5efd30d0-d45d-48de-aa38-4aa38b1a77f9', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000371469329705', '325260000030869', NULL, 37, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 17:18:19', '2026-08-01 17:18:22', NULL),
+	(83, 'ec55b56c-7b77-456f-b1a7-35f94950fe2a', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000381289173542', '325260000030870', NULL, 38, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 17:24:00', '2026-08-01 17:24:50', NULL),
+	(84, '63a0a0d7-b37f-4346-9913-f7561c6a0571', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000391696599791', '325260000030871', NULL, 39, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 17:35:40', '2026-08-01 17:35:42', NULL),
+	(85, '8558e33a-d3c8-4fb2-9873-d29116080c0b', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000401212152620', '325260000030873', NULL, 40, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 17:36:13', '2026-08-01 17:37:25', NULL),
+	(86, '63354369-9cdf-479a-8bde-d1f47f1b4989', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000411553120768', '325260000030872', NULL, 41, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 17:37:09', '2026-08-01 17:37:11', NULL),
+	(87, '48546dfb-61fc-48dc-9ce8-1b7d68130ca3', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.00, 'dinheiro', 'emitida', '25260824057254000104650010000000421775127189', '325260000030874', NULL, 42, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-01 17:38:29', '2026-08-01 17:45:58', NULL),
+	(88, 'cce26f64-ab0c-47fd-b54d-6d78aba84b06', 8, NULL, NULL, NULL, 1, 30.16, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000431980022331', '325260000030920', NULL, 43, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 02:22:31', '2026-08-02 02:22:40', NULL),
+	(89, '90b59eec-0c8a-463d-b884-b514743af4ee', 8, NULL, NULL, NULL, 1, 30.16, 0.00, 0.84, NULL, 'emitida', '25260824057254000104650010000000441182448088', '325260000030921', NULL, 44, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 02:37:01', '2026-08-02 02:37:24', NULL),
+	(90, '4241a063-8af9-435a-9ab0-cf85e13606b4', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.23, NULL, 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-02 02:37:55', '2026-08-02 02:37:55', NULL),
+	(91, 'dc569b33-7427-4bc1-be7c-f976ff61857f', 8, NULL, NULL, NULL, 1, 18.85, 0.00, 0.15, NULL, 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-02 02:44:41', '2026-08-02 02:44:41', NULL),
+	(92, 'd355139d-d7f3-42f5-b95a-a8121b708515', 8, NULL, NULL, NULL, 1, 1.77, 0.00, 0.23, NULL, 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-02 04:07:25', '2026-08-02 04:07:25', NULL),
+	(93, '4ed811ad-bebe-43e2-a82c-1ca750ea81cb', 8, NULL, NULL, NULL, 1, 2.77, 0.00, 1.23, NULL, 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-02 04:11:07', '2026-08-02 04:11:07', NULL),
+	(94, 'c75d11b3-b0ca-411e-a07c-2fcd389acb9e', 8, NULL, NULL, NULL, 1, 2.77, 0.00, 1.23, NULL, 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-02 04:12:27', '2026-08-02 04:12:27', NULL),
+	(95, 'a3b29205-8f75-483d-ab7b-fbefa769aa62', 8, NULL, NULL, NULL, 1, 2.77, 0.00, 1.23, NULL, 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-02 04:13:40', '2026-08-02 04:13:40', NULL),
+	(96, 'e756d23e-0c48-43a5-b4ab-f81402509e67', 8, NULL, NULL, NULL, 1, 2.77, 1.00, 0.23, NULL, 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-02 04:16:49', '2026-08-02 04:16:49', NULL),
+	(97, 'b1be60a1-e20e-4086-a83a-6abd1f1f8415', 8, NULL, NULL, NULL, 1, 2.50, 1.27, 0.50, NULL, 'emitida', '25260824057254000104650010000000451795626441', '325260000030922', NULL, 45, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 04:33:27', '2026-08-02 04:35:40', NULL),
+	(98, 'd3474545-e34c-4aaa-9c2f-1bad11658182', 8, NULL, NULL, NULL, 1, 1.77, 2.00, 0.23, NULL, 'emitida', '25260824057254000104650010000000461205838000', '325260000030923', NULL, 46, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 04:37:35', '2026-08-02 04:37:37', NULL),
+	(99, 'a4e99566-01c2-4728-ac0f-ecbcd47450d7', 8, NULL, NULL, NULL, 1, 2.00, 1.77, 1.00, NULL, 'emitida', '25260824057254000104650010000000471137557525', '325260000030926', NULL, 47, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 15:39:25', '2026-08-02 15:39:35', NULL),
+	(100, '39e2d95e-0955-48b3-86c8-1034d07165bc', 8, NULL, NULL, NULL, 1, 9.31, 2.00, 0.69, NULL, 'emitida', '25260824057254000104650010000000481866864902', '325260000030927', NULL, 48, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 15:55:22', '2026-08-02 15:55:26', NULL),
+	(101, 'a4b7b571-e554-465f-9956-4f94d212a8f8', 8, NULL, NULL, NULL, 1, 5.54, 2.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000491717847566', '325260000030928', NULL, 49, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 16:27:05', '2026-08-02 16:27:18', NULL),
+	(102, 'e903c8f7-5d9b-4bd1-8813-64318688a815', 8, NULL, NULL, NULL, 1, 9.31, 2.00, 0.50, NULL, 'emitida', '25260824057254000104650010000000501110032214', '325260000030929', NULL, 50, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 16:34:29', '2026-08-02 16:34:32', NULL),
+	(103, 'b7cfa085-6c9a-455f-b025-6239fe9905b7', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.23, NULL, 'emitida', '25260824057254000104650010000000511826250542', '325260000030931', NULL, 51, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 16:39:48', '2026-08-02 16:59:01', NULL),
+	(104, 'b86cb53b-3a5b-437b-a172-b16409537981', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.23, NULL, 'emitida', '25260824057254000104650010000000521625251980', '325260000030932', NULL, 52, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 16:45:14', '2026-08-02 16:59:02', NULL),
+	(105, '2aacf7bd-9622-41d3-bf13-90584e734f18', 8, NULL, NULL, NULL, 1, 3.77, 0.00, 0.23, NULL, 'emitida', '25260824057254000104650010000000531605328810', '325260000030933', NULL, 53, 1, NULL, NULL, NULL, 1, NULL, NULL, NULL, '2026-08-02 16:56:39', '2026-08-02 16:59:04', NULL),
+	(106, '06d536a4-c2e7-4846-b54b-e334e4c98e77', 8, NULL, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000541449278650', '325260000030937', NULL, 54, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/02/25260824057254000104650010000000541449278650-nfe.xml', '2026-08-02 23:21:51', '2026-08-02 23:24:08', NULL),
+	(107, 'd32a773e-35d7-4150-846c-a1d469827de6', 8, NULL, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000551162050503', '325260000030938', NULL, 55, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/02/25260824057254000104650010000000551162050503-nfe.xml', '2026-08-02 23:25:01', '2026-08-02 23:25:04', NULL),
+	(108, 'ac628cc7-956c-4863-bb00-48c6ad5de4e7', 8, NULL, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000561112830146', '325260000030940', NULL, 56, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/02/25260824057254000104650010000000561112830146-nfe.xml', '2026-08-02 23:28:44', '2026-08-02 23:28:48', NULL),
+	(109, '5226e1f7-e8ed-4630-9243-2aeaa22adcfb', 8, NULL, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000571104385373', '325260000030941', NULL, 57, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/02/25260824057254000104650010000000571104385373-nfe.xml', '2026-08-02 23:31:45', '2026-08-02 23:31:48', NULL),
+	(110, '72690012-9e19-4a8b-9bce-992d0bfd397e', 8, NULL, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000581519091022', '325260000030942', '2026-08-03 00:14:37', 58, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/02/25260824057254000104650010000000581519091022-nfe.xml', '2026-08-02 23:33:37', '2026-08-03 00:14:37', NULL),
+	(111, 'a542f42d-a4c8-43d7-b5db-0fde143d65cb', 8, NULL, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'cancelada', NULL, NULL, NULL, 59, 1, NULL, NULL, NULL, 1, NULL, 'Rejeicao: NF-e ja esta inutilizada na Base de dados da SEFAZ', 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/02/25260824057254000104650010000000591519606208-contingencia.xml', '2026-08-03 00:13:24', '2026-08-03 01:41:54', NULL),
+	(112, '8c2fe21a-b37e-4639-a13a-d46f1f914fe4', 8, NULL, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000601756799752', '325260000030943', '2026-08-02 21:17:06', 60, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/02/25260824057254000104650010000000601756799752-nfe.xml', '2026-08-02 21:17:04', '2026-08-02 21:17:06', NULL),
+	(113, 'd73a7d0f-ac10-4d1b-afad-52370c9464bf', 8, NULL, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'cancelada', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-02 22:46:59', '2026-08-02 22:46:59', NULL),
+	(114, '962a9d82-53b6-4758-bbba-821be6fe2fc8', 8, NULL, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000611967024626', '325260000030945', '2026-08-02 22:49:33', 61, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/02/25260824057254000104650010000000611967024626-nfe.xml', '2026-08-02 22:49:31', '2026-08-02 22:49:33', NULL),
+	(115, 'fcef4d23-1fd4-4692-bd6c-9691279169d4', 8, NULL, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000621814180068', '325260000030947', '2026-08-03 02:23:37', 62, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/02/25260824057254000104650010000000621814180068-nfe.xml', '2026-08-03 02:23:36', '2026-08-03 02:23:37', NULL),
+	(116, '0bc2ecfd-d0f9-4468-b374-160ee32a7527', 8, NULL, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000631579089504', '325260000030948', '2026-08-03 02:30:20', 63, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/02/25260824057254000104650010000000631579089504-nfe.xml', '2026-08-03 02:30:19', '2026-08-03 02:30:20', NULL),
+	(117, '916a6cf2-7479-4d8d-8d4c-af89aca3fd4a', 8, NULL, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'cancelada', NULL, NULL, NULL, 64, 1, NULL, NULL, NULL, 1, 'Número inutilizado (protocolo 325260000030949). Venda não será emitida.', NULL, NULL, '2026-08-03 02:58:47', '2026-08-03 03:01:05', NULL),
+	(118, 'a566b83c-eff0-4e88-b560-d905e919b315', 8, NULL, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000651584339275', '325260000030950', '2026-08-03 03:02:09', 65, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/03/25260824057254000104650010000000651584339275-nfe.xml', '2026-08-03 03:02:08', '2026-08-03 03:02:09', NULL),
+	(119, '52f064cd-90d8-4eab-9180-8e821c2e5b2d', 8, NULL, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'cancelada', '25260824057254000104650010000000661676344523', '325260000030956', '2026-08-03 10:18:47', 66, 1, NULL, NULL, NULL, 1, 'Cancelado pelo operador: Dados divergentes (protocolo cancelamento: 325260000030957)', NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/03/25260824057254000104650010000000661676344523-nfe.xml', '2026-08-03 10:18:44', '2026-08-03 10:19:50', NULL),
+	(120, '1d357ee8-931d-45bf-866a-4d4ca2b14f9b', 8, NULL, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000671798827950', '325260000030958', '2026-08-03 10:39:56', 67, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/03/25260824057254000104650010000000671798827950-nfe.xml', '2026-08-03 10:28:13', '2026-08-03 10:39:56', NULL),
+	(121, '46d92b0d-1037-4897-801e-6127361e142f', 8, NULL, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000681162943700', '325260000030959', '2026-08-03 10:39:57', 68, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/03/25260824057254000104650010000000681162943700-nfe.xml', '2026-08-03 10:38:51', '2026-08-03 10:39:57', NULL),
+	(122, '57cbdbdd-8a6c-49bc-a0ee-791be038d43f', 8, NULL, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000691763680973', '325260000030962', '2026-08-03 12:03:38', 69, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/03/25260824057254000104650010000000691763680973-nfe.xml', '2026-08-03 12:03:37', '2026-08-03 12:03:38', NULL),
+	(123, '1de87a33-39ed-4fc5-a13f-e8b595b9d67c', 8, NULL, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000741455600618', '325260000031086', '2026-08-04 10:38:22', NULL, 1, NULL, NULL, NULL, NULL, NULL, 'Número liberado após duplicidade causada por teste no PC de backup - será remunerado na próxima emissão', 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/04/25260824057254000104650010000000741455600618-nfe.xml', '2026-08-04 10:22:00', '2026-08-04 10:38:22', NULL),
+	(124, '4745ae01-6c84-47a5-8524-df2afda64251', 8, NULL, NULL, NULL, 1, 3.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000751243048943', '325260000031087', '2026-08-04 10:53:01', 75, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/04/25260824057254000104650010000000751243048943-nfe.xml', '2026-08-04 10:52:58', '2026-08-04 10:53:01', NULL),
+	(125, '43644d0b-7a40-47e4-8c21-b3ea922ace7f', 8, NULL, NULL, NULL, 1, 3.50, 0.00, 16.50, NULL, 'emitida', '25260824057254000104650010000000761482964336', '325260000032032', '2026-08-10 12:14:30', 76, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/10/25260824057254000104650010000000761482964336-nfe.xml', '2026-08-10 12:14:25', '2026-08-10 12:14:30', NULL),
+	(126, '7bdbe629-8f15-45a9-afe2-bc2a0bcd149b', 8, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000771344136214', '325260000032206', '2026-08-10 18:02:45', 77, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/10/25260824057254000104650010000000771344136214-nfe.xml', '2026-08-10 18:02:40', '2026-08-10 18:02:45', NULL),
+	(127, '2e7947b9-4b91-4f82-8108-1083ad79fb4a', 8, NULL, NULL, NULL, 1, 10.75, 0.00, 0.25, NULL, 'emitida', '25260824057254000104650010000000781888665006', '325260000032272', '2026-08-11 03:12:35', 78, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/11/25260824057254000104650010000000781888665006-nfe.xml', '2026-08-11 03:12:29', '2026-08-11 03:12:35', NULL),
+	(128, '25deacc9-7b9e-4289-a27f-6fdc6909aae8', 8, NULL, NULL, NULL, 1, 3.50, 0.00, 1.50, NULL, 'emitida', '25260824057254000104650010000000791482848036', '325260000032582', '2026-08-12 02:10:22', 79, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/11/25260824057254000104650010000000791482848036-nfe.xml', '2026-08-12 02:10:18', '2026-08-12 02:10:22', NULL),
+	(129, 'b8b62a18-8346-49fb-b85e-4b535b1836ba', 8, NULL, NULL, NULL, 1, 17.50, 0.00, 2.50, NULL, 'emitida', '25260824057254000104650010000000801615234743', '325260000032583', '2026-08-12 02:11:27', 80, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/11/25260824057254000104650010000000801615234743-nfe.xml', '2026-08-12 02:11:26', '2026-08-12 02:11:27', NULL),
+	(130, '2f1c74ad-aaa2-43bb-9e71-17586fd07aa4', 8, NULL, NULL, NULL, 1, 3.75, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000811371312861', '325260000032584', '2026-08-12 02:11:58', 81, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/11/25260824057254000104650010000000811371312861-nfe.xml', '2026-08-12 02:11:58', '2026-08-12 02:11:58', NULL),
+	(131, '97b9c564-0e51-4d61-8019-ca85638332f5', 8, NULL, NULL, NULL, 1, 3.50, 0.00, 1.50, NULL, 'emitida', '25260824057254000104650010000000821654996815', '325260000032593', '2026-08-12 12:05:46', 82, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/12/25260824057254000104650010000000821654996815-nfe.xml', '2026-08-12 12:05:45', '2026-08-12 12:05:46', NULL),
+	(132, '0357739b-ea82-4f7c-a915-5d58d95eb0a4', 8, NULL, NULL, NULL, 1, 3.50, 0.00, 16.50, NULL, 'emitida', '25260824057254000104650010000000831310716754', '325260000032814', '2026-08-12 16:43:00', 83, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/12/25260824057254000104650010000000831310716754-nfe.xml', '2026-08-12 16:42:58', '2026-08-12 16:43:00', NULL),
+	(133, '7f63e81b-45ce-46e2-8cdc-7aa28634d4fd', 9, NULL, NULL, NULL, 1, 2.50, 1.00, 0.50, NULL, 'emitida', '25260824057254000104650010000000841481035694', '325260000034761', '2026-08-18 17:36:54', 84, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/18/25260824057254000104650010000000841481035694-nfe.xml', '2026-08-18 17:36:48', '2026-08-18 17:36:54', NULL),
+	(134, 'aa435216-d498-4e4b-9a0a-45438ac11802', 9, NULL, NULL, NULL, 1, 12.50, 2.00, 2.50, NULL, 'emitida', '25260824057254000104650010000000851551766517', '325260000034768', '2026-08-18 17:51:51', 85, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/18/25260824057254000104650010000000851551766517-nfe.xml', '2026-08-18 17:51:51', '2026-08-18 17:51:51', NULL),
+	(135, 'e9d03d84-c5cb-4de0-8e84-3c9b76adb00f', 9, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000861086780875', '325260000034829', '2026-08-18 20:55:52', 86, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/18/25260824057254000104650010000000861086780875-nfe.xml', '2026-08-18 20:55:46', '2026-08-18 20:55:52', NULL),
+	(136, '1bf9ef3e-f169-4bde-a71c-6c39b9cc7747', 9, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000871330347796', '325260000034830', '2026-08-18 20:56:01', 87, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/18/25260824057254000104650010000000871330347796-nfe.xml', '2026-08-18 20:56:00', '2026-08-18 20:56:01', NULL),
+	(137, '3c1d985b-3489-4366-a42b-11a35ec99db1', 9, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, NULL, 'cancelada', '25260824057254000104650010000000881345724970', '325260000034883', '2026-08-19 13:26:37', 88, 1, NULL, NULL, NULL, 1, 'Cancelado pelo operador: Dados divergentes (protocolo cancelamento: 325260000034884)', NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/19/25260824057254000104650010000000881345724970-nfe.xml', '2026-08-19 13:26:32', '2026-08-19 13:26:58', NULL),
+	(138, '3799428c-f205-403b-9f97-c77c3c553953', 9, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, NULL, 'cancelada', '25260824057254000104650010000000891887989936', '325260000034926', '2026-08-19 16:26:15', 89, 1, NULL, NULL, NULL, 1, 'Cancelado pelo operador: Dados divergentes (protocolo cancelamento: 325260000034927)', NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/19/25260824057254000104650010000000891887989936-nfe.xml', '2026-08-19 16:26:12', '2026-08-19 16:26:36', NULL),
+	(139, '809a735d-a63d-492b-8e02-98a8455a0617', 9, NULL, NULL, NULL, 1, 1.75, 2.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000901752348771', '325260000034932', '2026-08-19 16:53:33', 90, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/19/25260824057254000104650010000000901752348771-nfe.xml', '2026-08-19 16:48:11', '2026-08-19 16:53:33', NULL),
+	(140, '90fe5dc5-beb9-4bc0-b5ae-a5ea0aae320e', 9, NULL, NULL, NULL, 1, 1.75, 2.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000911917154290', '325260000035001', '2026-08-20 11:23:16', 91, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/20/25260824057254000104650010000000911917154290-nfe.xml', '2026-08-20 11:08:35', '2026-08-20 11:23:16', NULL),
+	(141, '002f5652-be64-44f8-8caf-551024152097', 9, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000921911248398', '325260000035002', '2026-08-20 11:23:29', 92, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/20/25260824057254000104650010000000921911248398-nfe.xml', '2026-08-20 11:23:29', '2026-08-20 11:23:29', NULL),
+	(142, '8df6ea52-164a-4213-a89e-c09ccea7c2c4', 9, NULL, NULL, NULL, 1, 1.75, 2.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000931197253665', '325260000035003', '2026-08-20 11:24:32', 93, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/20/25260824057254000104650010000000931197253665-nfe.xml', '2026-08-20 11:24:31', '2026-08-20 11:24:32', NULL),
+	(143, '6a9619cd-0c08-4d08-9175-0935556da2f6', 9, NULL, NULL, NULL, 1, 0.87, 2.63, 0.00, NULL, 'emitida', '25260824057254000104650010000000941830610547', '325260000035023', '2026-08-20 12:24:07', 94, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/20/25260824057254000104650010000000941830610547-nfe.xml', '2026-08-20 12:24:07', '2026-08-20 12:24:07', NULL),
+	(144, '26bed04e-737e-4230-896f-6585c2842353', 9, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000951697577332', '325260000035026', '2026-08-20 12:53:02', 95, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/20/25260824057254000104650010000000951697577332-nfe.xml', '2026-08-20 12:53:02', '2026-08-20 12:53:02', NULL),
+	(145, 'b0e8a58b-587b-4527-a887-14bd93986764', 9, NULL, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000961695300799', '325260000036025', '2026-08-23 02:41:54', 96, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/22/25260824057254000104650010000000961695300799-nfe.xml', '2026-08-22 13:56:06', '2026-08-23 02:41:54', NULL),
+	(146, '4a0b60a2-17de-410e-9fd4-91f98fed9cff', 9, NULL, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000971705281012', '325260000036026', '2026-08-23 02:42:06', 97, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/22/25260824057254000104650010000000971705281012-nfe.xml', '2026-08-23 02:42:06', '2026-08-23 02:42:06', NULL),
+	(147, '0b8ab378-fe51-47c6-87cd-3b84949addfe', 9, NULL, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000981846352851', '325260000036027', '2026-08-23 02:44:02', 98, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/22/25260824057254000104650010000000981846352851-nfe.xml', '2026-08-23 02:44:02', '2026-08-23 02:44:02', NULL),
+	(148, 'ec0e8b22-1b7f-4a1d-85a0-d1c3a3b9ba4c', 9, NULL, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000000991873989900', '325260000036140', '2026-08-23 13:14:42', 99, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/23/25260824057254000104650010000000991873989900-nfe.xml', '2026-08-23 13:14:41', '2026-08-23 13:14:42', NULL),
+	(149, '217b3531-4c05-4e96-a4bd-428d00f502fe', 9, NULL, NULL, NULL, 1, 3.75, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001001056852674', '325260000036275', '2026-08-23 18:44:06', 100, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/23/25260824057254000104650010000001001056852674-nfe.xml', '2026-08-23 18:44:03', '2026-08-23 18:44:06', NULL),
+	(150, '35dce40e-5a89-4bea-8956-e16c2f8e0f7f', 9, NULL, NULL, NULL, 1, 3.75, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001011768003944', '325260000036346', '2026-08-24 01:27:15', 101, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/23/25260824057254000104650010000001011768003944-nfe.xml', '2026-08-23 19:59:21', '2026-08-24 01:27:15', NULL),
+	(151, 'f20f1c0d-121c-4753-99cc-2b9d377ea5d8', 9, NULL, NULL, NULL, 1, 7.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001021595973774', '325260000036347', '2026-08-24 01:32:16', 102, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/23/25260824057254000104650010000001021595973774-nfe.xml', '2026-08-24 01:31:05', '2026-08-24 01:32:16', NULL),
+	(152, '4bd42722-40da-4819-a4d1-af1a285771a9', 9, NULL, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001031054032213', '325260000037141', '2026-08-25 21:45:19', 103, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/25/25260824057254000104650010000001031054032213-nfe.xml', '2026-08-24 12:10:53', '2026-08-25 21:45:19', NULL),
+	(153, '6a793e3c-def4-4714-969a-91e53fff3a97', 9, NULL, NULL, NULL, 1, 5.75, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001041258497319', '325260000037155', '2026-08-25 21:57:08', 104, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/25/25260824057254000104650010000001041258497319-nfe.xml', '2026-08-24 17:45:39', '2026-08-25 21:57:08', NULL),
+	(154, 'f5970fba-989d-415e-94ea-00789b57646b', 9, NULL, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001051234490150', '325260000037142', '2026-08-25 21:45:56', 105, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/25/25260824057254000104650010000001051234490150-nfe.xml', '2026-08-24 18:04:35', '2026-08-25 21:45:56', NULL),
+	(155, '8639e65c-c316-48e0-8cee-f80cd3a269d4', 9, NULL, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001061841895370', '325260000037143', '2026-08-25 21:45:57', 106, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/25/25260824057254000104650010000001061841895370-nfe.xml', '2026-08-25 00:45:18', '2026-08-25 21:45:57', NULL),
+	(156, '07dd24fa-78b6-43e3-9156-f70b6b658078', 9, NULL, NULL, NULL, 1, 3.75, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001071524307417', '325260000037144', '2026-08-25 21:45:58', 107, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/25/25260824057254000104650010000001071524307417-nfe.xml', '2026-08-25 00:52:37', '2026-08-25 21:45:58', NULL),
+	(157, '5095be1c-3266-41bb-8a42-fa7a5fcbacb4', 9, NULL, NULL, NULL, 1, 3.75, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001081081117573', '325260000037145', '2026-08-25 21:45:59', 108, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/25/25260824057254000104650010000001081081117573-nfe.xml', '2026-08-25 01:34:32', '2026-08-25 21:45:59', NULL),
+	(158, '1d67b9dc-3fda-4dfc-b64b-97408b9545ec', 9, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001091166392029', '325260000037156', '2026-08-25 21:57:09', 109, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/25/25260824057254000104650010000001091166392029-nfe.xml', '2026-08-25 02:11:05', '2026-08-25 21:57:09', NULL),
+	(159, '0a8099ed-fb3b-4b03-abf3-a9c826a37c61', 9, NULL, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001101971018941', '325260000037146', '2026-08-25 21:46:00', 110, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/25/25260824057254000104650010000001101971018941-nfe.xml', '2026-08-25 16:33:45', '2026-08-25 21:46:00', NULL),
+	(160, '95f9538d-d267-4828-b7bd-b81f551a14fe', 9, NULL, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001111836658307', '325260000037139', '2026-08-25 21:25:09', 111, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/25/25260824057254000104650010000001111836658307-nfe.xml', '2026-08-25 21:25:06', '2026-08-25 21:25:09', NULL),
+	(161, '60574eca-87cf-4dde-9641-db26a36348ad', 9, NULL, NULL, NULL, 1, 0.50, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001121350771890', '325260000037165', '2026-08-26 02:13:08', 112, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/25/25260824057254000104650010000001121350771890-nfe.xml', '2026-08-25 22:09:48', '2026-08-26 02:13:08', NULL),
+	(162, '03748f93-b55b-4abf-9b4b-fc323c1a0452', 9, NULL, NULL, NULL, 1, 6.50, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001131664767167', '325260000037186', '2026-08-26 11:11:25', 113, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/26/25260824057254000104650010000001131664767167-nfe.xml', '2026-08-26 03:03:37', '2026-08-26 11:11:25', NULL),
+	(163, '7b8c3685-7a2e-44e8-a8ff-785dc1200d62', 9, NULL, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001141276449157', '325260000037212', '2026-08-26 12:02:09', 114, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/26/25260824057254000104650010000001141276449157-nfe.xml', '2026-08-26 12:02:08', '2026-08-26 12:02:09', NULL),
+	(164, 'fed91407-62c4-4f59-accf-f0d3e3bc0bb4', 9, NULL, NULL, NULL, 1, 3.75, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001151359083270', '325260000037521', '2026-08-27 02:04:48', 115, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/26/25260824057254000104650010000001151359083270-nfe.xml', '2026-08-27 02:04:45', '2026-08-27 02:04:48', NULL),
+	(165, 'd80f5cdd-9a32-4341-b176-9106b0edd5bd', 9, NULL, NULL, NULL, 1, 3.75, 0.00, 0.00, NULL, 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-27 02:29:44', '2026-08-27 02:29:44', NULL),
+	(166, '61dc462f-e2b1-436a-8ba1-988dd10b0142', 9, NULL, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-27 02:30:32', '2026-08-27 02:30:32', NULL),
+	(167, '8c410b20-1879-495d-a02e-30ca7e5a3cff', 9, NULL, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'pendente', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-27 02:31:22', '2026-08-27 02:31:22', NULL),
+	(168, '24bb5249-3f44-41a8-8818-c6fbbb86432d', 9, 1, NULL, NULL, 1, 3.75, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001161213451442', '325260000037535', '2026-08-27 10:32:38', 116, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/27/25260824057254000104650010000001161213451442-nfe.xml', '2026-08-27 10:32:35', '2026-08-27 10:32:38', NULL),
+	(169, 'db99513f-6efd-4234-a3a3-af024777ef5a', 9, NULL, NULL, NULL, 1, 3.50, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001171912430190', '325260000037844', '2026-08-28 11:34:50', 117, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/28/25260824057254000104650010000001171912430190-nfe.xml', '2026-08-28 11:34:46', '2026-08-28 11:34:50', NULL),
+	(170, '4aad2394-11cf-4ff6-a1e6-c27ea7500727', 9, NULL, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001181300027864', '325260000038342', '2026-08-31 12:35:59', 118, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/31/25260824057254000104650010000001181300027864-nfe.xml', '2026-08-31 12:35:55', '2026-08-31 12:35:59', NULL),
+	(171, '9d07c9be-ad1c-4a18-8f9a-b0293bdb206e', 9, NULL, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001191610265191', '325260000038344', '2026-08-31 12:38:12', 119, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/31/25260824057254000104650010000001191610265191-nfe.xml', '2026-08-31 12:38:12', '2026-08-31 12:38:12', NULL),
+	(172, '6af8d881-79e7-4e8b-882d-a72e0533c1a7', 9, NULL, NULL, NULL, 1, 3.75, 0.00, 0.00, NULL, 'emitida', '25260824057254000104650010000001201744703356', '325260000038482', '2026-08-31 19:06:56', 120, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/08/31/25260824057254000104650010000001201744703356-nfe.xml', '2026-08-31 19:06:53', '2026-08-31 19:06:57', NULL),
+	(173, '90197070-3b61-49b5-81e5-06ef629c1cdc', 9, NULL, NULL, NULL, 1, 3.00, 1.00, 0.00, NULL, 'cancelada', '25260924057254000104650010000001211630746316', '325260000039943', '2026-09-05 20:24:27', 121, 1, NULL, NULL, NULL, 1, 'Cancelado pelo operador: Dados divergentes (protocolo cancelamento: 325260000039945)', NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/09/05/25260924057254000104650010000001211630746316-nfe.xml', '2026-09-05 20:23:43', '2026-09-05 20:26:36', NULL),
+	(174, 'e164c757-2acf-4c78-a0ac-6db69bf52adc', 9, NULL, NULL, NULL, 1, 2.00, 0.00, 0.00, NULL, 'emitida', '25260924057254000104650010000001221241898201', '325260000039967', '2026-09-06 14:42:40', 122, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\BACKUP MEU NOTEBOOK\\Projeto ERP\\pdv-fiscal\\storage\\app/XML_nfce/26/09/06/25260924057254000104650010000001221241898201-nfe.xml', '2026-09-06 14:25:41', '2026-09-06 14:42:40', NULL),
+	(175, '7c031f3f-c4c5-49b8-aa1e-4f5a81995b5e', 9, NULL, NULL, NULL, 1, 2.25, 0.00, 0.75, NULL, 'emitida', '25260924057254000104650010000001231416557588', '325260000042437', '2026-09-26 19:09:58', 123, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\pdv-fiscal\\storage\\app/XML_nfce/26/09/26/25260924057254000104650010000001231416557588-nfe.xml', '2026-09-26 19:09:57', '2026-09-26 19:09:58', NULL),
+	(176, '54995176-75a8-413b-b04a-5e6f89868942', 9, NULL, NULL, NULL, 1, 2.00, 0.00, 0.00, NULL, 'emitida', '25260924057254000104650010000001249992261653', '325260000043229', '2026-09-30 16:46:09', 124, 9, '2026-09-30 16:39:41', 'Falha de conectividade com a internet no momento da emissão.', '<?xml version="1.0"?><NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe Id="NFe25260924057254000104650010000001249992261653" versao="4.00"><ide><cUF>25</cUF><cNF>99226165</cNF><natOp>Venda de mercadoria</natOp><mod>65</mod><serie>1</serie><nNF>124</nNF><dhEmi>2026-09-30T13:39:41-03:00</dhEmi><tpNF>1</tpNF><idDest>1</idDest><cMunFG>2504009</cMunFG><tpImp>4</tpImp><tpEmis>9</tpEmis><cDV>3</cDV><tpAmb>2</tpAmb><finNFe>1</finNFe><indFinal>1</indFinal><indPres>1</indPres><procEmi>0</procEmi><verProc>1.0.0</verProc><dhCont>2026-09-30T13:39:41-03:00</dhCont><xJust>Falha de conectividade com a internet no momento da emiss&#xE3;o.</xJust></ide><emit><CNPJ>24057254000104</CNPJ><xNome>R B LIMEIRA LTDA</xNome><xFant>GRANJA LETICIA</xFant><enderEmit><xLgr>Rua Jornalista Evandro Barros</xLgr><nro>246</nro><xBairro>Malvinas</xBairro><cMun>2504009</cMun><xMun>Campina Grande</xMun><UF>PB</UF><CEP>58433545</CEP><cPais>1058</cPais><xPais>Brasil</xPais></enderEmit><IE>162661940</IE><CRT>1</CRT></emit><det nItem="1"><prod><cProd>5</cProd><cEAN>SEM GTIN</cEAN><xProd>NOTA FISCAL EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL</xProd><NCM>00000000</NCM><CFOP>5102</CFOP><uCom>KG</uCom><qCom>1.0000</qCom><vUnCom>2.0000000000</vUnCom><vProd>2.00</vProd><cEANTrib>SEM GTIN</cEANTrib><uTrib>KG</uTrib><qTrib>1.0000</qTrib><vUnTrib>2.0000000000</vUnTrib><indTot>1</indTot></prod><imposto><vTotTrib>0.00</vTotTrib><ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS><PIS><PISOutr><CST>99</CST><vBC>0.00</vBC><pPIS>0.0000</pPIS><vPIS>0.00</vPIS></PISOutr></PIS><COFINS><COFINSOutr><CST>99</CST><vBC>0.00</vBC><pCOFINS>0.0000</pCOFINS><vCOFINS>0.00</vCOFINS></COFINSOutr></COFINS><IBSCBS><CST>000</CST><cClassTrib>000001</cClassTrib><gIBSCBS><vBC>2.00</vBC><gIBSUF><pIBSUF>0.1000</pIBSUF><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><pIBSMun>0.00</pIBSMun><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><gCBS><pCBS>0.9000</pCBS><vCBS>0.02</vCBS></gCBS></gIBSCBS></IBSCBS></imposto><vItem>2.00</vItem></det><total><ICMSTot><vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson><vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet><vProd>2.00</vProd><vFrete>0.00</vFrete><vSeg>0.00</vSeg><vDesc>0.00</vDesc><vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol><vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS><vOutro>0.00</vOutro><vNF>2.00</vNF></ICMSTot><IBSCBSTot><vBCIBSCBS>2.00</vBCIBSCBS><gIBS><gIBSUF><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSUF>0.00</vIBSUF></gIBSUF><gIBSMun><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vIBSMun>0.00</vIBSMun></gIBSMun><vIBS>0.00</vIBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gIBS><gCBS><vDif>0.00</vDif><vDevTrib>0.00</vDevTrib><vCBS>0.02</vCBS><vCredPres>0.00</vCredPres><vCredPresCondSus>0.00</vCredPresCondSus></gCBS><gMono><vIBSMono>0.00</vIBSMono><vCBSMono>0.00</vCBSMono><vIBSMonoReten>0.00</vIBSMonoReten><vCBSMonoReten>0.00</vCBSMonoReten><vIBSMonoRet>0.00</vIBSMonoRet><vCBSMonoRet>0.00</vCBSMonoRet></gMono></IBSCBSTot><vNFTot>2.00</vNFTot></total><transp><modFrete>9</modFrete></transp><pag><detPag><indPag>0</indPag><tPag>01</tPag><vPag>2.00</vPag></detPag><vTroco>0.00</vTroco></pag></infNFe><infNFeSupl><qrCode>http://www.sefaz.pb.gov.br/nfcehom?p=25260924057254000104650010000001249992261653|3|2|30|2.00|||prOYppPT5LkNLjNhit/aZHbo1V2TsZnTyE74DlSdc+pK2TDyJZIt6Yl5MwEbPh6p5rHiSqvxDRA2zqTSHHrnBq0Pj0ZVqpS/BE5abLC/ReEWPjVVlqhARlVxG6I5mpKVF9GFFB+p4PTNMT+yGpD2Z9sEcqriBMRT7j14PBrNcAHcs6dAVv+RyPPmhoRmPo4+fjezsvfTQIaTilXgByXrBE0XGtSOFo8sP8biNbsyWIG9WB9EMvRoTafOjp7ILQshceSIR35rk1uA4b2zXLE0cTFhrBAJFfHuBK9mIZepbZQc3MRYhBL8uJn4NK08k0DUVTrR/ff9BeKBtZmObnzfHw==</qrCode><urlChave>www.sefaz.pb.gov.br/nfcehom</urlChave></infNFeSupl><Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/><Reference URI="#NFe25260924057254000104650010000001249992261653"><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><DigestValue>2e5gwDpSbcEdO2ffzQnpE5ouePU=</DigestValue></Reference></SignedInfo><SignatureValue>o+7rB8tJuXJ/28X7kACjIeu3Ybzg85VW5vUYLJbDRUEsnC1k5CZzRbk9QFtIEww5XArCEXOxGpsi7ufJx5nOsSOXzUpkzvUgSZDMOtc63BDyvRqmTqHHHNSgkqIrhTFgVOm1tefKnVM8DSNmJSCg255H5m8qcnfoy5Bcq0LFKxf4Yd7KVdP7wyXxJY4pxyencpZokBJazMe0QrOs7q4tz32kDzTptv4XtexiYL2mrfPjDE1O6hVYAHoyYVwqus63qyndvUUxGcdEMa/fnJ5Cl5iHccmE8UMCOOeuXF7xXe5gSHnwnHITL0PxRJVetdSNHVIrfRIaS7xZCMWAFCwO8w==</SignatureValue><KeyInfo><X509Data><X509Certificate>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</X509Certificate></X509Data></KeyInfo></Signature></NFe>', 1, NULL, NULL, 'C:\\pdv-fiscal\\storage\\app/XML_nfce/26/09/30/25260924057254000104650010000001249992261653-nfe.xml', '2026-09-30 16:39:20', '2026-09-30 16:46:09', NULL),
+	(177, '95727516-b7ee-4adb-8bbf-ed18fc14b13f', 9, NULL, NULL, NULL, 1, 9.75, 0.00, 0.00, NULL, 'emitida', '25261024057254000104650010000001251150079544', '325260000043816', '2026-10-01 23:09:56', 125, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\pdv-fiscal\\storage\\app/XML_nfce/26/10/01/25261024057254000104650010000001251150079544-nfe.xml', '2026-10-01 23:05:16', '2026-10-01 23:09:56', NULL),
+	(178, 'f59e56aa-00f4-4001-b595-d28946fbd245', 9, NULL, NULL, NULL, 1, 2.25, 0.00, 0.00, NULL, 'emitida', '25261024057254000104650010000001261154802990', '325260000044270', '2026-10-05 01:53:06', 126, 1, NULL, NULL, NULL, 1, NULL, NULL, 'C:\\pdv-fiscal\\storage\\app/XML_nfce/26/10/04/25261024057254000104650010000001261154802990-nfe.xml', '2026-10-05 01:53:03', '2026-10-05 01:53:06', NULL);
 
 -- Copiando estrutura para tabela pdv_fiscal.vendas_pendentes
 CREATE TABLE IF NOT EXISTS `vendas_pendentes` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `uuid` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `uuid` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `caixa_id_central` bigint unsigned DEFAULT NULL,
   `operador_id_central` bigint unsigned NOT NULL,
   `total` decimal(12,2) NOT NULL,
   `desconto` decimal(12,2) NOT NULL DEFAULT '0.00',
   `troco` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `forma_pagamento` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `forma_pagamento` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `pagamentos` json DEFAULT NULL,
   `itens` json NOT NULL,
-  `status` enum('pendente_sync','sincronizada','erro_sync') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pendente_sync',
-  `erro_sync_mensagem` text COLLATE utf8mb4_unicode_ci,
+  `status` enum('pendente_sync','sincronizada','erro_sync') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pendente_sync',
+  `erro_sync_mensagem` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `vendida_em` timestamp NOT NULL,
   `sincronizada_em` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
@@ -14277,7 +14941,7 @@ CREATE TABLE IF NOT EXISTS `venda_itens` (
   CONSTRAINT `venda_itens_venda_id_foreign` FOREIGN KEY (`venda_id`) REFERENCES `vendas` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=187 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.venda_itens: ~180 rows (aproximadamente)
+-- Copiando dados para a tabela pdv_fiscal.venda_itens: ~186 rows (aproximadamente)
 REPLACE INTO `venda_itens` (`id`, `venda_id`, `produto_id`, `produto_variante_id`, `quantidade`, `preco_unitario`, `desconto`, `subtotal`, `created_at`, `updated_at`) VALUES
 	(1, 1, 1, NULL, 1, 3.50, 0.00, 3.50, '2026-07-31 04:58:12', '2026-07-31 04:58:12'),
 	(2, 2, 1, NULL, 2, 3.50, 0.00, 7.00, '2026-07-31 05:11:13', '2026-07-31 05:11:13'),
@@ -14479,7 +15143,7 @@ CREATE TABLE IF NOT EXISTS `venda_pagamentos` (
   CONSTRAINT `venda_pagamentos_venda_id_foreign` FOREIGN KEY (`venda_id`) REFERENCES `vendas` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=106 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.venda_pagamentos: ~101 rows (aproximadamente)
+-- Copiando dados para a tabela pdv_fiscal.venda_pagamentos: ~105 rows (aproximadamente)
 REPLACE INTO `venda_pagamentos` (`id`, `venda_id`, `forma_pagamento`, `valor`, `created_at`, `updated_at`) VALUES
 	(1, 88, 'dinheiro', 10.16, '2026-08-02 02:22:31', '2026-08-02 02:22:31'),
 	(2, 88, 'pix', 10.00, '2026-08-02 02:22:31', '2026-08-02 02:22:31'),
