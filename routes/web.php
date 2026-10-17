@@ -279,6 +279,8 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
 
             // ---------------- ORDENS DE SERVIÇO ----------------
             Route::prefix('pedidos')->group(function () {
+                Route::get('ordem-servico/buscar-produto', [OrdemServicoController::class, 'buscarProduto'])
+                    ->name('ordens-servico.buscar-produto');
                 Route::get('ordem-servico/{ordem}/imprimir', [OrdemServicoController::class, 'imprimir'])
                     ->name('ordens-servico.imprimir');
                 Route::get('ordem-servico/{ordem}/cupom', [OrdemServicoController::class, 'cupom'])

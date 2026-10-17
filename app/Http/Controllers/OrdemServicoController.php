@@ -8,14 +8,18 @@ use App\Models\FormaPagamento;
 use App\Models\OrdemServico;
 use App\Models\Produto;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class OrdemServicoController extends Controller
 {
+    private ?Collection $operadoresFiscaisCache = null;
+
     public function index(Request $request)
     {
         $ordens = OrdemServico::query()
@@ -93,7 +97,7 @@ class OrdemServicoController extends Controller
                 ->with('erro', "A ordem de serviço {$ordem->numeroExibicao()} não pode mais ser editada.");
         }
 
-        [$dados, $itens] = $this->validar($request, true);
+        [$dados, $itens] = $this->validar($request, true, $ordem);
 
         DB::transaction(function () use ($ordem, $dados, $itens) {
             $ordem->fill($dados);
@@ -151,15 +155,179 @@ class OrdemServicoController extends Controller
         return view('pedidos.ordem-servico.cupom', $this->dadosDeImpressao($ordem));
     }
 
+    /**
+     * Busca de peças para a OS: só produtos ATIVOS do cadastro. Produto com variação
+     * não entra "inteiro": cada variação vira uma linha (com o código de barras dela).
+     */
+    public function buscarProduto(Request $request): JsonResponse
+    {
+        $termo = trim((string) $request->query('termo'));
+
+        if ($termo === '') {
+            return response()->json([]);
+        }
+
+        $like = "%{$termo}%";
+
+        $produtos = Produto::query()
+            ->ativos()
+            ->where(function ($q) use ($like) {
+                $q->where('nome', 'like', $like)
+                  ->orWhere('codigo_interno', 'like', $like)
+                  ->orWhere('codigo_barras', 'like', $like)
+                  ->orWhere('referencia', 'like', $like)
+                  ->orWhereHas('variantes', fn ($v) => $v
+                      ->where('codigo_barras', 'like', $like)
+                      ->orWhere('cor', 'like', $like)
+                      ->orWhere('tamanho', 'like', $like));
+            })
+            ->with('variantes')
+            ->orderByRaw('(codigo_barras = ? OR codigo_interno = ?) DESC', [$termo, $termo])
+            ->orderBy('nome')
+            ->limit(30)
+            ->get();
+
+        $linhas = [];
+
+        foreach ($produtos as $produto) {
+            $unidade = $produto->unidade_comercial ?: 'UN';
+            $preco   = (float) $produto->preco_venda;
+
+            if ($produto->tem_variacao) {
+                foreach ($produto->variantes as $variante) {
+                    $linhas[] = [
+                        'produto_id'          => $produto->id,
+                        'produto_variante_id' => $variante->id,
+                        'codigo_barras'       => $variante->codigo_barras,
+                        'codigo_interno'      => $produto->codigo_interno,
+                        'descricao'           => $produto->nome . ' — ' . $variante->rotulo(),
+                        'unidade'             => $unidade,
+                        'estoque'             => (float) $variante->estoque,
+                        'preco_venda'         => $preco,
+                    ];
+                }
+                continue;
+            }
+
+            $linhas[] = [
+                'produto_id'          => $produto->id,
+                'produto_variante_id' => null,
+                'codigo_barras'       => $produto->codigo_barras,
+                'codigo_interno'      => $produto->codigo_interno,
+                'descricao'           => $produto->nome,
+                'unidade'             => $unidade,
+                'estoque'             => (float) $produto->estoque,
+                'preco_venda'         => $preco,
+            ];
+        }
+
+        return response()->json(array_slice($linhas, 0, 50));
+    }
+
+    /**
+     * Monta os itens a partir do CADASTRO de produtos. Do formulário só valem produto,
+     * variação, quantidade e valor unitário; descrição, unidade e código de barras
+     * são sempre os do cadastro (o navegador não consegue inventar uma peça).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function resolverItensDoCadastro(array $itensEnviados, ?OrdemServico $ordem): array
+    {
+        if (! $itensEnviados) {
+            return [];
+        }
+
+        $produtos = Produto::with('variantes')
+            ->whereIn('id', collect($itensEnviados)->pluck('produto_id'))
+            ->get()
+            ->keyBy('id');
+
+        // peças que já estavam na OS continuam valendo mesmo que o produto tenha sido inativado depois
+        $jaNaOrdem = $ordem
+            ? $ordem->itens->map(fn ($i) => $i->produto_id . '-' . ($i->produto_variante_id ?? 0))->all()
+            : [];
+
+        $resultado = [];
+
+        foreach (array_values($itensEnviados) as $indice => $item) {
+            $campo   = "itens.{$indice}.produto_id";
+            $produto = $produtos->get($item['produto_id']);
+
+            if (! $produto) {
+                throw ValidationException::withMessages([$campo => 'Peça ' . ($indice + 1) . ': produto não encontrado no cadastro.']);
+            }
+
+            $variante = null;
+            $idVariante = ! empty($item['produto_variante_id']) ? (int) $item['produto_variante_id'] : null;
+
+            if ($produto->tem_variacao) {
+                $variante = $produto->variantes->firstWhere('id', $idVariante);
+
+                if (! $variante) {
+                    throw ValidationException::withMessages([$campo => "Peça " . ($indice + 1) . ": escolha uma variação de \"{$produto->nome}\"."]);
+                }
+            } elseif ($idVariante) {
+                throw ValidationException::withMessages([$campo => "Peça " . ($indice + 1) . ": \"{$produto->nome}\" não tem variações."]);
+            }
+
+            $chave = $produto->id . '-' . ($variante?->id ?? 0);
+
+            if (! $produto->ativo && ! in_array($chave, $jaNaOrdem, true)) {
+                throw ValidationException::withMessages([$campo => "Peça " . ($indice + 1) . ": \"{$produto->nome}\" está inativo no cadastro."]);
+            }
+
+            $resultado[] = [
+                'produto_id'          => $produto->id,
+                'produto_variante_id' => $variante?->id,
+                'codigo_barras'       => $variante ? $variante->codigo_barras : $produto->codigo_barras,
+                'descricao'           => $variante ? $produto->nome . ' — ' . $variante->rotulo() : $produto->nome,
+                'unidade'             => strtoupper($produto->unidade_comercial ?: 'UN'),
+                'quantidade'          => round((float) $item['quantidade'], 3),
+                'valor_unitario'      => round((float) $item['valor_unitario'], 2),
+            ];
+        }
+
+        return $resultado;
+    }
+
     // ------------------------------------------------------------------
+
+    /**
+     * Operadores que podem aparecer na OS (operador e técnico): só os do tipo fiscal
+     * (e administradores), como no formulário de nota fiscal.
+     */
+    private function operadoresFiscais(): Collection
+    {
+        return $this->operadoresFiscaisCache ??= User::query()
+            ->where('ativo', true)
+            ->orderBy('name')
+            ->get()
+            ->filter(fn (User $u) => $u->isAdmin() || $u->temAcesso('fiscal'))
+            ->values();
+    }
+
+    /**
+     * Valida no servidor que o operador/técnico é do tipo fiscal. Ao editar, quem já estava
+     * na OS continua valendo, mesmo que tenha sido desativado ou perdido o acesso depois.
+     */
+    private function regraOperadorFiscal(?int $valorAtual): \Closure
+    {
+        return function (string $atributo, mixed $valor, \Closure $falhar) use ($valorAtual) {
+            if ($valorAtual !== null && (int) $valor === (int) $valorAtual) {
+                return;
+            }
+
+            if (! $this->operadoresFiscais()->contains('id', (int) $valor)) {
+                $falhar('O :attribute selecionado não é um operador do tipo fiscal.');
+            }
+        };
+    }
 
     private function dadosDoFormulario(OrdemServico $ordem): array
     {
         return [
             'ordem'            => $ordem,
-            // AJUSTE: use aqui a mesma consulta de operadores do PedidoVendaController
-            // (por exemplo, só quem tem acesso do tipo fiscal).
-            'operadores'       => User::query()->where('ativo', true)->orderBy('name')->get(),
+            'operadores'       => $this->operadoresFiscais(),
             'operadorPadraoId' => Auth::guard('web')->id(),
             'formasPagamento'  => FormaPagamento::query()->orderBy('descricao')->get(),
         ];
@@ -188,15 +356,15 @@ class OrdemServicoController extends Controller
     }
 
     /** @return array{0: array, 1: array} [dados da OS, itens] */
-    private function validar(Request $request, bool $edicao): array
+    private function validar(Request $request, bool $edicao, ?OrdemServico $ordem = null): array
     {
         $statusPermitidos = array_diff(array_keys(OrdemServico::STATUS), ['cancelada']);
 
         $regras = [
             'data_abertura'      => ['required', 'date'],
             'previsao_entrega'   => ['nullable', 'date', 'after_or_equal:data_abertura'],
-            'operador_id'        => ['required', Rule::exists(User::class, 'id')],
-            'tecnico_id'         => ['nullable', Rule::exists(User::class, 'id')],
+            'operador_id'        => ['required', Rule::exists(User::class, 'id'), $this->regraOperadorFiscal($ordem?->operador_id)],
+            'tecnico_id'         => ['nullable', Rule::exists(User::class, 'id'), $this->regraOperadorFiscal($ordem?->tecnico_id)],
             'cliente_id'         => ['required', Rule::exists(Cliente::class, 'id')],
             'forma_pagamento_id' => ['nullable', Rule::exists(FormaPagamento::class, 'id')],
             'prioridade'         => ['required', Rule::in(['normal', 'urgente'])],
@@ -248,15 +416,7 @@ class OrdemServicoController extends Controller
 
         $dados = $request->validate($regras, [], $nomes);
 
-        $itens = collect($dados['itens'] ?? [])->map(fn ($i) => [
-            'produto_id'          => $i['produto_id'],
-            'produto_variante_id' => $i['produto_variante_id'] ?? null,
-            'codigo_barras'       => $i['codigo_barras'] ?? null,
-            'descricao'           => $i['descricao'],
-            'unidade'             => strtoupper($i['unidade']),
-            'quantidade'          => round((float) $i['quantidade'], 3),
-            'valor_unitario'      => round((float) $i['valor_unitario'], 2),
-        ])->values()->all();
+        $itens = $this->resolverItensDoCadastro($dados['itens'] ?? [], $ordem);
 
         $pecas   = round(collect($itens)->sum(fn ($i) => round($i['quantidade'] * $i['valor_unitario'], 2)), 2);
         $servico = round((float) ($dados['valor_servico'] ?? 0), 2);
@@ -275,4 +435,4 @@ class OrdemServicoController extends Controller
 
         return [$dados, $itens];
     }
-}
+}                                                             

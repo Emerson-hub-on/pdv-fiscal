@@ -182,6 +182,11 @@
                     <label class="{{ $labelCls }}">Técnico responsável {!! $opcional !!}</label>
                     <select name="tecnico_id" class="{{ $inputCls }}">
                         <option value="">—</option>
+                        @if ($ehEdicao && $ordem->tecnico && ! $operadores->contains('id', $ordem->tecnico_id))
+                            <option value="{{ $ordem->tecnico_id }}" @selected((int) old('tecnico_id', $ordem->tecnico_id) === (int) $ordem->tecnico_id)>
+                                {{ $ordem->tecnico->codigo ? $ordem->tecnico->codigo . ' — ' : '' }}{{ $ordem->tecnico->name }} (inativo)
+                            </option>
+                        @endif
                         @foreach ($operadores as $op)
                             <option value="{{ $op->id }}" @selected((int) old('tecnico_id', $ordem->tecnico_id) === (int) $op->id)>
                                 {{ $op->codigo ? $op->codigo . ' — ' : '' }}{{ $op->name }}
@@ -306,7 +311,7 @@
         {{-- Tab: Peças --}}
         <div id="tab-pecas" class="tab-painel p-6 hidden">
         <p class="text-xs text-gray-500 mb-4">
-            Opcional: se o equipamento precisar de peças, leia o código de barras e tecle Enter, ou comece a digitar a descrição para buscar o produto. Só produtos cadastrados podem ser incluídos.
+            Opcional: se o equipamento precisar de peças, leia o código de barras e tecle Enter, ou comece a digitar a descrição para buscar o produto. Só produtos ativos do cadastro de produtos podem ser incluídos.
         </p>
 
         {{-- Linha de inclusão --}}
@@ -524,8 +529,8 @@
 
 <script>
 const itensIniciais     = {{ Illuminate\Support\Js::from($itensIniciais) }};
-// reaproveita a busca de produtos do Pedido de Venda
-const urlBuscaProduto   = {{ Illuminate\Support\Js::from(route('pedidos-venda.buscar-produto')) }};
+// busca só no cadastro de produtos (ativos); produto com variação aparece uma linha por variação
+const urlBuscaProduto   = {{ Illuminate\Support\Js::from(route('ordens-servico.buscar-produto')) }};
 // reaproveita a busca de cliente que já existe em Contas a Receber
 const urlBuscaCliente   = {{ Illuminate\Support\Js::from(route('contas-receber.buscar-cliente')) }};
 
