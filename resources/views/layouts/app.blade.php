@@ -59,6 +59,13 @@
                     </a>
                 @endif
 
+                @if (auth()->user()?->podeVer('servicos'))
+                    <a href="{{ route('servicos.index') }}"
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                        Serviços
+                    </a>
+                @endif
+
                 @if (auth()->user()?->podeVer('clientes'))
                     <a href="{{ route('clientes.index') }}"
                     class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
@@ -281,6 +288,7 @@
                 $breadcrumbMapa = [
                     'produtos' => ['Cadastros', 'Produtos'],
                     'clientes' => ['Cadastros', 'Clientes'],
+                    'servicos' => ['Cadastros', 'Serviços'],
                     'empresa'  => ['Cadastros', 'Empresa'],
                     'pdvs'     => ['Cadastros', 'PDVs'],
                     'notasfiscais' => ['Faturamento', 'Nota Fiscal - Saída'],

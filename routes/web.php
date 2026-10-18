@@ -43,6 +43,7 @@ use App\Http\Controllers\TipoContaReceberController;
 use App\Http\Controllers\PedidoCompraController;
 use App\Http\Controllers\PedidoVendaController;
 use App\Http\Controllers\OrdemServicoController;
+use App\Http\Controllers\ServicoController;
 
 
 
@@ -182,6 +183,13 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
             Route::get('fornecedores/{fornecedor}/editar', [FornecedorController::class, 'edit'])->name('fornecedores.edit');
             Route::put('fornecedores/{fornecedor}', [FornecedorController::class, 'update'])->name('fornecedores.update');
             Route::post('fornecedores/{fornecedor}/toggle-ativo', [FornecedorController::class, 'toggleAtivo'])->name('fornecedores.toggleAtivo');
+        });
+
+        // ---------------- SERVIÇOS (NFS-e) ----------------
+        Route::middleware('permissao:servicos')->group(function () {
+            Route::resource('servicos', ServicoController::class)->except(['show', 'destroy']);
+            Route::patch('servicos/{servico}/toggle-ativo', [ServicoController::class, 'toggleAtivo'])
+                ->name('servicos.toggle-ativo');
         });
 
         // ---------------- NOTA FISCAL - SAÍDA (NF-e modelo 55) ----------------
