@@ -41,7 +41,7 @@
                 $rotaLinha = $ordem->podeEditar()
                     ? route('ordens-servico.edit', $ordem)
                     : route('ordens-servico.imprimir', $ordem);
-                $nomeCliente = $ordem->cliente?->nome_exibicao ?? $ordem->cliente?->nome;
+                $nomeCliente = $ordem->nomeCliente();
                 $textoEquip = trim($ordem->equipamento . ' ' . ($ordem->marca ?? '') . ' ' . ($ordem->modelo ?? ''));
             @endphp
             <tr class="h-14 hover:bg-gray-50">

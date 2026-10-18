@@ -32,6 +32,8 @@
         ? \App\Models\Cliente::find(old('cliente_id'))
         : $ordem->cliente;
 
+    $tipoCliente = old('tipo_cliente', ($ehEdicao && ! $ordem->cliente_id) ? 'avulso' : 'cadastrado');
+
     $operadorSelecionado = old('operador_id', $ordem->operador_id ?? $operadorPadraoId);
 
     // ao editar, o operador original continua valendo mesmo que tenha sido desativado depois
@@ -45,7 +47,7 @@
 @if ($errors->any())
     @php
         $camposPorAba = [
-            'cabecalho'   => ['data_abertura', 'previsao_entrega', 'operador_id', 'tecnico_id', 'cliente_id', 'status', 'prioridade', 'garantia_dias'],
+            'cabecalho'   => ['data_abertura', 'previsao_entrega', 'operador_id', 'tecnico_id', 'tipo_cliente', 'cliente_id', 'cliente_nome', 'cliente_telefone', 'cliente_documento', 'status', 'prioridade', 'garantia_dias'],
             'equipamento' => ['equipamento', 'marca', 'modelo', 'numero_serie', 'acessorios', 'defeito_relatado', 'condicao_entrada'],
             'laudo'       => ['laudo_tecnico', 'servico_executado'],
             'valores'     => ['valor_servico', 'desconto', 'forma_pagamento_id'],
@@ -156,9 +158,19 @@
                 </div>
 
                 <div>
-                    <label class="{{ $labelCls }}">Cliente <span class="text-red-500">*</span></label>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-sm font-medium text-gray-700">Cliente <span class="text-red-500">*</span></label>
+                        <div class="inline-flex rounded-lg border border-gray-300 overflow-hidden text-xs">
+                            <button type="button" id="tipo-cliente-cadastrado" onclick="definirTipoCliente('cadastrado')"
+                                    class="px-2.5 py-1 transition">Cadastrado</button>
+                            <button type="button" id="tipo-cliente-avulso" onclick="definirTipoCliente('avulso')"
+                                    class="px-2.5 py-1 transition border-l border-gray-300">Avulso</button>
+                        </div>
+                    </div>
+                    <input type="hidden" name="tipo_cliente" id="campo-tipo-cliente" value="{{ $tipoCliente }}">
                     <input type="hidden" name="cliente_id" id="campo-cliente"
                            value="{{ old('cliente_id', $ordem->cliente_id) }}">
+                    <div id="bloco-cliente-cadastrado">
                     <div class="flex gap-2">
                         <button type="button" onclick="abrirModalCliente()"
                                 class="w-full min-w-0 text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
@@ -175,7 +187,14 @@
                             &times;
                         </button>
                     </div>
+                    </div>{{-- fim do bloco cliente cadastrado --}}
+                    <div id="bloco-cliente-avulso" class="hidden">
+                        <input type="text" name="cliente_nome" id="campo-cliente-nome" maxlength="150"
+                               placeholder="Nome do cliente (sem cadastro)"
+                               value="{{ old('cliente_nome', $ordem->cliente_nome) }}" class="{{ $inputCls }}">
+                    </div>
                     @error('cliente_id') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
+                    @error('cliente_nome') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
@@ -194,6 +213,22 @@
                         @endforeach
                     </select>
                     @error('tecnico_id') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
+                </div>
+            </div>
+
+            {{-- Dados do cliente avulso (só aparece quando o tipo é "Avulso") --}}
+            <div id="linha-cliente-avulso" class="grid grid-cols-3 gap-4 hidden">
+                <div>
+                    <label class="{{ $labelCls }}">Telefone / WhatsApp {!! $opcional !!}</label>
+                    <input type="text" name="cliente_telefone" maxlength="30" inputmode="tel"
+                           value="{{ old('cliente_telefone', $ordem->cliente_telefone) }}" class="{{ $inputCls }}">
+                    @error('cliente_telefone') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label class="{{ $labelCls }}">CPF/CNPJ {!! $opcional !!}</label>
+                    <input type="text" name="cliente_documento" maxlength="18" inputmode="numeric"
+                           value="{{ old('cliente_documento', $ordem->cliente_documento) }}" class="{{ $inputCls }}">
+                    @error('cliente_documento') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
                 </div>
             </div>
 
@@ -577,6 +612,23 @@ function trocarTab(tab) {
     const btn = document.getElementById('tab-btn-' + tab);
     btn.classList.add('border-blue-600', 'text-blue-600');
     btn.classList.remove('border-transparent', 'text-gray-500');
+}
+
+// Cliente cadastrado (busca no modal) ou avulso (nome digitado). Os dois guardam seus valores ao alternar.
+function definirTipoCliente(tipo) {
+    const avulso = tipo === 'avulso';
+    document.getElementById('campo-tipo-cliente').value = tipo;
+    document.getElementById('bloco-cliente-cadastrado').classList.toggle('hidden', avulso);
+    document.getElementById('bloco-cliente-avulso').classList.toggle('hidden', !avulso);
+    document.getElementById('linha-cliente-avulso').classList.toggle('hidden', !avulso);
+
+    const ativo = ['bg-slate-800', 'text-white'];
+    const inativo = ['bg-white', 'text-gray-600', 'hover:bg-gray-50'];
+    [['cadastrado', !avulso], ['avulso', avulso]].forEach(([nome, ligado]) => {
+        const b = document.getElementById('tipo-cliente-' + nome);
+        b.classList.remove(...ativo, ...inativo);
+        b.classList.add(...(ligado ? ativo : inativo));
+    });
 }
 
 // mostra o aviso já na aba onde está o campo com problema
@@ -1032,7 +1084,11 @@ const modalFinalizar = document.getElementById('modal-finalizar');
 function abrirModalFinalizar() {
     if (!document.getElementById('campo-data-abertura').value)       return avisarNaAba('cabecalho', 'Informe a data de abertura.');
     if (!document.getElementById('campo-operador').value)            return avisarNaAba('cabecalho', 'Selecione o operador.');
-    if (!document.getElementById('campo-cliente').value)             return avisarNaAba('cabecalho', 'Selecione o cliente.');
+    if (document.getElementById('campo-tipo-cliente').value === 'avulso') {
+        if (!document.getElementById('campo-cliente-nome').value.trim()) return avisarNaAba('cabecalho', 'Informe o nome do cliente avulso.');
+    } else if (!document.getElementById('campo-cliente').value) {
+        return avisarNaAba('cabecalho', 'Selecione o cliente ou use a opção "Avulso".');
+    }
     if (!document.getElementById('campo-equipamento').value.trim())  return avisarNaAba('equipamento', 'Informe o equipamento.');
     if (!document.getElementById('campo-defeito').value.trim())      return avisarNaAba('equipamento', 'Descreva o defeito relatado pelo cliente.');
 
@@ -1064,6 +1120,8 @@ document.getElementById('form-os').addEventListener('submit', () => {
     btn.disabled = true;
     btn.textContent = 'Salvando...';
 });
+
+definirTipoCliente(document.getElementById('campo-tipo-cliente').value);
 
 ['campo-valor-servico', 'campo-desconto'].forEach(id => {
     document.getElementById(id).addEventListener('input', atualizarTotais);

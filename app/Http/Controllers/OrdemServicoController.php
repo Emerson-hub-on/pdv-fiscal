@@ -35,6 +35,7 @@ class OrdemServicoController extends Controller
                     }
                     $q->orWhere('equipamento', 'like', "%{$termo}%")
                       ->orWhere('numero_serie', 'like', "%{$termo}%")
+                      ->orWhere('cliente_nome', 'like', "%{$termo}%")
                       ->orWhereHas('cliente', fn ($c) => $c->where('nome', 'like', "%{$termo}%"));
                 });
             })
@@ -365,7 +366,19 @@ class OrdemServicoController extends Controller
             'previsao_entrega'   => ['nullable', 'date', 'after_or_equal:data_abertura'],
             'operador_id'        => ['required', Rule::exists(User::class, 'id'), $this->regraOperadorFiscal($ordem?->operador_id)],
             'tecnico_id'         => ['nullable', Rule::exists(User::class, 'id'), $this->regraOperadorFiscal($ordem?->tecnico_id)],
-            'cliente_id'         => ['required', Rule::exists(Cliente::class, 'id')],
+            // cliente cadastrado OU avulso: só os campos do tipo escolhido são validados
+            'tipo_cliente'       => ['required', Rule::in(['cadastrado', 'avulso'])],
+            'cliente_id'         => ['exclude_unless:tipo_cliente,cadastrado', 'required', Rule::exists(Cliente::class, 'id')],
+            'cliente_nome'       => ['exclude_unless:tipo_cliente,avulso', 'required', 'string', 'max:150'],
+            'cliente_telefone'   => ['exclude_unless:tipo_cliente,avulso', 'nullable', 'string', 'max:30'],
+            'cliente_documento'  => ['exclude_unless:tipo_cliente,avulso', 'nullable', 'string', 'max:18',
+                function (string $atributo, mixed $valor, \Closure $falhar) {
+                    $digitos = preg_replace('/\D/', '', (string) $valor);
+                    if ($digitos !== '' && ! in_array(strlen($digitos), [11, 14], true)) {
+                        $falhar('O :attribute deve ter 11 dígitos (CPF) ou 14 (CNPJ).');
+                    }
+                },
+            ],
             'forma_pagamento_id' => ['nullable', Rule::exists(FormaPagamento::class, 'id')],
             'prioridade'         => ['required', Rule::in(['normal', 'urgente'])],
             'status'             => $edicao ? ['required', Rule::in($statusPermitidos)] : ['nullable'],
@@ -402,6 +415,9 @@ class OrdemServicoController extends Controller
             'operador_id'       => 'operador',
             'tecnico_id'        => 'técnico',
             'cliente_id'        => 'cliente',
+            'cliente_nome'      => 'nome do cliente',
+            'cliente_telefone'  => 'telefone do cliente',
+            'cliente_documento' => 'CPF/CNPJ do cliente',
             'forma_pagamento_id' => 'forma de pagamento',
             'defeito_relatado'  => 'defeito relatado',
             'condicao_entrada'  => 'condição do equipamento',
@@ -428,11 +444,20 @@ class OrdemServicoController extends Controller
             ]);
         }
 
-        unset($dados['itens']);
+        if ($dados['tipo_cliente'] === 'avulso') {
+            $dados['cliente_id']        = null;
+            $dados['cliente_nome']      = trim($dados['cliente_nome']);
+            $dados['cliente_telefone']  = $dados['cliente_telefone'] ?? null;
+            $dados['cliente_documento'] = preg_replace('/\D/', '', (string) ($dados['cliente_documento'] ?? '')) ?: null;
+        } else {
+            $dados['cliente_nome'] = $dados['cliente_telefone'] = $dados['cliente_documento'] = null;
+        }
+
+        unset($dados['tipo_cliente'], $dados['itens']);
         $dados['valor_servico'] = $servico;
         $dados['desconto']      = $desconto;
         $dados['valor_total']   = round($pecas + $servico - $desconto, 2);
 
         return [$dados, $itens];
     }
-}                                                             
+}

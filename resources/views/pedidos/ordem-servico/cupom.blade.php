@@ -85,12 +85,12 @@
         @if ($ordem->tecnico)
             <p class="break-words">Técnico: {{ $ordem->tecnico->name }}</p>
         @endif
-        <p class="break-words">Cliente: {{ $ordem->cliente?->nome ?? '—' }}</p>
-        @if ($ordem->cliente?->cpf_cnpj_formatado)
-            <p>CPF/CNPJ: {{ $ordem->cliente->cpf_cnpj_formatado }}</p>
+        <p class="break-words">Cliente: {{ $ordem->nomeCliente() ?? '—' }}</p>
+        @if ($ordem->documentoCliente())
+            <p>CPF/CNPJ: {{ $ordem->documentoCliente() }}</p>
         @endif
-        @if ($ordem->cliente?->telefone)
-            <p>Tel.: {{ $ordem->cliente->telefone }}</p>
+        @if ($ordem->telefoneCliente())
+            <p>Tel.: {{ $ordem->telefoneCliente() }}</p>
         @endif
     </section>
 

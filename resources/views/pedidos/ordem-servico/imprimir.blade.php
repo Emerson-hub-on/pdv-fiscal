@@ -80,11 +80,13 @@
 
         <div>
             <h2 class="text-xs font-semibold uppercase text-gray-500 mb-1">Cliente</h2>
-            @if ($ordem->cliente)
-                <p class="text-sm font-medium">{{ $ordem->cliente->nome }}</p>
-                <p class="text-sm text-gray-600">{{ $ordem->cliente->cpf_cnpj_formatado }}</p>
-                @if ($ordem->cliente->telefone)
-                    <p class="text-sm text-gray-600">Tel.: {{ $ordem->cliente->telefone }}</p>
+            @if ($ordem->nomeCliente())
+                <p class="text-sm font-medium">{{ $ordem->nomeCliente() }}</p>
+                @if ($ordem->documentoCliente())
+                    <p class="text-sm text-gray-600">{{ $ordem->documentoCliente() }}</p>
+                @endif
+                @if ($ordem->telefoneCliente())
+                    <p class="text-sm text-gray-600">Tel.: {{ $ordem->telefoneCliente() }}</p>
                 @endif
             @else
                 <p class="text-sm text-gray-500">Não informado</p>
@@ -206,7 +208,7 @@
 
     <section class="grid grid-cols-2 gap-12 mt-16 break-inside-avoid">
         <div class="border-t border-gray-800 pt-1 text-center text-xs text-gray-600">
-            {{ $ordem->cliente?->nome ?? 'Cliente' }}<br>Assinatura do cliente
+            {{ $ordem->nomeCliente() ?? 'Cliente' }}<br>Assinatura do cliente
         </div>
         <div class="border-t border-gray-800 pt-1 text-center text-xs text-gray-600">
             {{ $empresa->nome_fantasia ?: ($empresa->razao_social ?: 'Empresa') }}<br>Responsável

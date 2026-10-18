@@ -11,7 +11,8 @@ class OrdemServico extends Model
     protected $table = 'ordens_servico';
 
     protected $fillable = [
-        'data_abertura', 'previsao_entrega', 'cliente_id', 'operador_id', 'tecnico_id',
+        'data_abertura', 'previsao_entrega', 'cliente_id', 'cliente_nome', 'cliente_telefone', 'cliente_documento',
+        'operador_id', 'tecnico_id',
         'forma_pagamento_id', 'status', 'prioridade',
         'equipamento', 'marca', 'modelo', 'numero_serie', 'acessorios',
         'defeito_relatado', 'condicao_entrada', 'laudo_tecnico', 'servico_executado', 'observacoes',
@@ -72,6 +73,39 @@ class OrdemServico extends Model
     public function itens(): HasMany
     {
         return $this->hasMany(OrdemServicoItem::class);
+    }
+
+    /** Cliente avulso = sem cadastro (cliente_id vazio); os dados ficam na própria OS. */
+    public function clienteAvulso(): bool
+    {
+        return $this->cliente_id === null;
+    }
+
+    public function nomeCliente(): ?string
+    {
+        return $this->cliente
+            ? ($this->cliente->nome_exibicao ?? $this->cliente->nome)
+            : ($this->cliente_nome ?: null);
+    }
+
+    public function telefoneCliente(): ?string
+    {
+        return $this->cliente ? ($this->cliente->telefone ?: null) : ($this->cliente_telefone ?: null);
+    }
+
+    public function documentoCliente(): ?string
+    {
+        if ($this->cliente) {
+            return $this->cliente->cpf_cnpj_formatado ?: null;
+        }
+
+        $d = preg_replace('/\D/', '', (string) $this->cliente_documento);
+
+        return match (strlen($d)) {
+            11      => preg_replace('/(\d{3})(\d{3})(\d{3})(\d{2})/', '$1.$2.$3-$4', $d),
+            14      => preg_replace('/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/', '$1.$2.$3/$4-$5', $d),
+            default => null,
+        };
     }
 
     public function numeroExibicao(): string
