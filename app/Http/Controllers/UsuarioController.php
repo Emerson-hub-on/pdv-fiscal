@@ -7,6 +7,7 @@ use App\Models\TipoOperador;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -143,18 +144,22 @@ class UsuarioController extends Controller
     {
         $cfg = $this->cfg($perfil);
 
+        // Tipo que não faz login (ex.: Técnico) é cadastrado sem senha
+        $semLogin = ! $cfg['tipo']->permite_login;
+
         $dados = $request->validate([
             'name'     => ['required', 'string', 'min:2', 'max:100'],
-            'password' => ['required', 'string', 'min:4', 'max:100'],
+            'password' => $semLogin ? ['nullable'] : ['required', 'string', 'min:4', 'max:100'],
         ], [
             'password.required' => 'Informe a senha (mínimo de 4 caracteres).',
         ]);
 
-        $usuario = DB::transaction(function () use ($dados, $cfg) {
+        $usuario = DB::transaction(function () use ($dados, $cfg, $semLogin) {
             // Um código por pessoa: o próximo livre (códigos nunca são reaproveitados)
             $usuario = User::create([
                 'name'     => trim($dados['name']),
-                'password' => $dados['password'],
+                // sem login: senha aleatória que ninguém conhece (a coluna não aceita vazio)
+                'password' => $semLogin ? Str::random(40) : $dados['password'],
                 'codigo'   => (int) User::max('codigo') + 1,
             ]);
 
@@ -168,7 +173,9 @@ class UsuarioController extends Controller
         });
 
         return redirect()->route('usuarios.index', $perfil)
-            ->with('sucesso', "{$cfg['singular']} cadastrado. Código de acesso: {$usuario->codigo}");
+            ->with('sucesso', $semLogin
+                ? "{$cfg['singular']} cadastrado."
+                : "{$cfg['singular']} cadastrado. Código de acesso: {$usuario->codigo}");
     }
 
     // Pessoa que já tem código e senha ganha mais um tipo de acesso (sem mexer em código nem senha)

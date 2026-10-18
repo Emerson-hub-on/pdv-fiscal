@@ -3,6 +3,7 @@
         'caixa'      => 'bg-green-50 text-green-700',
         'fiscal'     => 'bg-blue-50 text-blue-700',
         'supervisor' => 'bg-purple-50 text-purple-700',
+        'tecnico'    => 'bg-orange-50 text-orange-700',
     ];
 @endphp
 

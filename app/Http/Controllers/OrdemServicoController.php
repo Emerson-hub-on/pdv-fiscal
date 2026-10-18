@@ -18,7 +18,8 @@ use Illuminate\Validation\ValidationException;
 
 class OrdemServicoController extends Controller
 {
-    private ?Collection $operadoresFiscaisCache = null;
+    private ?Collection $operadoresCache = null;
+    private ?Collection $tecnicosCache = null;
 
     public function index(Request $request)
     {
@@ -294,32 +295,35 @@ class OrdemServicoController extends Controller
     // ------------------------------------------------------------------
 
     /**
-     * Operadores que podem aparecer na OS (operador e técnico): só os do tipo fiscal
-     * (e administradores), como no formulário de nota fiscal.
+     * Operador da OS: mesmo critério do operador da NF-e (operadores fiscais ativos e o administrador).
      */
-    private function operadoresFiscais(): Collection
+    private function operadores(): Collection
     {
-        return $this->operadoresFiscaisCache ??= User::query()
-            ->where('ativo', true)
-            ->orderBy('name')
-            ->get()
-            ->filter(fn (User $u) => $u->isAdmin() || $u->temAcesso('fiscal'))
-            ->values();
+        return $this->operadoresCache ??= User::operadoresDaNota()->orderBy('name')->get();
     }
 
     /**
-     * Valida no servidor que o operador/técnico é do tipo fiscal. Ao editar, quem já estava
-     * na OS continua valendo, mesmo que tenha sido desativado ou perdido o acesso depois.
+     * Técnico da OS: pessoas ativas com acesso ativo ao tipo "tecnico"
+     * (Cadastros > Usuários > Técnico).
      */
-    private function regraOperadorFiscal(?int $valorAtual): \Closure
+    private function tecnicos(): Collection
     {
-        return function (string $atributo, mixed $valor, \Closure $falhar) use ($valorAtual) {
+        return $this->tecnicosCache ??= User::comAcessoAtivo('tecnico')->orderBy('name')->get();
+    }
+
+    /**
+     * Valida no servidor que a pessoa escolhida pertence à lista permitida. Ao editar, quem já
+     * estava na OS continua valendo, mesmo que tenha sido desativado ou perdido o acesso depois.
+     */
+    private function regraDaLista(\Closure $lista, ?int $valorAtual, string $mensagem): \Closure
+    {
+        return function (string $atributo, mixed $valor, \Closure $falhar) use ($lista, $valorAtual, $mensagem) {
             if ($valorAtual !== null && (int) $valor === (int) $valorAtual) {
                 return;
             }
 
-            if (! $this->operadoresFiscais()->contains('id', (int) $valor)) {
-                $falhar('O :attribute selecionado não é um operador do tipo fiscal.');
+            if (! $lista()->contains('id', (int) $valor)) {
+                $falhar($mensagem);
             }
         };
     }
@@ -328,7 +332,8 @@ class OrdemServicoController extends Controller
     {
         return [
             'ordem'            => $ordem,
-            'operadores'       => $this->operadoresFiscais(),
+            'operadores'       => $this->operadores(),
+            'tecnicos'         => $this->tecnicos(),
             'operadorPadraoId' => Auth::guard('web')->id(),
             'formasPagamento'  => FormaPagamento::query()->orderBy('descricao')->get(),
         ];
@@ -364,8 +369,10 @@ class OrdemServicoController extends Controller
         $regras = [
             'data_abertura'      => ['required', 'date'],
             'previsao_entrega'   => ['nullable', 'date', 'after_or_equal:data_abertura'],
-            'operador_id'        => ['required', Rule::exists(User::class, 'id'), $this->regraOperadorFiscal($ordem?->operador_id)],
-            'tecnico_id'         => ['nullable', Rule::exists(User::class, 'id'), $this->regraOperadorFiscal($ordem?->tecnico_id)],
+            'operador_id'        => ['required', Rule::exists(User::class, 'id'),
+                $this->regraDaLista(fn () => $this->operadores(), $ordem?->operador_id, 'O :attribute selecionado não é um operador fiscal.')],
+            'tecnico_id'         => ['nullable', Rule::exists(User::class, 'id'),
+                $this->regraDaLista(fn () => $this->tecnicos(), $ordem?->tecnico_id, 'O :attribute selecionado não está cadastrado como técnico.')],
             // cliente cadastrado OU avulso: só os campos do tipo escolhido são validados
             'tipo_cliente'       => ['required', Rule::in(['cadastrado', 'avulso'])],
             'cliente_id'         => ['exclude_unless:tipo_cliente,cadastrado', 'required', Rule::exists(Cliente::class, 'id')],

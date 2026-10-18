@@ -201,17 +201,20 @@
                     <label class="{{ $labelCls }}">Técnico responsável {!! $opcional !!}</label>
                     <select name="tecnico_id" class="{{ $inputCls }}">
                         <option value="">—</option>
-                        @if ($ehEdicao && $ordem->tecnico && ! $operadores->contains('id', $ordem->tecnico_id))
+                        @if ($ehEdicao && $ordem->tecnico && ! $tecnicos->contains('id', $ordem->tecnico_id))
                             <option value="{{ $ordem->tecnico_id }}" @selected((int) old('tecnico_id', $ordem->tecnico_id) === (int) $ordem->tecnico_id)>
                                 {{ $ordem->tecnico->codigo ? $ordem->tecnico->codigo . ' — ' : '' }}{{ $ordem->tecnico->name }} (inativo)
                             </option>
                         @endif
-                        @foreach ($operadores as $op)
-                            <option value="{{ $op->id }}" @selected((int) old('tecnico_id', $ordem->tecnico_id) === (int) $op->id)>
-                                {{ $op->codigo ? $op->codigo . ' — ' : '' }}{{ $op->name }}
+                        @foreach ($tecnicos as $tec)
+                            <option value="{{ $tec->id }}" @selected((int) old('tecnico_id', $ordem->tecnico_id) === (int) $tec->id)>
+                                {{ $tec->codigo ? $tec->codigo . ' — ' : '' }}{{ $tec->name }}
                             </option>
                         @endforeach
                     </select>
+                    @if ($tecnicos->isEmpty())
+                        <p class="text-xs text-gray-400 mt-1">Nenhum técnico cadastrado (Cadastros &rarr; Usuários &rarr; Técnico).</p>
+                    @endif
                     @error('tecnico_id') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
                 </div>
             </div>

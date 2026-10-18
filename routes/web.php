@@ -376,7 +376,7 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
     // =====================================================================
      Route::middleware(['auth:web', 'acesso:admin'])
         ->prefix('usuarios')
-        ->where(['perfil' => 'caixa|fiscal|supervisor'])
+        ->where(['perfil' => 'caixa|fiscal|supervisor|tecnico'])
         ->group(function () {
             Route::get('{perfil}', [UsuarioController::class, 'index'])->name('usuarios.index');
             Route::get('{perfil}/create', [UsuarioController::class, 'create'])->name('usuarios.create');
