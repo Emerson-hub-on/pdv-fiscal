@@ -15,7 +15,7 @@ class OrdemServico extends Model
         'operador_id', 'tecnico_id',
         'forma_pagamento_id', 'status', 'prioridade',
         'equipamento', 'marca', 'modelo', 'numero_serie', 'acessorios',
-        'defeito_relatado', 'condicao_entrada', 'laudo_tecnico', 'servico_executado', 'observacoes',
+        'defeito_relatado', 'condicao_entrada', 'laudo_tecnico', 'servico_executado', 'observacoes', 'termo_responsabilidade',
         'garantia_dias', 'valor_servico', 'desconto', 'valor_total',
     ];
 
@@ -49,6 +49,15 @@ class OrdemServico extends Model
         'em_andamento'         => ['aguardando_peca' => 'Aguardar peça', 'concluida' => 'Concluir serviço'],
         'concluida'            => ['entregue' => 'Registrar entrega ao cliente'],
     ];
+
+    /**
+     * Texto padrão do termo impresso na OS. O operador pode alterá-lo em cada OS (aba "Termo");
+     * quando ele não altera, a OS fica sem texto próprio e usa este. Vale conferir a redação
+     * (prazo de retirada, garantia) com seu contador/advogado.
+     */
+    public const TERMO_PADRAO = 'Declaro que as informações acima conferem com o estado em que entreguei o equipamento e que autorizo a análise e o reparo descritos. '
+        . 'Equipamentos não retirados em até 90 dias após o aviso de conclusão poderão ser destinados para cobrir custos do serviço. '
+        . 'A garantia cobre apenas o serviço executado e as peças substituídas nesta ordem de serviço, e não cobre mau uso, quedas, oxidação ou violação do lacre.';
 
     public function cliente(): BelongsTo
     {
@@ -111,6 +120,14 @@ class OrdemServico extends Model
     public function numeroExibicao(): string
     {
         return $this->numero ? str_pad((string) $this->numero, 6, '0', STR_PAD_LEFT) : '—';
+    }
+
+    /** Termo que vai na impressão: o da própria OS, se foi alterado, ou o padrão. */
+    public function termoImpresso(): string
+    {
+        $proprio = trim((string) $this->termo_responsabilidade);
+
+        return $proprio !== '' ? $proprio : self::TERMO_PADRAO;
     }
 
     public function statusTexto(): string

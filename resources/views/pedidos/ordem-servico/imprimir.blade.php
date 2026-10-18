@@ -19,11 +19,8 @@
 
     $equipamentoTexto = trim($ordem->equipamento . ' ' . ($ordem->marca ?? '') . ' ' . ($ordem->modelo ?? ''));
 
-    // Texto padrão do termo impresso. Ajuste o prazo e as condições conforme a política da sua loja
-    // (vale conferir a redação com seu contador/advogado).
-    $termo = 'Declaro que as informações acima conferem com o estado em que entreguei o equipamento e que autorizo a análise e o reparo descritos. '
-           . 'Equipamentos não retirados em até 90 dias após o aviso de conclusão poderão ser destinados para cobrir custos do serviço. '
-           . 'A garantia cobre apenas o serviço executado e as peças substituídas nesta ordem de serviço, e não cobre mau uso, quedas, oxidação ou violação do lacre.';
+    // Termo da própria OS (aba "Termo") ou o texto padrão definido no model
+    $termo = $ordem->termoImpresso();
 @endphp
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -203,7 +200,7 @@
 
     <section class="mb-10 break-inside-avoid">
         <h2 class="text-xs font-semibold uppercase text-gray-500 mb-1">Termo de responsabilidade</h2>
-        <p class="text-xs text-gray-600 text-justify">{{ $termo }}</p>
+        <p class="text-xs text-gray-600 text-justify whitespace-pre-line">{{ $termo }}</p>
     </section>
 
     <section class="grid grid-cols-2 gap-12 mt-16 break-inside-avoid">

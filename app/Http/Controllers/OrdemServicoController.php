@@ -401,6 +401,7 @@ class OrdemServicoController extends Controller
             'laudo_tecnico'      => ['nullable', 'string', 'max:2000'],
             'servico_executado'  => ['nullable', 'string', 'max:2000'],
             'observacoes'        => ['nullable', 'string', 'max:1000'],
+            'termo_responsabilidade' => ['nullable', 'string', 'max:2000'],
 
             'garantia_dias'      => ['nullable', 'integer', 'min:0', 'max:3650'],
             'valor_servico'      => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
@@ -432,6 +433,7 @@ class OrdemServicoController extends Controller
             'servico_executado' => 'serviço executado',
             'numero_serie'      => 'número de série',
             'garantia_dias'     => 'garantia',
+            'termo_responsabilidade' => 'termo de responsabilidade',
             'valor_servico'     => 'mão de obra',
             'itens.*.quantidade'     => 'quantidade',
             'itens.*.valor_unitario' => 'valor unitário',
@@ -459,6 +461,10 @@ class OrdemServicoController extends Controller
         } else {
             $dados['cliente_nome'] = $dados['cliente_telefone'] = $dados['cliente_documento'] = null;
         }
+
+        // Termo igual ao padrão (ou vazio) não é gravado: a OS continua usando o texto padrão atual
+        $termo = str_replace("\r\n", "\n", trim((string) ($dados['termo_responsabilidade'] ?? '')));
+        $dados['termo_responsabilidade'] = ($termo === '' || $termo === OrdemServico::TERMO_PADRAO) ? null : $termo;
 
         unset($dados['tipo_cliente'], $dados['itens']);
         $dados['valor_servico'] = $servico;

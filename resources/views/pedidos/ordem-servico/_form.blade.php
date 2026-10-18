@@ -51,6 +51,7 @@
             'equipamento' => ['equipamento', 'marca', 'modelo', 'numero_serie', 'acessorios', 'defeito_relatado', 'condicao_entrada'],
             'laudo'       => ['laudo_tecnico', 'servico_executado'],
             'valores'     => ['valor_servico', 'desconto', 'forma_pagamento_id'],
+            'termo'       => ['termo_responsabilidade'],
         ];
         $abaComErro = null;
         foreach ($camposPorAba as $aba => $campos) {
@@ -110,6 +111,10 @@
             <button type="button" onclick="trocarTab('valores')" id="tab-btn-valores"
                     class="tab-btn px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition whitespace-nowrap">
                 Valores
+            </button>
+            <button type="button" onclick="trocarTab('termo')" id="tab-btn-termo"
+                    class="tab-btn px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition whitespace-nowrap">
+                Termo
             </button>
         </div>
 
@@ -455,6 +460,22 @@
         </dl>
         </div>
 
+        {{-- Tab: Termo de responsabilidade --}}
+        <div id="tab-termo" class="tab-painel p-6 hidden">
+            <p class="text-xs text-gray-500 mb-4">
+                Este texto é impresso no final da OS (A4), acima das assinaturas. Já vem com o texto padrão;
+                altere só se esta OS precisar de condições diferentes. Mudanças valem apenas para esta ordem de serviço.
+            </p>
+
+            <label class="{{ $labelCls }}">Termo de responsabilidade</label>
+            <textarea name="termo_responsabilidade" id="campo-termo" rows="8" maxlength="2000"
+                      class="{{ $inputCls }}">{{ old('termo_responsabilidade', $ordem->termo_responsabilidade ?: \App\Models\OrdemServico::TERMO_PADRAO) }}</textarea>
+            @error('termo_responsabilidade') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
+
+            <button type="button" onclick="restaurarTermoPadrao()"
+                    class="mt-2 text-sm text-gray-500 hover:underline">Restaurar texto padrão</button>
+        </div>
+
     </div>{{-- fim do card com tabs --}}
 
     <div class="flex items-center gap-3">
@@ -632,6 +653,10 @@ function definirTipoCliente(tipo) {
         b.classList.remove(...ativo, ...inativo);
         b.classList.add(...(ligado ? ativo : inativo));
     });
+}
+
+function restaurarTermoPadrao() {
+    document.getElementById('campo-termo').value = {{ Illuminate\Support\Js::from(\App\Models\OrdemServico::TERMO_PADRAO) }};
 }
 
 // mostra o aviso já na aba onde está o campo com problema
