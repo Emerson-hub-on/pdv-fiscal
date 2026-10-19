@@ -59,13 +59,6 @@
                     </a>
                 @endif
 
-                @if (auth()->user()?->podeVer('servicos'))
-                    <a href="{{ route('servicos.index') }}"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
-                        Serviços
-                    </a>
-                @endif
-
                 @if (auth()->user()?->podeVer('clientes'))
                     <a href="{{ route('clientes.index') }}"
                     class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
@@ -288,7 +281,6 @@
                 $breadcrumbMapa = [
                     'produtos' => ['Cadastros', 'Produtos'],
                     'clientes' => ['Cadastros', 'Clientes'],
-                    'servicos' => ['Cadastros', 'Serviços'],
                     'empresa'  => ['Cadastros', 'Empresa'],
                     'pdvs'     => ['Cadastros', 'PDVs'],
                     'notasfiscais' => ['Faturamento', 'Nota Fiscal - Saída'],
@@ -341,7 +333,6 @@ document.addEventListener('click', (e) => {
     const botao = e.target.closest('[data-menu-acoes]');
 
     if (!botao) {
-        // clique fora do menu fecha; cliques nos itens do menu seguem normalmente
         if (!e.target.closest('[data-menu-acoes-painel]')) fecharMenusAcoes();
         return;
     }
@@ -350,9 +341,9 @@ document.addEventListener('click', (e) => {
     const estavaFechado = painel.classList.contains('hidden');
 
     fecharMenusAcoes();
-    if (!estavaFechado) return; // segundo clique no mesmo botão só fecha
+    if (!estavaFechado) return;
 
-    painel.classList.remove('hidden'); // precisa estar visível para medir o tamanho
+    painel.classList.remove('hidden');
 
     const rect = botao.getBoundingClientRect();
     const altura = painel.offsetHeight;
@@ -360,10 +351,9 @@ document.addEventListener('click', (e) => {
     const abrirParaCima = rect.bottom + altura + 8 > window.innerHeight;
 
     painel.style.top = (abrirParaCima ? rect.top - altura - 4 : rect.bottom + 4) + 'px';
-    painel.style.left = Math.max(8, rect.right - largura) + 'px'; // alinha a borda direita com o botão
+    painel.style.left = Math.max(8, rect.right - largura) + 'px';
 });
 
-// o menu é fixo na tela, então fecha ao rolar ou redimensionar para não ficar solto do botão
 window.addEventListener('scroll', fecharMenusAcoes, true);
 window.addEventListener('resize', fecharMenusAcoes);
 document.addEventListener('keydown', (e) => {
@@ -375,7 +365,6 @@ function toggleFlyout(idFlyout, idBotao) {
     const botao = document.getElementById(idBotao);
     const estaAbrindo = flyout.classList.contains('hidden');
 
-    // fecha qualquer outro aberto antes
     document.querySelectorAll('[data-flyout]').forEach(el => el.classList.add('hidden'));
 
     if (estaAbrindo) {
@@ -398,111 +387,111 @@ document.addEventListener('click', function (evento) {
 });
 
 function toggleSidebar() {
-        document.body.classList.toggle('sidebar-oculta');
-    }
+    document.body.classList.toggle('sidebar-oculta');
+}
 
 function toggleCadastros() {
     if (document.body.classList.contains('sidebar-oculta')) {
-            document.body.classList.remove('sidebar-oculta');
-        }
-
-        const subMenu = document.getElementById('sub-cadastros');
-        const seta = document.getElementById('seta-cadastros');
-    
-        subMenu.classList.toggle('hidden');
-        seta.classList.toggle('rotate-180');
-    }   
-
-    function toggleFaturamento() {
-        if (document.body.classList.contains('sidebar-oculta')) {
-            document.body.classList.remove('sidebar-oculta');
-        }
-
-        document.getElementById('sub-faturamento').classList.toggle('hidden');
-        document.getElementById('seta-faturamento').classList.toggle('rotate-180');
+        document.body.classList.remove('sidebar-oculta');
     }
 
-    function toggleFinanceiro() {
-        if (document.body.classList.contains('sidebar-oculta')) {
-            document.body.classList.remove('sidebar-oculta');
-        }
+    const subMenu = document.getElementById('sub-cadastros');
+    const seta = document.getElementById('seta-cadastros');
 
-        document.getElementById('sub-financeiro').classList.toggle('hidden');
-        document.getElementById('seta-financeiro').classList.toggle('rotate-180');
+    subMenu.classList.toggle('hidden');
+    seta.classList.toggle('rotate-180');
+}   
+
+function toggleFaturamento() {
+    if (document.body.classList.contains('sidebar-oculta')) {
+        document.body.classList.remove('sidebar-oculta');
     }
 
-    function togglePedidos() {
-        if (document.body.classList.contains('sidebar-oculta')) {
-            document.body.classList.remove('sidebar-oculta');
-        }
+    document.getElementById('sub-faturamento').classList.toggle('hidden');
+    document.getElementById('seta-faturamento').classList.toggle('rotate-180');
+}
 
-        document.getElementById('sub-pedidos').classList.toggle('hidden');
-        document.getElementById('seta-pedidos').classList.toggle('rotate-180');
+function toggleFinanceiro() {
+    if (document.body.classList.contains('sidebar-oculta')) {
+        document.body.classList.remove('sidebar-oculta');
     }
 
-    function toggleNotaFiscal() {
-        const flyout = document.getElementById('sub-notafiscal');
-        const botao = document.getElementById('btn-notafiscal');
-        const estaAbrindo = flyout.classList.contains('hidden');
+    document.getElementById('sub-financeiro').classList.toggle('hidden');
+    document.getElementById('seta-financeiro').classList.toggle('rotate-180');
+}
 
-        if (estaAbrindo) {
-            const rect = botao.getBoundingClientRect();
-            flyout.style.top = rect.top + 'px';
-            flyout.style.left = (rect.right + 4) + 'px';
-        }
-
-        flyout.classList.toggle('hidden');
+function togglePedidos() {
+    if (document.body.classList.contains('sidebar-oculta')) {
+        document.body.classList.remove('sidebar-oculta');
     }
 
-    document.addEventListener('click', function (evento) {
-        const flyout = document.getElementById('sub-notafiscal');
-        const botao = document.getElementById('btn-notafiscal');
+    document.getElementById('sub-pedidos').classList.toggle('hidden');
+    document.getElementById('seta-pedidos').classList.toggle('rotate-180');
+}
 
-        if (!flyout.classList.contains('hidden')
-            && !flyout.contains(evento.target)
-            && !botao.contains(evento.target)) {
-            flyout.classList.add('hidden');
-        }
-    });
+function toggleNotaFiscal() {
+    const flyout = document.getElementById('sub-notafiscal');
+    const botao = document.getElementById('btn-notafiscal');
+    const estaAbrindo = flyout.classList.contains('hidden');
 
-    async function sincronizarAgora() {
-        const btn = document.getElementById('btn-sincronizar');
-        const textoOriginal = btn.innerText;
-
-        btn.disabled = true;
-        btn.innerText = 'Sincronizando...';
-
-        try {
-            const resp = await fetch('{{ route("sincronizacao.executar") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                },
-            });
-
-            const resultado = await resp.json();
-
-            if (resultado.sucesso) {
-                alert(
-                    `Sincronização concluída!\n` +
-                    `Produtos atualizados: ${resultado.produtos_atualizados}\n` +
-                    `Vendas enviadas: ${resultado.vendas_enviadas}` +
-                    (resultado.vendas_falhas > 0 ? `\nVendas com falha: ${resultado.vendas_falhas}` : '') +
-                    (resultado.usuarios_ok
-                        ? `\nUsuários atualizados: ${resultado.usuarios_atualizados}`
-                        : `\nFalha ao sincronizar usuários: ${resultado.usuarios_erro}`)
-                );
-            } else {
-                alert('Erro ao sincronizar: ' + resultado.erro);
-            }
-        } catch (e) {
-            alert('Erro de conexão ao tentar sincronizar.');
-        }
-
-        btn.disabled = false;
-        btn.innerText = textoOriginal;
+    if (estaAbrindo) {
+        const rect = botao.getBoundingClientRect();
+        flyout.style.top = rect.top + 'px';
+        flyout.style.left = (rect.right + 4) + 'px';
     }
-    </script>
+
+    flyout.classList.toggle('hidden');
+}
+
+document.addEventListener('click', function (evento) {
+    const flyout = document.getElementById('sub-notafiscal');
+    const botao = document.getElementById('btn-notafiscal');
+
+    if (!flyout.classList.contains('hidden')
+        && !flyout.contains(evento.target)
+        && !botao.contains(evento.target)) {
+        flyout.classList.add('hidden');
+    }
+});
+
+async function sincronizarAgora() {
+    const btn = document.getElementById('btn-sincronizar');
+    const textoOriginal = btn.innerText;
+
+    btn.disabled = true;
+    btn.innerText = 'Sincronizando...';
+
+    try {
+        const resp = await fetch('{{ route("sincronizacao.executar") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            },
+        });
+
+        const resultado = await resp.json();
+
+        if (resultado.sucesso) {
+            alert(
+                `Sincronização concluída!\n` +
+                `Produtos atualizados: ${resultado.produtos_atualizados}\n` +
+                `Vendas enviadas: ${resultado.vendas_enviadas}` +
+                (resultado.vendas_falhas > 0 ? `\nVendas com falha: ${resultado.vendas_falhas}` : '') +
+                (resultado.usuarios_ok
+                    ? `\nUsuários atualizados: ${resultado.usuarios_atualizados}`
+                    : `\nFalha ao sincronizar usuários: ${resultado.usuarios_erro}`)
+            );
+        } else {
+            alert('Erro ao sincronizar: ' + resultado.erro);
+        }
+    } catch (e) {
+        alert('Erro de conexão ao tentar sincronizar.');
+    }
+
+    btn.disabled = false;
+    btn.innerText = textoOriginal;
+}
+</script>
 </body>
 </html>
