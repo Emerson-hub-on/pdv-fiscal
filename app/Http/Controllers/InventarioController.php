@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\InventarioExport;
 use App\Models\Categoria;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Maatwebsite\Excel\Facades\Excel;
 
 class InventarioController extends Controller
 {
@@ -17,14 +19,7 @@ class InventarioController extends Controller
         $filtros = $this->filtros($request);
         $base = $this->consultaBase($filtros);
 
-        // Totais do filtro inteiro (todas as páginas). Estoque negativo não entra
-        // na valorização — só quantidade positiva tem valor em inventário.
-        $totais = (clone $base)->selectRaw(
-            'COUNT(*) AS itens,
-             COALESCE(SUM(estoque), 0) AS quantidade,
-             COALESCE(SUM(GREATEST(estoque, 0) * custo), 0) AS total_custo,
-             COALESCE(SUM(GREATEST(estoque, 0) * venda), 0) AS total_venda'
-        )->first();
+        $totais = $this->totais($base);
 
         $itens = $this->comCalculos($this->ordenar($base, $filtros['ordenar']))
             ->paginate(self::POR_PAGINA)
@@ -39,60 +34,41 @@ class InventarioController extends Controller
         return view('produtos.inventario.index', compact('itens', 'totais', 'filtros', 'categorias'));
     }
 
-    public function exportar(Request $request): StreamedResponse
+    /**
+     * Exporta TODOS os itens do filtro atual (não só a página) em .xlsx.
+     */
+    public function exportarExcel(Request $request)
     {
         $filtros = $this->filtros($request);
-        $consulta = $this->comCalculos($this->ordenar($this->consultaBase($filtros), $filtros['ordenar']));
+        $itens = $this->listaCompleta($filtros);
 
-        $situacoes = [
-            'ok' => 'OK',
-            'abaixo' => 'Abaixo do mínimo',
-            'zerado' => 'Zerado',
-            'negativo' => 'Negativo',
-        ];
+        return Excel::download(
+            new InventarioExport($itens),
+            'inventario_' . now()->format('Y-m-d_His') . '.xlsx'
+        );
+    }
 
-        $nomeArquivo = 'inventario_' . now()->format('Y-m-d_His') . '.csv';
+    /**
+     * Exporta TODOS os itens do filtro atual em PDF (A4 paisagem).
+     */
+    public function exportarPdf(Request $request)
+    {
+        set_time_limit(120);
 
-        return response()->streamDownload(function () use ($consulta, $situacoes) {
-            $saida = fopen('php://output', 'w');
+        $filtros = $this->filtros($request);
+        $base = $this->consultaBase($filtros);
 
-            // BOM UTF-8 para o Excel abrir os acentos corretamente
-            fwrite($saida, "\xEF\xBB\xBF");
+        $totais = $this->totais($base);
+        $itens = $this->comCalculos($this->ordenar($base, $filtros['ordenar']))->get();
 
-            fputcsv($saida, [
-                'Cód. Produto', 'Cód. Barras', 'Unidade', 'Descrição', 'Variação', 'Categoria', 'Marca',
-                'NCM', 'Referência', 'Estoque', 'Est. Mínimo', 'Situação', 'Vl. Unitário', 'Vl. Custo',
-                'Marg. Lucro %', 'Total Custo', 'Total Venda', 'Status',
-            ], ';', '"', '');
+        $pdf = Pdf::loadView('produtos.inventario.pdf', [
+            'itens' => $itens,
+            'totais' => $totais,
+            'filtrosAplicados' => $this->descreverFiltros($filtros),
+            'geradoEm' => now(),
+        ])->setPaper('a4', 'landscape');
 
-            foreach ($consulta->cursor() as $i) {
-                $estoquePositivo = max((float) $i->estoque, 0);
-
-                fputcsv($saida, [
-                    $i->codigo_interno,
-                    // ="..." força o Excel a tratar como texto (evita 7,89E+12 e perda de zeros)
-                    $i->codigo_barras ? '="' . $i->codigo_barras . '"' : '',
-                    $i->unidade,
-                    $i->descricao,
-                    $i->variacao,
-                    $i->categoria,
-                    $i->marca,
-                    $i->ncm ? '="' . $i->ncm . '"' : '',
-                    $i->referencia,
-                    $this->qtd($i->estoque),
-                    $this->qtd($i->estoque_minimo),
-                    $situacoes[$i->situacao] ?? $i->situacao,
-                    $this->dinheiro($i->venda),
-                    $this->dinheiro($i->custo),
-                    $i->margem !== null ? $this->dinheiro($i->margem) : '',
-                    $this->dinheiro($estoquePositivo * (float) $i->custo),
-                    $this->dinheiro($estoquePositivo * (float) $i->venda),
-                    $i->ativo ? 'Ativo' : 'Inativo',
-                ], ';', '"', '');
-            }
-
-            fclose($saida);
-        }, $nomeArquivo, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        return $pdf->download('inventario_' . now()->format('Y-m-d_His') . '.pdf');
     }
 
     private function filtros(Request $request): array
@@ -198,7 +174,7 @@ class InventarioController extends Controller
     }
 
     /**
-     * Colunas calculadas no SQL (tela e CSV usam a mesma regra):
+     * Colunas calculadas no SQL (tela, Excel e PDF usam a mesma regra):
      * - margem: (venda - custo) / venda * 100 — margem sobre o preço de venda,
      *   nula quando falta custo ou preço.
      * - situacao: negativo | zerado | abaixo (abaixo do mínimo) | ok
@@ -216,15 +192,60 @@ class InventarioController extends Controller
         ");
     }
 
-    private function dinheiro($valor): string
+    /**
+     * Totais do filtro inteiro (todas as páginas). Estoque negativo não entra
+     * na valorização — só quantidade positiva tem valor em inventário.
+     */
+    private function totais(Builder $base): object
     {
-        return number_format((float) $valor, 2, ',', '');
+        return (clone $base)->selectRaw(
+            'COUNT(*) AS itens,
+             COALESCE(SUM(estoque), 0) AS quantidade,
+             COALESCE(SUM(GREATEST(estoque, 0) * custo), 0) AS total_custo,
+             COALESCE(SUM(GREATEST(estoque, 0) * venda), 0) AS total_venda'
+        )->first();
     }
 
-    private function qtd($valor): string
+    private function listaCompleta(array $filtros)
     {
-        $valor = (float) $valor;
+        return $this->comCalculos($this->ordenar($this->consultaBase($filtros), $filtros['ordenar']))->get();
+    }
 
-        return number_format($valor, fmod($valor, 1.0) == 0.0 ? 0 : 3, ',', '');
+    /** Texto dos filtros aplicados, para o cabeçalho do PDF. */
+    private function descreverFiltros(array $f): array
+    {
+        $linhas = [];
+
+        $linhas[] = 'Status: ' . match ($f['status']) {
+            'inativos' => 'Inativos',
+            'todos' => 'Todos',
+            default => 'Ativos',
+        };
+
+        if ($f['situacao'] !== 'todos') {
+            $linhas[] = 'Situação: ' . match ($f['situacao']) {
+                'repor' => 'Abaixo do mínimo',
+                'zerado' => 'Zerados',
+                'negativo' => 'Negativos',
+                'com_estoque' => 'Com estoque',
+                default => $f['situacao'],
+            };
+        }
+
+        if ($f['categoria']) {
+            $linhas[] = 'Categoria: ' . (Categoria::find($f['categoria'])?->nome ?? '—');
+        }
+
+        if ($f['busca'] !== '') {
+            $campo = match ($f['tipo_busca']) {
+                'codigo_interno' => 'Código interno',
+                'codigo_barras' => 'Código de barras',
+                'referencia' => 'Referência',
+                default => 'Descrição',
+            };
+            $linhas[] = $campo . ' contém “' . $f['busca'] . '”';
+        }
+
+        return $linhas;
     }
 }

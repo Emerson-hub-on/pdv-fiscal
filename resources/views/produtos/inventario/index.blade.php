@@ -14,10 +14,14 @@
 @endsection
 
 @section('conteudo')
-    <div class="flex justify-end items-center mb-6">
-        <button type="button" onclick="exportarInventario()"
+    <div class="flex justify-end items-center gap-2 mb-6">
+        <button type="button" onclick="exportarInventario('excel')"
                 class="bg-green-600 hover:bg-green-500 text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition">
-            Exportar CSV
+            Exportar Excel
+        </button>
+        <button type="button" onclick="exportarInventario('pdf')"
+                class="bg-red-600 hover:bg-red-500 text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition">
+            Exportar PDF
         </button>
     </div>
 
@@ -90,8 +94,14 @@
             window.history.replaceState(null, '', url);
         }
 
-        function exportarInventario() {
-            window.location.href = `{{ route('produtos.inventario.exportar') }}?${parametrosInventario().toString()}`;
+        const rotasExportarInventario = {
+            excel: `{{ route('produtos.inventario.exportar-excel') }}`,
+            pdf: `{{ route('produtos.inventario.exportar-pdf') }}`,
+        };
+
+        // Exporta todos os itens do filtro atual (não só a página que está na tela)
+        function exportarInventario(formato) {
+            window.location.href = `${rotasExportarInventario[formato]}?${parametrosInventario().toString()}`;
         }
 
         document.querySelectorAll('[data-filtro]').forEach((el) => {

@@ -154,7 +154,8 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
             Route::post('/ipi/editar', [ClassificacaoIpiController::class, 'editar'])->name('ipi.editar');
             Route::post('/ipi/excluir', [ClassificacaoIpiController::class, 'excluir'])->name('ipi.excluir');
             Route::get('produtos/inventario', [InventarioController::class, 'index'])->name('produtos.inventario.index');
-            Route::get('produtos/inventario/exportar', [InventarioController::class, 'exportar'])->name('produtos.inventario.exportar');
+            Route::get('produtos/inventario/exportar/excel', [InventarioController::class, 'exportarExcel'])->name('produtos.inventario.exportar-excel');
+            Route::get('produtos/inventario/exportar/pdf', [InventarioController::class, 'exportarPdf'])->name('produtos.inventario.exportar-pdf');
         
             });
 
