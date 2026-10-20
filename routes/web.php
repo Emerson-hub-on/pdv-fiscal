@@ -44,6 +44,7 @@ use App\Http\Controllers\PedidoCompraController;
 use App\Http\Controllers\PedidoVendaController;
 use App\Http\Controllers\OrdemServicoController;
 use App\Http\Controllers\InventarioController;
+use App\Http\Controllers\EstoqueBaixoController; // Adicionado aqui[cite: 1]
 
 
 
@@ -117,6 +118,14 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
 
         // ---------------- PRODUTOS E CLASSIFICAÇÕES FISCAIS ----------------
         Route::middleware('permissao:produtos')->group(function () {
+            
+            // Rotas de Estoque Baixo inseridas antes do Resource[cite: 1]
+            Route::prefix('produtos/estoque-baixo')->name('produtos.estoque-baixo.')->group(function () {       
+                Route::get('/', [EstoqueBaixoController::class, 'index'])->name('index');       
+                Route::get('exportar-excel', [EstoqueBaixoController::class, 'exportarExcel'])->name('exportar-excel');       
+                Route::get('exportar-pdf', [EstoqueBaixoController::class, 'exportarPdf'])->name('exportar-pdf');       
+            });
+
             Route::resource('produtos', ProdutoController::class)->except(['destroy', 'show']);
             Route::patch('produtos/{produto}/toggle-ativo', [ProdutoController::class, 'toggleAtivo'])
                 ->name('produtos.toggle-ativo');
@@ -364,7 +373,7 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
 
             Route::resource('veiculos', VeiculoController::class)->except(['show', 'destroy']);
             Route::post('veiculos/{veiculo}/toggle-ativo', [VeiculoController::class, 'toggleAtivo'])
-                ->name('veiculos.toggleAtivo');
+                ->name('veiculos.toggle-ativo');
         });
     });
 
