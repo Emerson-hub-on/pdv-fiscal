@@ -43,6 +43,10 @@ use App\Http\Controllers\TipoContaReceberController;
 use App\Http\Controllers\PedidoCompraController;
 use App\Http\Controllers\PedidoVendaController;
 use App\Http\Controllers\OrdemServicoController;
+use App\Http\Controllers\InventarioController;
+
+
+
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -149,7 +153,10 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
             Route::post('/ipi/criar', [ClassificacaoIpiController::class, 'criar'])->name('ipi.criar');
             Route::post('/ipi/editar', [ClassificacaoIpiController::class, 'editar'])->name('ipi.editar');
             Route::post('/ipi/excluir', [ClassificacaoIpiController::class, 'excluir'])->name('ipi.excluir');
-        });
+            Route::get('produtos/inventario', [InventarioController::class, 'index'])->name('produtos.inventario.index');
+            Route::get('produtos/inventario/exportar', [InventarioController::class, 'exportar'])->name('produtos.inventario.exportar');
+        
+            });
 
         // ---------------- EMPRESA ----------------
         Route::middleware('permissao:empresa')->group(function () {

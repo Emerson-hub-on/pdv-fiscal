@@ -53,10 +53,27 @@
             <!-- Subopções (inicialmente ocultas com 'hidden'; também ocultas com a sidebar recolhida) -->
             <div id="sub-cadastros" class="hidden [.sidebar-oculta_&]:hidden flex flex-col gap-1 pl-4 mt-1 border-l border-white/10 ml-3">
                 @if (auth()->user()?->podeVer('produtos'))
-                    <a href="{{ route('produtos.index') }}"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
-                        Produtos
-                    </a>
+                    <div class="relative">
+                        <button id="btn-produtos" onclick="toggleFlyout('sub-produtos', 'btn-produtos')"
+                                class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                            <span>Produtos</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
+
+                        <div id="sub-produtos" data-flyout data-botao="btn-produtos"
+                            class="hidden fixed bg-gray-900 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                            <a href="{{ route('produtos.index') }}"
+                            class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                                Produtos
+                            </a>
+                            <a href="{{ route('produtos.inventario.index') }}"
+                            class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition border-t border-white/10">
+                                Inventário
+                            </a>
+                        </div>
+                    </div>
                 @endif
 
                 @if (auth()->user()?->podeVer('clientes'))
