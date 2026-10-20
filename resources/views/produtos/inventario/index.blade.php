@@ -54,6 +54,19 @@
             <option value="com_estoque" @selected($filtros['situacao'] === 'com_estoque')>Com estoque</option>
         </select>
 
+        <div class="flex items-center gap-2">
+            <select name="campo_data" data-filtro
+                    class="bg-white border border-gray-300 text-gray-600 px-3 py-2 rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-slate-800">
+                <option value="cadastro" @selected($filtros['campo_data'] === 'cadastro')>Data de cadastro</option>
+                <option value="alteracao" @selected($filtros['campo_data'] === 'alteracao')>Última alteração</option>
+            </select>
+            <input type="date" name="data_de" data-filtro value="{{ $filtros['data_de'] }}" title="De"
+                   class="bg-white border border-gray-300 text-gray-600 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
+            <span class="text-sm text-gray-400">até</span>
+            <input type="date" name="data_ate" data-filtro value="{{ $filtros['data_ate'] }}" title="Até"
+                   class="bg-white border border-gray-300 text-gray-600 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
+        </div>
+
         <div class="flex items-center gap-2 ml-auto">
             <select name="status" data-filtro
                     class="bg-white border border-gray-300 text-gray-600 px-3 py-2 rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-slate-800">

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exports\InventarioExport;
 use App\Models\Categoria;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -80,7 +81,20 @@ class InventarioController extends Controller
             'busca' => trim((string) $request->get('busca', '')),
             'tipo_busca' => $request->get('tipo_busca', 'nome'),  // nome | codigo_interno | codigo_barras | referencia
             'ordenar' => $request->get('ordenar', 'nome'),        // nome | codigo | estoque
+            'campo_data' => $request->get('campo_data') === 'alteracao' ? 'alteracao' : 'cadastro',
+            'data_de' => $this->dataValida($request->get('data_de')),    // Y-m-d ou null
+            'data_ate' => $this->dataValida($request->get('data_ate')),  // Y-m-d ou null
         ];
+    }
+
+    /** Aceita só datas no formato do input type=date (Y-m-d); qualquer outra coisa vira null. */
+    private function dataValida(?string $valor): ?string
+    {
+        if (! $valor || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $valor)) {
+            return null;
+        }
+
+        return Carbon::hasFormat($valor, 'Y-m-d') ? $valor : null;
     }
 
     /**
@@ -113,7 +127,9 @@ class InventarioController extends Controller
                 COALESCE(p.estoque_minimo, 0) AS estoque_minimo,
                 COALESCE(p.preco_venda, 0) AS venda,
                 COALESCE(p.preco_custo, 0) AS custo,
-                p.ativo
+                p.ativo,
+                p.created_at AS criado_em,
+                p.updated_at AS atualizado_em
             ");
 
         $variantes = DB::table('produto_variantes as v')
@@ -139,7 +155,9 @@ class InventarioController extends Controller
                 COALESCE(v.estoque_minimo, 0) AS estoque_minimo,
                 COALESCE(p.preco_venda, 0) AS venda,
                 COALESCE(p.preco_custo, 0) AS custo,
-                p.ativo
+                p.ativo,
+                p.created_at AS criado_em,
+                GREATEST(COALESCE(p.updated_at, v.updated_at), COALESCE(v.updated_at, p.updated_at)) AS atualizado_em
             ");
 
         $q = DB::query()->fromSub($simples->unionAll($variantes), 'i');
@@ -159,7 +177,13 @@ class InventarioController extends Controller
             ->when($f['situacao'] === 'repor', fn ($q) => $q->whereRaw('estoque_minimo > 0 AND estoque < estoque_minimo'))
             ->when($f['situacao'] === 'zerado', fn ($q) => $q->where('estoque', '=', 0))
             ->when($f['situacao'] === 'negativo', fn ($q) => $q->where('estoque', '<', 0))
-            ->when($f['situacao'] === 'com_estoque', fn ($q) => $q->where('estoque', '>', 0));
+            ->when($f['situacao'] === 'com_estoque', fn ($q) => $q->where('estoque', '>', 0))
+            ->when($f['data_de'] || $f['data_ate'], function ($q) use ($f) {
+                $coluna = $f['campo_data'] === 'alteracao' ? 'atualizado_em' : 'criado_em';
+
+                $q->when($f['data_de'], fn ($q, $de) => $q->where($coluna, '>=', Carbon::parse($de)->startOfDay()))
+                    ->when($f['data_ate'], fn ($q, $ate) => $q->where($coluna, '<', Carbon::parse($ate)->addDay()->startOfDay()));
+            });
 
         return $q;
     }
@@ -234,6 +258,18 @@ class InventarioController extends Controller
 
         if ($f['categoria']) {
             $linhas[] = 'Categoria: ' . (Categoria::find($f['categoria'])?->nome ?? '—');
+        }
+
+        if ($f['data_de'] || $f['data_ate']) {
+            $campoData = $f['campo_data'] === 'alteracao' ? 'Última alteração' : 'Data de cadastro';
+            $de = $f['data_de'] ? Carbon::parse($f['data_de'])->format('d/m/Y') : null;
+            $ate = $f['data_ate'] ? Carbon::parse($f['data_ate'])->format('d/m/Y') : null;
+
+            $linhas[] = $campoData . ': ' . match (true) {
+                $de && $ate => "de {$de} até {$ate}",
+                (bool) $de => "a partir de {$de}",
+                default => "até {$ate}",
+            };
         }
 
         if ($f['busca'] !== '') {
