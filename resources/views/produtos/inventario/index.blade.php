@@ -2,6 +2,17 @@
 
 @section('titulo', 'Inventário de Produtos')
 
+{{-- Libera o max-w-5xl do layout para a tabela usar a largura toda da tela --}}
+@section('body-class', 'conteudo-largo')
+
+@section('breadcrumb')
+    <span>Cadastros</span>
+    <span class="text-gray-300">›</span>
+    <span>Produtos</span>
+    <span class="text-gray-300">›</span>
+    <span class="text-gray-700 font-medium">Inventário</span>
+@endsection
+
 @section('conteudo')
     <div class="flex justify-end items-center mb-6">
         <button type="button" onclick="exportarInventario()"
