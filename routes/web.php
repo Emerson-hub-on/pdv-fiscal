@@ -44,10 +44,8 @@ use App\Http\Controllers\PedidoCompraController;
 use App\Http\Controllers\PedidoVendaController;
 use App\Http\Controllers\OrdemServicoController;
 use App\Http\Controllers\InventarioController;
-use App\Http\Controllers\EstoqueBaixoController; // Adicionado aqui[cite: 1]
-
-
-
+use App\Http\Controllers\EstoqueBaixoController;
+use App\Http\Controllers\EntradaProdutosController; // Adicionado aqui
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -125,6 +123,11 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::get('exportar-excel', [EstoqueBaixoController::class, 'exportarExcel'])->name('exportar-excel');       
                 Route::get('exportar-pdf', [EstoqueBaixoController::class, 'exportarPdf'])->name('exportar-pdf');       
             });
+
+            // Rotas de Entradas de Produtos inseridas antes do Resource
+            Route::get('produtos/entradas', [EntradaProdutosController::class, 'index'])->name('produtos.entradas.index');
+            Route::get('produtos/entradas/exportar/excel', [EntradaProdutosController::class, 'exportarExcel'])->name('produtos.entradas.exportar-excel');
+            Route::get('produtos/entradas/exportar/pdf', [EntradaProdutosController::class, 'exportarPdf'])->name('produtos.entradas.exportar-pdf');
 
             Route::resource('produtos', ProdutoController::class)->except(['destroy', 'show']);
             Route::patch('produtos/{produto}/toggle-ativo', [ProdutoController::class, 'toggleAtivo'])
