@@ -9,25 +9,6 @@
         'negativo' => ['label' => 'Negativo', 'classe' => 'bg-red-50 text-red-600', 'ponto' => 'bg-red-500'],
     ];
 
-    // Em que largura de tela cada coluna aparece. Sempre visíveis: Código, Descrição, Estoque e Situação.
-    //   md (768px)    -> Und, Vl. Unit.
-    //   lg (1024px)   -> Cód. Barras, Mínimo
-    //   xl (1280px)   -> Vl. Custo, Marg. %
-    //   2xl (1536px)  -> Categoria, Total Custo
-    //   1900px        -> Marca, NCM, Total Venda
-    $col = [
-        'und' => 'hidden md:table-cell',
-        'unit' => 'hidden md:table-cell',
-        'barras' => 'hidden lg:table-cell',
-        'minimo' => 'hidden lg:table-cell',
-        'custo' => 'hidden xl:table-cell',
-        'margem' => 'hidden xl:table-cell',
-        'categoria' => 'hidden 2xl:table-cell',
-        'total_custo' => 'hidden 2xl:table-cell',
-        'marca' => 'hidden min-[1900px]:table-cell',
-        'ncm' => 'hidden min-[1900px]:table-cell',
-        'total_venda' => 'hidden min-[1900px]:table-cell',
-    ];
 @endphp
 
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
@@ -51,24 +32,24 @@
 
 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+        <table class="w-full text-sm whitespace-nowrap">
             <thead class="bg-gray-700 rounded-lg font-medium text-xs uppercase tracking-wide">
                 <tr>
                     <th class="px-4 py-3 text-left font-medium text-amber-50">Código</th>
-                    <th class="px-4 py-3 text-left font-medium text-amber-50 {{ $col['barras'] }}">Cód. Barras</th>
-                    <th class="px-4 py-3 text-left font-medium text-amber-50 {{ $col['und'] }}">Und</th>
-                    <th class="px-4 py-3 text-left font-medium text-amber-50">Descrição</th>
-                    <th class="px-4 py-3 text-left font-medium text-amber-50 {{ $col['marca'] }}">Marca</th>
-                    <th class="px-4 py-3 text-left font-medium text-amber-50 {{ $col['categoria'] }}">Categoria</th>
-                    <th class="px-4 py-3 text-left font-medium text-amber-50 {{ $col['ncm'] }}">NCM</th>
+                    <th class="px-4 py-3 text-left font-medium text-amber-50">Cód. Barras</th>
+                    <th class="px-4 py-3 text-left font-medium text-amber-50">Nome</th>
+                    <th class="px-4 py-3 text-left font-medium text-amber-50">Und</th>
+                    <th class="px-4 py-3 text-right font-medium text-amber-50">Custo</th>
+                    <th class="px-4 py-3 text-right font-medium text-amber-50">Preço</th>
                     <th class="px-4 py-3 text-right font-medium text-amber-50">Estoque</th>
-                    <th class="px-4 py-3 text-right font-medium text-amber-50 {{ $col['minimo'] }}">Mínimo</th>
+                    <th class="px-4 py-3 text-left font-medium text-amber-50">Marca</th>
+                    <th class="px-4 py-3 text-left font-medium text-amber-50">Categoria</th>
+                    <th class="px-4 py-3 text-left font-medium text-amber-50">NCM</th>
+                    <th class="px-4 py-3 text-right font-medium text-amber-50">Mínimo</th>
                     <th class="px-4 py-3 text-left font-medium text-amber-50">Situação</th>
-                    <th class="px-4 py-3 text-right font-medium text-amber-50 {{ $col['unit'] }}">Vl. Unit.</th>
-                    <th class="px-4 py-3 text-right font-medium text-amber-50 {{ $col['custo'] }}">Vl. Custo</th>
-                    <th class="px-4 py-3 text-right font-medium text-amber-50 {{ $col['margem'] }}">Marg. %</th>
-                    <th class="px-4 py-3 text-right font-medium text-amber-50 {{ $col['total_custo'] }}">Total Custo</th>
-                    <th class="px-4 py-3 text-right font-medium text-amber-50 {{ $col['total_venda'] }}">Total Venda</th>
+                    <th class="px-4 py-3 text-right font-medium text-amber-50">Marg. %</th>
+                    <th class="px-4 py-3 text-right font-medium text-amber-50">Total Custo</th>
+                    <th class="px-4 py-3 text-right font-medium text-amber-50">Total Venda</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -79,8 +60,7 @@
                     @endphp
                     <tr class="hover:bg-gray-200 transition">
                         <td class="px-4 py-3 text-gray-600 font-mono text-xs">{{ $item->codigo_interno }}</td>
-                        <td class="px-4 py-3 text-gray-600 font-mono text-xs {{ $col['barras'] }}">{{ $item->codigo_barras ?: '—' }}</td>
-                        <td class="px-4 py-3 font-medium text-gray-800 {{ $col['und'] }}">{{ $item->unidade }}</td>
+                        <td class="px-4 py-3 text-gray-600 font-mono text-xs">{{ $item->codigo_barras ?: '—' }}</td>
                         <td class="px-4 py-3 font-medium text-gray-800 max-w-xs xl:max-w-sm 2xl:max-w-md">
                             <div class="flex items-center gap-1">
                                 <a href="{{ route('produtos.edit', $item->produto_id) }}"
@@ -93,24 +73,25 @@
                                 @endunless
                             </div>
                         </td>
-                        <td class="px-4 py-3 text-gray-600 whitespace-nowrap {{ $col['marca'] }}">{{ $item->marca ?: '—' }}</td>
-                        <td class="px-4 py-3 text-gray-600 whitespace-nowrap {{ $col['categoria'] }}">{{ $item->categoria ?: '—' }}</td>
-                        <td class="px-4 py-3 text-gray-600 font-mono text-xs {{ $col['ncm'] }}">{{ $item->ncm ?: '—' }}</td>
+                        <td class="px-4 py-3 font-medium text-gray-800">{{ $item->unidade }}</td>
+                        <td class="px-4 py-3 text-right text-gray-600 whitespace-nowrap">{{ $dinheiro($item->custo) }}</td>
+                        <td class="px-4 py-3 text-right text-gray-600 whitespace-nowrap">{{ $dinheiro($item->venda) }}</td>
                         <td class="px-4 py-3 text-right text-gray-800 font-medium whitespace-nowrap">{{ $qtd($item->estoque) }}</td>
-                        <td class="px-4 py-3 text-right text-gray-600 whitespace-nowrap {{ $col['minimo'] }}">{{ $item->estoque_minimo > 0 ? $qtd($item->estoque_minimo) : '—' }}</td>
+                        <td class="px-4 py-3 text-gray-600 whitespace-nowrap">{{ $item->marca ?: '—' }}</td>
+                        <td class="px-4 py-3 text-gray-600 whitespace-nowrap">{{ $item->categoria ?: '—' }}</td>
+                        <td class="px-4 py-3 text-gray-600 font-mono text-xs">{{ $item->ncm ?: '—' }}</td>
+                        <td class="px-4 py-3 text-right text-gray-600 whitespace-nowrap">{{ $item->estoque_minimo > 0 ? $qtd($item->estoque_minimo) : '—' }}</td>
                         <td class="px-4 py-3">
                             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap {{ $situacao['classe'] }}">
                                 <span class="w-1.5 h-1.5 rounded-full {{ $situacao['ponto'] }}"></span>
                                 {{ $situacao['label'] }}
                             </span>
                         </td>
-                        <td class="px-4 py-3 text-right text-gray-600 whitespace-nowrap {{ $col['unit'] }}">{{ $dinheiro($item->venda) }}</td>
-                        <td class="px-4 py-3 text-right text-gray-600 whitespace-nowrap {{ $col['custo'] }}">{{ $dinheiro($item->custo) }}</td>
-                        <td class="px-4 py-3 text-right whitespace-nowrap {{ $col['margem'] }} {{ $item->margem !== null && $item->margem < 0 ? 'text-red-600 font-medium' : 'text-gray-600' }}">
+                        <td class="px-4 py-3 text-right whitespace-nowrap {{ $item->margem !== null && $item->margem < 0 ? 'text-red-600 font-medium' : 'text-gray-600' }}">
                             {{ $item->margem !== null ? number_format($item->margem, 2, ',', '.') . '%' : '—' }}
                         </td>
-                        <td class="px-4 py-3 text-right text-gray-800 whitespace-nowrap {{ $col['total_custo'] }}">{{ $dinheiro($estoquePositivo * (float) $item->custo) }}</td>
-                        <td class="px-4 py-3 text-right text-gray-800 whitespace-nowrap {{ $col['total_venda'] }}">{{ $dinheiro($estoquePositivo * (float) $item->venda) }}</td>
+                        <td class="px-4 py-3 text-right text-gray-800 whitespace-nowrap">{{ $dinheiro($estoquePositivo * (float) $item->custo) }}</td>
+                        <td class="px-4 py-3 text-right text-gray-800 whitespace-nowrap">{{ $dinheiro($estoquePositivo * (float) $item->venda) }}</td>
                     </tr>
                 @empty
                     <tr>
