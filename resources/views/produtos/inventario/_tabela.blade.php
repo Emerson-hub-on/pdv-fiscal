@@ -58,14 +58,17 @@
                         <td class="px-4 py-3 text-gray-600 font-mono text-xs">{{ $item->codigo_interno }}</td>
                         <td class="px-4 py-3 text-gray-600 font-mono text-xs">{{ $item->codigo_barras ?: '—' }}</td>
                         <td class="px-4 py-3 font-medium text-gray-800">{{ $item->unidade }}</td>
-                        <td class="px-4 py-3 font-medium text-gray-800">
-                            {{ $item->descricao }}
-                            @if ($item->variacao)
-                                <span class="ml-1 text-xs font-normal text-gray-500">({{ $item->variacao }})</span>
-                            @endif
-                            @unless ($item->ativo)
-                                <span class="ml-1 text-xs font-normal text-red-600">Inativo</span>
-                            @endunless
+                        <td class="px-4 py-3 font-medium text-gray-800 max-w-xs">
+                            <div class="flex items-center gap-1">
+                                <a href="{{ route('produtos.edit', $item->produto_id) }}"
+                                   class="truncate hover:text-blue-600 hover:underline">{{ $item->descricao }}</a>
+                                @if ($item->variacao)
+                                    <span class="shrink-0 text-xs font-normal text-gray-500 whitespace-nowrap">({{ $item->variacao }})</span>
+                                @endif
+                                @unless ($item->ativo)
+                                    <span class="shrink-0 text-xs font-normal text-red-600">Inativo</span>
+                                @endunless
+                            </div>
                         </td>
                         <td class="px-4 py-3 text-gray-600">{{ $item->categoria ?: '—' }}</td>
                         <td class="px-4 py-3 text-right text-gray-800 font-medium whitespace-nowrap">{{ $qtd($item->estoque) }}</td>
