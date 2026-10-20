@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Produto;
 use App\Models\ProdutoVariante;
 use App\Models\Unidade;
+use App\Services\EstoqueService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
@@ -136,7 +137,7 @@ class ProdutoController extends Controller
         $validado = $this->validarProduto($request);
         $this->validarVariantes($request);
 
-        $produto = Produto::create($validado);
+        $produto = $this->criarProduto($validado); // [MOVIMENTAÇÃO] registra o estoque inicial
 
         $this->sincronizarVariantes($request, $produto);
 
@@ -180,7 +181,7 @@ class ProdutoController extends Controller
         $this->resolverCodigoBarras($request);
         $validado = $this->validarProduto($request);
 
-        return Produto::create($validado);
+        return $this->criarProduto($validado); // [MOVIMENTAÇÃO]
     }
 
     public function edit(Produto $produto)
@@ -198,7 +199,19 @@ class ProdutoController extends Controller
         $validado = $this->validarProduto($request, $produto->id);
         $this->validarVariantes($request);
 
+        // [MOVIMENTAÇÃO] o saldo não é gravado direto pelo formulário: passa pelo
+        // EstoqueService, que registra a diferença no histórico.
+        $estoqueNovo = $validado['estoque'] ?? null;
+        unset($validado['estoque']);
+
         $produto->update($validado);
+
+        if (! $produto->tem_variacao && $estoqueNovo !== null) {
+            app(EstoqueService::class)->ajustarPara(
+                $produto->id, null, (float) $estoqueNovo, EstoqueService::AJUSTE_MANUAL,
+                ['observacao' => 'Ajuste manual pelo cadastro do produto']
+            );
+        }
 
         $this->sincronizarVariantes($request, $produto);
 
@@ -206,55 +219,110 @@ class ProdutoController extends Controller
             ->with('sucesso', 'Produto atualizado com sucesso.');
     }
 
-    private function sincronizarVariantes(Request $request, Produto $produto): void
-{
-    if (!$produto->tem_variacao) {
-        $produto->variantes()->delete();
-        return;
-    }
+    /**
+     * [MOVIMENTAÇÃO] Cria o produto já registrando o estoque informado como
+     * "estoque inicial" no histórico: o campo nasce zerado e o EstoqueService o ajusta.
+     */
+    private function criarProduto(array $validado): Produto
+    {
+        $estoqueInicial = (float) ($validado['estoque'] ?? 0);
+        $validado['estoque'] = 0;
 
-    $idsEnviados = [];
+        $produto = Produto::create($validado);
 
-    foreach ($request->input('variantes', []) as $linha) {
-        if (empty($linha['cor']) && empty($linha['tamanho'])) {
-            continue; // ignora linha vazia
+        if (! $produto->tem_variacao && $estoqueInicial != 0.0) {
+            app(EstoqueService::class)->movimentar(
+                $produto->id, null, $estoqueInicial, EstoqueService::ESTOQUE_INICIAL,
+                ['observacao' => 'Estoque informado no cadastro do produto']
+            );
+
+            $produto->refresh(); // devolve o saldo já gravado (usado pelo storeJson)
         }
 
-        $idLinha = $linha['id'] ?: null;
-        $codigoDigitado = $linha['codigo_barras'] ?? null;
-        $codigoInterno = $idLinha ? ProdutoVariante::codigoInternoPara((int) $idLinha) : null;
+        return $produto;
+    }
 
-        // EAN real só quando o operador digitou algo diferente do código interno
-        // da própria variação. Em branco = fallback (gerado a partir do id).
-        $ehEanReal = $codigoDigitado !== null && $codigoDigitado !== $codigoInterno;
+    private function sincronizarVariantes(Request $request, Produto $produto): void
+    {
+        $estoque = app(EstoqueService::class);
 
-        $variante = $produto->variantes()->updateOrCreate(
-            ['id' => $idLinha],
-            [
+        if (!$produto->tem_variacao) {
+            // [MOVIMENTAÇÃO] o saldo das variantes apagadas some junto: registra a baixa antes.
+            foreach ($produto->variantes as $removida) {
+                $estoque->ajustarPara($produto->id, $removida->id, 0, EstoqueService::AJUSTE_MANUAL, [
+                    'observacao' => 'Variação removida: o produto deixou de ter variações',
+                ]);
+            }
+
+            $produto->variantes()->delete();
+            return;
+        }
+
+        $idsEnviados = [];
+
+        foreach ($request->input('variantes', []) as $linha) {
+            if (empty($linha['cor']) && empty($linha['tamanho'])) {
+                continue; // ignora linha vazia
+            }
+
+            $idLinha = $linha['id'] ?: null;
+            $codigoDigitado = $linha['codigo_barras'] ?? null;
+            $codigoInterno = $idLinha ? ProdutoVariante::codigoInternoPara((int) $idLinha) : null;
+
+            // EAN real só quando o operador digitou algo diferente do código interno
+            // da própria variação. Em branco = fallback (gerado a partir do id).
+            $ehEanReal = $codigoDigitado !== null && $codigoDigitado !== $codigoInterno;
+
+            // [MOVIMENTAÇÃO] "estoque" fica de fora: quem grava o saldo é o EstoqueService.
+            $dados = [
                 'cor' => $linha['cor'] ?? null,
                 'tamanho' => $linha['tamanho'] ?? null,
                 'codigo_barras' => $ehEanReal ? $codigoDigitado : $codigoInterno,
                 'codigo_barras_valido' => $ehEanReal,
-                'estoque' => $linha['estoque'] ?? 0,
                 'estoque_minimo' => $linha['estoque_minimo'] ?? 0,
-            ]
-        );
+            ];
 
-        // Variação nova: o id só existe depois do insert, então o código interno
-        // é gravado logo em seguida.
-        if ($variante->codigo_barras === null) {
-            $variante->update([
-                'codigo_barras' => ProdutoVariante::codigoInternoPara($variante->id),
-                'codigo_barras_valido' => false,
-            ]);
+            $variante = $idLinha ? $produto->variantes()->find($idLinha) : null;
+
+            if ($variante) {
+                $variante->update($dados);
+            } else {
+                $variante = $produto->variantes()->create($dados + ['estoque' => 0]);
+            }
+
+            // Variação nova: o id só existe depois do insert, então o código interno
+            // é gravado logo em seguida.
+            if ($variante->codigo_barras === null) {
+                $variante->update([
+                    'codigo_barras' => ProdutoVariante::codigoInternoPara($variante->id),
+                    'codigo_barras_valido' => false,
+                ]);
+            }
+
+            $nova = $variante->wasRecentlyCreated;
+
+            $estoque->ajustarPara(
+                $produto->id, $variante->id, (float) ($linha['estoque'] ?? 0),
+                $nova ? EstoqueService::ESTOQUE_INICIAL : EstoqueService::AJUSTE_MANUAL,
+                ['observacao' => $nova ? 'Estoque informado no cadastro da variação' : 'Ajuste manual pelo cadastro do produto']
+            );
+
+            $idsEnviados[] = $variante->id;
         }
 
-        $idsEnviados[] = $variante->id;
+        // Remove variantes que existiam antes mas foram excluídas na tela
+        $removidas = $produto->variantes()->whereNotIn('id', $idsEnviados)->get();
+
+        foreach ($removidas as $removida) {
+            // [MOVIMENTAÇÃO] registra a baixa do saldo que sai junto com a variante
+            $estoque->ajustarPara($produto->id, $removida->id, 0, EstoqueService::AJUSTE_MANUAL, [
+                'observacao' => 'Variação removida do cadastro',
+            ]);
+
+            $removida->delete();
+        }
     }
 
-    // Remove variantes que existiam antes mas foram excluídas na tela
-    $produto->variantes()->whereNotIn('id', $idsEnviados)->delete();
-}
     /**
      * Sem destroy() de propósito — produtos não podem ser excluídos.
      */

@@ -66,7 +66,7 @@
                             class="hidden fixed bg-gray-900 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
                             <a href="{{ route('produtos.index') }}"
                             class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
-                                Produtos
+                                Cadastros
                             </a>
                             <a href="{{ route('produtos.inventario.index') }}"
                             class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition border-t border-white/10">
@@ -79,6 +79,10 @@
                             <a href="{{ route('produtos.entradas.index') }}"
                             class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition border-t border-white/10">
                                 Entrada de Produtos
+                            </a>
+                            <a href="{{ route('produtos.saidas.index') }}"
+                            class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition border-t border-white/10">
+                                Saída de Produtos
                             </a>
                         </div>
                     </div>

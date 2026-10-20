@@ -734,14 +734,22 @@ class NotaFiscalController extends Controller
                 $cfop = $notaFiscal->cfopSaida;
 
                 if ($cfop->movimenta_estoque) {
-                    foreach ($notaFiscal->itens as $item) {
-                        $query = $item->produto_variante_id
-                            ? \App\Models\ProdutoVariante::where('id', $item->produto_variante_id)->lockForUpdate()
-                            : Produto::where('id', $item->produto_id)->lockForUpdate();
+                    // [MOVIMENTAÇÃO] passa pelo EstoqueService: altera o saldo e registra no histórico
+                    $estoque = app(\App\Services\EstoqueService::class);
+                    $entrada = $cfop->tipo_operacao === 'entrada';
 
-                        $cfop->tipo_operacao === 'entrada'
-                            ? $query->increment('estoque', $item->quantidade)
-                            : $query->decrement('estoque', $item->quantidade);
+                    foreach ($notaFiscal->itens as $item) {
+                        $estoque->movimentar(
+                            (int) $item->produto_id,
+                            $item->produto_variante_id ? (int) $item->produto_variante_id : null,
+                            $entrada ? (float) $item->quantidade : -(float) $item->quantidade,
+                            $entrada ? \App\Services\EstoqueService::NFE_ENTRADA : \App\Services\EstoqueService::NFE_SAIDA,
+                            [
+                                'documento_tipo'   => 'nota_fiscal',
+                                'documento_id'     => $notaFiscal->id,
+                                'documento_rotulo' => "NF-e nº {$notaFiscal->numero} série {$notaFiscal->serie}",
+                            ]
+                        );
                     }
                 }
             });
@@ -786,14 +794,23 @@ class NotaFiscalController extends Controller
         // se a chamada acima lançar exceção, nada abaixo é executado.
         DB::transaction(function () use ($notaFiscal, $dados, $resultado) {
             if ($notaFiscal->cfopSaida->movimenta_estoque) {
-                foreach ($notaFiscal->itens as $item) {
-                    $query = $item->produto_variante_id
-                        ? \App\Models\ProdutoVariante::where('id', $item->produto_variante_id)->lockForUpdate()
-                        : Produto::where('id', $item->produto_id)->lockForUpdate();
+                // [MOVIMENTAÇÃO] estorno pelo EstoqueService (saída volta ao estoque; entrada sai dele)
+                $estoque = app(\App\Services\EstoqueService::class);
+                $eraEntrada = $notaFiscal->cfopSaida->tipo_operacao === 'entrada';
 
-                    $notaFiscal->cfopSaida->tipo_operacao === 'entrada'
-                        ? $query->decrement('estoque', $item->quantidade)
-                        : $query->increment('estoque', $item->quantidade);
+                foreach ($notaFiscal->itens as $item) {
+                    $estoque->movimentar(
+                        (int) $item->produto_id,
+                        $item->produto_variante_id ? (int) $item->produto_variante_id : null,
+                        $eraEntrada ? -(float) $item->quantidade : (float) $item->quantidade,
+                        \App\Services\EstoqueService::NFE_CANCELAMENTO,
+                        [
+                            'documento_tipo'   => 'nota_fiscal',
+                            'documento_id'     => $notaFiscal->id,
+                            'documento_rotulo' => "NF-e nº {$notaFiscal->numero} série {$notaFiscal->serie}",
+                            'observacao'       => 'Estorno por cancelamento da nota',
+                        ]
+                    );
                 }
             }
 
