@@ -82,7 +82,7 @@
                             </a>
                             <a href="{{ route('produtos.saidas.index') }}"
                             class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition border-t border-white/10">
-                                Saída de Produtos
+                                Movimentação de Produtos
                             </a>
                         </div>
                     </div>
@@ -278,6 +278,25 @@
                        class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
                         Pedidos de compra
                     </a>
+
+                    <!-- Relatório (nível 2, abre lateral) -->
+                    <div class="relative">
+                        <button id="btn-relatorio-financeiro" onclick="toggleFlyout('sub-relatorio-financeiro', 'btn-relatorio-financeiro')"
+                                class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                            <span>Relatório</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
+
+                        <div id="sub-relatorio-financeiro" data-flyout data-botao="btn-relatorio-financeiro"
+                             class="hidden fixed bg-gray-900 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                            <a href="{{ route('financeiro.relatorios.contas-pagar.index') }}"
+                               class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                                Contas a pagar
+                            </a>
+                        </div>
+                    </div>
                 @endif
             </div>
         </div>

@@ -49,6 +49,7 @@ use App\Http\Controllers\EntradaProdutosController;
 use App\Http\Controllers\SaidaProdutoController;
 use App\Http\Controllers\RelatorioNotaSaidaController;
 use App\Http\Controllers\RelatorioNotaEntradaController;
+use App\Http\Controllers\RelatorioContaPagarController;
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -265,6 +266,13 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
             
                 Route::post('tipos-conta-pagar/rapido', [TipoContaPagarController::class, 'rapido'])
                     ->name('tipos-conta-pagar.rapido');
+            });
+
+            // ---------------- RELATÓRIOS - CONTAS A PAGAR ----------------
+            Route::prefix('financeiro/relatorios/contas-pagar')->name('financeiro.relatorios.contas-pagar.')->group(function () {
+                Route::get('/', [RelatorioContaPagarController::class, 'index'])->name('index');
+                Route::get('exportar-excel', [RelatorioContaPagarController::class, 'exportarExcel'])->name('exportar-excel');
+                Route::get('exportar-pdf', [RelatorioContaPagarController::class, 'exportarPdf'])->name('exportar-pdf');
             });
 
             // ---------------- CONTAS A RECEBER ----------------
