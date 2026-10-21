@@ -46,7 +46,8 @@ use App\Http\Controllers\OrdemServicoController;
 use App\Http\Controllers\InventarioController;
 use App\Http\Controllers\EstoqueBaixoController;
 use App\Http\Controllers\EntradaProdutosController;
-use App\Http\Controllers\SaidaProdutoController; // Adicionado aqui[cite: 1]
+use App\Http\Controllers\SaidaProdutoController;
+use App\Http\Controllers\RelatorioNotaSaidaController;
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -118,7 +119,7 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
         // ---------------- PRODUTOS E CLASSIFICAÇÕES FISCAIS ----------------
         Route::middleware('permissao:produtos')->group(function () {
             
-            // Rotas de Estoque Baixo inseridas antes do Resource[cite: 1]
+            // Rotas de Estoque Baixo inseridas antes do Resource
             Route::prefix('produtos/estoque-baixo')->name('produtos.estoque-baixo.')->group(function () {       
                 Route::get('/', [EstoqueBaixoController::class, 'index'])->name('index');       
                 Route::get('exportar-excel', [EstoqueBaixoController::class, 'exportarExcel'])->name('exportar-excel');       
@@ -130,7 +131,7 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
             Route::get('produtos/entradas/exportar/excel', [EntradaProdutosController::class, 'exportarExcel'])->name('produtos.entradas.exportar-excel');
             Route::get('produtos/entradas/exportar/pdf', [EntradaProdutosController::class, 'exportarPdf'])->name('produtos.entradas.exportar-pdf');
 
-            // Rotas de Saídas de Produtos inseridas antes do Resource[cite: 1]
+            // Rotas de Saídas de Produtos inseridas antes do Resource
             Route::prefix('produtos/saidas')->name('produtos.saidas.')->group(function () {
                 Route::get('/', [SaidaProdutoController::class, 'index'])->name('index');
                 Route::get('exportar-excel', [SaidaProdutoController::class, 'exportarExcel'])->name('exportar-excel');
@@ -231,6 +232,13 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::put('{entrada}', [EntradaNotaController::class, 'update'])->name('update');
                 Route::post('{entrada}/reabrir', [EntradaNotaController::class, 'reabrir'])->name('reabrir');
                 Route::delete('{entrada}', [EntradaNotaController::class, 'destroy'])->name('destroy');
+            });
+
+            // ---------------- FATURAMENTO - RELATÓRIOS DE SAÍDA ----------------
+            Route::prefix('faturamento/relatorios/saida')->name('faturamento.relatorios.saida.')->group(function () {
+                Route::get('/', [RelatorioNotaSaidaController::class, 'index'])->name('index');
+                Route::get('exportar-excel', [RelatorioNotaSaidaController::class, 'exportarExcel'])->name('exportar-excel');
+                Route::get('exportar-pdf', [RelatorioNotaSaidaController::class, 'exportarPdf'])->name('exportar-pdf');
             });
 
             // ---------------- CONTAS A PAGAR ----------------
