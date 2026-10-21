@@ -48,6 +48,7 @@ use App\Http\Controllers\EstoqueBaixoController;
 use App\Http\Controllers\EntradaProdutosController;
 use App\Http\Controllers\SaidaProdutoController;
 use App\Http\Controllers\RelatorioNotaSaidaController;
+use App\Http\Controllers\RelatorioNotaEntradaController;
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -239,6 +240,13 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::get('/', [RelatorioNotaSaidaController::class, 'index'])->name('index');
                 Route::get('exportar-excel', [RelatorioNotaSaidaController::class, 'exportarExcel'])->name('exportar-excel');
                 Route::get('exportar-pdf', [RelatorioNotaSaidaController::class, 'exportarPdf'])->name('exportar-pdf');
+            });
+
+            // ---------------- FATURAMENTO - RELATÓRIOS DE ENTRADA ----------------
+            Route::prefix('faturamento/relatorios/entrada')->name('faturamento.relatorios.entrada.')->group(function () {    
+                Route::get('/', [RelatorioNotaEntradaController::class, 'index'])->name('index');    
+                Route::get('exportar-excel', [RelatorioNotaEntradaController::class, 'exportarExcel'])->name('exportar-excel');    
+                Route::get('exportar-pdf', [RelatorioNotaEntradaController::class, 'exportarPdf'])->name('exportar-pdf');    
             });
 
             // ---------------- CONTAS A PAGAR ----------------

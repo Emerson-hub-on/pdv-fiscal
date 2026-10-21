@@ -15,6 +15,7 @@
         'estoque_inicial'  => 'bg-green-50 text-green-700',
         'entrada_compra'   => 'bg-green-50 text-green-700',
         'transferencia'    => 'bg-purple-50 text-purple-700',
+        'entrada_estornada' => 'bg-gray-100 text-gray-700',
     ];
 @endphp
 

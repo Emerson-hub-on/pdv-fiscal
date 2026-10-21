@@ -26,6 +26,7 @@ class EstoqueService
     public const VENDA              = 'venda';
     public const VENDA_CANCELADA    = 'venda_cancelada';
     public const ENTRADA_COMPRA     = 'entrada_compra';
+    public const ENTRADA_ESTORNADA  = 'entrada_estornada';
     public const TRANSFERENCIA      = 'transferencia';
 
     /**
@@ -33,7 +34,8 @@ class EstoqueService
      * ou null se a quantidade for zero.
      *
      * $contexto (todos opcionais): documento_tipo, documento_id, documento_rotulo,
-     * observacao, user_id (padrão: usuário logado), data (padrão: agora),
+     * observacao, custo_unitario (padrão: custo atual do produto), user_id (padrão: usuário logado),
+     * data (padrão: agora),
      * tocar_updated_at (padrão: true).
      *
      * Não impede saldo negativo — mantém o comportamento atual do sistema.
@@ -87,7 +89,7 @@ class EstoqueService
                 'quantidade'          => $quantidade,
                 'saldo_anterior'      => $anterior,
                 'saldo_posterior'     => $posterior,
-                'custo_unitario'      => $custo,
+                'custo_unitario'      => $contexto['custo_unitario'] ?? $custo,
                 'documento_tipo'      => $contexto['documento_tipo'] ?? null,
                 'documento_id'        => isset($contexto['documento_id']) ? (string) $contexto['documento_id'] : null,
                 'documento_rotulo'    => $contexto['documento_rotulo'] ?? null,

@@ -18,7 +18,7 @@ class MovimentacaoEstoque extends Model
         'produto_id', 'produto_variante_id', 'variacao', 'tipo',
         'quantidade', 'saldo_anterior', 'saldo_posterior', 'custo_unitario',
         'documento_tipo', 'documento_id', 'documento_rotulo',
-        'observacao', 'user_id',
+        'observacao', 'user_id', 'created_at',
     ];
 
     protected $casts = [
@@ -38,6 +38,7 @@ class MovimentacaoEstoque extends Model
         'venda'            => 'Venda no PDV',
         'venda_cancelada'  => 'Venda cancelada',
         'entrada_compra'   => 'Entrada de nota',
+        'entrada_estornada' => 'Entrada estornada',
         'transferencia'    => 'Transferência',
     ];
 

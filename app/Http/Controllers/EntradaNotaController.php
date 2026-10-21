@@ -27,6 +27,7 @@ use App\Models\CfopEntradaConversao;
 use App\Models\FormaPagamento;
 use App\Models\CstEntradaConversao;
 use App\Services\ContaPagarService;
+use App\Services\EstoqueService;
 use App\Support\XmlDuplicatas;
 
 
@@ -1345,12 +1346,21 @@ class EntradaNotaController extends Controller
                     }
                 }
 
+                // [MOVIMENTAÇÃO] estorno pelo EstoqueService (as validações de saldo acima continuam valendo)
+                $estoque = app(EstoqueService::class);
+                $contexto = [
+                    'documento_tipo'   => 'entrada_nota',
+                    'documento_id'     => $entrada->id,
+                    'documento_rotulo' => "Entrada nº {$entrada->numero} série {$entrada->serie}",
+                    'observacao'       => 'Estorno da entrada de nota',
+                ];
+
                 foreach ($porProduto as $produtoId => $qtd) {
-                    $produtos[$produtoId]->decrement('estoque', $qtd);
+                    $estoque->movimentar((int) $produtoId, null, -(float) $qtd, EstoqueService::ENTRADA_ESTORNADA, $contexto);
                 }
 
                 foreach ($porVariante as $varId => $qtd) {
-                    $variantes[$varId]->decrement('estoque', $qtd);
+                    $estoque->movimentar((int) $variantes[$varId]->produto_id, (int) $varId, -(int) $qtd, EstoqueService::ENTRADA_ESTORNADA, $contexto);
                 }
 
                 ProdutoLote::whereIn('entrada_nota_item_id', $itemIds)->delete();
@@ -1399,13 +1409,21 @@ class EntradaNotaController extends Controller
                 // quantidade da nota (caixas) × unidades por caixa = unidades que entram no estoque
                 $qtdEstoque = $item->quantidade_estoque;
 
-                if ($item->produto_variante_id) {
-                    // produto com variação: o estoque mora na variante (inteiro)
-                    ProdutoVariante::whereKey($item->produto_variante_id)->lockForUpdate()->firstOrFail()
-                        ->increment('estoque', (int) round($qtdEstoque));
-                } else {
-                    $produto->increment('estoque', $qtdEstoque);
-                }
+                // [MOVIMENTAÇÃO] passa pelo EstoqueService: soma no saldo e registra no histórico.
+                // Produto com variação: o estoque mora na variante (inteiro).
+                app(EstoqueService::class)->movimentar(
+                    (int) $item->produto_id,
+                    $item->produto_variante_id ? (int) $item->produto_variante_id : null,
+                    $item->produto_variante_id ? (int) round($qtdEstoque) : (float) $qtdEstoque,
+                    EstoqueService::ENTRADA_COMPRA,
+                    [
+                        'documento_tipo'   => 'entrada_nota',
+                        'documento_id'     => $entrada->id,
+                        'documento_rotulo' => "Entrada nº {$entrada->numero} série {$entrada->serie}",
+                        // custo líquido por unidade desta compra (o custo do cadastro pode nem ser atualizado)
+                        'custo_unitario'   => $qtdEstoque > 0 ? round((float) $item->valor_total / $qtdEstoque, 4) : null,
+                    ]
+                );
 
                 if ($entrada->atualizar_custo && $qtdEstoque > 0) {
                     // custo líquido por UNIDADE (total do item, já com desconto, ÷ unidades)

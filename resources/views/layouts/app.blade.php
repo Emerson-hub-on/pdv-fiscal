@@ -240,6 +240,10 @@
                         class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                             Saída
                         </a>
+                        <a href="{{ route('faturamento.relatorios.entrada.index') }}"
+                        class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                            Entrada
+                        </a>
                     </div>
                 </div>
             </div>
