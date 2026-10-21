@@ -38,9 +38,10 @@
 </div>
 
 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-    <div class="overflow-x-auto">
-        <table class="w-full text-sm whitespace-nowrap">
-            <thead class="bg-gray-700 rounded-lg font-medium text-xs uppercase tracking-wide">
+    {{-- Só esta área rola: ajuste o 19rem se o topo da página mudar de altura --}}
+    <div id="rolagem-tabela" class="overflow-auto max-h-[calc(100vh-19rem)]">
+        <table id="tabela-notas" class="w-full text-sm whitespace-nowrap">
+            <thead class="sticky top-0 z-10 bg-gray-700 rounded-lg font-medium text-xs uppercase tracking-wide">
                 <tr>
                     <th class="px-4 py-3 text-left font-medium text-amber-50">Nota</th>
                     <th class="px-4 py-3 text-left font-medium text-amber-50">Emissão</th>
@@ -59,7 +60,7 @@
             @forelse ($notas as $nota)
                 @php $cancelada = $nota->status === 'cancelada'; @endphp
 
-                <tbody class="border-t border-gray-200">
+                <tbody data-nota class="border-t border-gray-200">
                     <tr class="bg-gray-50 hover:bg-gray-200 transition">
                         <td class="px-4 py-3 font-medium text-gray-800">
                             <a href="{{ route('notasfiscais.show', $nota) }}" class="hover:text-blue-600 hover:underline">
@@ -144,9 +145,16 @@
                 </tbody>
             @endforelse
         </table>
-    </div>
-</div>
 
-<div class="mt-4">
-    {{ $notas->links() }}
+        {{-- Sentinela da rolagem infinita: quando aparece na tela, o index.blade.php carrega a próxima página --}}
+        <div id="rolagem-sentinela"
+             data-proxima="{{ $notas->hasMorePages() ? $notas->currentPage() + 1 : '' }}"
+             class="py-3 text-center text-xs text-gray-400">
+            @if ($notas->hasMorePages())
+                Role para carregar mais notas…
+            @elseif ($notas->currentPage() > 1)
+                Fim da lista
+            @endif
+        </div>
+    </div>
 </div>

@@ -76,15 +76,16 @@
     </form>
 
     @if ($statusFiltro === 'inutilizada')
-            <table class="w-full text-sm">
-                <thead class="bg-gray-700 text-amber-50 text-xs uppercase">
+        <div id="rolagem-tabela" class="overflow-auto max-h-[calc(100vh-15rem)] rounded-b-lg">
+            <table id="tabela-rolagem" class="w-full text-sm">
+                <thead class="sticky top-0 z-10 bg-gray-700 text-amber-50 text-xs uppercase">
                     <tr>
                         <th class="text-left px-4 py-2">Número</th>
                         <th class="text-left px-4 py-2">Motivo</th>
                         <th class="text-left px-4 py-2">Data</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
+                <tbody id="corpo-rolagem" class="divide-y divide-gray-100">
                     @forelse ($inutilizacoes as $inutilizacao)
                         <tr>
                             <td class="px-4 py-2">
@@ -105,10 +106,21 @@
                 </tbody>
             </table>
 
-            <div class="p-4">{{ $inutilizacoes->links() }}</div>
+            {{-- Sentinela da rolagem infinita: quando aparece na área da tabela, o script carrega a próxima página --}}
+            <div id="rolagem-sentinela"
+                 data-proxima="{{ $inutilizacoes->hasMorePages() ? $inutilizacoes->currentPage() + 1 : '' }}"
+                 class="py-3 text-center text-xs text-gray-400">
+                @if ($inutilizacoes->hasMorePages())
+                    Role para carregar mais registros…
+                @elseif ($inutilizacoes->currentPage() > 1)
+                    Fim da lista
+                @endif
+            </div>
+        </div>
         @else
-            <table class="w-full text-sm">
-        <thead class="bg-gray-700 text-amber-50 text-xs uppercase">
+        <div id="rolagem-tabela" class="overflow-auto max-h-[calc(100vh-15rem)] rounded-b-lg">
+            <table id="tabela-rolagem" class="w-full text-sm">
+        <thead class="sticky top-0 z-10 bg-gray-700 text-amber-50 text-xs uppercase">
             <tr>
                 <th class="text-left px-4 py-2">Número</th>
                 <th class="text-left px-4 py-2">Série</th>
@@ -121,7 +133,7 @@
                 <th class="text-right px-4 py-2">Ações</th>
             </tr>
         </thead>
-        <tbody class="divide-y divide-gray-100">
+        <tbody id="corpo-rolagem" class="divide-y divide-gray-100">
             @forelse ($notas as $nota)
                 @php
                     $rotaLinha = $nota->status === 'rascunho'
@@ -139,13 +151,13 @@
                     <td class="px-4 py-2 cursor-pointer" onclick="location.href='{{ $rotaLinha }}'">{{ $nota->created_at->format('d/m/Y H:i') }}</td>
 
                     <td class="px-4 py-2 text-right relative">
-                        <button type="button" onclick="toggleAcoesLinha({{ $nota->id }})"
+                        <button type="button" onclick="toggleAcoesLinha({{ $nota->id }}, this)"
                                 class="text-gray-500 hover:text-gray-800 px-2 py-1 rounded hover:bg-gray-100">
                             ⋮
                         </button>
 
                         <div id="dropdown-acoes-{{ $nota->id }}"
-                            class="hidden absolute right-4 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-44 z-50 text-left">
+                            class="hidden fixed bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-44 z-50 text-left">
                             <a href="{{ route('notasfiscais.previsualizar', $nota) }}" target="_blank"
                             class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Pré-visualizar</a>
 
@@ -194,7 +206,17 @@
         </tbody>
     </table>
 
-        <div class="p-4">{{ $notas->links() }}</div>
+            {{-- Sentinela da rolagem infinita: quando aparece na área da tabela, o script carrega a próxima página --}}
+            <div id="rolagem-sentinela"
+                 data-proxima="{{ $notas->hasMorePages() ? $notas->currentPage() + 1 : '' }}"
+                 class="py-3 text-center text-xs text-gray-400">
+                @if ($notas->hasMorePages())
+                    Role para carregar mais notas…
+                @elseif ($notas->currentPage() > 1)
+                    Fim da lista
+                @endif
+            </div>
+        </div>
     @endif
 </div>
 
@@ -241,12 +263,29 @@
 
 @section('scripts')
 <script>
-function toggleAcoesLinha(id) {
+function toggleAcoesLinha(id, botao) {
     document.querySelectorAll('[id^="dropdown-acoes-"]').forEach(el => {
         if (el.id !== `dropdown-acoes-${id}`) el.classList.add('hidden');
     });
-    document.getElementById(`dropdown-acoes-${id}`).classList.toggle('hidden');
+
+    const dropdown = document.getElementById(`dropdown-acoes-${id}`);
+    dropdown.classList.toggle('hidden');
+
+    if (dropdown.classList.contains('hidden')) return;
+
+    // O menu é fixed (a área da tabela rola e cortaria um absolute): posiciona junto ao botão,
+    // e abre para cima quando não houver espaço embaixo
+    const r = botao.getBoundingClientRect();
+    const abreParaCima = r.bottom + dropdown.offsetHeight + 8 > window.innerHeight;
+
+    dropdown.style.left = `${Math.max(8, r.right - dropdown.offsetWidth)}px`;
+    dropdown.style.top = `${abreParaCima ? r.top - dropdown.offsetHeight - 4 : r.bottom + 4}px`;
 }
+
+// Com o menu fixed, rolar a tabela deixaria ele solto no ar: fecha ao rolar
+window.addEventListener('scroll', () => {
+    document.querySelectorAll('[id^="dropdown-acoes-"]').forEach(el => el.classList.add('hidden'));
+}, true);
 
 document.addEventListener('click', (e) => {
     document.querySelectorAll('[id^="dropdown-acoes-"]').forEach(dropdown => {
@@ -314,6 +353,61 @@ async function confirmarInutilizacaoNfe() {
         erroP.classList.remove('hidden');
     }
 }
+
+// Rolagem infinita: busca a próxima página com a mesma URL (filtros inclusos) e acrescenta só as linhas
+let carregandoMais = false;
+let observadorSentinela = null;
+
+async function carregarMais() {
+    const sentinela = document.getElementById('rolagem-sentinela');
+
+    if (carregandoMais || !sentinela || !sentinela.dataset.proxima) return;
+
+    carregandoMais = true;
+    let falhou = false;
+
+    try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('page', sentinela.dataset.proxima);
+
+        const resp = await fetch(url);
+
+        if (!resp.ok) throw new Error(resp.status);
+
+        const doc = new DOMParser().parseFromString(await resp.text(), 'text/html');
+        const novoSentinela = doc.getElementById('rolagem-sentinela');
+
+        document.getElementById('corpo-rolagem').append(...doc.querySelectorAll('#corpo-rolagem > tr'));
+
+        if (novoSentinela) sentinela.replaceWith(novoSentinela);
+    } catch (erro) {
+        // Sem re-observar, para não ficar tentando em loop enquanto o erro persistir
+        falhou = true;
+        sentinela.innerText = 'Não foi possível carregar mais. Recarregue a página.';
+    } finally {
+        carregandoMais = false;
+        if (!falhou) observarSentinela();
+    }
+}
+
+// Observa de novo a cada carga: se a área ainda não encher, já puxa a próxima página.
+// A própria área da tabela é a "tela" do observador, porque é ela que rola.
+function observarSentinela() {
+    if (observadorSentinela) observadorSentinela.disconnect();
+
+    const area = document.getElementById('rolagem-tabela');
+    const sentinela = document.getElementById('rolagem-sentinela');
+
+    if (!area || !sentinela || !sentinela.dataset.proxima) return;
+
+    observadorSentinela = new IntersectionObserver((entradas) => {
+        if (entradas.some((e) => e.isIntersecting)) carregarMais();
+    }, { root: area, rootMargin: '0px 0px 300px 0px' });
+
+    observadorSentinela.observe(sentinela);
+}
+
+observarSentinela();
 
 function atualizarCampoFiltroNota() {
     const tipo = document.getElementById('campo-tipo-filtro').value;

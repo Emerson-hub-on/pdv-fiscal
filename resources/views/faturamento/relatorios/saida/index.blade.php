@@ -187,7 +187,7 @@
             tipo_data: 'emissao',
             data_inicio: '{{ now()->startOfMonth()->toDateString() }}',
             data_fim: '{{ now()->toDateString() }}',
-            visao: 'detalhada',
+            visao: 'resumida',
             ordenar: 'recentes',
         };
 
@@ -246,17 +246,79 @@
             return new URLSearchParams(new FormData(formRelatorio));
         }
 
+        // Rolagem infinita: cada busca nova invalida carregamentos de página que ainda estavam em andamento
+        let geracaoRelatorio = 0;
+        let carregandoMais = false;
+
         async function buscarRelatorio() {
+            const geracao = ++geracaoRelatorio;
             const url = `{{ route('faturamento.relatorios.saida.index') }}?${parametrosRelatorio().toString()}`;
 
             const resp = await fetch(url, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
             });
 
-            if (!resp.ok) return;
+            if (!resp.ok || geracao !== geracaoRelatorio) return;
 
             document.getElementById('resultado-relatorio').innerHTML = await resp.text();
             window.history.replaceState(null, '', url);
+            observarSentinela();
+        }
+
+        async function carregarMais() {
+            const sentinela = document.getElementById('rolagem-sentinela');
+
+            if (carregandoMais || !sentinela || !sentinela.dataset.proxima) return;
+
+            carregandoMais = true;
+            const geracao = geracaoRelatorio;
+            let falhou = false;
+
+            const params = parametrosRelatorio();
+            params.set('page', sentinela.dataset.proxima);
+
+            try {
+                const resp = await fetch(`{{ route('faturamento.relatorios.saida.index') }}?${params.toString()}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+
+                if (geracao !== geracaoRelatorio) return;
+                if (!resp.ok) throw new Error(resp.status);
+
+                // A resposta é o parcial inteiro: aproveita só as notas e o novo sentinela
+                const doc = new DOMParser().parseFromString(await resp.text(), 'text/html');
+                const novoSentinela = doc.getElementById('rolagem-sentinela');
+
+                document.getElementById('tabela-notas').append(...doc.querySelectorAll('tbody[data-nota]'));
+
+                if (novoSentinela) sentinela.replaceWith(novoSentinela);
+            } catch (erro) {
+                // Sem re-observar, para não ficar tentando em loop enquanto o erro persistir
+                falhou = true;
+                sentinela.innerText = 'Não foi possível carregar mais. Atualize a busca.';
+            } finally {
+                carregandoMais = false;
+                if (!falhou) observarSentinela();
+            }
+        }
+
+        let observadorSentinela = null;
+
+        // Observa de novo a cada carga: se a área ainda não encher, já puxa a próxima página.
+        // O observador usa a própria área da tabela como "tela", porque é ela que rola.
+        function observarSentinela() {
+            if (observadorSentinela) observadorSentinela.disconnect();
+
+            const area = document.getElementById('rolagem-tabela');
+            const sentinela = document.getElementById('rolagem-sentinela');
+
+            if (!area || !sentinela || !sentinela.dataset.proxima) return;
+
+            observadorSentinela = new IntersectionObserver((entradas) => {
+                if (entradas.some((e) => e.isIntersecting)) carregarMais();
+            }, { root: area, rootMargin: '0px 0px 300px 0px' });
+
+            observadorSentinela.observe(sentinela);
         }
 
         const rotasExportarRelatorio = {
@@ -297,5 +359,6 @@
         });
 
         atualizarContadorFiltros();
+        observarSentinela();
     </script>
 @endsection
