@@ -817,21 +817,18 @@ class SyncService
                             'updated_at' => now(),
                         ] + $this->camposFiscaisParaCentral($vendaLocal, true));
 
-                        foreach ($itens as $item) {
-                            if ($vendaLocal->status_fiscal !== 'cancelada') {
-                                if (!empty($item['produto_variante_id'])) {
-                                    DB::table('produto_variantes')
-                                        ->where('id', $item['produto_variante_id'])
-                                        ->lockForUpdate()
-                                        ->decrement('estoque', $item['quantidade']);
-                                } else {
-                                    DB::table('produtos')
-                                        ->where('id', $item['produto_id'])
-                                        ->lockForUpdate()
-                                        ->decrement('estoque', $item['quantidade']);
-                                }
-                            }
+                        // [MOVIMENTAÇÃO] baixa do estoque central + histórico, pelo EstoqueService
+                        // (idempotente pelo uuid). Venda que já chega cancelada nunca baixou estoque.
+                        if ($vendaLocal->status_fiscal !== 'cancelada') {
+                            app(EstoqueService::class)->baixarVenda($vendaLocal->uuid, $itens ?? [], [
+                                'user_id'          => $vendaLocal->operador_id_central,
+                                'data'             => $vendaLocal->vendida_em,
+                                'documento_rotulo' => "Venda #{$vendaId}",
+                                'tocar_updated_at' => false,
+                            ]);
+                        }
 
+                        foreach ($itens as $item) {
                             DB::table('venda_itens')->insert([
                                 'venda_id' => $vendaId,
                                 'produto_id' => $item['produto_id'],
@@ -865,15 +862,18 @@ class SyncService
 
                         // Cancelada no caixa: devolve o estoque que o servidor baixou. Só na transição, para nunca devolver duas vezes.
                         if ($afetadas && $vendaLocal->status_fiscal === 'cancelada') {
-                            foreach (json_decode($vendaLocal->itens, true) ?? [] as $item) {
-                                if (!empty($item['produto_variante_id'])) {
-                                    DB::table('produto_variantes')->where('id', $item['produto_variante_id'])
-                                        ->lockForUpdate()->increment('estoque', $item['quantidade']);
-                                } else {
-                                    DB::table('produtos')->where('id', $item['produto_id'])
-                                        ->lockForUpdate()->increment('estoque', $item['quantidade']);
-                                }
-                            }
+                            // [MOVIMENTAÇÃO] devolução pelo EstoqueService (registra no histórico e não devolve duas vezes)
+                            $vendaId = DB::table('vendas')->where('uuid', $vendaLocal->uuid)->value('id');
+
+                            app(EstoqueService::class)->devolverVenda(
+                                $vendaLocal->uuid,
+                                json_decode($vendaLocal->itens, true) ?? [],
+                                [
+                                    'documento_rotulo' => "Venda #{$vendaId}",
+                                    'observacao'       => 'Venda cancelada no caixa',
+                                    'tocar_updated_at' => false,
+                                ]
+                            );
                         }
                     });
                 }

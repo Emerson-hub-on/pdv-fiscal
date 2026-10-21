@@ -1011,17 +1011,15 @@ protected function montarTotais(Make $nfe, Venda $venda): void
 
         foreach ($vendasAfetadas as $venda) {
             DB::transaction(function () use ($venda, $nProt) {
-                foreach ($venda->itens as $item) {
-                    if ($item->produto_variante_id) {
-                        ProdutoVariante::where('id', $item->produto_variante_id)
-                            ->lockForUpdate()
-                            ->increment('estoque', $item->quantidade);
-                    } else {
-                        Produto::where('id', $item->produto_id)
-                            ->lockForUpdate()
-                            ->increment('estoque', $item->quantidade);
-                    }
-                }
+                // [MOVIMENTAÇÃO] estorno pelo EstoqueService (registra no histórico)
+                app(EstoqueService::class)->devolverVenda(
+                    $venda->uuid ?: 'venda-' . $venda->id,
+                    $venda->itens,
+                    [
+                        'documento_rotulo' => "Venda #{$venda->id}",
+                        'observacao'       => "Número inutilizado (protocolo {$nProt})",
+                    ]
+                );
 
                 $venda->update([
                     'status' => 'cancelada',
@@ -1094,17 +1092,15 @@ protected function montarTotais(Make $nfe, Venda $venda): void
     {
         // Estorna o estoque de cada item, igual fizemos na inutilizacao
         DB::transaction(function () use ($venda, $nProt, $justificativa) {
-            foreach ($venda->itens as $item) {
-                if ($item->produto_variante_id) {
-                    ProdutoVariante::where('id', $item->produto_variante_id)
-                        ->lockForUpdate()
-                        ->increment('estoque', $item->quantidade);
-                } else {
-                    Produto::where('id', $item->produto_id)
-                        ->lockForUpdate()
-                        ->increment('estoque', $item->quantidade);
-                }
-            }
+            // [MOVIMENTAÇÃO] estorno pelo EstoqueService (registra no histórico)
+            app(EstoqueService::class)->devolverVenda(
+                $venda->uuid ?: 'venda-' . $venda->id,
+                $venda->itens,
+                [
+                    'documento_rotulo' => "Venda #{$venda->id}",
+                    'observacao'       => 'Cancelamento da NFC-e pelo operador',
+                ]
+            );
 
             $venda->update([
                 'status' => 'cancelada',

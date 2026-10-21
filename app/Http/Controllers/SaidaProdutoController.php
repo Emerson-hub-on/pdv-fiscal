@@ -21,9 +21,9 @@ class SaidaProdutoController extends Controller
     private const TIPOS_BUSCA = ['nome', 'codigo_interno', 'codigo_barras', 'referencia'];
 
     private const SENTIDOS = [
+        'todos'    => 'Entradas e saídas',
         'saidas'   => 'Saídas',
         'entradas' => 'Entradas',
-        'todos'    => 'Entradas e saídas',
     ];
 
     public function index(Request $request)
@@ -180,7 +180,7 @@ class SaidaProdutoController extends Controller
             'categoria'   => $id('categoria'),
             'marca'       => $id('marca'),
             'operador'    => $id('operador'),
-            'sentido'     => $escolha('sentido', array_keys(self::SENTIDOS), 'saidas'),
+            'sentido'     => $escolha('sentido', array_keys(self::SENTIDOS), 'todos'),
             'tipo'        => $escolha('tipo', array_keys(MovimentacaoEstoque::TIPOS), ''),
             'data_inicio' => $inicio?->toDateString() ?? '',
             'data_fim'    => $fim?->toDateString() ?? '',

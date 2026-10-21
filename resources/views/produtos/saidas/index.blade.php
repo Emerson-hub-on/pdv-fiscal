@@ -67,9 +67,9 @@
                             <label for="filtro-sentido" class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1.5">Exibir</label>
                             <select name="sentido" id="filtro-sentido"
                                     class="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
+                                <option value="todos" @selected($filtros['sentido'] === 'todos')>Entradas e saídas</option>
                                 <option value="saidas" @selected($filtros['sentido'] === 'saidas')>Saídas</option>
                                 <option value="entradas" @selected($filtros['sentido'] === 'entradas')>Entradas</option>
-                                <option value="todos" @selected($filtros['sentido'] === 'todos')>Entradas e saídas</option>
                             </select>
                         </div>
 
@@ -173,7 +173,7 @@
 
         // Valores "sem filtro" dos campos do modal (o período padrão é o dos últimos 30 dias)
         const FILTROS_PADRAO = {
-            sentido: 'saidas',
+            sentido: 'todos',
             tipo: '',
             categoria: '',
             marca: '',
