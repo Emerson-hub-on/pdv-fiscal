@@ -334,6 +334,25 @@
                     class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
                         Ordem de Serviço
                     </a>
+
+                    <!-- Relatório (nível 2, abre lateral) -->
+                    <div class="relative">
+                        <button id="btn-relatorio-pedidos" onclick="toggleFlyout('sub-relatorio-pedidos', 'btn-relatorio-pedidos')"
+                                class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                            <span>Relatório</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
+
+                        <div id="sub-relatorio-pedidos" data-flyout data-botao="btn-relatorio-pedidos"
+                             class="hidden fixed bg-gray-900 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                            <a href="{{ route('pedidos.relatorios.venda.index') }}"
+                               class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                                Pedido de venda
+                            </a>
+                        </div>
+                    </div>
                 @endif
             </div>
         </div>
