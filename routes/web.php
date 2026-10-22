@@ -50,6 +50,7 @@ use App\Http\Controllers\SaidaProdutoController;
 use App\Http\Controllers\RelatorioNotaSaidaController;
 use App\Http\Controllers\RelatorioNotaEntradaController;
 use App\Http\Controllers\RelatorioContaPagarController;
+use App\Http\Controllers\RelatorioContaReceberController;
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -273,6 +274,13 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::get('/', [RelatorioContaPagarController::class, 'index'])->name('index');
                 Route::get('exportar-excel', [RelatorioContaPagarController::class, 'exportarExcel'])->name('exportar-excel');
                 Route::get('exportar-pdf', [RelatorioContaPagarController::class, 'exportarPdf'])->name('exportar-pdf');
+            });
+
+            // ---------------- RELATÓRIOS - CONTAS A RECEBER ----------------
+            Route::prefix('financeiro/relatorios/contas-receber')->name('financeiro.relatorios.contas-receber.')->group(function () {
+                Route::get('/', [RelatorioContaReceberController::class, 'index'])->name('index');
+                Route::get('exportar-excel', [RelatorioContaReceberController::class, 'exportarExcel'])->name('exportar-excel');
+                Route::get('exportar-pdf', [RelatorioContaReceberController::class, 'exportarPdf'])->name('exportar-pdf');
             });
 
             // ---------------- CONTAS A RECEBER ----------------
