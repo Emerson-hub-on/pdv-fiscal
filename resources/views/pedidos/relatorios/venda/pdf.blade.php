@@ -5,6 +5,8 @@
     $nomeCliente = fn ($c) => $c ? ($c->nome_exibicao ?? $c->nome ?? $c->razao_social ?? null) : null;
 
     $detalhada = $filtros['visao'] === 'detalhada';
+    $rotulosStatus = ['finalizado' => 'Finalizado', 'emitido' => 'Emitido', 'cancelado' => 'Cancelado'];
+    $classesStatus = ['finalizado' => 'verde', 'emitido' => 'azul', 'cancelado' => 'vermelho'];
 @endphp
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -37,6 +39,7 @@
         .mono { font-family: 'DejaVu Sans Mono', monospace; font-size: 7px; }
         .vermelho { color: #dc2626; }
         .verde { color: #15803d; }
+        .azul { color: #1d4ed8; }
         .cinza { color: #6b7280; font-weight: normal; }
         .risco { text-decoration: line-through; }
 
@@ -60,10 +63,10 @@
 
     <table class="totais">
         <tr>
-            <td><div class="rotulo">Pedidos finalizados</div><div class="valor">{{ number_format($totais->finalizados, 0, ',', '.') }}</div></td>
-            <td><div class="rotulo">Valor dos pedidos</div><div class="valor">{{ $dinheiro($totais->valor_finalizado) }}</div></td>
-            <td><div class="rotulo">Pedidos cancelados</div><div class="valor vermelho">{{ number_format($totais->cancelados, 0, ',', '.') }}</div></td>
-            <td><div class="rotulo">Valor cancelado</div><div class="valor vermelho">{{ $dinheiro($totais->valor_cancelado) }}</div></td>
+            <td><div class="rotulo">Finalizados</div><div class="valor verde">{{ number_format($totais->finalizados, 0, ',', '.') }}</div></td>
+            <td><div class="rotulo">Emitidos</div><div class="valor azul">{{ number_format($totais->emitidos, 0, ',', '.') }}</div></td>
+            <td><div class="rotulo">Valor dos pedidos (finalizados + emitidos)</div><div class="valor">{{ $dinheiro($totais->valor_pedidos) }}</div></td>
+            <td><div class="rotulo">Cancelados ({{ $dinheiro($totais->valor_cancelado) }})</div><div class="valor vermelho">{{ number_format($totais->cancelados, 0, ',', '.') }}</div></td>
         </tr>
     </table>
 
@@ -93,7 +96,7 @@
                     <td class="mono">{{ $pedido->cliente->cpf_cnpj_formatado ?? $pedido->cliente->cpf_cnpj ?? '—' }}</td>
                     <td>{{ $pedido->operador->name ?? '—' }}</td>
                     <td>{{ $pedido->formaPagamento->descricao ?? '—' }}</td>
-                    <td class="{{ $cancelado ? 'vermelho' : 'verde' }}">{{ $cancelado ? 'Cancelado' : 'Finalizado' }}</td>
+                    <td class="{{ $classesStatus[$pedido->status] ?? '' }}">{{ $rotulosStatus[$pedido->status] ?? ucfirst($pedido->status) }}</td>
                     <td class="dir {{ $cancelado ? 'vermelho risco' : '' }}">{{ $dinheiro($pedido->valor_total) }}</td>
                 </tr>
 

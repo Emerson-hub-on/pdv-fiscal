@@ -69,7 +69,8 @@
                                     class="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
                                 <option value="finalizado" @selected($filtros['status'] === 'finalizado')>Finalizados</option>
                                 <option value="cancelado" @selected($filtros['status'] === 'cancelado')>Cancelados</option>
-                                <option value="todos" @selected($filtros['status'] === 'todos')>Finalizados e cancelados</option>
+                                <option value="emitido" @selected($filtros['status'] === 'emitido')>Emitidos</option>
+                                <option value="todos" @selected($filtros['status'] === 'todos')>Todos</option>
                             </select>
                         </div>
 
@@ -196,7 +197,7 @@
 
         // Valores "sem filtro" dos campos do modal (o período padrão é o mês atual)
         const FILTROS_PADRAO = {
-            status: 'finalizado',
+            status: 'todos',
             operador: '',
             forma: '',
             tipo_data: 'pedido',

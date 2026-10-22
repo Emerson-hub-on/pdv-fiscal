@@ -5,25 +5,34 @@
     $nomeCliente = fn ($c) => $c ? ($c->nome_exibicao ?? $c->nome ?? $c->razao_social ?? null) : null;
 
     $temRotaImprimir = \Illuminate\Support\Facades\Route::has('pedidos-venda.imprimir');
+    // finalizado = pedido fechado; emitido = já emitido no caixa
+    $statusPedido = [
+        'finalizado' => ['label' => 'Finalizado', 'classe' => 'bg-green-50 text-green-700', 'ponto' => 'bg-green-500', 'texto' => 'text-green-700'],
+        'emitido'    => ['label' => 'Emitido', 'classe' => 'bg-blue-50 text-blue-700', 'ponto' => 'bg-blue-500', 'texto' => 'text-blue-700'],
+        'cancelado'  => ['label' => 'Cancelado', 'classe' => 'bg-red-50 text-red-600', 'ponto' => 'bg-red-500', 'texto' => 'text-red-600'],
+    ];
+
     $colunas = 11;
 @endphp
 
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3">
-        <p class="text-xs uppercase tracking-wide text-gray-500">Pedidos finalizados</p>
-        <p class="text-lg font-semibold text-gray-800">{{ number_format($totais->finalizados, 0, ',', '.') }}</p>
+        <p class="text-xs uppercase tracking-wide text-gray-500">Finalizados</p>
+        <p class="text-lg font-semibold text-green-700">{{ number_format($totais->finalizados, 0, ',', '.') }}</p>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3">
+        <p class="text-xs uppercase tracking-wide text-gray-500">Emitidos</p>
+        <p class="text-lg font-semibold text-blue-700">{{ number_format($totais->emitidos, 0, ',', '.') }}</p>
     </div>
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3">
         <p class="text-xs uppercase tracking-wide text-gray-500">Valor dos pedidos</p>
-        <p class="text-lg font-semibold text-gray-800">{{ $dinheiro($totais->valor_finalizado) }}</p>
+        <p class="text-lg font-semibold text-gray-800">{{ $dinheiro($totais->valor_pedidos) }}</p>
+        <p class="text-xs text-gray-400">finalizados + emitidos</p>
     </div>
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3">
-        <p class="text-xs uppercase tracking-wide text-gray-500">Pedidos cancelados</p>
+        <p class="text-xs uppercase tracking-wide text-gray-500">Cancelados</p>
         <p class="text-lg font-semibold text-red-600">{{ number_format($totais->cancelados, 0, ',', '.') }}</p>
-    </div>
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3">
-        <p class="text-xs uppercase tracking-wide text-gray-500">Valor cancelado</p>
-        <p class="text-lg font-semibold text-red-600">{{ $dinheiro($totais->valor_cancelado) }}</p>
+        <p class="text-xs text-gray-400">{{ $dinheiro($totais->valor_cancelado) }}</p>
     </div>
 </div>
 
@@ -49,6 +58,7 @@
                 @forelse ($pedidos as $pedido)
                     @php
                         $cancelado = $pedido->status === 'cancelado';
+                        $situacao = $statusPedido[$pedido->status] ?? ['label' => ucfirst($pedido->status), 'classe' => 'bg-gray-100 text-gray-700', 'ponto' => 'bg-gray-400', 'texto' => 'text-gray-700'];
                         $cliente = $nomeCliente($pedido->cliente);
                         $documento = $pedido->cliente->cpf_cnpj_formatado ?? $pedido->cliente->cpf_cnpj ?? null;
                     @endphp
@@ -67,17 +77,10 @@
                         <td class="px-4 py-3 text-gray-600">{{ $pedido->operador->name ?? '—' }}</td>
                         <td class="px-4 py-3 text-gray-600">{{ $pedido->formaPagamento->descricao ?? '—' }}</td>
                         <td class="px-4 py-3">
-                            @if ($cancelado)
-                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap bg-red-50 text-red-600">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-                                    Cancelado
-                                </span>
-                            @else
-                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap bg-green-50 text-green-700">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                                    Finalizado
-                                </span>
-                            @endif
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap {{ $situacao['classe'] }}">
+                                <span class="w-1.5 h-1.5 rounded-full {{ $situacao['ponto'] }}"></span>
+                                {{ $situacao['label'] }}
+                            </span>
                         </td>
                         <td class="px-4 py-3 text-gray-500 max-w-xs truncate" title="{{ $pedido->descricao }}">{{ $pedido->descricao ?: '—' }}</td>
                         <td class="px-4 py-3 text-right font-semibold whitespace-nowrap {{ $cancelado ? 'text-red-600 line-through' : 'text-gray-800' }}">{{ $dinheiro($pedido->valor_total) }}</td>
@@ -109,7 +112,7 @@
                                     </div>
                                     <div class="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
                                         <p class="text-xs uppercase tracking-wide text-gray-500">Situação</p>
-                                        <p class="text-sm font-medium {{ $cancelado ? 'text-red-600' : 'text-green-700' }}">{{ $cancelado ? 'Cancelado' : 'Finalizado' }}</p>
+                                        <p class="text-sm font-medium {{ $situacao['texto'] }}">{{ $situacao['label'] }}</p>
                                         <p class="text-xs text-gray-500">{{ $pedido->operador->name ?? '—' }}</p>
                                     </div>
                                     <div class="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">

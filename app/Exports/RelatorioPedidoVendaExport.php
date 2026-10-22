@@ -37,6 +37,8 @@ class RelatorioPedidoVendaExport extends DefaultValueBinder implements
         'Código', 'Cód. barras', 'Descrição', 'Und', 'Quantidade', 'Valor unit.', 'Total do item',
     ];
 
+    private const STATUS = ['finalizado' => 'Finalizado', 'emitido' => 'Emitido', 'cancelado' => 'Cancelado'];
+
     /** Colunas que precisam ficar como TEXTO (zeros à esquerda / números longos). */
     private const TEXTO = ['Código', 'Cód. barras', 'CPF/CNPJ'];
 
@@ -95,7 +97,7 @@ class RelatorioPedidoVendaExport extends DefaultValueBinder implements
             (string) ($cliente->cpf_cnpj_formatado ?? $cliente->cpf_cnpj ?? ''),
             $pedido->operador->name ?? '',
             $pedido->formaPagamento->descricao ?? '',
-            $pedido->status === 'cancelado' ? 'Cancelado' : 'Finalizado',
+            self::STATUS[$pedido->status] ?? ucfirst((string) $pedido->status),
             (string) $pedido->descricao,
         ];
     }

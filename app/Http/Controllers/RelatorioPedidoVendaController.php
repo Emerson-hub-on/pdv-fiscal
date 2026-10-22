@@ -23,10 +23,12 @@ class RelatorioPedidoVendaController extends Controller
 {
     private const TIPOS_BUSCA = ['numero', 'cliente', 'cnpj', 'produto'];
 
+    // finalizado = pedido fechado; emitido = pedido que já foi emitido no caixa; cancelado = não conta como venda
     private const STATUS = [
+        'todos'      => 'Todos',
         'finalizado' => 'Finalizados',
+        'emitido'    => 'Emitidos',
         'cancelado'  => 'Cancelados',
-        'todos'      => 'Finalizados e cancelados',
     ];
 
     private const VISOES = ['detalhada' => 'Com itens (detalhada)', 'resumida' => 'Só os pedidos (resumida)'];
@@ -139,12 +141,13 @@ class RelatorioPedidoVendaController extends Controller
         return $q;
     }
 
-    /** Finalizados e cancelados sempre separados: pedido cancelado não conta como venda. */
+    /** Cancelados sempre separados: pedido cancelado não entra no valor dos pedidos. */
     private function totais($base): object
     {
         return (clone $base)->toBase()->selectRaw("
             COALESCE(SUM(status = 'finalizado'), 0) AS finalizados,
-            COALESCE(SUM(CASE WHEN status = 'finalizado' THEN valor_total ELSE 0 END), 0) AS valor_finalizado,
+            COALESCE(SUM(status = 'emitido'), 0) AS emitidos,
+            COALESCE(SUM(CASE WHEN status IN ('finalizado', 'emitido') THEN valor_total ELSE 0 END), 0) AS valor_pedidos,
             COALESCE(SUM(status = 'cancelado'), 0) AS cancelados,
             COALESCE(SUM(CASE WHEN status = 'cancelado' THEN valor_total ELSE 0 END), 0) AS valor_cancelado
         ")->first();
@@ -197,7 +200,7 @@ class RelatorioPedidoVendaController extends Controller
         return [
             'tipo_busca'  => $escolha('tipo_busca', self::TIPOS_BUSCA, 'numero'),
             'busca'       => trim(is_string($request->input('busca')) ? $request->input('busca') : ''),
-            'status'      => $escolha('status', array_keys(self::STATUS), 'finalizado'),
+            'status'      => $escolha('status', array_keys(self::STATUS), 'todos'),
             'operador'    => $id('operador'),
             'forma'       => $id('forma'),
             'tipo_data'   => $escolha('tipo_data', array_keys(self::TIPOS_DATA), 'pedido'),
