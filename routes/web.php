@@ -51,6 +51,7 @@ use App\Http\Controllers\RelatorioNotaSaidaController;
 use App\Http\Controllers\RelatorioNotaEntradaController;
 use App\Http\Controllers\RelatorioContaPagarController;
 use App\Http\Controllers\RelatorioContaReceberController;
+use App\Http\Controllers\RelatorioPedidoCompraController;
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -281,6 +282,13 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::get('/', [RelatorioContaReceberController::class, 'index'])->name('index');
                 Route::get('exportar-excel', [RelatorioContaReceberController::class, 'exportarExcel'])->name('exportar-excel');
                 Route::get('exportar-pdf', [RelatorioContaReceberController::class, 'exportarPdf'])->name('exportar-pdf');
+            });
+
+            // ---------------- RELATÓRIOS - PEDIDOS DE COMPRA ----------------
+            Route::prefix('financeiro/relatorios/pedidos-compra')->name('financeiro.relatorios.pedidos-compra.')->group(function () {    
+                Route::get('/', [RelatorioPedidoCompraController::class, 'index'])->name('index');    
+                Route::get('exportar-excel', [RelatorioPedidoCompraController::class, 'exportarExcel'])->name('exportar-excel');    
+                Route::get('exportar-pdf', [RelatorioPedidoCompraController::class, 'exportarPdf'])->name('exportar-pdf');    
             });
 
             // ---------------- CONTAS A RECEBER ----------------

@@ -299,6 +299,10 @@
                                class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                                 Contas a receber
                             </a>
+                            <a href="{{ route('financeiro.relatorios.pedidos-compra.index') }}"
+                               class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                                Pedidos de compra
+                            </a>
                         </div>
                     </div>
                 @endif
