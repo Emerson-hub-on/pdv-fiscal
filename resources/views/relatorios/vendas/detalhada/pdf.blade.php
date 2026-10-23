@@ -2,6 +2,7 @@
     $qtd = fn ($v) => number_format((float) $v, fmod((float) $v, 1) == 0 ? 0 : 3, ',', '.');
     $moeda = fn ($v) => number_format((float) $v, 2, ',', '.');
     $data = fn ($v) => $v ? \Carbon\Carbon::parse($v)->format('d/m/Y H:i') : '—';
+    $detalhada = $filtros['visao'] === 'detalhada';
 @endphp
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -25,6 +26,9 @@
         table.lista thead { display: table-header-group; }
         table.lista th { background: #374151; color: #fffbeb; font-size: 6.5px; text-transform: uppercase; padding: 5px 3px; text-align: left; }
         table.lista td { padding: 3px; vertical-align: top; border-bottom: 1px solid #f3f4f6; }
+        tr.venda td { background: #f3f4f6; border-top: 1px solid #d1d5db; font-weight: bold; }
+        tr.itens-cab td { padding: 3px 3px 1px 14px; font-size: 6px; text-transform: uppercase; color: #6b7280; border-bottom: none; }
+        tr.item td { padding: 2px 3px 2px 14px; font-size: 6.5px; }
         table.lista tr.total td { background: #f3f4f6; border-top: 1px solid #d1d5db; font-weight: bold; }
         tr { page-break-inside: avoid; }
         .dir { text-align: right !important; }
@@ -72,9 +76,7 @@
                 <th>Data</th>
                 <th>Tipo</th>
                 <th>Nº doc.</th>
-                <th>Cód.</th>
-                <th>Descrição</th>
-                <th class="dir">Qtd</th>
+                <th class="dir">Itens</th>
                 <th class="dir">Bruto</th>
                 <th class="dir">Desc.</th>
                 <th class="dir">Acrésc.</th>
@@ -89,37 +91,74 @@
             </tr>
         </thead>
         <tbody>
-            @forelse ($itens as $item)
-                @php $imposto = fn ($v) => $item->tem_impostos ? $moeda($v) : '—'; @endphp
-                <tr>
-                    <td>{{ $data($item->data) }}</td>
-                    <td>{{ $item->tipo }}</td>
-                    <td>{{ $item->numero ?? '—' }}{{ ($item->serie !== null && $item->serie !== '') ? '/' . $item->serie : '' }}</td>
-                    <td class="mono">{{ $item->codigo ?: '—' }}</td>
-                    <td>{{ $item->descricao ?: '—' }}</td>
-                    <td class="dir">{{ $qtd($item->quantidade) }}</td>
-                    <td class="dir">{{ $moeda($item->valor_bruto) }}</td>
-                    <td class="dir {{ (float) $item->desconto > 0 ? 'vermelho' : '' }}">{{ $moeda($item->desconto) }}</td>
-                    <td class="dir">{{ $moeda($item->acrescimo) }}</td>
-                    <td class="dir">{{ $moeda($item->valor_liquido) }}</td>
-                    <td class="dir">{{ $imposto($item->icms) }}</td>
-                    <td class="dir">{{ $imposto($item->pis) }}</td>
-                    <td class="dir">{{ $imposto($item->cofins) }}</td>
-                    <td class="dir">{{ $imposto($item->ipi) }}</td>
-                    <td class="dir">{{ $imposto($item->ibs) }}</td>
-                    <td class="dir">{{ $imposto($item->cbs) }}</td>
-                    <td>{{ $item->vendedor ?: '—' }}</td>
+            @forelse ($documentos as $doc)
+                @php $imposto = fn ($v) => $doc->tem_impostos ? $moeda($v) : '—'; @endphp
+                <tr class="{{ $detalhada ? 'venda' : '' }}">
+                    <td>{{ $data($doc->data) }}</td>
+                    <td>{{ $doc->tipo }}</td>
+                    <td>{{ $doc->numero ?? '—' }}{{ ($doc->serie !== null && $doc->serie !== '') ? '/' . $doc->serie : '' }}</td>
+                    <td class="dir">{{ $doc->qtd_itens }}</td>
+                    <td class="dir">{{ $moeda($doc->valor_bruto) }}</td>
+                    <td class="dir {{ (float) $doc->desconto > 0 ? 'vermelho' : '' }}">{{ $moeda($doc->desconto) }}</td>
+                    <td class="dir">{{ $moeda($doc->acrescimo) }}</td>
+                    <td class="dir">{{ $moeda($doc->valor_liquido) }}</td>
+                    <td class="dir">{{ $imposto($doc->icms) }}</td>
+                    <td class="dir">{{ $imposto($doc->pis) }}</td>
+                    <td class="dir">{{ $imposto($doc->cofins) }}</td>
+                    <td class="dir">{{ $imposto($doc->ipi) }}</td>
+                    <td class="dir">{{ $imposto($doc->ibs) }}</td>
+                    <td class="dir">{{ $imposto($doc->cbs) }}</td>
+                    <td>{{ $doc->vendedor ?: '—' }}</td>
                 </tr>
+
+                @if ($detalhada)
+                    @php $itensDoc = $itensPorDocumento[$doc->tipo . '-' . $doc->documento_id] ?? collect(); @endphp
+                    @if ($itensDoc->isNotEmpty())
+                        <tr class="itens-cab">
+                            <td>Código</td>
+                            <td colspan="3">Descrição</td>
+                            <td class="dir">Valor bruto</td>
+                            <td class="dir">Desc.</td>
+                            <td class="dir">Acrésc.</td>
+                            <td class="dir">Líquido</td>
+                            <td class="dir">ICMS</td>
+                            <td class="dir">PIS</td>
+                            <td class="dir">COFINS</td>
+                            <td class="dir">IPI</td>
+                            <td class="dir">IBS</td>
+                            <td class="dir">CBS</td>
+                            <td class="dir">Qtd</td>
+                        </tr>
+                        @foreach ($itensDoc as $item)
+                            @php $impostoItem = fn ($v) => $item->tem_impostos ? $moeda($v) : '—'; @endphp
+                            <tr class="item">
+                                <td class="mono">{{ $item->codigo ?: '—' }}</td>
+                                <td colspan="3">{{ $item->descricao ?: '—' }}</td>
+                                <td class="dir">{{ $moeda($item->valor_bruto) }}</td>
+                                <td class="dir">{{ $moeda($item->desconto) }}</td>
+                                <td class="dir">{{ $moeda($item->acrescimo) }}</td>
+                                <td class="dir">{{ $moeda($item->valor_liquido) }}</td>
+                                <td class="dir">{{ $impostoItem($item->icms) }}</td>
+                                <td class="dir">{{ $impostoItem($item->pis) }}</td>
+                                <td class="dir">{{ $impostoItem($item->cofins) }}</td>
+                                <td class="dir">{{ $impostoItem($item->ipi) }}</td>
+                                <td class="dir">{{ $impostoItem($item->ibs) }}</td>
+                                <td class="dir">{{ $impostoItem($item->cbs) }}</td>
+                                <td class="dir">{{ $qtd($item->quantidade) }}</td>
+                            </tr>
+                        @endforeach
+                    @endif
+                @endif
             @empty
                 <tr>
-                    <td colspan="17" class="cinza" style="text-align:center; padding: 16px;">Nenhuma venda emitida encontrada.</td>
+                    <td colspan="15" class="cinza" style="text-align:center; padding: 16px;">Nenhuma venda emitida encontrada.</td>
                 </tr>
             @endforelse
 
-            @if ($itens->count() > 0)
+            @if ($documentos->count() > 0)
                 <tr class="total">
-                    <td colspan="5">Total do filtro</td>
-                    <td class="dir">{{ $qtd($totais->quantidade) }}</td>
+                    <td colspan="3">Total do filtro</td>
+                    <td class="dir">{{ number_format($totais->itens, 0, ',', '.') }}</td>
                     <td class="dir">{{ $moeda($totais->valor_bruto) }}</td>
                     <td class="dir">{{ $moeda($totais->desconto) }}</td>
                     <td class="dir">{{ $moeda($totais->acrescimo) }}</td>

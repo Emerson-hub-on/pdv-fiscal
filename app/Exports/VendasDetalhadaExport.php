@@ -11,38 +11,51 @@ use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
+/**
+ * Visão "detalhada": uma linha por item vendido.
+ * Visão "resumida": uma linha por venda (NFC-e ou NF-e), com os valores somados dos itens.
+ */
 class VendasDetalhadaExport implements FromArray, WithHeadings, ShouldAutoSize, WithStyles, WithColumnFormatting
 {
     private int $totalLinhas;
 
-    public function __construct(private Collection $linhas, private object $totais)
+    public function __construct(private Collection $linhas, private object $totais, private string $visao = 'resumida')
     {
         $this->totalLinhas = $linhas->count();
     }
 
+    private function detalhada(): bool
+    {
+        return $this->visao === 'detalhada';
+    }
+
     public function headings(): array
     {
-        return [
-            'Data', 'Tipo', 'Nº documento', 'Série', 'Código', 'Descrição', 'Qtd',
-            'Valor bruto', 'Descontos', 'Acréscimos', 'Valor líquido',
-            'ICMS', 'PIS', 'COFINS', 'IPI', 'IBS', 'CBS', 'Vendedor',
-        ];
+        $valores = ['Valor bruto', 'Descontos', 'Acréscimos', 'Valor líquido', 'ICMS', 'PIS', 'COFINS', 'IPI', 'IBS', 'CBS', 'Vendedor'];
+
+        return $this->detalhada()
+            ? array_merge(['Data', 'Tipo', 'Nº documento', 'Série', 'Código', 'Descrição', 'Qtd'], $valores)
+            : array_merge(['Data', 'Tipo', 'Nº documento', 'Série', 'Itens', 'Qtd'], $valores);
     }
 
     public function array(): array
     {
         $dados = $this->linhas->map(function ($l) {
-            // Item de nota antiga (emitida antes de gravar os impostos): impostos em branco, não zero
+            // Venda/item de nota antiga (emitida antes de gravar os impostos): impostos em branco, não zero
             $imposto = fn ($v) => $l->tem_impostos ? (float) $v : null;
 
-            return [
+            $inicio = [
                 $l->data ? date('d/m/Y H:i', strtotime($l->data)) : '',
                 $l->tipo,
                 $l->numero,
                 $l->serie,
-                $l->codigo,
-                $l->descricao,
-                (float) $l->quantidade,
+            ];
+
+            $meio = $this->detalhada()
+                ? [$l->codigo, $l->descricao, (float) $l->quantidade]
+                : [(int) $l->qtd_itens, (float) $l->quantidade];
+
+            return array_merge($inicio, $meio, [
                 (float) $l->valor_bruto,
                 (float) $l->desconto,
                 (float) $l->acrescimo,
@@ -54,16 +67,19 @@ class VendasDetalhadaExport implements FromArray, WithHeadings, ShouldAutoSize, 
                 $imposto($l->ibs),
                 $imposto($l->cbs),
                 $l->vendedor,
-            ];
+            ]);
         })->all();
 
         $t = $this->totais;
 
-        $dados[] = [
-            'TOTAL', '', '', '', '', '', (float) $t->quantidade,
+        $rotulo = $this->detalhada()
+            ? ['TOTAL', '', '', '', '', '', (float) $t->quantidade]
+            : ['TOTAL', '', '', '', (int) $t->itens, (float) $t->quantidade];
+
+        $dados[] = array_merge($rotulo, [
             (float) $t->valor_bruto, (float) $t->desconto, (float) $t->acrescimo, (float) $t->valor_liquido,
             (float) $t->icms, (float) $t->pis, (float) $t->cofins, (float) $t->ipi, (float) $t->ibs, (float) $t->cbs, '',
-        ];
+        ]);
 
         return $dados;
     }
@@ -72,11 +88,12 @@ class VendasDetalhadaExport implements FromArray, WithHeadings, ShouldAutoSize, 
     {
         $dinheiro = NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1;
 
-        return [
-            'G' => '#,##0.###',
-            'H' => $dinheiro, 'I' => $dinheiro, 'J' => $dinheiro, 'K' => $dinheiro,
-            'L' => $dinheiro, 'M' => $dinheiro, 'N' => $dinheiro, 'O' => $dinheiro, 'P' => $dinheiro, 'Q' => $dinheiro,
-        ];
+        // Detalhada: Qtd = G, valores H..Q. Resumida tem uma coluna a menos antes: Qtd = F, valores G..P.
+        [$qtd, $valores] = $this->detalhada()
+            ? ['G', range('H', 'Q')]
+            : ['F', range('G', 'P')];
+
+        return [$qtd => '#,##0.###'] + array_fill_keys($valores, $dinheiro);
     }
 
     public function styles(Worksheet $planilha): array

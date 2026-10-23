@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -28,14 +29,18 @@ class VendasDetalhadaController extends Controller
     public function index(Request $request)
     {
         $filtros = $this->filtros($request);
-        $base = $this->consulta($filtros);
+        $itensBase = $this->consultaItens($filtros);
 
-        $totais = $this->totais($base);
-        $itens = $this->ordenar(clone $base, $filtros['ordenar'])
+        $totais = $this->totais($itensBase);
+
+        // Uma linha por venda; os itens de cada venda da página vão num modal ("Ver itens")
+        $documentos = $this->ordenarDocumentos($this->consultaDocumentos($itensBase), $filtros['ordenar'])
             ->paginate(self::POR_PAGINA)
             ->withQueryString();
 
-        $dados = compact('itens', 'totais', 'filtros');
+        $itensPorDocumento = $this->itensDosDocumentos($itensBase, $documentos->getCollection());
+
+        $dados = compact('documentos', 'itensPorDocumento', 'totais', 'filtros');
 
         if ($request->ajax()) {
             return view('relatorios.vendas.detalhada._tabela', $dados);
@@ -44,33 +49,41 @@ class VendasDetalhadaController extends Controller
         return view('relatorios.vendas.detalhada.index', $dados);
     }
 
+    // Detalhada: uma linha por item. Resumida: uma linha por venda.
     public function exportarExcel(Request $request)
     {
         $filtros = $this->filtros($request);
-        $base = $this->consulta($filtros);
-        $linhas = $this->ordenar(clone $base, $filtros['ordenar'])->get();
+        $itensBase = $this->consultaItens($filtros);
+
+        $linhas = $filtros['visao'] === 'detalhada'
+            ? $this->ordenarItens(clone $itensBase, $filtros['ordenar'])->get()
+            : $this->ordenarDocumentos($this->consultaDocumentos($itensBase), $filtros['ordenar'])->get();
 
         return Excel::download(
-            new VendasDetalhadaExport($linhas, $this->totais($base)),
-            'vendas-detalhada-' . now()->format('Ymd-His') . '.xlsx'
+            new VendasDetalhadaExport($linhas, $this->totais($itensBase), $filtros['visao']),
+            'vendas-' . $filtros['visao'] . '-' . now()->format('Ymd-His') . '.xlsx'
         );
     }
 
+    // Detalhada: cada venda seguida dos seus itens. Resumida: só as vendas.
     public function exportarPdf(Request $request)
     {
         $filtros = $this->filtros($request);
-        $base = $this->consulta($filtros);
+        $itensBase = $this->consultaItens($filtros);
 
         $dados = [
-            'itens' => $this->ordenar(clone $base, $filtros['ordenar'])->get(),
-            'totais' => $this->totais($base),
+            'documentos' => $this->ordenarDocumentos($this->consultaDocumentos($itensBase), $filtros['ordenar'])->get(),
+            'itensPorDocumento' => $filtros['visao'] === 'detalhada'
+                ? $this->ordenarItens(clone $itensBase, 'antigos')->get()->groupBy(fn ($i) => $i->tipo . '-' . $i->documento_id)
+                : collect(),
+            'totais' => $this->totais($itensBase),
             'filtros' => $filtros,
             'resumoFiltros' => $this->resumoFiltros($filtros),
         ];
 
         return Pdf::loadView('relatorios.vendas.detalhada.pdf', $dados)
             ->setPaper('a4', 'landscape')
-            ->download('vendas-detalhada-' . now()->format('Ymd-His') . '.pdf');
+            ->download('vendas-' . $filtros['visao'] . '-' . now()->format('Ymd-His') . '.pdf');
     }
 
     private function filtros(Request $request): array
@@ -86,13 +99,15 @@ class VendasDetalhadaController extends Controller
             // Sem nenhum filtro na URL, abre no mês atual para não varrer o histórico inteiro
             'data_inicio' => $primeiraVisita ? now()->startOfMonth()->toDateString() : (string) $request->get('data_inicio', ''),
             'data_fim' => $primeiraVisita ? now()->toDateString() : (string) $request->get('data_fim', ''),
-            'ordenar' => in_array($request->get('ordenar'), ['recentes', 'antigos', 'documento', 'produto'], true)
+            'ordenar' => in_array($request->get('ordenar'), ['recentes', 'antigos', 'documento'], true)
                 ? $request->get('ordenar') : 'recentes',
+            // Só vale para a exportação (PDF/Excel): com os itens de cada venda ou só as vendas
+            'visao' => $request->get('visao') === 'detalhada' ? 'detalhada' : 'resumida',
         ];
     }
 
-    /** Itens de NFC-e e NF-e emitidas, com as mesmas colunas, filtrados. */
-    private function consulta(array $f): Builder
+    /** Itens de NFC-e e NF-e emitidas, com as mesmas colunas, filtrados (base de tudo: lista, totais e exportação). */
+    private function consultaItens(array $f): Builder
     {
         $nome = self::COLUNA_NOME_USUARIO;
 
@@ -188,14 +203,67 @@ class VendasDetalhadaController extends Controller
         return $consulta;
     }
 
-    private function ordenar(Builder $q, string $ordem): Builder
+    /** Uma linha por venda (NFC-e ou NF-e), somando os itens que passaram pelo filtro. */
+    private function consultaDocumentos(Builder $itensBase): Builder
+    {
+        return DB::query()->fromSub(clone $itensBase, 'r')->selectRaw('
+            r.tipo,
+            r.documento_id,
+            MIN(r.data) as data,
+            MIN(r.numero) as numero,
+            MIN(r.serie) as serie,
+            MIN(r.vendedor) as vendedor,
+            COUNT(*) as qtd_itens,
+            SUM(r.quantidade) as quantidade,
+            SUM(r.valor_bruto) as valor_bruto,
+            SUM(r.desconto) as desconto,
+            SUM(r.acrescimo) as acrescimo,
+            SUM(r.valor_liquido) as valor_liquido,
+            SUM(r.icms) as icms,
+            SUM(r.pis) as pis,
+            SUM(r.cofins) as cofins,
+            SUM(r.ipi) as ipi,
+            SUM(r.ibs) as ibs,
+            SUM(r.cbs) as cbs,
+            MIN(r.tem_impostos) as tem_impostos
+        ')->groupBy('r.tipo', 'r.documento_id');
+    }
+
+    private function ordenarDocumentos(Builder $q, string $ordem): Builder
+    {
+        return match ($ordem) {
+            'antigos' => $q->orderBy('data')->orderBy('numero'),
+            'documento' => $q->orderBy('r.tipo')->orderBy('numero'),
+            default => $q->orderByDesc('data')->orderByDesc('numero'),
+        };
+    }
+
+    private function ordenarItens(Builder $q, string $ordem): Builder
     {
         return match ($ordem) {
             'antigos' => $q->orderBy('t.data')->orderBy('t.numero')->orderBy('t.item_id'),
             'documento' => $q->orderBy('t.tipo')->orderBy('t.numero')->orderBy('t.item_id'),
-            'produto' => $q->orderBy('t.descricao')->orderByDesc('t.data'),
             default => $q->orderByDesc('t.data')->orderByDesc('t.numero')->orderBy('t.item_id'),
         };
+    }
+
+    /** Itens das vendas que estão na página, agrupados por "tipo-id" (para o modal "Ver itens"). */
+    private function itensDosDocumentos(Builder $itensBase, Collection $documentos): Collection
+    {
+        if ($documentos->isEmpty()) {
+            return collect();
+        }
+
+        $idsPorTipo = $documentos->groupBy('tipo')->map(fn ($g) => $g->pluck('documento_id')->all());
+
+        $q = clone $itensBase;
+        $q->where(function ($w) use ($idsPorTipo) {
+            foreach ($idsPorTipo as $tipo => $ids) {
+                $w->orWhere(fn ($x) => $x->where('t.tipo', $tipo)->whereIn('t.documento_id', $ids));
+            }
+        });
+
+        return $q->orderBy('t.item_id')->get()->groupBy(fn ($i) => $i->tipo . '-' . $i->documento_id);
     }
 
     private function totais(Builder $base): object
@@ -228,6 +296,7 @@ class VendasDetalhadaController extends Controller
 
         $linhas[] = 'Período: ' . ($f['data_inicio'] !== '' ? date('d/m/Y', strtotime($f['data_inicio'])) : 'início')
             . ' a ' . ($f['data_fim'] !== '' ? date('d/m/Y', strtotime($f['data_fim'])) : 'hoje');
+        $linhas[] = 'Exportação: ' . ($f['visao'] === 'detalhada' ? 'detalhada (com itens)' : 'resumida (só as vendas)');
         $linhas[] = 'Documentos: ' . ['todos' => 'NFC-e e NF-e', 'nfce' => 'Só NFC-e', 'nfe' => 'Só NF-e'][$f['tipo']];
 
         if ($f['busca'] !== '') {

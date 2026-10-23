@@ -85,18 +85,28 @@
                                        class="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
                             </div>
                         </div>
-                        <p class="text-xs text-gray-400 mt-1.5">Por padrão mostra o mês atual. Os cards e a exportação usam o filtro atual.</p>
+                        <p class="text-xs text-gray-400 mt-1.5">Por padrão mostra o mês atual. Os cards e a exportação usam o filtro atual; na tela, os itens de cada venda ficam em “Ver itens”.</p>
                     </div>
 
-                    <div>
-                        <label for="filtro-ordenar" class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1.5">Ordenar por</label>
-                        <select name="ordenar" id="filtro-ordenar"
-                                class="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
-                            <option value="recentes" @selected($filtros['ordenar'] === 'recentes')>Mais recentes</option>
-                            <option value="antigos" @selected($filtros['ordenar'] === 'antigos')>Mais antigos</option>
-                            <option value="documento" @selected($filtros['ordenar'] === 'documento')>Nº do documento</option>
-                            <option value="produto" @selected($filtros['ordenar'] === 'produto')>Produto (A-Z)</option>
-                        </select>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="filtro-visao" class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1.5">Exportação (PDF/Excel)</label>
+                            <select name="visao" id="filtro-visao"
+                                    class="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
+                                <option value="resumida" @selected($filtros['visao'] === 'resumida')>Só as vendas (resumida)</option>
+                                <option value="detalhada" @selected($filtros['visao'] === 'detalhada')>Com itens (detalhada)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="filtro-ordenar" class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1.5">Ordenar por</label>
+                            <select name="ordenar" id="filtro-ordenar"
+                                    class="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
+                                <option value="recentes" @selected($filtros['ordenar'] === 'recentes')>Mais recentes</option>
+                                <option value="antigos" @selected($filtros['ordenar'] === 'antigos')>Mais antigos</option>
+                                <option value="documento" @selected($filtros['ordenar'] === 'documento')>Nº do documento</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -115,7 +125,36 @@
     </form>
 
     <div id="resultado-relatorio">
-        @include('relatorios.vendas.detalhada._tabela', ['itens' => $itens, 'totais' => $totais, 'filtros' => $filtros])
+        @include('relatorios.vendas.detalhada._tabela', ['documentos' => $documentos, 'itensPorDocumento' => $itensPorDocumento, 'totais' => $totais, 'filtros' => $filtros])
+    </div>
+
+    {{-- Modal dos itens da venda (fica fora de #resultado-relatorio para não sumir quando a tabela recarrega) --}}
+    <div id="modal-itens" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60" onclick="fecharItens()"></div>
+
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-full flex flex-col">
+            <div class="flex items-start justify-between gap-4 px-6 py-4 border-b border-gray-200 bg-gray-700 rounded-t-xl">
+                <div class="min-w-0">
+                    <p class="text-xs uppercase tracking-wide text-amber-50/70">Itens da venda</p>
+                    <h2 id="modal-itens-titulo" class="text-base font-semibold text-amber-50"></h2>
+                    <p id="modal-itens-subtitulo" class="text-sm text-amber-50/80 truncate"></p>
+                </div>
+                <button type="button" onclick="fecharItens()" class="text-amber-50/70 hover:text-amber-50 transition shrink-0" aria-label="Fechar">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div id="modal-itens-corpo" class="px-6 py-5 overflow-y-auto"></div>
+
+            <div class="flex justify-end px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+                <button type="button" onclick="fecharItens()"
+                        class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-5 py-2.5 rounded-lg font-semibold text-sm transition">
+                    Fechar
+                </button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -128,6 +167,7 @@
             tipo: 'todos',
             data_inicio: '{{ now()->startOfMonth()->toDateString() }}',
             data_fim: '{{ now()->toDateString() }}',
+            visao: 'resumida',
             ordenar: 'recentes',
         };
 
@@ -150,6 +190,7 @@
 
             if (f.tipo !== FILTROS_PADRAO.tipo) total++;
             if (f.data_inicio !== FILTROS_PADRAO.data_inicio || f.data_fim !== FILTROS_PADRAO.data_fim) total++;
+            if (f.visao !== FILTROS_PADRAO.visao) total++;
             if (f.ordenar !== FILTROS_PADRAO.ordenar) total++;
 
             const badge = document.getElementById('contador-filtros');
@@ -200,7 +241,7 @@
             pdf: `{{ route('relatorios.vendas.detalhada.exportar-pdf') }}`,
         };
 
-        // Exporta todas as linhas do filtro atual (não só a página que está na tela)
+        // Exporta todas as vendas do filtro atual (não só a página que está na tela)
         function exportarRelatorio(formato) {
             window.location.href = `${rotasExportarRelatorio[formato]}?${parametrosRelatorio().toString()}`;
         }
@@ -226,8 +267,29 @@
 
         formRelatorio.addEventListener('submit', (e) => e.preventDefault());
 
+        // Modal de itens: o conteúdo de cada venda já está na página (<template>), é só copiar para o modal
+        const modalItens = document.getElementById('modal-itens');
+
+        function abrirItens(botao) {
+            const modelo = document.getElementById('itens-nota-' + botao.dataset.nota);
+            if (!modelo) return;
+
+            document.getElementById('modal-itens-titulo').innerText = botao.dataset.titulo;
+            document.getElementById('modal-itens-subtitulo').innerText = botao.dataset.subtitulo;
+            document.getElementById('modal-itens-corpo').innerHTML = modelo.innerHTML;
+            modalItens.classList.remove('hidden');
+        }
+
+        function fecharItens() {
+            modalItens.classList.add('hidden');
+        }
+
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !modalFiltros.classList.contains('hidden')) {
+            if (e.key !== 'Escape') return;
+
+            if (!modalItens.classList.contains('hidden')) {
+                fecharItens();
+            } else if (!modalFiltros.classList.contains('hidden')) {
                 fecharFiltros();
             }
         });
