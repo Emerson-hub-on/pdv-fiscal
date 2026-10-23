@@ -576,6 +576,9 @@ protected function montarItens(Make $nfe, Venda $venda): void
             $n = $index + 1;
             $trib = $produto->tributacao;
 
+            // Base dos impostos: o desconto incondicional (do item + rateio do global) não integra a base
+            $baseItem = max(0.0, (float) ($item->preco_unitario * $item->quantidade) - (float) $descontoEfetivo);
+
             // Item com variação: o EAN é o da variação (o do produto pai é só o fallback
             // interno). Variação com código interno gerado tem codigo_barras_valido = false
             // e sai como SEM GTIN. Variação sem código nenhum (legado) cai no do produto.
@@ -667,9 +670,9 @@ if ($empresa->crt <= 2) {
 
     if (in_array($cstIcms, $cstsComBaseCalculo, true)) {
         $icms->modBC = 3;
-        $icms->vBC = number_format($item->preco_unitario * $item->quantidade, 2, '.', '');
+        $icms->vBC = number_format($baseItem, 2, '.', '');
         $icms->pICMS = number_format($trib->aliquota_icms, 2, '.', '');
-        $icms->vICMS = number_format(($item->preco_unitario * $item->quantidade * $trib->aliquota_icms / 100), 2, '.', '');
+        $icms->vICMS = number_format(($baseItem * $trib->aliquota_icms / 100), 2, '.', '');
 
         $this->totalICMSBC += (float) $icms->vBC;
         $this->totalICMS += (float) $icms->vICMS;
@@ -709,7 +712,7 @@ if ($empresa->crt <= 2) {
                 $this->totalCOFINS += 0;
             } else {
                 $classPisCofins = $produto->pisCofins;
-                $baseCalculoItem = $item->preco_unitario * $item->quantidade;
+                $baseCalculoItem = $baseItem;
                 $pAliquotaPis = (float) ($classPisCofins->aliquota_pis ?? 0);
                 $pAliquotaCofins = (float) ($classPisCofins->aliquota_cofins ?? 0);
 
@@ -748,7 +751,7 @@ if ($empresa->crt <= 2) {
             $obrigaIBSCBS = $empresa->crt == 3 || config('fiscal.emitir_ibscbs', false);
 
             if ($classTrib && $obrigaIBSCBS) {
-                $baseCalculoItem = $item->preco_unitario * $item->quantidade;
+                $baseCalculoItem = $baseItem;
 
                 $pIBSUFBase  = config('fiscal.aliquotas_ibscbs_transicao.ibs_uf', 0.10);
                 $pIBSMunBase = config('fiscal.aliquotas_ibscbs_transicao.ibs_mun', 0.00);

@@ -340,6 +340,10 @@ class NotaFiscalService
             $produto = $item->produto;
             $n = $index + 1;
 
+            // Base dos impostos: o desconto incondicional (do item + rateio do global) não integra a base
+            $baseImpostos = max(0.0, (float) $item->base_impostos - (float) $descontoEfetivo);
+            $baseProdutoLiquida = max(0.0, (float) ($item->valor_unitario * $item->quantidade) - (float) $descontoEfetivo);
+
             $temEanValido = $this->gtinValido($produto->codigo_barras, (bool) $produto->codigo_barras_valido);
 
             $prod = new \stdClass();
@@ -465,7 +469,7 @@ if ($this->empresa->crt <= 2) {
                         $this->totalICMSBC += (float) $item->bc_icms_manual;
                         $this->totalICMS += (float) ($item->valor_icms_manual ?? 0);
                     } elseif (in_array($cstIcms, $cstsComBaseCalculo, true)) {
-                        $baseIcms = $item->base_impostos;
+                        $baseIcms = $baseImpostos;
 
                         $icms->modBC = 3;
                         $icms->vBC = number_format($baseIcms, 2, '.', '');
@@ -498,7 +502,7 @@ if ($this->empresa->crt <= 2) {
                     $nfe->tagCOFINS($cofins);
                 } else {
                     $classPisCofins = $item->pisCofins;
-                    $baseCalculoItem = $item->valor_unitario * $item->quantidade;
+                    $baseCalculoItem = $baseProdutoLiquida;
                     $pAliquotaPis = (float) ($classPisCofins->aliquota_pis ?? 0);
                     $pAliquotaCofins = (float) ($classPisCofins->aliquota_cofins ?? 0);
 
@@ -549,7 +553,7 @@ if ($this->empresa->crt <= 2) {
                     if ($ipiManual) {
                         $baseCalculoItem = (float) $item->bc_icms_manual > 0
                             ? (float) $item->bc_icms_manual
-                            : $item->base_impostos;
+                            : $baseImpostos;
 
                         $ipiStd->vBC = number_format($baseCalculoItem, 2, '.', '');
                         $ipiStd->pIPI = number_format($item->aliquota_ipi_manual ?? 0, 4, '.', '');
@@ -557,7 +561,7 @@ if ($this->empresa->crt <= 2) {
 
                         $this->totalIPI += (float) $item->valor_ipi_manual;
                     } elseif ($ipiClass && $ipiClass->codigo === '50') {
-                        $baseCalculoItem = $item->base_impostos;
+                        $baseCalculoItem = $baseImpostos;
                         $aliquotaIpi = (float) ($ipiClass->aliquota ?? 0);
                         $valorIpi = $baseCalculoItem * $aliquotaIpi / 100;
 
@@ -582,7 +586,7 @@ if ($this->empresa->crt <= 2) {
             $obrigaIBSCBS = $soIbsCbs || config('fiscal.emitir_ibscbs', true);
 
             if ($classTrib && $obrigaIBSCBS) {
-                $baseCalculoItem = $item->valor_unitario * $item->quantidade;
+                $baseCalculoItem = $baseProdutoLiquida;
 
                 $pIBSUFBase  = config('fiscal.aliquotas_ibscbs_transicao.ibs_uf', 0.10);
                 $pIBSMunBase = config('fiscal.aliquotas_ibscbs_transicao.ibs_mun', 0.00);
