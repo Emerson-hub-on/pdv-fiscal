@@ -51,6 +51,29 @@ class EmissorLocalService extends FiscalEmissorService
         return new NfeServiceLocal($pdv);
     }
 
+    // No caixa os itens são o JSON de vendas_pendentes: os impostos entram em cada item, em 'impostos'.
+    // Grava direto no banco (e não por $venda->update) para não sobrescrever a relação "itens" do VendaLocal.
+    protected function gravarImpostosItens(Venda $venda, array $itensComDesconto, array $impostos): void
+    {
+        $db = DB::connection('sqlite_local');
+        $json = $db->table('vendas_pendentes')->where('uuid', $venda->uuid)->value('itens');
+        $itens = json_decode($json ?? '[]', true) ?? [];
+
+        if (count($itens) !== count($impostos)) {
+            throw new Exception('Quantidade de itens diferente da calculada para os impostos.');
+        }
+
+        foreach ($itens as $i => $item) {
+            $itens[$i]['impostos'] = $impostos[$i];
+        }
+
+        $db->table('vendas_pendentes')->where('uuid', $venda->uuid)->update([
+            'itens' => json_encode($itens),
+            'fiscal_sync_pendente' => true,
+            'updated_at' => now(),
+        ]);
+    }
+
     // O caixa é o dono da numeração: não há trava aqui
     protected function garantirEmissaoPermitida($pdv): void
     {

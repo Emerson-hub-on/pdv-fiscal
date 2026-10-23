@@ -839,7 +839,7 @@ class SyncService
                                 'subtotal' => ($item['preco_unitario'] * $item['quantidade']) - ($item['desconto'] ?? 0),
                                 'created_at' => now(),
                                 'updated_at' => now(),
-                            ]);
+                            ] + $this->camposImpostosItem($item));
                         }
 
                         foreach ($pagamentos as $pagamento) {
@@ -859,6 +859,9 @@ class SyncService
                             ->where('uuid', $vendaLocal->uuid)
                             ->where('status', '!=', 'cancelada')
                             ->update($this->camposFiscaisParaCentral($vendaLocal, false) + ['updated_at' => now()]);
+
+                        // Impostos dos itens calculados depois da inclusão da venda (emissão no caixa)
+                        $this->atualizarImpostosItens($vendaLocal);
 
                         // Cancelada no caixa: devolve o estoque que o servidor baixou. Só na transição, para nunca devolver duas vezes.
                         if ($afetadas && $vendaLocal->status_fiscal === 'cancelada') {
@@ -918,6 +921,54 @@ class SyncService
         }
 
         return ['sucesso' => true, 'enviadas' => $enviadas, 'falhas' => $falhas];
+    }
+
+    // Impostos do item (gravados pelo emissor no JSON) no formato das colunas de venda_itens
+    private function camposImpostosItem(array $item): array
+    {
+        $i = $item['impostos'] ?? null;
+
+        if (!$i) {
+            return [];
+        }
+
+        return [
+            'descricao' => $i['descricao'] ?? null,
+            'codigo_produto' => $i['codigo_produto'] ?? null,
+            'ncm' => $i['ncm'] ?? null,
+            'cfop' => $i['cfop'] ?? null,
+            'cst_csosn' => $i['cst_csosn'] ?? null,
+            'valor_bruto' => $i['valor_bruto'] ?? null,
+            'desconto_efetivo' => $i['desconto_efetivo'] ?? 0,
+            'bc_icms' => $i['bc_icms'] ?? 0,
+            'aliquota_icms' => $i['aliquota_icms'] ?? 0,
+            'valor_icms' => $i['valor_icms'] ?? 0,
+            'valor_pis' => $i['valor_pis'] ?? 0,
+            'valor_cofins' => $i['valor_cofins'] ?? 0,
+            'valor_ibs' => $i['valor_ibs'] ?? 0,
+            'valor_cbs' => $i['valor_cbs'] ?? 0,
+            'impostos_registrados_em' => now(),
+        ];
+    }
+
+    // Venda já no servidor: copia os impostos do JSON para as linhas de venda_itens (mesma ordem da inclusão)
+    private function atualizarImpostosItens(object $vendaLocal): void
+    {
+        $itens = json_decode($vendaLocal->itens, true) ?? [];
+        $vendaId = DB::table('vendas')->where('uuid', $vendaLocal->uuid)->value('id');
+
+        if (!$vendaId || !collect($itens)->contains(fn ($i) => !empty($i['impostos']))) {
+            return;
+        }
+
+        $ids = DB::table('venda_itens')->where('venda_id', $vendaId)->orderBy('id')->pluck('id')->values();
+
+        foreach ($itens as $posicao => $item) {
+            if (isset($ids[$posicao]) && !empty($item['impostos'])) {
+                DB::table('venda_itens')->where('id', $ids[$posicao])
+                    ->update($this->camposImpostosItem($item) + ['updated_at' => now()]);
+            }
+        }
     }
 
     // Situação fiscal da venda no formato da tabela vendas do servidor

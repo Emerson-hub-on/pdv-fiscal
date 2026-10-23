@@ -27,6 +27,9 @@ class FiscalEmissorService
     protected float $totalCOFINS = 0.0;
     protected bool $houveIBSCBS = false;
 
+    /** Impostos de cada item exatamente como foram para o XML (índice = posição do item). */
+    protected array $impostosItens = [];
+
 public function emitir(Venda $venda): array
     {
         $venda->load('itens.produto.ncm', 'itens.produto.tributacao', 'itens.variante', 'caixa.pdv', 'cliente');
@@ -192,6 +195,36 @@ public function emitir(Venda $venda): array
     protected function criarNfeService($pdv): NfeService
     {
         return new NfeService($pdv);
+    }
+
+    /**
+     * Guarda os impostos dos itens (os mesmos valores que foram para o XML) para relatórios.
+     * Falha aqui nunca pode impedir a emissão: só registra no log.
+     */
+    protected function persistirImpostosItens(Venda $venda, array $itensComDesconto): void
+    {
+        try {
+            $this->gravarImpostosItens($venda, $itensComDesconto, $this->impostosItens);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Impostos dos itens não gravados (venda {$venda->id}): " . $e->getMessage());
+        }
+    }
+
+    // No servidor os itens já são linhas de venda_itens. O emissor do caixa sobrescreve (itens ficam no JSON).
+    protected function gravarImpostosItens(Venda $venda, array $itensComDesconto, array $impostos): void
+    {
+        foreach ($itensComDesconto as $i => $dado) {
+            $id = $dado['item']->id ?? null;
+
+            if (!$id || !isset($impostos[$i])) {
+                continue;
+            }
+
+            DB::table('venda_itens')->where('id', $id)->update($impostos[$i] + [
+                'impostos_registrados_em' => now(),
+                'updated_at' => now(),
+            ]);
+        }
     }
 
     /**
@@ -532,6 +565,7 @@ protected function montarItens(Make $nfe, Venda $venda): void
         $this->totalICMSBC = 0.0;
         $this->totalICMS = 0.0;
         $this->houveIBSCBS = false;
+        $this->impostosItens = [];
 
         $itensComDesconto = $this->ratearDescontoGlobal($venda);
 
@@ -582,6 +616,20 @@ protected function montarItens(Make $nfe, Venda $venda): void
             $prod->indTot = 1;
             $nfe->tagprod($prod);
 
+            // Registro dos valores deste item para gravar no banco (não altera o XML)
+            $reg = [
+                'descricao' => $prod->xProd,
+                'codigo_produto' => $prod->cProd,
+                'ncm' => $prod->NCM,
+                'cfop' => $prod->CFOP,
+                'cst_csosn' => null,
+                'valor_bruto' => round($item->preco_unitario * $item->quantidade, 2),
+                'desconto_efetivo' => round($descontoEfetivo, 2),
+                'bc_icms' => 0, 'aliquota_icms' => 0, 'valor_icms' => 0,
+                'valor_pis' => 0, 'valor_cofins' => 0,
+                'valor_ibs' => 0, 'valor_cbs' => 0,
+            ];
+
             $imposto = new \stdClass();
             $imposto->item = $n;
             $imposto->vTotTrib = 0;
@@ -598,6 +646,7 @@ if ($empresa->crt <= 2) {
     $icms->orig = $produto->origem_mercadoria;
     $icms->CSOSN = $trib->csosn;
     $nfe->tagICMSSN($icms);
+    $reg['cst_csosn'] = (string) $trib->csosn;
 } else {
     // Lucro Presumido / Real
     // Normaliza pra sempre virar 2 digitos, corrigindo tanto zero perdido (coluna
@@ -627,6 +676,13 @@ if ($empresa->crt <= 2) {
     }
 
     $nfe->tagICMS($icms);
+
+    $reg['cst_csosn'] = $cstIcms;
+    if (isset($icms->vBC)) {
+        $reg['bc_icms'] = (float) $icms->vBC;
+        $reg['aliquota_icms'] = (float) $icms->pICMS;
+        $reg['valor_icms'] = (float) $icms->vICMS;
+    }
 }
 
             // PIS e COFINS
@@ -676,6 +732,9 @@ if ($empresa->crt <= 2) {
                 $this->totalPIS += (float) $pis->vPIS;
                 $this->totalCOFINS += (float) $cofins->vCOFINS;
             }
+
+            $reg['valor_pis'] = (float) $pis->vPIS;
+            $reg['valor_cofins'] = (float) $cofins->vCOFINS;
 
             // ==================== IBS/CBS (Reforma Tributária) ====================
             // Os percentuais de transicao (2026: 0,10% IBS-UF / 0,00% IBS-Mun / 0,90% CBS)
@@ -748,8 +807,15 @@ if ($empresa->crt <= 2) {
                 $nfe->tagIBSCBS($ibscbs);
 
                 $this->houveIBSCBS = true;
+
+                $reg['valor_ibs'] = round($vIBSUF + $vIBSMun, 2);
+                $reg['valor_cbs'] = $vCBS;
             }
+
+            $this->impostosItens[$index] = $reg;
         }
+
+        $this->persistirImpostosItens($venda, $itensComDesconto);
     }
 
 /**
