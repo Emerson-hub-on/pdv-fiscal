@@ -54,6 +54,7 @@ use App\Http\Controllers\RelatorioContaReceberController;
 use App\Http\Controllers\RelatorioPedidoCompraController;
 use App\Http\Controllers\RelatorioPedidoVendaController;
 use App\Http\Controllers\RelatorioOrdemServicoController;
+use App\Http\Controllers\Relatorios\VendasDetalhadaController;
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -305,6 +306,13 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::get('/', [RelatorioOrdemServicoController::class, 'index'])->name('index');
                 Route::get('exportar-excel', [RelatorioOrdemServicoController::class, 'exportarExcel'])->name('exportar-excel');
                 Route::get('exportar-pdf', [RelatorioOrdemServicoController::class, 'exportarPdf'])->name('exportar-pdf');
+            });
+
+            // ---------------- RELATÓRIOS - VENDAS DETALHADA ----------------
+            Route::prefix('relatorios/vendas')->name('relatorios.vendas.')->group(function () {    
+                Route::get('detalhada', [VendasDetalhadaController::class, 'index'])->name('detalhada.index');    
+                Route::get('detalhada/exportar-excel', [VendasDetalhadaController::class, 'exportarExcel'])->name('detalhada.exportar-excel');    
+                Route::get('detalhada/exportar-pdf', [VendasDetalhadaController::class, 'exportarPdf'])->name('detalhada.exportar-pdf');    
             });
 
             // ---------------- CONTAS A RECEBER ----------------

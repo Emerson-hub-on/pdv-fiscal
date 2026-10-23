@@ -23,6 +23,9 @@ class NotaFiscalService
     protected float $totalIPI = 0.0;
     protected bool $houveIBSCBS = false;
 
+    /** Impostos de cada item como foram para o XML (índice = posição do item). */
+    protected array $impostosItens = [];
+
     public function __construct()
     {
         $this->empresa = Empresa::first();
@@ -330,6 +333,7 @@ class NotaFiscalService
         $this->totalICMS = 0.0;
         $this->totalIPI = 0.0;
         $this->houveIBSCBS = false;
+        $this->impostosItens = [];
 
         $itensComDesconto = $this->ratearDescontoGlobal($notaFiscal);
         $soIbsCbs = $this->apenasIbsCbs($notaFiscal);
@@ -380,6 +384,16 @@ class NotaFiscalService
 
             $prod->indTot = 1;
             $nfe->tagprod($prod);
+
+            // Registro dos valores deste item para gravar no banco (não altera o XML)
+            $reg = [
+                'cfop' => $prod->CFOP,
+                'cst_csosn' => null,
+                'desconto_efetivo' => round($descontoEfetivo, 2),
+                'bc_icms' => 0, 'aliquota_icms' => 0, 'valor_icms' => 0,
+                'valor_pis' => 0, 'valor_cofins' => 0, 'valor_ipi' => 0,
+                'valor_ibs' => 0, 'valor_cbs' => 0,
+            ];
             // Referenciamento por item — obrigatório em devolução desde a mudança de
             // regra de 01/09/2026 (rejeição 321). chaveAcesso é obrigatória; nItem é
             // opcional, mas recomendado quando você sabe qual item da nota original
@@ -449,6 +463,13 @@ if ($this->empresa->crt <= 2) {
         }
 
         $nfe->tagICMSSN($icms);
+
+        $reg['cst_csosn'] = (string) $trib?->csosn;
+        if (isset($icms->vBC)) {
+            $reg['bc_icms'] = (float) $icms->vBC;
+            $reg['aliquota_icms'] = (float) $icms->pICMS;
+            $reg['valor_icms'] = (float) $icms->vICMS;
+        }
     }
                 else {
                     $cstIcms = str_pad((string) (int) ($trib?->cst_icms ?? 0), 2, '0', STR_PAD_LEFT);
@@ -481,6 +502,13 @@ if ($this->empresa->crt <= 2) {
                     }
 
                     $nfe->tagICMS($icms);
+
+                    $reg['cst_csosn'] = $cstIcms;
+                    if (isset($icms->vBC)) {
+                        $reg['bc_icms'] = (float) $icms->vBC;
+                        $reg['aliquota_icms'] = (float) $icms->pICMS;
+                        $reg['valor_icms'] = (float) $icms->vICMS;
+                    }
                 }
 
                 // PIS/COFINS — mesma regra do cupom: Simples Nacional zera (embutido no DAS)
@@ -526,6 +554,9 @@ if ($this->empresa->crt <= 2) {
                     $this->totalCOFINS += (float) $cofins->vCOFINS;
                 }
 
+
+                $reg['valor_pis'] = (float) $pis->vPIS;
+                $reg['valor_cofins'] = (float) $cofins->vCOFINS;
 
                 // IPI — a lib decide sozinha a estrutura interna (IPITrib com base/alíquota/valor,
                 // ou IPINT sem esses campos) conforme a presença de vBC/pIPI/vIPI no std.
@@ -573,6 +604,8 @@ if ($this->empresa->crt <= 2) {
                     }
 
                     $nfe->tagIPI($ipiStd);
+
+                    $reg['valor_ipi'] = (float) ($ipiStd->vIPI ?? 0);
                 }
             }
 
@@ -633,7 +666,38 @@ if ($this->empresa->crt <= 2) {
                 $nfe->tagIBSCBS($ibscbs);
 
                 $this->houveIBSCBS = true;
+
+                $reg['valor_ibs'] = round($vIBSUF + $vIBSMun, 2);
+                $reg['valor_cbs'] = $vCBS;
             }
+
+            $this->impostosItens[$index] = $reg;
+        }
+
+        $this->persistirImpostosItens($itensComDesconto);
+    }
+
+    /**
+     * Guarda os impostos dos itens (os mesmos valores que foram para o XML) para relatórios.
+     * Falha aqui nunca pode impedir a emissão: só registra no log.
+     */
+    protected function persistirImpostosItens(array $itensComDesconto): void
+    {
+        try {
+            foreach ($itensComDesconto as $i => $dado) {
+                $id = $dado['item']->id ?? null;
+
+                if (!$id || !isset($this->impostosItens[$i])) {
+                    continue;
+                }
+
+                \Illuminate\Support\Facades\DB::table('nota_fiscal_itens')->where('id', $id)->update($this->impostosItens[$i] + [
+                    'impostos_registrados_em' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Impostos dos itens da NF-e não gravados: ' . $e->getMessage());
         }
     }
 

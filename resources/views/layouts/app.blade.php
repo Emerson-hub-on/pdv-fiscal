@@ -361,6 +361,45 @@
             </div>
         </div>
 
+        <!-- Menu Dropdown: Relatórios -->
+        <div class="flex flex-col">
+            <button onclick="toggleRelatorios()"
+                    class="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 text-sm font-medium transition cursor-pointer [.sidebar-oculta_&]:justify-center [.sidebar-oculta_&]:px-0">
+                <span class="flex items-center gap-3">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                    <span class="whitespace-nowrap [.sidebar-oculta_&]:hidden">Relatórios</span>
+                </span>
+                <svg id="seta-relatorios" class="w-4 h-4 transition-transform duration-200 [.sidebar-oculta_&]:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+
+            <div id="sub-relatorios" class="hidden [.sidebar-oculta_&]:hidden flex flex-col gap-1 pl-4 mt-1 border-l border-white/10 ml-3">
+                @if (auth()->user()?->podeVer('notas'))
+                    <!-- Vendas (nível 2, abre lateral) -->
+                    <div class="relative">
+                        <button id="btn-relatorio-vendas" onclick="toggleFlyout('sub-relatorio-vendas', 'btn-relatorio-vendas')"
+                                class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                            <span>Vendas</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
+
+                        <div id="sub-relatorio-vendas" data-flyout data-botao="btn-relatorio-vendas"
+                             class="hidden fixed bg-gray-900 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                            <a href="{{ route('relatorios.vendas.detalhada.index') }}"
+                               class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                                Detalhada
+                            </a>
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </div>
+
     </nav>
 
     <div class="px-3 py-4 border-t border-white/10 shrink-0 [.sidebar-oculta_&]:px-2">
@@ -529,6 +568,15 @@ function togglePedidos() {
 
     document.getElementById('sub-pedidos').classList.toggle('hidden');
     document.getElementById('seta-pedidos').classList.toggle('rotate-180');
+}
+
+function toggleRelatorios() {
+    if (document.body.classList.contains('sidebar-oculta')) {
+        document.body.classList.remove('sidebar-oculta');
+    }
+
+    document.getElementById('sub-relatorios').classList.toggle('hidden');
+    document.getElementById('seta-relatorios').classList.toggle('rotate-180');
 }
 
 function toggleNotaFiscal() {
