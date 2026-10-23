@@ -351,6 +351,10 @@
                                class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                                 Pedido de venda
                             </a>
+                            <a href="{{ route('pedidos.relatorios.ordem-servico.index') }}"
+                               class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                                Ordem de serviço
+                            </a>
                         </div>
                     </div>
                 @endif

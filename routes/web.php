@@ -53,6 +53,7 @@ use App\Http\Controllers\RelatorioContaPagarController;
 use App\Http\Controllers\RelatorioContaReceberController;
 use App\Http\Controllers\RelatorioPedidoCompraController;
 use App\Http\Controllers\RelatorioPedidoVendaController;
+use App\Http\Controllers\RelatorioOrdemServicoController;
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -297,6 +298,13 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::get('/', [RelatorioPedidoVendaController::class, 'index'])->name('index');    
                 Route::get('exportar-excel', [RelatorioPedidoVendaController::class, 'exportarExcel'])->name('exportar-excel');    
                 Route::get('exportar-pdf', [RelatorioPedidoVendaController::class, 'exportarPdf'])->name('exportar-pdf');    
+            });
+
+            // ---------------- RELATÓRIOS - ORDENS DE SERVIÇO ----------------
+            Route::prefix('pedidos/relatorios/ordem-servico')->name('pedidos.relatorios.ordem-servico.')->group(function () {
+                Route::get('/', [RelatorioOrdemServicoController::class, 'index'])->name('index');
+                Route::get('exportar-excel', [RelatorioOrdemServicoController::class, 'exportarExcel'])->name('exportar-excel');
+                Route::get('exportar-pdf', [RelatorioOrdemServicoController::class, 'exportarPdf'])->name('exportar-pdf');
             });
 
             // ---------------- CONTAS A RECEBER ----------------
