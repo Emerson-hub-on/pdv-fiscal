@@ -101,12 +101,6 @@
                     </div>
 
                     <div>
-                        <label for="filtro-vendedor" class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1.5">Vendedor</label>
-                        <input type="text" name="vendedor" id="filtro-vendedor" value="{{ $filtros['vendedor'] }}" placeholder="Curva só das vendas deste vendedor" autocomplete="off"
-                               class="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
-                    </div>
-
-                    <div>
                         <span class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1.5">Limites da classificação (% do faturamento acumulado)</span>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
@@ -153,7 +147,6 @@
             data_inicio: '{{ now()->startOfMonth()->toDateString() }}',
             data_fim: '{{ now()->toDateString() }}',
             ordenar: 'ranking',
-            vendedor: '',
             limite_a: '80',
             limite_b: '95',
         };
@@ -178,7 +171,6 @@
             if (f.tipo !== FILTROS_PADRAO.tipo) total++;
             if (f.data_inicio !== FILTROS_PADRAO.data_inicio || f.data_fim !== FILTROS_PADRAO.data_fim) total++;
             if (f.ordenar !== FILTROS_PADRAO.ordenar) total++;
-            if (f.vendedor.trim() !== '') total++;
             if (Number(f.limite_a) !== Number(FILTROS_PADRAO.limite_a) || Number(f.limite_b) !== Number(FILTROS_PADRAO.limite_b)) total++;
 
             const badge = document.getElementById('contador-filtros');

@@ -20,16 +20,13 @@ use Maatwebsite\Excel\Facades\Excel;
  *
  * A classe é decidida por onde o produto COMEÇA no acumulado: se o acumulado dos produtos anteriores ainda é menor que
  * o limite de A, ele é A (assim o produto que "cruza" os 80% fica em A, e um produto que sozinho passa de 80% não deixa
- * a classe A vazia). A classificação é sempre sobre o período/tipo/vendedor filtrados; a busca e o filtro de classe só
+ * a classe A vazia). A classificação é sempre sobre o período e o tipo de documento filtrados; a busca e o filtro de classe só
  * escolhem o que mostrar do ranking, sem mudar a classe de ninguém.
  *
  * Base: NFC-e e NF-e de saída emitidas, como nos outros relatórios de vendas. Produtos com variações somam juntos.
  */
 class CurvaAbcController extends Controller
 {
-    // Coluna com o nome do usuário na tabela users (ajuste se for outra, ex.: "nome")
-    private const COLUNA_NOME_USUARIO = 'name';
-
     private const LIMITE_A_PADRAO = 80;
     private const LIMITE_B_PADRAO = 95;
     private const POR_PAGINA = 50;
@@ -102,7 +99,6 @@ class CurvaAbcController extends Controller
             'busca' => trim((string) $request->get('busca', '')),
             'tipo' => in_array($request->get('tipo'), ['todos', 'nfce', 'nfe'], true)
                 ? $request->get('tipo') : 'todos',
-            'vendedor' => trim((string) $request->get('vendedor', '')),
             'classe' => in_array($request->get('classe'), ['A', 'B', 'C'], true) ? $request->get('classe') : 'todas',
             // Sem nenhum filtro na URL, abre no mês atual para não varrer o histórico inteiro
             'data_inicio' => $primeiraVisita ? now()->startOfMonth()->toDateString() : (string) $request->get('data_inicio', ''),
@@ -115,18 +111,15 @@ class CurvaAbcController extends Controller
     }
 
     /**
-     * Itens vendidos (NFC-e + NF-e emitidas) com período, tipo e vendedor aplicados.
+     * Itens vendidos (NFC-e + NF-e emitidas) com período e tipo aplicados.
      * valor_venda = produtos + acréscimos − descontos (o mesmo "valor líquido" dos outros relatórios).
      * As tabelas têm collations diferentes: os textos levam COLLATE para o UNION não dar "Illegal mix of collations".
      */
     private function itens(array $f): Builder
     {
-        $nome = self::COLUNA_NOME_USUARIO;
-
         $nfce = DB::table('venda_itens as i')
             ->join('vendas as d', 'd.id', '=', 'i.venda_id')
             ->leftJoin('produtos as p', 'p.id', '=', 'i.produto_id')
-            ->leftJoin('users as u', 'u.id', '=', 'd.operador_id')
             ->where('d.status', 'emitida')
             ->selectRaw("
                 'NFC-e' COLLATE utf8mb4_unicode_ci as tipo,
@@ -135,14 +128,12 @@ class CurvaAbcController extends Controller
                 p.codigo_interno COLLATE utf8mb4_unicode_ci as codigo,
                 COALESCE(p.nome COLLATE utf8mb4_unicode_ci, i.descricao COLLATE utf8mb4_unicode_ci) as nome,
                 i.quantidade as quantidade,
-                (COALESCE(i.valor_bruto, i.preco_unitario * i.quantidade) - COALESCE(i.desconto_efetivo, i.desconto, 0)) as valor_venda,
-                u.{$nome} COLLATE utf8mb4_unicode_ci as vendedor
+                (COALESCE(i.valor_bruto, i.preco_unitario * i.quantidade) - COALESCE(i.desconto_efetivo, i.desconto, 0)) as valor_venda
             ");
 
         $nfe = DB::table('nota_fiscal_itens as i')
             ->join('notas_fiscais as d', 'd.id', '=', 'i.nota_fiscal_id')
             ->leftJoin('produtos as p', 'p.id', '=', 'i.produto_id')
-            ->leftJoin('users as u', 'u.id', '=', 'd.operador_id')
             ->where('d.status', 'emitida')
             ->where('d.tipo_operacao', '<>', 'entrada')
             ->where('d.finalidade', 1) // só NF-e normal: devolução, complementar e ajuste não são venda
@@ -153,8 +144,7 @@ class CurvaAbcController extends Controller
                 p.codigo_interno COLLATE utf8mb4_unicode_ci as codigo,
                 COALESCE(p.nome COLLATE utf8mb4_unicode_ci, i.descricao COLLATE utf8mb4_unicode_ci) as nome,
                 i.quantidade as quantidade,
-                ((i.valor_unitario * i.quantidade + i.valor_frete + i.valor_outras_despesas) - COALESCE(i.desconto_efetivo, i.valor_desconto, 0)) as valor_venda,
-                u.{$nome} COLLATE utf8mb4_unicode_ci as vendedor
+                ((i.valor_unitario * i.quantidade + i.valor_frete + i.valor_outras_despesas) - COALESCE(i.desconto_efetivo, i.valor_desconto, 0)) as valor_venda
             ");
 
         foreach ([$nfce, $nfe] as $q) {
@@ -172,13 +162,7 @@ class CurvaAbcController extends Controller
             default => $nfce->unionAll($nfe),
         };
 
-        $itens = DB::query()->fromSub($lados, 't')->select('t.*');
-
-        if ($f['vendedor'] !== '') {
-            $itens->where('t.vendedor', 'like', '%' . $f['vendedor'] . '%');
-        }
-
-        return $itens;
+        return DB::query()->fromSub($lados, 't')->select('t.*');
     }
 
     /**
@@ -291,9 +275,6 @@ class CurvaAbcController extends Controller
 
         if ($f['classe'] !== 'todas') {
             $linhas[] = 'Só classe ' . $f['classe'];
-        }
-        if ($f['vendedor'] !== '') {
-            $linhas[] = 'Vendedor: ' . $f['vendedor'];
         }
         if ($f['busca'] !== '') {
             $linhas[] = 'Produto: ' . $f['busca'];
