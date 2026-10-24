@@ -47,6 +47,18 @@ CREATE TABLE IF NOT EXISTS `nota_fiscal_itens` (
   `valor_total` decimal(12,2) NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
+  `cfop` varchar(4) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `cst_csosn` varchar(3) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `desconto_efetivo` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `bc_icms` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `aliquota_icms` decimal(7,4) NOT NULL DEFAULT '0.0000',
+  `valor_icms` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `valor_pis` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `valor_cofins` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `valor_ipi` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `valor_ibs` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `valor_cbs` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `impostos_registrados_em` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `nota_fiscal_itens_nota_fiscal_id_foreign` (`nota_fiscal_id`),
   KEY `nota_fiscal_itens_produto_id_foreign` (`produto_id`),
@@ -66,7 +78,7 @@ CREATE TABLE IF NOT EXISTS `nota_fiscal_itens` (
   CONSTRAINT `nota_fiscal_itens_produto_id_foreign` FOREIGN KEY (`produto_id`) REFERENCES `produtos` (`id`),
   CONSTRAINT `nota_fiscal_itens_produto_variante_id_foreign` FOREIGN KEY (`produto_variante_id`) REFERENCES `produto_variantes` (`id`),
   CONSTRAINT `nota_fiscal_itens_tributacao_id_foreign` FOREIGN KEY (`tributacao_id`) REFERENCES `tributacoes` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=230 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=234 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Exportação de dados foi desmarcado.
 
