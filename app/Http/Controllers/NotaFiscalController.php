@@ -446,11 +446,14 @@ class NotaFiscalController extends Controller
                 'valor_outras_despesas' => max(0, (float) ($itemDados['valor_outras_despesas'] ?? 0)),
                 'valor_frete'           => round(max(0, (float) ($itemDados['valor_frete'] ?? 0)), 2),
                 'valor_total'           => $valorTotal,
-                'bc_icms_manual'        => $basesManuais ? ($itemDados['bc_icms'] ?? null) : null,
-                'valor_icms_manual'     => $basesManuais ? ($itemDados['valor_icms'] ?? null) : null,
-                'aliquota_icms_manual'  => $basesManuais ? ($itemDados['aliquota_icms'] ?? null) : null,
-                'valor_ipi_manual'      => $basesManuais ? ($itemDados['valor_ipi'] ?? null) : null,
-                'aliquota_ipi_manual'   => $basesManuais ? ($itemDados['aliquota_ipi'] ?? null) : null,
+                // Destaque manual (CFOP com "destacar bases"): o que o operador digitou vai para os mesmos campos
+                // dos impostos calculados. Sem destaque manual ficam zerados e a emissão grava os valores calculados.
+                'impostos_manuais'      => $basesManuais,
+                'bc_icms'               => $basesManuais ? round((float) ($itemDados['bc_icms'] ?? 0), 2) : 0,
+                'valor_icms'            => $basesManuais ? round((float) ($itemDados['valor_icms'] ?? 0), 2) : 0,
+                'aliquota_icms'         => $basesManuais ? round((float) ($itemDados['aliquota_icms'] ?? 0), 4) : 0,
+                'valor_ipi'             => $basesManuais ? round((float) ($itemDados['valor_ipi'] ?? 0), 2) : 0,
+                'aliquota_ipi'          => $basesManuais ? round((float) ($itemDados['aliquota_ipi'] ?? 0), 4) : 0,
             ]);
         }
 
@@ -892,11 +895,14 @@ class NotaFiscalController extends Controller
 
             $cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
 
-            if ($item->bc_icms_manual !== null) {
-                // Destaque manual (CFOP com "destacar_bases" ativo) — prioridade sobre o cálculo automático
-                $baseIcms = (float) $item->bc_icms_manual;
-                $valorIcms = (float) ($item->valor_icms_manual ?? 0);
-                $aliquotaIcms = (float) ($item->aliquota_icms_manual ?? 0);
+            // Valores gravados no item: os digitados pelo operador (CFOP com "destacar_bases") ou, depois da emissão,
+            // os mesmos que foram para o XML. Antes disso e sem destaque manual, calcula pelo cadastro.
+            $usaGravados = $item->impostos_manuais || $item->impostos_registrados_em;
+
+            if ($usaGravados) {
+                $baseIcms = (float) $item->bc_icms;
+                $valorIcms = (float) $item->valor_icms;
+                $aliquotaIcms = (float) $item->aliquota_icms;
             } elseif ($trib && $trib->cst_icms && in_array($trib->cst_icms, $cstsComBaseCalculo, true)) {
                 $baseIcms = $baseImpostos;
                 $aliquotaIcms = (float) $trib->aliquota_icms;
@@ -912,9 +918,9 @@ class NotaFiscalController extends Controller
 
             $ipi = $item->ipi;
 
-            if ($item->valor_ipi_manual !== null) {
-                $valorIpi = (float) $item->valor_ipi_manual;
-                $aliquotaIpi = (float) ($item->aliquota_ipi_manual ?? 0);
+            if ($usaGravados) {
+                $valorIpi = (float) $item->valor_ipi;
+                $aliquotaIpi = (float) $item->aliquota_ipi;
             } elseif ($ipi && $ipi->codigo === '50' && $ipi->aliquota) {
                 $aliquotaIpi = (float) $ipi->aliquota;
                 $valorIpi = $baseImpostos * $aliquotaIpi / 100;
@@ -940,7 +946,7 @@ class NotaFiscalController extends Controller
                 'aliquota_icms'  => number_format($aliquotaIcms, 2, ',', '.'),
                 'valor_ipi'      => number_format($valorIpi, 2, ',', '.'),
                 'aliquota_ipi'   => number_format($aliquotaIpi, 2, ',', '.'),
-                'bases_manuais'  => $item->bc_icms_manual !== null || $item->valor_ipi_manual !== null,
+                'bases_manuais'  => (bool) $item->impostos_manuais,
                 
             ];
         });

@@ -83,11 +83,15 @@
         $linhasItens = $notaFiscal->itens->map(function ($item) use ($cstsComBaseCalculo, $notaFiscal) {
             $subtotalBruto = (float) $item->valor_unitario * (float) $item->quantidade;
 
-            // 1. ICMS: Prioriza os dados manuais se preenchidos, senão calcula pelo padrão
-            if (!is_null($item->aliquota_icms_manual) || !is_null($item->bc_icms_manual)) {
-                $bcIcms      = (float) ($item->bc_icms_manual ?? 0);
-                $aliquotaIcms = (float) ($item->aliquota_icms_manual ?? 0);
-                $valorIcms   = (float) ($item->valor_icms_manual ?? ($bcIcms * $aliquotaIcms / 100));
+            // Valores gravados no item: os digitados pelo operador (destaque manual) ou, depois da emissão,
+            // os mesmos que foram para o XML. Rascunho sem destaque manual calcula pelo cadastro.
+            $usaGravados = $item->impostos_manuais || $item->impostos_registrados_em;
+
+            // 1. ICMS
+            if ($usaGravados) {
+                $bcIcms       = (float) $item->bc_icms;
+                $aliquotaIcms = (float) $item->aliquota_icms;
+                $valorIcms    = (float) $item->valor_icms;
             } else {
                 $trib = $item->tributacao;
                 $bcIcms = 0; $valorIcms = 0; $aliquotaIcms = 0;
@@ -99,10 +103,10 @@
                 }
             }
 
-            // 2. IPI: Prioriza os dados manuais se preenchidos, senão calcula pelo padrão
-            if (!is_null($item->aliquota_ipi_manual) || !is_null($item->valor_ipi_manual)) {
-                $aliquotaIpi = (float) ($item->aliquota_ipi_manual ?? 0);
-                $valorIpi    = (float) ($item->valor_ipi_manual ?? ($subtotalBruto * $aliquotaIpi / 100));
+            // 2. IPI
+            if ($usaGravados) {
+                $aliquotaIpi = (float) $item->aliquota_ipi;
+                $valorIpi    = (float) $item->valor_ipi;
             } else {
                 $ipi = $item->ipi;
                 $valorIpi = 0; $aliquotaIpi = 0;

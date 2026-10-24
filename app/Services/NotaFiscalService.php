@@ -391,7 +391,7 @@ class NotaFiscalService
                 'cst_csosn' => null,
                 'desconto_efetivo' => round($descontoEfetivo, 2),
                 'bc_icms' => 0, 'aliquota_icms' => 0, 'valor_icms' => 0,
-                'valor_pis' => 0, 'valor_cofins' => 0, 'valor_ipi' => 0,
+                'valor_pis' => 0, 'valor_cofins' => 0, 'valor_ipi' => 0, 'aliquota_ipi' => 0,
                 'valor_ibs' => 0, 'valor_cbs' => 0,
             ];
             // Referenciamento por item — obrigatório em devolução desde a mudança de
@@ -428,10 +428,10 @@ if ($this->empresa->crt <= 2) {
     // então não pode ir pro acumulador do total (senão o total diverge dos itens).
     $csosnComBaseCalculo = ['500', '900'];
 
-    if ($item->bc_icms_manual !== null && in_array($trib?->csosn, $csosnComBaseCalculo, true)) {
-        $baseManual = (float) $item->bc_icms_manual;
-        $aliquotaManual = (float) ($item->aliquota_icms_manual ?? 0);
-        $valorManual = (float) ($item->valor_icms_manual ?? 0);
+    if ($item->impostos_manuais && in_array($trib?->csosn, $csosnComBaseCalculo, true)) {
+        $baseManual = (float) $item->bc_icms;
+        $aliquotaManual = (float) $item->aliquota_icms;
+        $valorManual = (float) $item->valor_icms;
 
         $icms->modBC = 3;
         $icms->vBC = number_format($baseManual, 2, '.', '');
@@ -445,16 +445,16 @@ if ($this->empresa->crt <= 2) {
     // CSOSN 101 usa campos DIFERENTES (pCredSN/vCredICMSSN — crédito, não base de
     // ICMS) — continua igual, sem depender do bloco acima
     if ($trib?->csosn === '101') {
-        $percCredito = $item->aliquota_icms_manual !== null
-            ? (float) $item->aliquota_icms_manual
+        $percCredito = $item->impostos_manuais
+            ? (float) $item->aliquota_icms
             : (!empty($trib->aliquota_icms) ? (float) $trib->aliquota_icms : 0.00);
 
-        $baseCalculoItem = $item->bc_icms_manual !== null
-            ? (float) $item->bc_icms_manual
+        $baseCalculoItem = $item->impostos_manuais
+            ? (float) $item->bc_icms
             : $item->valor_unitario * $item->quantidade;
 
-        $valorCredito = $item->valor_icms_manual !== null
-            ? (float) $item->valor_icms_manual
+        $valorCredito = $item->impostos_manuais
+            ? (float) $item->valor_icms
             : $baseCalculoItem * $percCredito / 100;
 
         $icms->pCredSN = number_format($percCredito, 4, '.', '');
@@ -481,14 +481,14 @@ if ($this->empresa->crt <= 2) {
 
                     $cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
 
-                    if ($item->bc_icms_manual !== null) {
+                    if ($item->impostos_manuais) {
                         $icms->modBC = 3;
-                        $icms->vBC = number_format($item->bc_icms_manual, 2, '.', '');
-                        $icms->pICMS = number_format($item->aliquota_icms_manual ?? 0, 2, '.', '');
-                        $icms->vICMS = number_format($item->valor_icms_manual ?? 0, 2, '.', '');
+                        $icms->vBC = number_format($item->bc_icms, 2, '.', '');
+                        $icms->pICMS = number_format($item->aliquota_icms, 2, '.', '');
+                        $icms->vICMS = number_format($item->valor_icms, 2, '.', '');
 
-                        $this->totalICMSBC += (float) $item->bc_icms_manual;
-                        $this->totalICMS += (float) ($item->valor_icms_manual ?? 0);
+                        $this->totalICMSBC += (float) $item->bc_icms;
+                        $this->totalICMS += (float) $item->valor_icms;
                     } elseif (in_array($cstIcms, $cstsComBaseCalculo, true)) {
                         $baseIcms = $baseImpostos;
 
@@ -563,10 +563,10 @@ if ($this->empresa->crt <= 2) {
                 // Só CST 50 (Saída Tributada) tem valor de fato; os demais (isenção, alíquota
                 // zero, suspensão, imune, outras) entram só com CST, sem base de cálculo.
                 $ipiClass  = $item->ipi;
-                $ipiManual = $item->valor_ipi_manual !== null;
+                $ipiManual = (bool) $item->impostos_manuais;
 
                 // Sem classificação de IPI, só entra no XML se o operador destacou valor manual
-                if ($ipiClass || ($ipiManual && (float) $item->valor_ipi_manual > 0)) {
+                if ($ipiClass || ($ipiManual && (float) $item->valor_ipi > 0)) {
                     $cstIpi = $ipiClass?->codigo;
 
                     // IPITrib (com vBC/pIPI/vIPI) só existe para CST 00, 49, 50 e 99.
@@ -582,15 +582,15 @@ if ($this->empresa->crt <= 2) {
                     $ipiStd->CST = $cstIpi;
 
                     if ($ipiManual) {
-                        $baseCalculoItem = (float) $item->bc_icms_manual > 0
-                            ? (float) $item->bc_icms_manual
+                        $baseCalculoItem = (float) $item->bc_icms > 0
+                            ? (float) $item->bc_icms
                             : $baseImpostos;
 
                         $ipiStd->vBC = number_format($baseCalculoItem, 2, '.', '');
-                        $ipiStd->pIPI = number_format($item->aliquota_ipi_manual ?? 0, 4, '.', '');
-                        $ipiStd->vIPI = number_format($item->valor_ipi_manual, 2, '.', '');
+                        $ipiStd->pIPI = number_format($item->aliquota_ipi, 4, '.', '');
+                        $ipiStd->vIPI = number_format($item->valor_ipi, 2, '.', '');
 
-                        $this->totalIPI += (float) $item->valor_ipi_manual;
+                        $this->totalIPI += (float) $item->valor_ipi;
                     } elseif ($ipiClass && $ipiClass->codigo === '50') {
                         $baseCalculoItem = $baseImpostos;
                         $aliquotaIpi = (float) ($ipiClass->aliquota ?? 0);
@@ -606,6 +606,7 @@ if ($this->empresa->crt <= 2) {
                     $nfe->tagIPI($ipiStd);
 
                     $reg['valor_ipi'] = (float) ($ipiStd->vIPI ?? 0);
+                    $reg['aliquota_ipi'] = (float) ($ipiStd->pIPI ?? 0);
                 }
             }
 

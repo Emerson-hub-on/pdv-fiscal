@@ -14,8 +14,8 @@ class NotaFiscalItem extends Model
         'ncm_id', 'cest_id','class_trib_ibs_cbs_id', 'tributacao_id', 
         'pis_cofins_id', 'ipi_id','quantidade', 'valor_unitario', 
         'valor_desconto', 'valor_total','ref_chave_acesso', 'ref_nitem',
-        'bc_icms_manual', 'valor_icms_manual', 'aliquota_icms_manual', 
-        'valor_ipi_manual', 'aliquota_ipi_manual', 'valor_outras_despesas',
+        'impostos_manuais', 'bc_icms', 'valor_icms', 'aliquota_icms',
+        'valor_ipi', 'aliquota_ipi', 'valor_outras_despesas',
         'valor_frete',
     ];
 
@@ -24,11 +24,12 @@ class NotaFiscalItem extends Model
         'valor_unitario'        => 'decimal:4',
         'valor_desconto'        => 'decimal:2',
         'valor_total'           => 'decimal:2',
-        'bc_icms_manual'        => 'decimal:2',
-        'valor_icms_manual'     => 'decimal:2',
-        'aliquota_icms_manual'  => 'decimal:2',
-        'valor_ipi_manual'      => 'decimal:2',
-        'aliquota_ipi_manual'   => 'decimal:2',
+        'impostos_manuais'      => 'boolean',
+        'bc_icms'               => 'decimal:2',
+        'valor_icms'            => 'decimal:2',
+        'aliquota_icms'         => 'decimal:4',
+        'valor_ipi'             => 'decimal:2',
+        'aliquota_ipi'          => 'decimal:4',
         'valor_outras_despesas' => 'decimal:2',
         'valor_frete'           => 'decimal:2',
     ];

@@ -29,11 +29,11 @@
             $trib = $i->tributacao;
             $cstOuCsosn = $trib?->csosn ?? $trib?->cst_icms ?? '—';
 
-            // 1. ICMS: Prioriza os dados manuais se preenchidos, senão calcula pelo padrão
-            if (!is_null($i->aliquota_icms_manual) || !is_null($i->bc_icms_manual)) {
-                $bcIcms       = (float) ($i->bc_icms_manual ?? 0);
-                $aliquotaIcms = (float) ($i->aliquota_icms_manual ?? 0);
-                $valorIcms    = (float) ($i->valor_icms_manual ?? ($bcIcms * $aliquotaIcms / 100));
+            // 1. ICMS: se o operador destacou manualmente, usa o que está gravado no item; senão calcula pelo padrão
+            if ($i->impostos_manuais) {
+                $bcIcms       = (float) $i->bc_icms;
+                $aliquotaIcms = (float) $i->aliquota_icms;
+                $valorIcms    = (float) $i->valor_icms;
             } else {
                 $bcIcms = 0; $valorIcms = 0; $aliquotaIcms = 0;
 
@@ -44,10 +44,10 @@
                 }
             }
 
-            // 2. IPI: Prioriza os dados manuais se preenchidos, senão calcula pelo padrão
-            if (!is_null($i->aliquota_ipi_manual) || !is_null($i->valor_ipi_manual)) {
-                $aliquotaIpi = (float) ($i->aliquota_ipi_manual ?? 0);
-                $valorIpi    = (float) ($i->valor_ipi_manual ?? ($baseImpostos * $aliquotaIpi / 100));
+            // 2. IPI: se o operador destacou manualmente, usa o que está gravado no item; senão calcula pelo padrão
+            if ($i->impostos_manuais) {
+                $aliquotaIpi = (float) $i->aliquota_ipi;
+                $valorIpi    = (float) $i->valor_ipi;
             } else {
                 $ipi = $i->ipi;
                 $valorIpi = 0; $aliquotaIpi = 0;
@@ -81,7 +81,7 @@
                 'aliquota_ipi'          => $aliquotaIpi,
                 'ref_chave_acesso'      => $i->ref_chave_acesso,
                 'ref_nitem'             => $i->ref_nitem,
-                'bases_manuais'         => !is_null($i->bc_icms_manual) || !is_null($i->valor_ipi_manual),
+                'bases_manuais'         => (bool) $i->impostos_manuais,
             ];
         })->values()
         : collect();
