@@ -947,6 +947,8 @@ class SyncService
             'valor_cofins' => $i['valor_cofins'] ?? 0,
             'valor_ibs' => $i['valor_ibs'] ?? 0,
             'valor_cbs' => $i['valor_cbs'] ?? 0,
+            'custo_unitario' => $i['custo_unitario'] ?? null,
+            'valor_custo' => $i['valor_custo'] ?? null,
             'impostos_registrados_em' => now(),
         ];
     }

@@ -393,6 +393,9 @@ class NotaFiscalService
                 'bc_icms' => 0, 'aliquota_icms' => 0, 'valor_icms' => 0,
                 'valor_pis' => 0, 'valor_cofins' => 0, 'valor_ipi' => 0, 'aliquota_ipi' => 0,
                 'valor_ibs' => 0, 'valor_cbs' => 0,
+                // Custo do produto no momento da venda (preco_custo do cadastro); vazio quando o produto não tem custo
+                'custo_unitario' => (float) ($produto->preco_custo ?? 0) > 0 ? round((float) $produto->preco_custo, 4) : null,
+                'valor_custo' => (float) ($produto->preco_custo ?? 0) > 0 ? round((float) $produto->preco_custo * (float) $item->quantidade, 2) : null,
             ];
             // Referenciamento por item — obrigatório em devolução desde a mudança de
             // regra de 01/09/2026 (rejeição 321). chaveAcesso é obrigatória; nItem é

@@ -139,6 +139,7 @@ class VendaLocal extends Venda
                 'codigo_interno' => $p->codigo_interno,
                 'codigo_barras' => $p->codigo_barras,
                 'codigo_barras_valido' => (bool) $p->codigo_barras_valido,
+                'preco_custo' => $p->preco_custo,
                 'unidade_comercial' => $p->unidade_comercial,
                 'unidade_tributavel' => $p->unidade_tributavel,
                 'origem_mercadoria' => $p->origem_mercadoria,

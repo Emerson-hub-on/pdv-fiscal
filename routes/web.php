@@ -55,6 +55,7 @@ use App\Http\Controllers\RelatorioPedidoCompraController;
 use App\Http\Controllers\RelatorioPedidoVendaController;
 use App\Http\Controllers\RelatorioOrdemServicoController;
 use App\Http\Controllers\Relatorios\VendasDetalhadaController;
+use App\Http\Controllers\Relatorios\MargemLucroController;
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -313,6 +314,13 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::get('detalhada', [VendasDetalhadaController::class, 'index'])->name('detalhada.index');    
                 Route::get('detalhada/exportar-excel', [VendasDetalhadaController::class, 'exportarExcel'])->name('detalhada.exportar-excel');    
                 Route::get('detalhada/exportar-pdf', [VendasDetalhadaController::class, 'exportarPdf'])->name('detalhada.exportar-pdf');    
+            });
+
+            // ---------------- RELATÓRIOS - MARGEM DE LUCRO ----------------
+            Route::prefix('relatorios/vendas')->name('relatorios.vendas.')->group(function () {
+                Route::get('margem-lucro', [MargemLucroController::class, 'index'])->name('margem-lucro.index');
+                Route::get('margem-lucro/exportar-excel', [MargemLucroController::class, 'exportarExcel'])->name('margem-lucro.exportar-excel');
+                Route::get('margem-lucro/exportar-pdf', [MargemLucroController::class, 'exportarPdf'])->name('margem-lucro.exportar-pdf');
             });
 
             // ---------------- CONTAS A RECEBER ----------------
