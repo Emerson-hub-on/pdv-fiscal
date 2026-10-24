@@ -398,6 +398,10 @@
                                class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                                 Margem de Lucro
                             </a>
+                            <a href="{{ route('relatorios.vendas.curva-abc.index') }}"
+                               class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                                Curva ABC
+                            </a>
                         </div>
                     </div>
                 @endif

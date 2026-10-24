@@ -56,6 +56,7 @@ use App\Http\Controllers\RelatorioPedidoVendaController;
 use App\Http\Controllers\RelatorioOrdemServicoController;
 use App\Http\Controllers\Relatorios\VendasDetalhadaController;
 use App\Http\Controllers\Relatorios\MargemLucroController;
+use App\Http\Controllers\Relatorios\CurvaAbcController;
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -321,6 +322,13 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::get('margem-lucro', [MargemLucroController::class, 'index'])->name('margem-lucro.index');
                 Route::get('margem-lucro/exportar-excel', [MargemLucroController::class, 'exportarExcel'])->name('margem-lucro.exportar-excel');
                 Route::get('margem-lucro/exportar-pdf', [MargemLucroController::class, 'exportarPdf'])->name('margem-lucro.exportar-pdf');
+            });
+
+            // ---------------- RELATÓRIOS - CURVA ABC ----------------
+            Route::prefix('relatorios/vendas')->name('relatorios.vendas.')->group(function () {
+                Route::get('curva-abc', [CurvaAbcController::class, 'index'])->name('curva-abc.index');
+                Route::get('curva-abc/exportar-excel', [CurvaAbcController::class, 'exportarExcel'])->name('curva-abc.exportar-excel');
+                Route::get('curva-abc/exportar-pdf', [CurvaAbcController::class, 'exportarPdf'])->name('curva-abc.exportar-pdf');
             });
 
             // ---------------- CONTAS A RECEBER ----------------
