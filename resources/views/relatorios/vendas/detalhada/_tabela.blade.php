@@ -215,6 +215,10 @@
     </div>
 </div>
 
+<p class="mt-3 text-xs text-gray-400">
+    Valor bruto inclui os acréscimos (frete e outras despesas); valor líquido = valor bruto − descontos.
+</p>
+
 <div class="mt-4">
     {{ $documentos->links() }}
 </div>

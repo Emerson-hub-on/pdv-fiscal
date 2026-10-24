@@ -106,7 +106,10 @@ class VendasDetalhadaController extends Controller
         ];
     }
 
-    /** Itens de NFC-e e NF-e emitidas, com as mesmas colunas, filtrados (base de tudo: lista, totais e exportação). */
+    /**
+     * Itens de NFC-e e NF-e emitidas, com as mesmas colunas, filtrados (base de tudo: lista, totais e exportação).
+     * Valor bruto = produtos + acréscimos (frete e outras despesas); valor líquido = bruto − descontos.
+     */
     private function consultaItens(array $f): Builder
     {
         $nome = self::COLUNA_NOME_USUARIO;
@@ -156,7 +159,7 @@ class VendasDetalhadaController extends Controller
                 p.codigo_interno COLLATE utf8mb4_unicode_ci as codigo,
                 COALESCE(i.descricao COLLATE utf8mb4_unicode_ci, p.nome COLLATE utf8mb4_unicode_ci) as descricao,
                 i.quantidade as quantidade,
-                (i.valor_unitario * i.quantidade) as valor_bruto,
+                (i.valor_unitario * i.quantidade + i.valor_frete + i.valor_outras_despesas) as valor_bruto,
                 COALESCE(i.desconto_efetivo, i.valor_desconto, 0) as desconto,
                 (i.valor_frete + i.valor_outras_despesas) as acrescimo,
                 i.valor_icms as icms,
@@ -186,7 +189,7 @@ class VendasDetalhadaController extends Controller
         };
 
         $consulta = DB::query()->fromSub($lados, 't')
-            ->selectRaw('t.*, (t.valor_bruto - t.desconto + t.acrescimo) as valor_liquido');
+            ->selectRaw('t.*, (t.valor_bruto - t.desconto) as valor_liquido');
 
         if ($f['busca'] !== '') {
             $termo = $f['busca'];

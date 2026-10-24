@@ -64,6 +64,10 @@
         </tr>
     </table>
 
+    <div class="cinza" style="margin-bottom: 6px;">
+        Valor bruto inclui os acréscimos (frete e outras despesas); valor líquido = valor bruto − descontos.
+    </div>
+
     @if ($totais->sem_impostos > 0)
         <div class="cinza" style="margin-bottom: 6px;">
             {{ number_format($totais->sem_impostos, 0, ',', '.') }} item(ns) de notas emitidas antes do registro dos impostos aparecem com “—” e não entram nos totais de impostos.
