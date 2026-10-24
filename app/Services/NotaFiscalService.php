@@ -787,7 +787,23 @@ if ($this->empresa->crt <= 2) {
         $std->vPIS = number_format($this->totalPIS, 2, '.', '');
         $std->vCOFINS = number_format($this->totalCOFINS, 2, '.', '');
         $std->vOutro = 0;
-        $std->vNF = number_format($notaFiscal->valor_total, 2, '.', '');
+
+        // vNF = produtos − desconto + frete + outras despesas + IPI. O valor_total gravado na nota (recalcularTotais)
+        // não inclui o IPI, que só é conhecido aqui, na montagem do XML. Sem somar o IPI, a SEFAZ rejeita por
+        // "Total da NF difere do somatório dos valores que compõem o valor total da NF". Recompõe a partir dos
+        // itens (assim não soma duas vezes se a montagem rodar de novo) e grava o total final na nota.
+        $totalSemIpi = $notaFiscal->itens->sum('valor_total')
+            - (float) $notaFiscal->valor_desconto
+            + $notaFiscal->itens->sum('valor_frete')
+            + $notaFiscal->itens->sum('valor_outras_despesas');
+        $vNF = round($totalSemIpi + $this->totalIPI, 2);
+
+        if (abs($vNF - (float) $notaFiscal->valor_total) > 0.004) {
+            $notaFiscal->valor_total = $vNF;
+            $notaFiscal->save();
+        }
+
+        $std->vNF = number_format($vNF, 2, '.', '');
         $nfe->tagICMSTot($std);
 
         if ($this->houveIBSCBS) {
