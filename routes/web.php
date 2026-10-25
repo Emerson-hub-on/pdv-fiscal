@@ -59,7 +59,8 @@ use App\Http\Controllers\Relatorios\MargemLucroController;
 use App\Http\Controllers\Relatorios\CurvaAbcController;
 use App\Http\Controllers\Relatorios\VendasFormaPagamentoController;
 use App\Http\Controllers\Relatorios\VendasTributacaoController;
-use App\Http\Controllers\Relatorios\VendasPorVendedorController; //[cite: 1]
+use App\Http\Controllers\Relatorios\VendasPorVendedorController;
+use App\Http\Controllers\Relatorios\ComparativoMensalVendasController;
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -348,11 +349,18 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::get('tributacao/exportar-pdf', [VendasTributacaoController::class, 'exportarPdf'])->name('tributacao.exportar-pdf');
             });
 
-            // ---- Vendas por Vendedor ----[cite: 1]
+            // ---- Vendas por Vendedor ----
             Route::prefix('relatorios/vendas')->name('relatorios.vendas.')->group(function () {
                 Route::get('vendedor', [VendasPorVendedorController::class, 'index'])->name('vendedor.index');
                 Route::get('vendedor/exportar-excel', [VendasPorVendedorController::class, 'exportarExcel'])->name('vendedor.exportar-excel');
                 Route::get('vendedor/exportar-pdf', [VendasPorVendedorController::class, 'exportarPdf'])->name('vendedor.exportar-pdf');
+            });
+
+            // ---- Gráficos > Comparativo mensal de vendas ----
+            Route::prefix('relatorios/graficos')->name('relatorios.graficos.')->group(function () {
+                Route::get('comparativo-mensal', [ComparativoMensalVendasController::class, 'index'])->name('comparativo-mensal.index');
+                Route::get('comparativo-mensal/exportar-excel', [ComparativoMensalVendasController::class, 'exportarExcel'])->name('comparativo-mensal.exportar-excel');
+                Route::get('comparativo-mensal/exportar-pdf', [ComparativoMensalVendasController::class, 'exportarPdf'])->name('comparativo-mensal.exportar-pdf');
             });
 
             // ---------------- CONTAS A RECEBER ----------------
