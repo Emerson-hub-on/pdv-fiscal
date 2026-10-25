@@ -57,6 +57,7 @@ use App\Http\Controllers\RelatorioOrdemServicoController;
 use App\Http\Controllers\Relatorios\VendasDetalhadaController;
 use App\Http\Controllers\Relatorios\MargemLucroController;
 use App\Http\Controllers\Relatorios\CurvaAbcController;
+use App\Http\Controllers\Relatorios\VendasFormaPagamentoController;
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -329,6 +330,13 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::get('curva-abc', [CurvaAbcController::class, 'index'])->name('curva-abc.index');
                 Route::get('curva-abc/exportar-excel', [CurvaAbcController::class, 'exportarExcel'])->name('curva-abc.exportar-excel');
                 Route::get('curva-abc/exportar-pdf', [CurvaAbcController::class, 'exportarPdf'])->name('curva-abc.exportar-pdf');
+            });
+
+            // ---- Forma de Pagamento ----
+            Route::prefix('relatorios/vendas')->name('relatorios.vendas.')->group(function () {
+                Route::get('forma-pagamento', [VendasFormaPagamentoController::class, 'index'])->name('forma-pagamento.index');
+                Route::get('forma-pagamento/exportar-excel', [VendasFormaPagamentoController::class, 'exportarExcel'])->name('forma-pagamento.exportar-excel');
+                Route::get('forma-pagamento/exportar-pdf', [VendasFormaPagamentoController::class, 'exportarPdf'])->name('forma-pagamento.exportar-pdf');
             });
 
             // ---------------- CONTAS A RECEBER ----------------

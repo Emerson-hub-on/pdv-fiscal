@@ -402,6 +402,10 @@
                                class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                                 Curva ABC
                             </a>
+                            <a href="{{ route('relatorios.vendas.forma-pagamento.index') }}"
+                               class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                                Forma de Pagamento
+                            </a>
                         </div>
                     </div>
                 @endif
