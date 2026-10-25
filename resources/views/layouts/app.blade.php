@@ -410,6 +410,10 @@
                                class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                                 Regime/Alíquota e Tributação
                             </a>
+                            <a href="{{ route('relatorios.vendas.vendedor.index') }}"
+                               class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                                Vendas por Vendedor
+                            </a>
                         </div>
                     </div>
                 @endif

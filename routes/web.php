@@ -58,7 +58,8 @@ use App\Http\Controllers\Relatorios\VendasDetalhadaController;
 use App\Http\Controllers\Relatorios\MargemLucroController;
 use App\Http\Controllers\Relatorios\CurvaAbcController;
 use App\Http\Controllers\Relatorios\VendasFormaPagamentoController;
-use App\Http\Controllers\Relatorios\VendasTributacaoController; //[cite: 1]
+use App\Http\Controllers\Relatorios\VendasTributacaoController;
+use App\Http\Controllers\Relatorios\VendasPorVendedorController; //[cite: 1]
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -340,11 +341,18 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::get('forma-pagamento/exportar-pdf', [VendasFormaPagamentoController::class, 'exportarPdf'])->name('forma-pagamento.exportar-pdf');
             });
 
-            // ---- Regime/Alíquota e Tributação ----[cite: 1]
+            // ---- Regime/Alíquota e Tributação ----
             Route::prefix('relatorios/vendas')->name('relatorios.vendas.')->group(function () {
                 Route::get('tributacao', [VendasTributacaoController::class, 'index'])->name('tributacao.index');
                 Route::get('tributacao/exportar-excel', [VendasTributacaoController::class, 'exportarExcel'])->name('tributacao.exportar-excel');
                 Route::get('tributacao/exportar-pdf', [VendasTributacaoController::class, 'exportarPdf'])->name('tributacao.exportar-pdf');
+            });
+
+            // ---- Vendas por Vendedor ----[cite: 1]
+            Route::prefix('relatorios/vendas')->name('relatorios.vendas.')->group(function () {
+                Route::get('vendedor', [VendasPorVendedorController::class, 'index'])->name('vendedor.index');
+                Route::get('vendedor/exportar-excel', [VendasPorVendedorController::class, 'exportarExcel'])->name('vendedor.exportar-excel');
+                Route::get('vendedor/exportar-pdf', [VendasPorVendedorController::class, 'exportarPdf'])->name('vendedor.exportar-pdf');
             });
 
             // ---------------- CONTAS A RECEBER ----------------
