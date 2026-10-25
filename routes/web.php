@@ -58,6 +58,7 @@ use App\Http\Controllers\Relatorios\VendasDetalhadaController;
 use App\Http\Controllers\Relatorios\MargemLucroController;
 use App\Http\Controllers\Relatorios\CurvaAbcController;
 use App\Http\Controllers\Relatorios\VendasFormaPagamentoController;
+use App\Http\Controllers\Relatorios\VendasTributacaoController; //[cite: 1]
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -337,6 +338,13 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::get('forma-pagamento', [VendasFormaPagamentoController::class, 'index'])->name('forma-pagamento.index');
                 Route::get('forma-pagamento/exportar-excel', [VendasFormaPagamentoController::class, 'exportarExcel'])->name('forma-pagamento.exportar-excel');
                 Route::get('forma-pagamento/exportar-pdf', [VendasFormaPagamentoController::class, 'exportarPdf'])->name('forma-pagamento.exportar-pdf');
+            });
+
+            // ---- Regime/Alíquota e Tributação ----[cite: 1]
+            Route::prefix('relatorios/vendas')->name('relatorios.vendas.')->group(function () {
+                Route::get('tributacao', [VendasTributacaoController::class, 'index'])->name('tributacao.index');
+                Route::get('tributacao/exportar-excel', [VendasTributacaoController::class, 'exportarExcel'])->name('tributacao.exportar-excel');
+                Route::get('tributacao/exportar-pdf', [VendasTributacaoController::class, 'exportarPdf'])->name('tributacao.exportar-pdf');
             });
 
             // ---------------- CONTAS A RECEBER ----------------

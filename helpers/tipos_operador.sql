@@ -32,13 +32,14 @@ CREATE TABLE IF NOT EXISTS `tipos_operador` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `tipos_operador_slug_unique` (`slug`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela pdv_fiscal.tipos_operador: ~3 rows (aproximadamente)
+-- Copiando dados para a tabela pdv_fiscal.tipos_operador: ~4 rows (aproximadamente)
 REPLACE INTO `tipos_operador` (`id`, `slug`, `nome`, `nome_plural`, `contexto`, `permite_login`, `ativo`, `created_at`, `updated_at`) VALUES
 	(1, 'caixa', 'Operador de Caixa', 'Operadores de Caixa', 'caixa', 1, 1, '2026-10-05 11:53:15', '2026-10-05 11:53:15'),
 	(2, 'supervisor', 'Supervisor', 'Supervisores', 'caixa', 1, 1, '2026-10-05 11:53:15', '2026-10-05 11:53:15'),
-	(3, 'fiscal', 'Operador Fiscal', 'Operadores Fiscais', 'servidor', 1, 1, '2026-10-05 11:53:15', '2026-10-05 11:53:15');
+	(3, 'fiscal', 'Operador Fiscal', 'Operadores Fiscais', 'servidor', 1, 1, '2026-10-05 11:53:15', '2026-10-05 11:53:15'),
+	(4, 'tecnico', 'Técnico', 'Técnicos', 'servidor', 0, 1, '2026-10-18 00:03:41', '2026-10-18 00:03:41');
 
 /*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
