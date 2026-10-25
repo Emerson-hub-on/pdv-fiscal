@@ -74,6 +74,7 @@
         </tr>
     </table>
 
+    @unless ($detalhada)
     <h2>Faturamento por modalidade</h2>
     <table class="lista">
         <thead>
@@ -116,6 +117,8 @@
             </tr>
         </tbody>
     </table>
+
+    @endunless
 
     @if ($detalhada)
         <h2>Pagamentos</h2>

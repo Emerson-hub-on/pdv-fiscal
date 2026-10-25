@@ -49,8 +49,9 @@
     </div>
 </div>
 
-{{-- Resumo por modalidade --}}
-<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
+@if ($filtros['visao'] === 'resumida')
+{{-- Resumo por modalidade (visão padrão) --}}
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
         <table class="w-full text-sm whitespace-nowrap">
             <thead class="bg-gray-700 rounded-lg font-medium text-xs uppercase tracking-wide">
@@ -100,13 +101,11 @@
     </div>
 </div>
 
-{{-- Lista de pagamentos --}}
-<h2 class="text-sm font-semibold text-gray-700 mb-2">
-    Pagamentos
-    @if ($filtros['modalidade'] !== 'todas')
-        <span class="font-normal text-gray-500">— {{ $modalidades[$filtros['modalidade']] }}</span>
-    @endif
-</h2>
+@else
+{{-- Lista de pagamentos (visão detalhada, no lugar do resumo) --}}
+@if ($filtros['modalidade'] !== 'todas')
+    <p class="mb-2 text-sm text-gray-500">Modalidade: <span class="font-medium text-gray-700">{{ $modalidades[$filtros['modalidade']] }}</span></p>
+@endif
 
 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
@@ -149,12 +148,13 @@
     </div>
 </div>
 
-<p class="mt-3 text-xs text-gray-400">
-    NFC-e: cada forma de pagamento da venda, com o troco descontado do dinheiro. NF-e: forma de pagamento da nota pelo valor total da nota (inclui IPI e frete),
-    por isso o total pode diferir do valor líquido dos relatórios por produto. “A prazo” segue o indicador da forma de pagamento cadastrada; ainda não há vencimento nem baixa de parcelas.
-    O resumo considera todo o período; o filtro de modalidade e a busca afetam só a lista.
-</p>
-
 <div class="mt-4">
     {{ $lista->links() }}
 </div>
+@endif
+
+<p class="mt-3 text-xs text-gray-400">
+    NFC-e: cada forma de pagamento da venda, com o troco descontado do dinheiro. NF-e: forma de pagamento da nota pelo valor total da nota (inclui IPI e frete),
+    por isso o total pode diferir do valor líquido dos relatórios por produto. “A prazo” segue o indicador da forma de pagamento cadastrada; ainda não há vencimento nem baixa de parcelas.
+    Os cards e o resumo sempre consideram todo o período; na visão detalhada, a modalidade e o nº do documento filtram só a lista.
+</p>

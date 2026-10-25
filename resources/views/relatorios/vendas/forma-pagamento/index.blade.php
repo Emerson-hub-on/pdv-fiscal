@@ -27,16 +27,25 @@
 
     {{-- Um único form: busca (sempre visível) + campos do modal de filtros --}}
     <form id="form-relatorio" class="flex items-center gap-2 mb-4">
-        <input type="text" name="busca" id="busca-input" value="{{ $filtros['busca'] }}" placeholder="Nº do documento..." autocomplete="off"
-               class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm w-56 focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition">
-
-        <select name="modalidade" data-filtro
+        <select name="visao" id="filtro-visao" data-filtro
                 class="bg-white border border-gray-300 text-gray-600 px-3 py-2 rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-slate-800">
-            <option value="todas" @selected($filtros['modalidade'] === 'todas')>Todas as modalidades</option>
-            @foreach ($modalidades as $chave => $rotulo)
-                <option value="{{ $chave }}" @selected($filtros['modalidade'] === $chave)>{{ $rotulo }}</option>
-            @endforeach
+            <option value="resumida" @selected($filtros['visao'] === 'resumida')>Resumida (por modalidade)</option>
+            <option value="detalhada" @selected($filtros['visao'] === 'detalhada')>Detalhada (cada pagamento)</option>
         </select>
+
+        {{-- Só fazem sentido na visão detalhada (filtram a lista de pagamentos) --}}
+        <div id="filtros-lista" class="{{ $filtros['visao'] === 'detalhada' ? 'flex' : 'hidden' }} items-center gap-2">
+            <input type="text" name="busca" id="busca-input" value="{{ $filtros['busca'] }}" placeholder="Nº do documento..." autocomplete="off"
+                   class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm w-48 focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition">
+
+            <select name="modalidade" data-filtro
+                    class="bg-white border border-gray-300 text-gray-600 px-3 py-2 rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-slate-800">
+                <option value="todas" @selected($filtros['modalidade'] === 'todas')>Todas as modalidades</option>
+                @foreach ($modalidades as $chave => $rotulo)
+                    <option value="{{ $chave }}" @selected($filtros['modalidade'] === $chave)>{{ $rotulo }}</option>
+                @endforeach
+            </select>
+        </div>
 
         <button type="button" onclick="abrirFiltros()"
                 class="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-600 px-4 py-2 rounded-lg text-sm font-medium transition">
@@ -76,7 +85,7 @@
                                        class="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
                             </div>
                         </div>
-                        <p class="text-xs text-gray-400 mt-1.5">Por padrão mostra o mês atual. O resumo considera todo o período; a modalidade e o nº do documento filtram só a lista de pagamentos.</p>
+                        <p class="text-xs text-gray-400 mt-1.5">Por padrão mostra o mês atual. Os cards e o resumo consideram todo o período. Na visão detalhada, a modalidade e o nº do documento filtram a lista.</p>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
@@ -90,7 +99,7 @@
                             </select>
                         </div>
                         <div>
-                            <label for="filtro-ordenar" class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1.5">Ordenar lista por</label>
+                            <label for="filtro-ordenar" class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1.5">Ordenar lista por (detalhada)</label>
                             <select name="ordenar" id="filtro-ordenar"
                                     class="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
                                 <option value="recentes" @selected($filtros['ordenar'] === 'recentes')>Mais recentes</option>
@@ -99,15 +108,6 @@
                                 <option value="documento" @selected($filtros['ordenar'] === 'documento')>Nº do documento</option>
                             </select>
                         </div>
-                    </div>
-
-                    <div>
-                        <label for="filtro-visao" class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1.5">Exportação (PDF/Excel)</label>
-                        <select name="visao" id="filtro-visao"
-                                class="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
-                            <option value="resumida" @selected($filtros['visao'] === 'resumida')>Por modalidade (resumida)</option>
-                            <option value="detalhada" @selected($filtros['visao'] === 'detalhada')>Com cada pagamento (detalhada)</option>
-                        </select>
                     </div>
                 </div>
 
@@ -140,7 +140,6 @@
             data_inicio: '{{ now()->startOfMonth()->toDateString() }}',
             data_fim: '{{ now()->toDateString() }}',
             ordenar: 'recentes',
-            visao: 'resumida',
         };
 
         const lerFiltros = () => Object.fromEntries(
@@ -163,7 +162,6 @@
             if (f.tipo !== FILTROS_PADRAO.tipo) total++;
             if (f.data_inicio !== FILTROS_PADRAO.data_inicio || f.data_fim !== FILTROS_PADRAO.data_fim) total++;
             if (f.ordenar !== FILTROS_PADRAO.ordenar) total++;
-            if (f.visao !== FILTROS_PADRAO.visao) total++;
 
             const badge = document.getElementById('contador-filtros');
             badge.innerText = total;
@@ -218,7 +216,16 @@
             window.location.href = `${rotasExportarRelatorio[formato]}?${parametrosRelatorio().toString()}`;
         }
 
-        // Fora do modal, só o filtro de modalidade atualiza na hora
+        // A visão decide o que aparece (resumo por modalidade OU lista de pagamentos); os campos da lista só existem na detalhada
+        const filtrosLista = document.getElementById('filtros-lista');
+
+        document.getElementById('filtro-visao').addEventListener('change', (e) => {
+            const detalhada = e.target.value === 'detalhada';
+            filtrosLista.classList.toggle('hidden', !detalhada);
+            filtrosLista.classList.toggle('flex', detalhada);
+        });
+
+        // Fora do modal, visão e modalidade atualizam na hora
         document.querySelectorAll('[data-filtro]').forEach((el) => {
             el.addEventListener('change', buscarRelatorio);
         });

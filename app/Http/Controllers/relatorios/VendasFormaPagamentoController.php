@@ -46,9 +46,10 @@ class VendasFormaPagamentoController extends Controller
 
         $resumo = $this->resumo($pagamentos);
 
-        $lista = $this->ordenar($this->lista($pagamentos, $filtros), $filtros['ordenar'])
-            ->paginate(self::POR_PAGINA)
-            ->withQueryString();
+        // Resumida (padrão): só o resumo por modalidade. Detalhada: a lista de pagamentos, em vez do resumo.
+        $lista = $filtros['visao'] === 'detalhada'
+            ? $this->ordenar($this->lista($pagamentos, $filtros), $filtros['ordenar'])->paginate(self::POR_PAGINA)->withQueryString()
+            : null;
 
         $modalidades = $this->rotulos();
         $dados = compact('lista', 'resumo', 'filtros', 'modalidades');
@@ -60,7 +61,7 @@ class VendasFormaPagamentoController extends Controller
         return view('relatorios.vendas.forma-pagamento.index', $dados);
     }
 
-    // Resumida: uma linha por modalidade. Detalhada: uma linha por pagamento (venda/nota).
+    // Mesma visão da tela. Resumida: uma linha por modalidade. Detalhada: uma linha por pagamento (venda/nota).
     public function exportarExcel(Request $request)
     {
         $filtros = $this->filtros($request);
@@ -115,7 +116,7 @@ class VendasFormaPagamentoController extends Controller
             'data_fim' => $primeiraVisita ? now()->toDateString() : (string) $request->get('data_fim', ''),
             'ordenar' => in_array($request->get('ordenar'), ['recentes', 'antigos', 'maior_valor', 'documento'], true)
                 ? $request->get('ordenar') : 'recentes',
-            // Só vale para a exportação (PDF/Excel): por modalidade ou com cada pagamento
+            // Define o que aparece na tela e na exportação (PDF/Excel): por modalidade ou cada pagamento
             'visao' => $request->get('visao') === 'detalhada' ? 'detalhada' : 'resumida',
         ];
     }
@@ -205,7 +206,7 @@ class VendasFormaPagamentoController extends Controller
         return DB::query()->fromSub($lados, 't')->selectRaw('t.*, ' . $this->casoModalidade('t.codigo') . ' as modalidade');
     }
 
-    /** O que aparece na lista: o filtro de modalidade e a busca por nº do documento (o resumo não muda com eles). */
+    /** Lista da visão detalhada: filtro de modalidade e busca por nº do documento (o resumo por modalidade não usa). */
     private function lista(Builder $pagamentos, array $f): Builder
     {
         $q = DB::query()->fromSub(clone $pagamentos, 'p')->select('p.*');
