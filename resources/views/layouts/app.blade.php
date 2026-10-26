@@ -433,6 +433,10 @@
                                class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                                 Comparativo mensal de vendas
                             </a>
+                            <a href="{{ route('relatorios.graficos.comparativo-semanal.index') }}"
+                               class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                                Comparativo semanal de vendas
+                            </a>
                         </div>
                     </div>
                 @endif

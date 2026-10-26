@@ -373,6 +373,9 @@ class ComparativoMensalVendasController extends Controller
             'comparar' => $comparar,
             'mostrar_valores' => $mostrarValores,
             'metrica' => self::METRICAS[$metrica],
+            'legenda_melhor' => 'Melhor mês',
+            'legenda_parcial' => 'Mês em andamento',
+            'legenda_anterior' => 'Mesmo mês do ano anterior',
             'vazio' => array_sum($valores) <= 0,
         ];
     }
