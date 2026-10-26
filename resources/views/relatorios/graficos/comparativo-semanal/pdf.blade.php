@@ -80,7 +80,6 @@
         <thead>
             <tr>
                 <th>Semana</th>
-                <th>Período</th>
                 <th class="dir">Docs</th>
                 <th class="dir">Itens</th>
                 <th class="dir">Valor bruto</th>
@@ -101,7 +100,6 @@
             @foreach ($semanas as $m)
                 <tr>
                     <td>{{ $m['rotulo'] }}{{ $m['parcial'] ? ' (parcial)' : '' }}</td>
-                    <td>{{ $m['periodo'] }}</td>
                     <td class="dir">{{ number_format($m['documentos'], 0, ',', '.') }}</td>
                     <td class="dir">{{ number_format($m['itens'], 0, ',', '.') }}</td>
                     <td class="dir">{{ $moeda($m['valor_bruto']) }}</td>
@@ -119,7 +117,7 @@
                 </tr>
             @endforeach
             <tr class="total">
-                <td colspan="2">Total</td>
+                <td>Total</td>
                 <td class="dir">{{ number_format($totais->documentos, 0, ',', '.') }}</td>
                 <td class="dir">{{ number_format($totais->itens, 0, ',', '.') }}</td>
                 <td class="dir">{{ $moeda($totais->valor_bruto) }}</td>

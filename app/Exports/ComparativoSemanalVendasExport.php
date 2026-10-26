@@ -23,7 +23,7 @@ class ComparativoSemanalVendasExport implements FromArray, WithHeadings, ShouldA
 
     public function headings(): array
     {
-        $colunas = ['Semana', 'Período', 'Documentos', 'Itens', 'Valor bruto', 'Descontos', 'Acréscimos', 'Valor líquido', 'NFC-e', 'NF-e', 'Ticket médio', 'Var. R$ s/ semana anterior', 'Var. % s/ semana anterior'];
+        $colunas = ['Semana', 'Documentos', 'Itens', 'Valor bruto', 'Descontos', 'Acréscimos', 'Valor líquido', 'NFC-e', 'NF-e', 'Ticket médio', 'Var. R$ s/ semana anterior', 'Var. % s/ semana anterior'];
 
         if ($this->comparar) {
             $colunas[] = 'Mesma semana ano anterior';
@@ -42,7 +42,6 @@ class ComparativoSemanalVendasExport implements FromArray, WithHeadings, ShouldA
         $dados = $this->semanas->map(function ($s) use ($t) {
             $linha = [
                 $s['rotulo'] . ($s['parcial'] ? ' (parcial)' : ''),
-                $s['periodo'],
                 (int) $s['documentos'],
                 (int) $s['itens'],
                 (float) $s['valor_bruto'],
@@ -67,7 +66,7 @@ class ComparativoSemanalVendasExport implements FromArray, WithHeadings, ShouldA
         })->all();
 
         $total = [
-            'TOTAL', '', (int) $t->documentos, (int) $t->itens, (float) $t->valor_bruto, (float) $t->desconto,
+            'TOTAL', (int) $t->documentos, (int) $t->itens, (float) $t->valor_bruto, (float) $t->desconto,
             (float) $t->acrescimo, (float) $t->valor_liquido, (float) $t->liquido_nfce, (float) $t->liquido_nfe,
             (float) $t->ticket_medio, '', '',
         ];
@@ -87,14 +86,14 @@ class ComparativoSemanalVendasExport implements FromArray, WithHeadings, ShouldA
     {
         $dinheiro = NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1;
 
-        // A = semana, B = período, C = documentos, D = itens, E..L = valores, M = var. %, depois ano anterior e % do total
-        $formatos = array_fill_keys(range('E', 'L'), $dinheiro) + ['M' => '0.00%'];
+        // A = semana, B = documentos, C = itens, D..K = valores, L = var. %, depois ano anterior e % do total
+        $formatos = array_fill_keys(range('D', 'K'), $dinheiro) + ['L' => '0.00%'];
 
         if ($this->comparar) {
-            return $formatos + ['N' => $dinheiro, 'O' => '0.00%', 'P' => '0.00%'];
+            return $formatos + ['M' => $dinheiro, 'N' => '0.00%', 'O' => '0.00%'];
         }
 
-        return $formatos + ['N' => '0.00%'];
+        return $formatos + ['M' => '0.00%'];
     }
 
     public function styles(Worksheet $planilha): array

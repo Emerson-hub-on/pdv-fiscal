@@ -75,7 +75,6 @@
                     <tr class="hover:bg-gray-200 transition {{ $m['valor_liquido'] <= 0 ? 'text-gray-400' : '' }}">
                         <td class="px-4 py-3 font-medium text-gray-800">
                             {{ $m['rotulo'] }}
-                            <span class="text-xs font-normal text-gray-400 ml-1">{{ $m['periodo'] }}</span>
                             @if ($m['parcial'])
                                 <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">em andamento</span>
                             @endif

@@ -137,10 +137,10 @@ class ComparativoSemanalVendasController extends Controller
             $anterior = (array) ($atual->get($semana->copy()->subWeek()->format('Y-m-d')) ?? $zero);
 
             $linha['chave'] = $chave;
-            $linha['rotulo'] = 'Sem ' . $semana->isoWeek . '/' . $semana->isoWeekYear;
-            $linha['periodo'] = $this->periodo($semana);
+            // Só o período (segunda a domingo), sem o número da semana ISO: "Sem 10/08 a 16/08"
+            $linha['rotulo'] = 'Sem ' . $this->periodo($semana);
             $linha['rotulo_curto'] = $semana->format('d/m');
-            $linha['rotulo_longo'] = 'Semana ' . $semana->isoWeek . '/' . $semana->isoWeekYear . ' (' . $this->periodo($semana) . ')';
+            $linha['rotulo_longo'] = 'Semana ' . $this->periodo($semana);
             $linha['parcial'] = $chave === $semanaAtual;
 
             $linha['variacao_valor'] = $linha['valor_liquido'] - $anterior['valor_liquido'];
@@ -151,7 +151,7 @@ class ComparativoSemanalVendasController extends Controller
                 $passada = $semana->copy()->subWeeks(52);
                 $ano = (array) ($anoAnterior->get($passada->format('Y-m-d')) ?? $zero);
                 $linha['ano_anterior'] = $ano;
-                $linha['ano_anterior_rotulo'] = 'Sem ' . $passada->isoWeek . '/' . $passada->isoWeekYear . ' (' . $this->periodo($passada) . ')';
+                $linha['ano_anterior_rotulo'] = 'Sem ' . $this->periodo($passada) . '/' . $passada->format('Y');
                 $linha['variacao_ano_percentual'] = $ano['valor_liquido'] > 0
                     ? ($linha['valor_liquido'] - $ano['valor_liquido']) / $ano['valor_liquido'] * 100 : null;
             }
@@ -275,7 +275,7 @@ class ComparativoSemanalVendasController extends Controller
         $t->media_semanal = $t->semanas > 0 ? $t->valor_liquido / $t->semanas : 0.0;
 
         $melhor = $c->sortByDesc('valor_liquido')->first();
-        $t->melhor_semana = ($melhor && $melhor['valor_liquido'] > 0) ? $melhor['rotulo'] . ' · ' . $melhor['periodo'] : null;
+        $t->melhor_semana = ($melhor && $melhor['valor_liquido'] > 0) ? $melhor['rotulo'] : null;
         $t->melhor_valor = $melhor['valor_liquido'] ?? 0.0;
 
         $ultima = $c->last();
