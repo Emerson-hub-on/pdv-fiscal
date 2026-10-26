@@ -25,48 +25,93 @@
         </button>
     </div>
 
-    {{-- Poucos filtros: ficam todos na barra e atualizam o gráfico e a tabela na hora --}}
-    <form id="form-relatorio" class="flex flex-wrap items-end gap-3 mb-4">
-        <div>
-            <label for="filtro-mes-inicio" class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">De</label>
-            <input type="month" name="mes_inicio" id="filtro-mes-inicio" value="{{ $filtros['mes_inicio'] }}" max="{{ now()->format('Y-m') }}" data-filtro
-                   class="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
-        </div>
-        <div>
-            <label for="filtro-mes-fim" class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Até</label>
-            <input type="month" name="mes_fim" id="filtro-mes-fim" value="{{ $filtros['mes_fim'] }}" max="{{ now()->format('Y-m') }}" data-filtro
-                   class="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
-        </div>
-        <div>
-            <label for="filtro-tipo" class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Documentos</label>
-            <select name="tipo" id="filtro-tipo" data-filtro
-                    class="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
-                <option value="todos" @selected($filtros['tipo'] === 'todos')>NFC-e e NF-e</option>
-                <option value="nfce" @selected($filtros['tipo'] === 'nfce')>Só NFC-e</option>
-                <option value="nfe" @selected($filtros['tipo'] === 'nfe')>Só NF-e</option>
-            </select>
-        </div>
-        <div>
-            <label for="filtro-metrica" class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Gráfico mostra</label>
-            <select name="metrica" id="filtro-metrica" data-filtro
-                    class="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
-                @foreach ($metricas as $chave => $rotulo)
-                    <option value="{{ $chave }}" @selected($filtros['metrica'] === $chave)>{{ $rotulo }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div>
-            <label for="filtro-comparar" class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Comparar com ano anterior</label>
-            <select name="comparar" id="filtro-comparar" data-filtro
-                    class="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
-                <option value="nao" @selected($filtros['comparar'] === 'nao')>Não</option>
-                <option value="sim" @selected($filtros['comparar'] === 'sim')>Sim, mesmo mês do ano anterior</option>
-            </select>
-        </div>
-        <button type="button" onclick="restaurarPadrao()"
-                class="text-sm font-medium text-gray-500 hover:text-gray-700 transition pb-2">
-            Últimos 12 meses
+    {{-- Um único form: os campos ficam dentro do modal de filtros --}}
+    <form id="form-relatorio" class="flex items-center gap-2 mb-4">
+        <button type="button" onclick="abrirFiltros()"
+                class="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-600 px-4 py-2 rounded-lg text-sm font-medium transition">
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+            </svg>
+            Filtros
+            <span id="contador-filtros" class="hidden bg-blue-600 text-white text-xs font-semibold rounded-full px-1.5 py-0.5 leading-none">0</span>
         </button>
+
+        {{-- Modal de filtros --}}
+        <div id="modal-filtros" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/50" onclick="fecharFiltros()"></div>
+
+            <div class="relative bg-white rounded-xl shadow-xl w-full max-w-lg max-h-full overflow-y-auto">
+                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                    <h2 class="text-base font-semibold text-gray-800">Filtros</h2>
+                    <button type="button" onclick="fecharFiltros()" class="text-gray-400 hover:text-gray-600 transition" aria-label="Fechar">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="px-6 py-5 space-y-4">
+                    <div>
+                        <span class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1.5">Período</span>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="filtro-mes-inicio" class="block text-xs text-gray-500 mb-1">De</label>
+                                <input type="month" name="mes_inicio" id="filtro-mes-inicio" value="{{ $filtros['mes_inicio'] }}" max="{{ now()->format('Y-m') }}"
+                                       class="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
+                            </div>
+                            <div>
+                                <label for="filtro-mes-fim" class="block text-xs text-gray-500 mb-1">Até</label>
+                                <input type="month" name="mes_fim" id="filtro-mes-fim" value="{{ $filtros['mes_fim'] }}" max="{{ now()->format('Y-m') }}"
+                                       class="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1.5">Por padrão mostra os últimos 12 meses (o mês atual e os 11 anteriores). Máximo de 36 meses.</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="filtro-tipo" class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1.5">Documentos</label>
+                            <select name="tipo" id="filtro-tipo"
+                                    class="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
+                                <option value="todos" @selected($filtros['tipo'] === 'todos')>NFC-e e NF-e</option>
+                                <option value="nfce" @selected($filtros['tipo'] === 'nfce')>Só NFC-e</option>
+                                <option value="nfe" @selected($filtros['tipo'] === 'nfe')>Só NF-e</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="filtro-metrica" class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1.5">Gráfico mostra</label>
+                            <select name="metrica" id="filtro-metrica"
+                                    class="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
+                                @foreach ($metricas as $chave => $rotulo)
+                                    <option value="{{ $chave }}" @selected($filtros['metrica'] === $chave)>{{ $rotulo }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="filtro-comparar" class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1.5">Comparar com ano anterior</label>
+                        <select name="comparar" id="filtro-comparar"
+                                class="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800">
+                            <option value="nao" @selected($filtros['comparar'] === 'nao')>Não</option>
+                            <option value="sim" @selected($filtros['comparar'] === 'sim')>Sim, mesmo mês do ano anterior</option>
+                        </select>
+                        <p class="text-xs text-gray-400 mt-1.5">Acrescenta uma segunda barra no gráfico e as colunas do ano anterior na tabela.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+                    <button type="button" onclick="limparFiltros()"
+                            class="text-sm font-medium text-gray-500 hover:text-gray-700 transition">
+                        Limpar filtros
+                    </button>
+                    <button type="button" onclick="aplicarFiltros()"
+                            class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg font-semibold text-sm transition">
+                        Aplicar
+                    </button>
+                </div>
+            </div>
+        </div>
     </form>
 
     <div id="resultado-relatorio">
@@ -75,6 +120,64 @@
 
     <script>
         const formRelatorio = document.getElementById('form-relatorio');
+        const modalFiltros = document.getElementById('modal-filtros');
+
+        // Valores "sem filtro" dos campos do modal (o período padrão é o dos últimos 12 meses)
+        const FILTROS_PADRAO = {
+            mes_inicio: '{{ now()->subMonths(11)->format('Y-m') }}',
+            mes_fim: '{{ now()->format('Y-m') }}',
+            tipo: 'todos',
+            metrica: 'liquido',
+            comparar: 'nao',
+        };
+
+        const lerFiltros = () => Object.fromEntries(
+            Object.keys(FILTROS_PADRAO).map((nome) => [nome, formRelatorio.elements[nome].value])
+        );
+
+        const preencherFiltros = (valores) => {
+            Object.entries(valores).forEach(([nome, valor]) => {
+                formRelatorio.elements[nome].value = valor;
+            });
+        };
+
+        // Último estado aplicado: fechar o modal sem clicar em "Aplicar" descarta o que foi mexido
+        let filtrosAplicados = lerFiltros();
+
+        function atualizarContadorFiltros() {
+            const f = lerFiltros();
+            let total = 0;
+
+            if (f.mes_inicio !== FILTROS_PADRAO.mes_inicio || f.mes_fim !== FILTROS_PADRAO.mes_fim) total++;
+            if (f.tipo !== FILTROS_PADRAO.tipo) total++;
+            if (f.metrica !== FILTROS_PADRAO.metrica) total++;
+            if (f.comparar !== FILTROS_PADRAO.comparar) total++;
+
+            const badge = document.getElementById('contador-filtros');
+            badge.innerText = total;
+            badge.classList.toggle('hidden', total === 0);
+        }
+
+        function abrirFiltros() {
+            modalFiltros.classList.remove('hidden');
+        }
+
+        function fecharFiltros() {
+            preencherFiltros(filtrosAplicados);
+            modalFiltros.classList.add('hidden');
+        }
+
+        function aplicarFiltros() {
+            filtrosAplicados = lerFiltros();
+            modalFiltros.classList.add('hidden');
+            atualizarContadorFiltros();
+            buscarRelatorio();
+        }
+
+        function limparFiltros() {
+            preencherFiltros(FILTROS_PADRAO);
+            aplicarFiltros();
+        }
 
         function parametrosRelatorio() {
             return new URLSearchParams(new FormData(formRelatorio));
@@ -103,17 +206,14 @@
             window.location.href = `${rotasExportarRelatorio[formato]}?${parametrosRelatorio().toString()}`;
         }
 
-        // Volta para os últimos 12 meses (o mês atual e os 11 anteriores)
-        function restaurarPadrao() {
-            formRelatorio.elements['mes_inicio'].value = '{{ now()->subMonths(11)->format('Y-m') }}';
-            formRelatorio.elements['mes_fim'].value = '{{ now()->format('Y-m') }}';
-            buscarRelatorio();
-        }
+        formRelatorio.addEventListener('submit', (e) => e.preventDefault());
 
-        document.querySelectorAll('[data-filtro]').forEach((el) => {
-            el.addEventListener('change', buscarRelatorio);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !modalFiltros.classList.contains('hidden')) {
+                fecharFiltros();
+            }
         });
 
-        formRelatorio.addEventListener('submit', (e) => e.preventDefault());
+        atualizarContadorFiltros();
     </script>
 @endsection
