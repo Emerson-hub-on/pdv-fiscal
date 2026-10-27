@@ -62,6 +62,7 @@ use App\Http\Controllers\Relatorios\VendasTributacaoController;
 use App\Http\Controllers\Relatorios\VendasPorVendedorController;
 use App\Http\Controllers\Relatorios\ComparativoMensalVendasController;
 use App\Http\Controllers\Relatorios\ComparativoSemanalVendasController;
+use App\Http\Controllers\Relatorios\ComparativoDiarioVendasController;
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -355,6 +356,13 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::get('vendedor', [VendasPorVendedorController::class, 'index'])->name('vendedor.index');
                 Route::get('vendedor/exportar-excel', [VendasPorVendedorController::class, 'exportarExcel'])->name('vendedor.exportar-excel');
                 Route::get('vendedor/exportar-pdf', [VendasPorVendedorController::class, 'exportarPdf'])->name('vendedor.exportar-pdf');
+            });
+
+            // ---- Gráficos > Comparativo diário de vendas ----
+            Route::prefix('relatorios/graficos')->name('relatorios.graficos.')->group(function () {
+                Route::get('comparativo-diario', [ComparativoDiarioVendasController::class, 'index'])->name('comparativo-diario.index');
+                Route::get('comparativo-diario/exportar-excel', [ComparativoDiarioVendasController::class, 'exportarExcel'])->name('comparativo-diario.exportar-excel');
+                Route::get('comparativo-diario/exportar-pdf', [ComparativoDiarioVendasController::class, 'exportarPdf'])->name('comparativo-diario.exportar-pdf');
             });
 
             // ---- Gráficos > Comparativo semanal de vendas ----
