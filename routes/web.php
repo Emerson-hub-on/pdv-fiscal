@@ -26,6 +26,7 @@ use App\Http\Controllers\ClassificacaoPisCofinsController;
 use App\Http\Controllers\ClassificacaoIpiController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\NotaFiscalController;
+use App\Http\Controllers\MdfeController;
 use App\Http\Controllers\CfopSaidaController;
 use App\Http\Controllers\FormaPagamentoController;
 use App\Http\Controllers\SerieNfeController;
@@ -480,6 +481,11 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 ->name('notasfiscais.previsualizar');
             Route::post('notasfiscais/{notaFiscal}/recalcular', [NotaFiscalController::class, 'recalcular'])
                 ->name('notasfiscais.recalcular');
+
+            Route::get('mdfes/buscar-nfe', [MdfeController::class, 'buscarNfe'])->name('mdfes.buscar-nfe');
+            Route::resource('mdfes', MdfeController::class)
+                ->except(['show'])
+                ->parameters(['mdfes' => 'mdfe']);
 
             Route::get('cfop-saida/listar', [CfopSaidaController::class, 'listar'])->name('cfop-saida.listar');
             Route::post('cfop-saida/criar', [CfopSaidaController::class, 'criar'])->name('cfop-saida.criar');

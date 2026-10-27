@@ -228,6 +228,12 @@
 
                 </div>
 
+                <!-- MDF-e (link direto) -->
+                <a href="{{ route('mdfes.index') }}"
+                   class="block px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                    MDF-e
+                </a>
+
                 <!-- Relatório (nível 2, abre lateral) -->
                 <div class="relative">
                     <button id="btn-relatorio-faturamento" onclick="toggleFlyout('sub-relatorio-faturamento', 'btn-relatorio-faturamento')"
@@ -478,6 +484,7 @@
                     'notasfiscais' => ['Faturamento', 'Nota Fiscal - Saída'],
                     'entradas-nota' => ['Faturamento', 'Nota Fiscal - Entrada'],
                     'series-nfe' => ['Faturamento', 'Séries de NF-e'],
+                    'mdfes' => ['Faturamento', 'MDF-e'],
                     'transportadores' => ['Cadastros', 'Transportadoras'],
                     'veiculos' => ['Cadastros', 'Veículos'],
                     'condutores' => ['Cadastros', 'Condutores'],

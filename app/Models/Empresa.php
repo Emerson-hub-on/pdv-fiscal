@@ -15,6 +15,7 @@ class Empresa extends Model
         'ie', 
         'im', 
         'crt',
+        'rntrc',
         'logradouro', 
         'numero', 
         'complemento', 
