@@ -54,6 +54,8 @@ class VeiculoController extends Controller
             ->with('transportador:id,nome')
             // com transportadora escolhida na nota, só mostra os veículos dela
             ->when($request->filled('transportador_id'), fn ($q) => $q->where('transportador_id', $request->transportador_id))
+            // no MDF-e, o seletor pede só tração ou só reboque
+            ->when($request->filled('tipo'), fn ($q) => $q->where('tipo', $request->tipo))
             ->when($termo !== '', function ($q) use ($termo, $placa) {
                 $q->where(function ($q) use ($termo, $placa) {
                     if ($placa !== '') {
@@ -121,6 +123,9 @@ class VeiculoController extends Controller
             'transportador_id' => $request->input('transportador_id') ?: null,
         ]);
 
+        // Os campos do MDF-e são opcionais aqui: só entram no array validado se o formulário os enviar,
+        // então o cadastro atual continua funcionando e nenhum valor existente é zerado sem querer.
+        // A obrigatoriedade deles é checada na hora de montar o MDF-e.
         return $request->validate([
             'placa' => [
                 'required',
@@ -130,6 +135,12 @@ class VeiculoController extends Controller
             'uf'               => ['required', Rule::in(Transportador::UFS)],
             'rntrc'            => ['nullable', 'regex:/^\d{8}$/'],
             'transportador_id' => ['nullable', 'exists:transportadores,id'],
+            'tipo'             => ['sometimes', Rule::in([Veiculo::TRACAO, Veiculo::REBOQUE])],
+            'tara_kg'          => ['nullable', 'integer', 'min:0', 'max:999999'],
+            'capacidade_kg'    => ['nullable', 'integer', 'min:0', 'max:999999'],
+            'capacidade_m3'    => ['nullable', 'integer', 'min:0', 'max:999'],
+            'tipo_rodado'      => ['nullable', Rule::in(array_keys(Veiculo::TIPOS_RODADO))],
+            'tipo_carroceria'  => ['nullable', Rule::in(array_keys(Veiculo::TIPOS_CARROCERIA))],
         ], [
             'placa.regex'  => 'Placa inválida. Use o formato ABC1234 ou ABC1D23 (Mercosul).',
             'placa.unique' => 'Já existe um veículo cadastrado com essa placa.',

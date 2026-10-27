@@ -3,6 +3,7 @@
         <thead class="bg-gray-700 rounded-lg font-medium text-xs uppercase tracking-wide">
             <tr>
                 <th class="px-4 py-3 text-left font-medium text-amber-50">Placa</th>
+                <th class="px-4 py-3 text-left font-medium text-amber-50">Tipo</th>
                 <th class="px-4 py-3 text-left font-medium text-amber-50">UF</th>
                 <th class="px-4 py-3 text-left font-medium text-amber-50">RNTRC</th>
                 <th class="px-4 py-3 text-left font-medium text-amber-50">Transportadora</th>
@@ -14,6 +15,7 @@
             @forelse ($veiculos as $veiculo)
                 <tr class="hover:bg-gray-200 transition">
                     <td class="px-4 py-3 font-medium text-gray-800 font-mono">{{ $veiculo->placa_formatada }}</td>
+                    <td class="px-4 py-3 text-gray-600">{{ $veiculo->tipo === 'reboque' ? 'Reboque' : 'Tração' }}</td>
                     <td class="px-4 py-3 text-gray-600">{{ $veiculo->uf }}</td>
                     <td class="px-4 py-3 text-gray-600 font-mono text-xs">{{ $veiculo->rntrc ?? '—' }}</td>
                     <td class="px-4 py-3 text-gray-600">{{ $veiculo->transportador?->nome ?? '—' }}</td>
@@ -44,7 +46,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" class="px-4 py-10 text-center text-gray-400 text-sm">Nenhum veículo encontrado.</td>
+                    <td colspan="7" class="px-4 py-10 text-center text-gray-400 text-sm">Nenhum veículo encontrado.</td>
                 </tr>
             @endforelse
         </tbody>

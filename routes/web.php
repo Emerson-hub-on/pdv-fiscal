@@ -512,7 +512,7 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
 
             Route::resource('veiculos', VeiculoController::class)->except(['show', 'destroy']);
             Route::post('veiculos/{veiculo}/toggle-ativo', [VeiculoController::class, 'toggleAtivo'])
-                ->name('veiculos.toggle-ativo');
+                ->name('veiculos.toggleAtivo');
         });
     });
 

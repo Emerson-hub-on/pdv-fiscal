@@ -9,9 +9,40 @@ class Veiculo extends Model
 {
     protected $table = 'veiculos';
 
-    protected $fillable = ['transportador_id', 'placa', 'uf', 'rntrc', 'ativo'];
+    public const TRACAO  = 'tracao';
+    public const REBOQUE = 'reboque';
 
-    protected $casts = ['ativo' => 'boolean'];
+    /** tpRod do MDF-e (confirmar com o XSD vigente antes de gerar o XML) */
+    public const TIPOS_RODADO = [
+        '01' => 'Truck',
+        '02' => 'Toco',
+        '03' => 'Cavalo mecânico',
+        '04' => 'VAN',
+        '05' => 'Utilitário',
+        '06' => 'Outros',
+    ];
+
+    /** tpCar do MDF-e (confirmar com o XSD vigente antes de gerar o XML) */
+    public const TIPOS_CARROCERIA = [
+        '00' => 'Não aplicável',
+        '01' => 'Aberta',
+        '02' => 'Fechada/Baú',
+        '03' => 'Graneleira',
+        '04' => 'Porta container',
+        '05' => 'Sider',
+    ];
+
+    protected $fillable = [
+        'transportador_id', 'tipo', 'placa', 'uf', 'rntrc', 'ativo',
+        'tara_kg', 'capacidade_kg', 'capacidade_m3', 'tipo_rodado', 'tipo_carroceria',
+    ];
+
+    protected $casts = [
+        'ativo'         => 'boolean',
+        'tara_kg'       => 'integer',
+        'capacidade_kg' => 'integer',
+        'capacidade_m3' => 'integer',
+    ];
 
     protected $appends = ['placa_formatada'];
 
@@ -23,6 +54,16 @@ class Veiculo extends Model
     public function scopeAtivos($query)
     {
         return $query->where('ativo', true);
+    }
+
+    public function scopeTracao($query)
+    {
+        return $query->where('tipo', self::TRACAO);
+    }
+
+    public function scopeReboques($query)
+    {
+        return $query->where('tipo', self::REBOQUE);
     }
 
     public function setPlacaAttribute($valor): void

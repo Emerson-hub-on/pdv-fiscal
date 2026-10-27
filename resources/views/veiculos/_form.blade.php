@@ -57,6 +57,70 @@
             </select>
         </div>
 
+
+        <div class="col-span-2 border-t border-gray-100 pt-5 -mb-1">
+            <h2 class="text-sm font-semibold text-gray-800">Dados para o MDF-e</h2>
+            <p class="text-xs text-gray-400 mt-0.5">Opcionais no cadastro, mas obrigatórios para usar o veículo em um MDF-e.</p>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo do veículo</label>
+            <select name="tipo"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white">
+                <option value="tracao" {{ old('tipo', $veiculo->tipo ?? 'tracao') === 'tracao' ? 'selected' : '' }}>Tração (cavalo, caminhão, utilitário)</option>
+                <option value="reboque" {{ old('tipo', $veiculo->tipo ?? 'tracao') === 'reboque' ? 'selected' : '' }}>Reboque / semirreboque</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de rodado</label>
+            <select name="tipo_rodado"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white">
+                <option value="">Selecione...</option>
+                @foreach (\App\Models\Veiculo::TIPOS_RODADO as $codigo => $rotulo)
+                    <option value="{{ $codigo }}" {{ (string) old('tipo_rodado', $veiculo->tipo_rodado ?? '') === (string) $codigo ? 'selected' : '' }}>{{ $rotulo }}</option>
+                @endforeach
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de carroceria</label>
+            <select name="tipo_carroceria"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white">
+                <option value="">Selecione...</option>
+                @foreach (\App\Models\Veiculo::TIPOS_CARROCERIA as $codigo => $rotulo)
+                    <option value="{{ $codigo }}" {{ (string) old('tipo_carroceria', $veiculo->tipo_carroceria ?? '') === (string) $codigo ? 'selected' : '' }}>{{ $rotulo }}</option>
+                @endforeach
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+                Tara <span class="text-xs text-gray-400 font-normal">(kg)</span>
+            </label>
+            <input type="number" name="tara_kg" min="0" max="999999" step="1" inputmode="numeric"
+                   value="{{ old('tara_kg', $veiculo->tara_kg ?? '') }}"
+                   class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+                Capacidade <span class="text-xs text-gray-400 font-normal">(kg)</span>
+            </label>
+            <input type="number" name="capacidade_kg" min="0" max="999999" step="1" inputmode="numeric"
+                   value="{{ old('capacidade_kg', $veiculo->capacidade_kg ?? '') }}"
+                   class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+                Capacidade <span class="text-xs text-gray-400 font-normal">(m³, opcional)</span>
+            </label>
+            <input type="number" name="capacidade_m3" min="0" max="999" step="1" inputmode="numeric"
+                   value="{{ old('capacidade_m3', $veiculo->capacidade_m3 ?? '') }}"
+                   class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+        </div>
+
     </div>
 </div>
 
