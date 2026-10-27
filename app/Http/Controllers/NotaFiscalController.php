@@ -19,6 +19,7 @@ use App\Models\ProdutoVariante;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use NFePHP\DA\NFe\Danfe;
 
 
 
@@ -859,12 +860,30 @@ class NotaFiscalController extends Controller
         return $itens;
     }
 
+    /** DANFE em PDF a partir do XML autorizado, aberto no navegador. */
     public function danfe(NotaFiscal $notaFiscal)
     {
-        abort_if($notaFiscal->status !== 'emitida', 404);
+        abort_if(!in_array($notaFiscal->status, ['emitida', 'cancelada'], true) || !$notaFiscal->xml, 404);
 
-        // (new NotaFiscalService())->gerarDanfe($notaFiscal) -> retorna PDF (usando NFePHP\DA\NFe\Danfe)
-        abort(501, 'Geração de DANFE ainda não implementada.');
+        try {
+            $danfe = new Danfe($notaFiscal->xml);
+            $danfe->debugMode(false);
+            // O XML guardado é o da autorização; o cancelamento é um evento à parte
+            $danfe->setCancelFlag($notaFiscal->status === 'cancelada');
+
+            $pdf = $danfe->render();
+        } catch (\Throwable $e) {
+            report($e); // trace completo em storage/logs/laravel.log
+
+            // Arquivo:linha ajuda a achar o que o DANFE não encontrou no XML (pode remover depois)
+            return back()->withErrors(['emissao' => 'Não foi possível gerar o DANFE: ' . $e->getMessage()
+                . ' [' . basename($e->getFile()) . ':' . $e->getLine() . ']']);
+        }
+
+        return response($pdf, 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="DANFE-' . ($notaFiscal->chave_acesso ?: $notaFiscal->numero) . '.pdf"',
+        ]);
     }
 
     public function xml(NotaFiscal $notaFiscal)

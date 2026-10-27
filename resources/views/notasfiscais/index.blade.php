@@ -158,8 +158,13 @@
 
                         <div id="dropdown-acoes-{{ $nota->id }}"
                             class="hidden fixed bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-44 z-50 text-left">
-                            <a href="{{ route('notasfiscais.previsualizar', $nota) }}" target="_blank"
-                            class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Pré-visualizar</a>
+                            @if ($nota->status === 'emitida')
+                                <a href="{{ route('notasfiscais.danfe', $nota) }}" target="_blank"
+                                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Ver DANFE (PDF)</a>
+                            @else
+                                <a href="{{ route('notasfiscais.previsualizar', $nota) }}" target="_blank"
+                                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Pré-visualizar</a>
+                            @endif
 
                                 @if ($nota->status === 'rascunho')
                                     <a href="{{ route('notasfiscais.edit', $nota) }}"
