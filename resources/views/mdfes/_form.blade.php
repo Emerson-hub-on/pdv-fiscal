@@ -40,11 +40,14 @@
     </div>
 @endif
 
+{{-- Card único (abas + painéis), igual ao form da empresa --}}
+<div class="bg-white rounded-xl shadow-sm border border-gray-200">
+
 {{-- ===================== BARRA DE ABAS ===================== --}}
-<div class="flex flex-wrap gap-1 border-b border-gray-200 mb-6">
+<div class="flex overflow-x-auto border-b border-gray-200">
     @foreach ($abas as $chave => $rotulo)
         <button type="button" data-aba="{{ $chave }}" onclick="abrirAba('{{ $chave }}')"
-                class="aba-botao -mb-px flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">
+                class="aba-botao flex items-center gap-2 px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">
             {{ $rotulo }}
             @if (in_array($chave, ['percurso', 'carregamentos', 'documentos']))
                 <span data-contador="{{ $chave }}" class="px-1.5 py-0.5 rounded-full text-xs bg-gray-100 text-gray-500">0</span>
@@ -54,7 +57,7 @@
 </div>
 
 {{-- ===================== DADOS GERAIS ===================== --}}
-<div data-painel="gerais" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+<div data-painel="gerais" class="p-6">
     <div class="grid grid-cols-3 gap-5">
 
         <div class="col-span-2">
@@ -127,7 +130,7 @@
 </div>
 
 {{-- ===================== PERCURSO ===================== --}}
-<div data-painel="percurso" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+<div data-painel="percurso" class="hidden p-6">
     <p class="text-xs text-gray-400 mb-4">Estados por onde a carga passa entre o início e o fim, na ordem da viagem (opcional quando início e fim são vizinhos).</p>
 
     <div class="flex items-center gap-2 mb-3">
@@ -144,7 +147,7 @@
 </div>
 
 {{-- ===================== CARREGAMENTO ===================== --}}
-<div data-painel="carregamentos" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+<div data-painel="carregamentos" class="hidden p-6">
     <p class="text-xs text-gray-400 mb-4">Informe ao menos um município. Os municípios de descarga vêm automaticamente do cadastro dos clientes das NF-e.</p>
 
     <div class="grid grid-cols-12 gap-2 mb-3">
@@ -163,7 +166,7 @@
 </div>
 
 {{-- ===================== DOCUMENTOS ===================== --}}
-<div data-painel="documentos" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+<div data-painel="documentos" class="hidden p-6">
     <p class="text-xs text-gray-400 mb-4">Só aparecem NF-e emitidas que ainda não estão em outro MDF-e em rascunho ou emitido.</p>
 
     <div class="relative mb-4">
@@ -176,7 +179,7 @@
 </div>
 
 {{-- ===================== VEÍCULOS E CONDUTORES ===================== --}}
-<div data-painel="veiculos" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+<div data-painel="veiculos" class="hidden p-6">
     <div class="grid grid-cols-2 gap-6">
 
         <div>
@@ -209,6 +212,8 @@
         </div>
     </div>
 </div>
+
+</div>{{-- /card --}}
 
 <div class="mt-6 flex gap-3">
     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-semibold text-sm transition">
