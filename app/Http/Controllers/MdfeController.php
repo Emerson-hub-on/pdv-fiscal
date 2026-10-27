@@ -294,20 +294,44 @@ class MdfeController extends Controller
         abort_if(!$mdfe->xml, 404, 'Este MDF-e ainda não tem XML autorizado.');
 
         try {
-            $damdfe = new Damdfe($mdfe->xml);
+            $damdfe = new Damdfe($this->xmlParaDamdfe($mdfe->xml));
             $damdfe->debugMode(false);
             // O XML guardado é o da autorização; o cancelamento é um evento à parte, então sinalizamos aqui
             $damdfe->setCancelFlag($mdfe->status === Mdfe::STATUS_CANCELADO);
 
             $pdf = $damdfe->render();
         } catch (\Throwable $e) {
-            return back()->withErrors(['pdf' => 'Não foi possível gerar o DAMDFE: ' . $e->getMessage()]);
+            report($e); // trace completo em storage/logs/laravel.log
+
+            // Arquivo:linha ajuda a achar qual tag do XML o DAMDFE não encontrou (pode remover depois)
+            return back()->withErrors(['pdf' => 'Não foi possível gerar o DAMDFE: ' . $e->getMessage()
+                . ' [' . basename($e->getFile()) . ':' . $e->getLine() . ']']);
         }
 
         return response($pdf, 200, [
             'Content-Type'        => 'application/pdf',
             'Content-Disposition' => 'inline; filename="DAMDFE-' . $mdfe->chave_acesso . '.pdf"',
         ]);
+    }
+
+    /**
+     * Contorna um bug do sped-da (v1.1.x): o DAMDFE quebra quando o <rodo> não tem <infANTT>, ou seja,
+     * quando o MDF-e foi emitido sem RNTRC (permitido, por exemplo, na carga própria).
+     * Só o XML usado para desenhar o PDF recebe um <infANTT/> vazio; o XML guardado/autorizado não muda.
+     */
+    private function xmlParaDamdfe(string $xml): string
+    {
+        $dom = new \DOMDocument();
+        if (!@$dom->loadXML($xml)) {
+            return $xml;
+        }
+
+        $rodo = $dom->getElementsByTagName('rodo')->item(0);
+        if ($rodo && $rodo->getElementsByTagName('infANTT')->length === 0) {
+            $rodo->insertBefore($dom->createElementNS($rodo->namespaceURI, 'infANTT'), $rodo->firstChild);
+        }
+
+        return $dom->saveXML();
     }
 
     // ------------------------------------------------------------------
