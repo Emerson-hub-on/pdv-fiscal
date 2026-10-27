@@ -174,6 +174,10 @@
                         class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition border-t border-white/10">
                             Veículos
                         </a>
+                        <a href="{{ route('condutores.index') }}"
+                        class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition border-t border-white/10">
+                            Condutores
+                        </a>
                     </div>
                 </div>
             </div>
@@ -476,6 +480,7 @@
                     'series-nfe' => ['Faturamento', 'Séries de NF-e'],
                     'transportadores' => ['Cadastros', 'Transportadoras'],
                     'veiculos' => ['Cadastros', 'Veículos'],
+                    'condutores' => ['Cadastros', 'Condutores'],
                     'contas-pagar' => ['Financeiro', 'Contas a Pagar'],
                     'contas-receber' => ['Financeiro', 'Contas a Receber'],
                     'pedidos-compra' => ['Financeiro', 'Pedidos de Compra'],

@@ -32,6 +32,7 @@ use App\Http\Controllers\SerieNfeController;
 use App\Http\Controllers\InutilizacaoNfeController;
 use App\Http\Controllers\TransportadorController;
 use App\Http\Controllers\VeiculoController;
+use App\Http\Controllers\CondutorController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\PdvEmissaoController;
 use App\Http\Controllers\EntradaNotaController;
@@ -491,6 +492,7 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
 
             Route::get('transportadores/listar', [TransportadorController::class, 'listar'])->name('transportadores.listar');
             Route::get('veiculos/listar', [VeiculoController::class, 'listar'])->name('veiculos.listar');
+            Route::get('condutores/listar', [CondutorController::class, 'listar'])->name('condutores.listar');
         });
 
         // ---------------- NUMERAÇÃO DE NF-e ----------------
@@ -512,7 +514,13 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
 
             Route::resource('veiculos', VeiculoController::class)->except(['show', 'destroy']);
             Route::post('veiculos/{veiculo}/toggle-ativo', [VeiculoController::class, 'toggleAtivo'])
-                ->name('veiculos.toggleAtivo');
+                ->name('veiculos.toggle-ativo');
+
+            Route::resource('condutores', CondutorController::class)
+                ->except(['show', 'destroy'])
+                ->parameters(['condutores' => 'condutor']);
+            Route::post('condutores/{condutor}/toggle-ativo', [CondutorController::class, 'toggleAtivo'])
+                ->name('condutores.toggleAtivo');
         });
     });
 
