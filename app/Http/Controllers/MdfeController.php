@@ -7,12 +7,15 @@ use App\Models\Empresa;
 use App\Models\Mdfe;
 use App\Models\MdfeCondutor;
 use App\Models\MdfeDocumento;
+use App\Models\MdfeEvento;
 use App\Models\MdfeMunicipio;
 use App\Models\MdfePercurso;
 use App\Models\MdfeVeiculo;
 use App\Models\NotaFiscal;
+use App\Models\SerieMdfe;
 use App\Models\Transportador;
 use App\Models\Veiculo;
+use App\Services\MdfeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -59,12 +62,14 @@ class MdfeController extends Controller
     {
         $dados = $this->validarDados($request);
 
-        DB::transaction(function () use ($dados) {
+        $mdfe = DB::transaction(function () use ($dados) {
             $mdfe = Mdfe::create($this->camposCabecalho($dados) + ['operador_id' => auth()->id()]);
             $this->gravarFilhos($mdfe, $dados);
+
+            return $mdfe;
         });
 
-        return redirect()->route('mdfes.index')->with('sucesso', 'MDF-e salvo como rascunho.');
+        return redirect()->route('mdfes.show', $mdfe)->with('sucesso', 'MDF-e salvo como rascunho.');
     }
 
     public function edit(Mdfe $mdfe)
@@ -93,7 +98,7 @@ class MdfeController extends Controller
             $this->gravarFilhos($mdfe, $dados);
         });
 
-        return redirect()->route('mdfes.index')->with('sucesso', 'MDF-e atualizado com sucesso.');
+        return redirect()->route('mdfes.show', $mdfe)->with('sucesso', 'MDF-e atualizado com sucesso.');
     }
 
     public function destroy(Mdfe $mdfe)
@@ -133,6 +138,153 @@ class MdfeController extends Controller
             ->get();
 
         return response()->json($notas->map(fn (NotaFiscal $n) => $this->itemDocumento($n)));
+    }
+
+    // ------------------------------------------------------------------
+    // Visualização, emissão e eventos
+    // ------------------------------------------------------------------
+
+    public function show(Mdfe $mdfe)
+    {
+        $mdfe->load([
+            'percursos',
+            'municipios.documentos.notaFiscal.cliente',
+            'veiculos.condutores',
+            'eventos.operador',
+        ]);
+
+        return view('mdfes.show', compact('mdfe'));
+    }
+
+    public function emitir(Mdfe $mdfe)
+    {
+        abort_if($mdfe->status !== Mdfe::STATUS_RASCUNHO, 403, 'MDF-e já foi emitido ou cancelado.');
+
+        try {
+            DB::transaction(function () use ($mdfe) {
+                $serie = SerieMdfe::ativas()->lockForUpdate()->firstOrFail();
+                $proximoNumero = $serie->numero_atual + 1;
+
+                $mdfe->serie_mdfe_id = $serie->id;
+                $mdfe->serie = $serie->serie;
+                $mdfe->numero = $proximoNumero;
+                $mdfe->save();
+
+                $serie->update(['numero_atual' => $proximoNumero]);
+
+                $resultado = (new MdfeService())->emitir($mdfe);
+
+                $mdfe->status = Mdfe::STATUS_EMITIDO;
+                $mdfe->chave_acesso = $resultado['chave_acesso'];
+                $mdfe->protocolo = $resultado['protocolo'];
+                $mdfe->xml = $resultado['xml'];
+                $mdfe->codigo_numerico = $resultado['codigo_numerico'];
+                $mdfe->emitido_em = now();
+                $mdfe->motivo_rejeicao = null;
+                $mdfe->save();
+            });
+        } catch (\Throwable $e) {
+            // A transação desfez número e série; o rascunho fica como estava, com o motivo da falha
+            $mdfe->refresh();
+            $mdfe->motivo_rejeicao = $e->getMessage();
+            $mdfe->save();
+
+            return back()->withErrors(['emissao' => 'Falha ao emitir: ' . $e->getMessage()]);
+        }
+
+        return redirect()->route('mdfes.show', $mdfe)->with('sucesso', 'MDF-e emitido com sucesso!');
+    }
+
+    public function cancelar(Request $request, Mdfe $mdfe)
+    {
+        abort_if($mdfe->status !== Mdfe::STATUS_EMITIDO, 403, 'Só é possível cancelar MDF-e emitido e ainda não encerrado.');
+
+        $dados = $request->validate([
+            'justificativa' => ['required', 'string', 'min:15', 'max:255'],
+        ], [
+            'justificativa.required' => 'Informe a justificativa do cancelamento.',
+            'justificativa.min'      => 'A justificativa do cancelamento deve ter ao menos 15 caracteres.',
+        ]);
+
+        try {
+            $resultado = (new MdfeService())->cancelar($mdfe, $dados['justificativa']);
+        } catch (\Throwable $e) {
+            return back()->withErrors(['cancelamento' => $e->getMessage()])->withInput();
+        }
+
+        DB::transaction(function () use ($mdfe, $dados, $resultado) {
+            // forceFill: status e protocolos não são mass-assignable no model (só o cabeçalho é)
+            $mdfe->forceFill([
+                'status'                 => Mdfe::STATUS_CANCELADO,
+                'cancelado_em'           => now(),
+                'motivo_cancelamento'    => $dados['justificativa'],
+                'protocolo_cancelamento' => $resultado['protocolo'],
+            ])->save();
+
+            $mdfe->eventos()->create([
+                'tipo'          => MdfeEvento::CANCELAMENTO,
+                'codigo_evento' => '110111',
+                'justificativa' => $dados['justificativa'],
+                'protocolo'     => $resultado['protocolo'],
+                'xml'           => $resultado['xml'],
+                'operador_id'   => auth()->id(),
+                'registrado_em' => now(),
+            ]);
+        });
+
+        return redirect()->route('mdfes.show', $mdfe)->with('sucesso', 'MDF-e cancelado. Protocolo: ' . $resultado['protocolo']);
+    }
+
+    public function encerrar(Request $request, Mdfe $mdfe)
+    {
+        abort_if($mdfe->status !== Mdfe::STATUS_EMITIDO, 403, 'Só é possível encerrar MDF-e emitido.');
+
+        $dados = $request->validate([
+            'municipio_id' => [
+                'required',
+                Rule::exists('mdfe_municipios', 'id')->where('mdfe_id', $mdfe->id),
+            ],
+        ], [
+            'municipio_id.required' => 'Selecione o município de encerramento.',
+        ]);
+
+        $municipio = MdfeMunicipio::findOrFail($dados['municipio_id']);
+
+        try {
+            $resultado = (new MdfeService())->encerrar($mdfe, $municipio->codigo_ibge, $municipio->uf);
+        } catch (\Throwable $e) {
+            return back()->withErrors(['encerramento' => $e->getMessage()]);
+        }
+
+        DB::transaction(function () use ($mdfe, $municipio, $resultado) {
+            $mdfe->forceFill([
+                'status'                 => Mdfe::STATUS_ENCERRADO,
+                'encerrado_em'           => now(),
+                'protocolo_encerramento' => $resultado['protocolo'],
+            ])->save();
+
+            $mdfe->eventos()->create([
+                'tipo'          => MdfeEvento::ENCERRAMENTO,
+                'codigo_evento' => '110112',
+                'dados'         => ['codigo_ibge' => $municipio->codigo_ibge, 'municipio' => $municipio->nome, 'uf' => $municipio->uf],
+                'protocolo'     => $resultado['protocolo'],
+                'xml'           => $resultado['xml'],
+                'operador_id'   => auth()->id(),
+                'registrado_em' => now(),
+            ]);
+        });
+
+        return redirect()->route('mdfes.show', $mdfe)->with('sucesso', 'MDF-e encerrado. Protocolo: ' . $resultado['protocolo']);
+    }
+
+    public function xml(Mdfe $mdfe)
+    {
+        abort_if(!$mdfe->xml, 404, 'Este MDF-e ainda não tem XML autorizado.');
+
+        return response($mdfe->xml, 200, [
+            'Content-Type'        => 'application/xml',
+            'Content-Disposition' => 'attachment; filename="' . $mdfe->chave_acesso . '.xml"',
+        ]);
     }
 
     // ------------------------------------------------------------------
@@ -408,7 +560,8 @@ class MdfeController extends Controller
         return [
             'mdfe'              => $mdfe,
             'estado'            => $this->estadoDoFormulario($mdfe, $empresa),
-            'rntrcPadrao'       => $empresa?->rntrc,
+            // O RNTRC é digitado no manifesto (pode mudar); sugere o último usado para poupar digitação
+            'rntrcPadrao'       => Mdfe::latest('id')->value('rntrc'),
             'ufPadrao'          => $empresa?->uf,
             'tiposEmitente'     => Mdfe::TIPOS_EMITENTE,
             'tiposTransportador' => Mdfe::TIPOS_TRANSPORTADOR,

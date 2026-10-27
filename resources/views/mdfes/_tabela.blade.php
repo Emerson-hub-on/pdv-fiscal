@@ -36,8 +36,9 @@
                         </span>
                     </td>
                     <td class="px-4 py-3">
-                        @if ($mdfe->status === 'rascunho')
-                            <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-3">
+                            <a href="{{ route('mdfes.show', $mdfe) }}" class="text-gray-600 hover:text-gray-800 font-medium">Ver</a>
+                            @if ($mdfe->status === 'rascunho')
                                 <a href="{{ route('mdfes.edit', $mdfe) }}" class="text-blue-600 hover:text-blue-700 font-medium">Editar</a>
                                 <form action="{{ route('mdfes.destroy', $mdfe) }}" method="POST"
                                       onsubmit="return confirm('Excluir este rascunho de MDF-e?')">
@@ -45,10 +46,8 @@
                                     @method('DELETE')
                                     <button type="submit" class="text-red-600 hover:text-red-700 font-medium">Excluir</button>
                                 </form>
-                            </div>
-                        @else
-                            <span class="text-gray-400">—</span>
-                        @endif
+                            @endif
+                        </div>
                     </td>
                 </tr>
             @empty

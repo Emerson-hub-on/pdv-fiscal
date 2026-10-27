@@ -483,9 +483,11 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 ->name('notasfiscais.recalcular');
 
             Route::get('mdfes/buscar-nfe', [MdfeController::class, 'buscarNfe'])->name('mdfes.buscar-nfe');
-            Route::resource('mdfes', MdfeController::class)
-                ->except(['show'])
-                ->parameters(['mdfes' => 'mdfe']);
+            Route::resource('mdfes', MdfeController::class)->parameters(['mdfes' => 'mdfe']);
+            Route::post('mdfes/{mdfe}/emitir', [MdfeController::class, 'emitir'])->name('mdfes.emitir');
+            Route::post('mdfes/{mdfe}/cancelar', [MdfeController::class, 'cancelar'])->name('mdfes.cancelar');
+            Route::post('mdfes/{mdfe}/encerrar', [MdfeController::class, 'encerrar'])->name('mdfes.encerrar');
+            Route::get('mdfes/{mdfe}/xml', [MdfeController::class, 'xml'])->name('mdfes.xml');
 
             Route::get('cfop-saida/listar', [CfopSaidaController::class, 'listar'])->name('cfop-saida.listar');
             Route::post('cfop-saida/criar', [CfopSaidaController::class, 'criar'])->name('cfop-saida.criar');
