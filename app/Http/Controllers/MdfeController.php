@@ -20,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use NFePHP\DA\MDFe\Damdfe;
 
 class MdfeController extends Controller
 {
@@ -284,6 +285,28 @@ class MdfeController extends Controller
         return response($mdfe->xml, 200, [
             'Content-Type'        => 'application/xml',
             'Content-Disposition' => 'attachment; filename="' . $mdfe->chave_acesso . '.xml"',
+        ]);
+    }
+
+    /** DAMDFE em PDF, aberto no navegador para o operador conferir/imprimir. */
+    public function pdf(Mdfe $mdfe)
+    {
+        abort_if(!$mdfe->xml, 404, 'Este MDF-e ainda não tem XML autorizado.');
+
+        try {
+            $damdfe = new Damdfe($mdfe->xml);
+            $damdfe->debugMode(false);
+            // O XML guardado é o da autorização; o cancelamento é um evento à parte, então sinalizamos aqui
+            $damdfe->setCancelFlag($mdfe->status === Mdfe::STATUS_CANCELADO);
+
+            $pdf = $damdfe->render();
+        } catch (\Throwable $e) {
+            return back()->withErrors(['pdf' => 'Não foi possível gerar o DAMDFE: ' . $e->getMessage()]);
+        }
+
+        return response($pdf, 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="DAMDFE-' . $mdfe->chave_acesso . '.pdf"',
         ]);
     }
 

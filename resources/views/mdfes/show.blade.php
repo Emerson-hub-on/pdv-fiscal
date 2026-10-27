@@ -46,6 +46,8 @@
             @endif
 
             @if ($mdfe->xml)
+                <a href="{{ route('mdfes.pdf', $mdfe) }}" target="_blank"
+                   class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition">Ver DAMDFE (PDF)</a>
                 <a href="{{ route('mdfes.xml', $mdfe) }}"
                    class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition">Baixar XML</a>
             @endif

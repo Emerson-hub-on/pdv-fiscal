@@ -488,6 +488,7 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
             Route::post('mdfes/{mdfe}/cancelar', [MdfeController::class, 'cancelar'])->name('mdfes.cancelar');
             Route::post('mdfes/{mdfe}/encerrar', [MdfeController::class, 'encerrar'])->name('mdfes.encerrar');
             Route::get('mdfes/{mdfe}/xml', [MdfeController::class, 'xml'])->name('mdfes.xml');
+            Route::get('mdfes/{mdfe}/pdf', [MdfeController::class, 'pdf'])->name('mdfes.pdf');
 
             Route::get('cfop-saida/listar', [CfopSaidaController::class, 'listar'])->name('cfop-saida.listar');
             Route::post('cfop-saida/criar', [CfopSaidaController::class, 'criar'])->name('cfop-saida.criar');
