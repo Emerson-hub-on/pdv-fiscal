@@ -23,15 +23,24 @@ class NotaFiscalService
     protected float $totalIPI = 0.0;
     protected bool $houveIBSCBS = false;
 
+    /** Pré-visualização do rascunho: monta o XML sem assinar, sem enviar e sem gravar nada no banco. */
+    protected bool $previa = false;
+
     /** Impostos de cada item como foram para o XML (índice = posição do item). */
     protected array $impostosItens = [];
 
-    public function __construct()
+    public function __construct(bool $previa = false)
     {
+        $this->previa = $previa;
         $this->empresa = Empresa::first();
 
         if (!$this->empresa) {
             throw new Exception('Dados da empresa não cadastrados. Preencha o cadastro da empresa antes de emitir.');
+        }
+
+        // Pré-visualização não assina nem fala com a SEFAZ: dispensa o certificado
+        if ($previa) {
+            return;
         }
 
         if (!$this->empresa->certificado_base64) {
@@ -75,19 +84,7 @@ class NotaFiscalService
         $xmlAssinado = null;
 
         try {
-            $nfe = new Make('PL_010');
-
-            $this->montarInfNFe($nfe);
-            $this->montarIde($nfe, $notaFiscal);
-            $this->montarNFref($nfe, $notaFiscal);
-            $this->montarEmit($nfe);
-            $this->montarDest($nfe, $notaFiscal);
-            $this->montarItens($nfe, $notaFiscal);
-            $this->montarTotais($nfe, $notaFiscal);
-            $this->montarTransporte($nfe, $notaFiscal);
-            $this->montarPagamento($nfe, $notaFiscal);
-            $this->montarInfAdicional($nfe, $notaFiscal);
-            $this->montarResponsavelTecnico($nfe);
+            $nfe = $this->montarNfe($notaFiscal);
 
             $xmlBruto = $nfe->getXML();
 
@@ -114,6 +111,48 @@ class NotaFiscalService
         }
 
         return $this->processarResposta($resposta, $notaFiscal, $xmlAssinado);
+    }
+
+    /** Mesma montagem para emissão e pré-visualização — assim o rascunho mostra exatamente o que seria emitido. */
+    protected function montarNfe(NotaFiscal $notaFiscal): Make
+    {
+        $nfe = new Make('PL_010');
+
+        $this->montarInfNFe($nfe);
+        $this->montarIde($nfe, $notaFiscal);
+        $this->montarNFref($nfe, $notaFiscal);
+        $this->montarEmit($nfe);
+        $this->montarDest($nfe, $notaFiscal);
+        $this->montarItens($nfe, $notaFiscal);
+        $this->montarTotais($nfe, $notaFiscal);
+        $this->montarTransporte($nfe, $notaFiscal);
+        $this->montarPagamento($nfe, $notaFiscal);
+        $this->montarInfAdicional($nfe, $notaFiscal);
+        $this->montarResponsavelTecnico($nfe);
+
+        return $nfe;
+    }
+
+    /**
+     * XML do rascunho (sem assinatura, sem protocolo) só para desenhar o DANFE de pré-visualização.
+     * Use com new NotaFiscalService(true). Não consome numeração e não grava nada.
+     */
+    public function xmlPrevia(NotaFiscal $notaFiscal): string
+    {
+        if (!$this->previa) {
+            throw new Exception('xmlPrevia() só pode ser usado com new NotaFiscalService(true).');
+        }
+
+        $notaFiscal->load('itens.produto', 'itens.ncm', 'itens.cest', 'itens.tributacao', 'itens.pisCofins', 'itens.ipi', 'itens.classificacaoTributaria', 'cliente', 'cfopSaida', 'formaPagamento', 'transportador', 'veiculo');
+
+        $nfe = $this->montarNfe($notaFiscal);
+        $xml = $nfe->getXML();
+
+        if (!$xml) {
+            throw new Exception('Não foi possível montar o XML da pré-visualização: ' . implode(' | ', $nfe->getErrors()));
+        }
+
+        return $xml;
     }
 
     protected function processarResposta(string $resposta, NotaFiscal $notaFiscal, string $xmlAssinado): array
@@ -156,14 +195,22 @@ class NotaFiscalService
         $cNF = str_pad((string) rand(0, 99999999), 8, '0', STR_PAD_LEFT);
         $cUF = $this->codigoUf($this->empresa->uf);
 
+        // Rascunho ainda não tem série/número (só nascem em emitir()): na pré-visualização usa 1
+        $serie  = $notaFiscal->serie;
+        $numero = $notaFiscal->numero;
+        if ($this->previa) {
+            $serie  = $serie ?: 1;
+            $numero = $numero ?: 1;
+        }
+
         $chave = Keys::build(
             (string) $cUF,
             $dhEmi->format('y'),
             $dhEmi->format('m'),
             $this->empresa->cnpj,
             '55',
-            (string) $notaFiscal->serie,
-            (string) $notaFiscal->numero,
+            (string) $serie,
+            (string) $numero,
             '1', // tpEmis: normal — sem contingência SEFAZ nesta primeira versão
             $cNF
         );
@@ -183,8 +230,8 @@ class NotaFiscalService
         $std->cNF = $cNF;
         $std->natOp = $notaFiscal->natureza_operacao;
         $std->mod = 55;
-        $std->serie = $notaFiscal->serie;
-        $std->nNF = $notaFiscal->numero;
+        $std->serie = $serie;
+        $std->nNF = $numero;
         $std->dhEmi = $dhEmi->format('Y-m-d\TH:i:sP');
         $std->tpNF = $notaFiscal->cfopSaida->tipo_operacao === 'entrada' ? 0 : 1;
         $std->idDest = $idDest;
@@ -251,13 +298,13 @@ class NotaFiscalService
         $enderecoCompleto = $cliente->logradouro && $cliente->numero && $cliente->bairro
             && $cliente->municipio && $cliente->cod_municipio && $cliente->uf && $cliente->cep;
 
-        if (!$enderecoCompleto) {
+        if (!$enderecoCompleto && !$this->previa) {
             throw new Exception("Endereço do cliente '{$cliente->nome}' está incompleto — obrigatório para NF-e modelo 55.");
         }
 
         $std = new \stdClass();
 
-        if (strlen($cliente->cpf_cnpj) === 11) {
+        if (strlen((string) $cliente->cpf_cnpj) === 11) {
             $std->CPF = $cliente->cpf_cnpj;
         } else {
             $std->CNPJ = $cliente->cpf_cnpj;
@@ -423,8 +470,9 @@ class NotaFiscalService
 if ($this->empresa->crt <= 2) {
     $icms = new \stdClass();
     $icms->item = $n;
-    $icms->orig = $produto->origem_mercadoria;
-    $icms->CSOSN = $trib?->csosn;
+    $icms->orig = $produto->origem_mercadoria ?? ($this->previa ? 0 : null);
+    // Pré-visualização: produto sem tributação cadastrada usa 102 só para o rascunho poder ser desenhado
+    $icms->CSOSN = $trib?->csosn ?? ($this->previa ? '102' : null);
 
     // vBC/pICMS/vICMS só existem no grupo ICMSSN para os CSOSN 500 (ST retida)
     // e 900 (Outros) — nos demais, a lib ignora esses campos silenciosamente,
@@ -475,11 +523,15 @@ if ($this->empresa->crt <= 2) {
         }
     }
                 else {
+                    if (!$trib && !$this->previa) {
+                        throw new Exception("Produto '{$produto->nome}' está sem tributação de ICMS cadastrada.");
+                    }
+
                     $cstIcms = str_pad((string) (int) ($trib?->cst_icms ?? 0), 2, '0', STR_PAD_LEFT);
 
                     $icms = new \stdClass();
                     $icms->item = $n;
-                    $icms->orig = $produto->origem_mercadoria;
+                    $icms->orig = $produto->origem_mercadoria ?? ($this->previa ? 0 : null);
                     $icms->CST = $cstIcms;
 
                     $cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
@@ -497,8 +549,8 @@ if ($this->empresa->crt <= 2) {
 
                         $icms->modBC = 3;
                         $icms->vBC = number_format($baseIcms, 2, '.', '');
-                        $icms->pICMS = number_format($trib->aliquota_icms, 2, '.', '');
-                        $icms->vICMS = number_format($baseIcms * $trib->aliquota_icms / 100, 2, '.', '');
+                        $icms->pICMS = number_format((float) ($trib->aliquota_icms ?? 0), 2, '.', '');
+                        $icms->vICMS = number_format($baseIcms * (float) ($trib->aliquota_icms ?? 0) / 100, 2, '.', '');
 
                         $this->totalICMSBC += (float) $icms->vBC;
                         $this->totalICMS += (float) $icms->vICMS;
@@ -687,6 +739,12 @@ if ($this->empresa->crt <= 2) {
      */
     protected function persistirImpostosItens(array $itensComDesconto): void
     {
+        // Pré-visualização nunca grava: marcar o item como "impostos registrados" faria o rascunho
+        // deixar de calcular pelo cadastro dos produtos.
+        if ($this->previa) {
+            return;
+        }
+
         try {
             foreach ($itensComDesconto as $i => $dado) {
                 $id = $dado['item']->id ?? null;
@@ -803,7 +861,9 @@ if ($this->empresa->crt <= 2) {
 
         if (abs($vNF - (float) $notaFiscal->valor_total) > 0.004) {
             $notaFiscal->valor_total = $vNF;
-            $notaFiscal->save();
+            if (!$this->previa) {
+                $notaFiscal->save();
+            }
         }
 
         $std->vNF = number_format($vNF, 2, '.', '');

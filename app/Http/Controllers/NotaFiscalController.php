@@ -898,169 +898,38 @@ class NotaFiscalController extends Controller
 
     
 
+    /**
+     * Pré-visualização do rascunho: monta o XML sem assinar nem enviar (modo prévia do service)
+     * e desenha o mesmo DANFE da nota emitida — sai marcado como "NFe NÃO PROTOCOLADA / SEM VALOR FISCAL".
+     */
     public function previsualizar(NotaFiscal $notaFiscal)
     {
-        $notaFiscal->load(['itens.produto', 'itens.ncm', 'itens.tributacao', 'itens.ipi', 'cliente']);
-        $empresa = Empresa::first();
+        // Emitida/cancelada tem XML autorizado: o DANFE oficial vale mais que a prévia
+        if (in_array($notaFiscal->status, ['emitida', 'cancelada'], true) && $notaFiscal->xml) {
+            return $this->danfe($notaFiscal);
+        }
 
-        $totalBaseIcms = 0;
-        $totalValorIcms = 0;
+        if (!$notaFiscal->cliente_id || !$notaFiscal->cfop_saida_id || $notaFiscal->itens()->count() === 0) {
+            return back()->withErrors(['emissao' => 'Para pré-visualizar, escolha o cliente, o CFOP e adicione ao menos um item.']);
+        }
 
-        $itens = $notaFiscal->itens->values()->map(function ($item, $index) use ($notaFiscal, &$totalBaseIcms, &$totalValorIcms) {
-            $trib = $item->tributacao;
-            $subtotalBruto = $item->valor_unitario * $item->quantidade;
-            $baseImpostos = $item->base_impostos;
-            $cstOuCsosn = $trib?->csosn ?? $trib?->cst_icms ?? '—';
+        try {
+            $xml = (new NotaFiscalService(true))->xmlPrevia($notaFiscal);
 
-            $cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
+            $danfe = new Danfe($xml);
+            $danfe->debugMode(false);
 
-            // Valores gravados no item: os digitados pelo operador (CFOP com "destacar_bases") ou, depois da emissão,
-            // os mesmos que foram para o XML. Antes disso e sem destaque manual, calcula pelo cadastro.
-            $usaGravados = $item->impostos_manuais || $item->impostos_registrados_em;
+            $pdf = $danfe->render();
+        } catch (\Throwable $e) {
+            report($e);
 
-            if ($usaGravados) {
-                $baseIcms = (float) $item->bc_icms;
-                $valorIcms = (float) $item->valor_icms;
-                $aliquotaIcms = (float) $item->aliquota_icms;
-            } elseif ($trib && $trib->cst_icms && in_array($trib->cst_icms, $cstsComBaseCalculo, true)) {
-                $baseIcms = $baseImpostos;
-                $aliquotaIcms = (float) $trib->aliquota_icms;
-                $valorIcms = $baseIcms * $aliquotaIcms / 100;
-            } else {
-                $baseIcms = 0;
-                $valorIcms = 0;
-                $aliquotaIcms = 0;
-            }
+            return back()->withErrors(['emissao' => 'Não foi possível pré-visualizar: ' . $e->getMessage()
+                . ' [' . basename($e->getFile()) . ':' . $e->getLine() . ']']);
+        }
 
-            $totalBaseIcms += $baseIcms;
-            $totalValorIcms += $valorIcms;
-
-            $ipi = $item->ipi;
-
-            if ($usaGravados) {
-                $valorIpi = (float) $item->valor_ipi;
-                $aliquotaIpi = (float) $item->aliquota_ipi;
-            } elseif ($ipi && $ipi->codigo === '50' && $ipi->aliquota) {
-                $aliquotaIpi = (float) $ipi->aliquota;
-                $valorIpi = $baseImpostos * $aliquotaIpi / 100;
-            } else {
-                $valorIpi = 0;
-                $aliquotaIpi = 0;
-            }
-
-            return [
-                'numero'         => $index + 1,
-                'codigo'         => $item->produto->codigo_interno,
-                'descricao'      => $item->descricao ?? $item->produto->nome,
-                'ncm'            => $item->ncm->codigo ?? '—',
-                'cst'            => $cstOuCsosn,
-                'cfop'           => $item->cfopEfetivo($notaFiscal),
-                'unidade'        => $item->produto->unidade_comercial,
-                'quantidade'     => number_format($item->quantidade, 3, ',', '.'),
-                'valor_unitario' => number_format($item->valor_unitario, 2, ',', '.'),
-                'valor_total'    => number_format($item->valor_total, 2, ',', '.'),
-                'valor_outras_despesas' => number_format($item->valor_outras_despesas, 2, ',', '.'),
-                'bc_icms'        => number_format($baseIcms, 2, ',', '.'),
-                'valor_icms'     => number_format($valorIcms, 2, ',', '.'),
-                'aliquota_icms'  => number_format($aliquotaIcms, 2, ',', '.'),
-                'valor_ipi'      => number_format($valorIpi, 2, ',', '.'),
-                'aliquota_ipi'   => number_format($aliquotaIpi, 2, ',', '.'),
-                'bases_manuais'  => (bool) $item->impostos_manuais,
-                
-            ];
-        });
-
-        $dados = [
-            'emitida'           => $notaFiscal->status !== 'rascunho',
-            'status'            => $notaFiscal->status,
-            'numero'            => $notaFiscal->numero ?? '(a definir)',
-            'serie'             => $notaFiscal->serie ?? '(a definir)',
-            'natureza_operacao' => $notaFiscal->natureza_operacao,
-            'tipo_operacao'     => $notaFiscal->tipo_operacao === 'entrada' ? '0-Entrada' : '1-Saída',
-            'chave_acesso'      => $notaFiscal->chave_acesso ? $this->formatarChave($notaFiscal->chave_acesso) : null,
-            'protocolo'         => $notaFiscal->protocolo,
-            'data_emissao'      => $notaFiscal->emitida_em?->format('d/m/Y H:i') ?? '—',
-            'ambiente'          => (int) $empresa->ambiente === 2 ? 'HOMOLOGAÇÃO' : 'PRODUÇÃO',
-
-            'emitente' => [
-                'razao_social'  => $empresa->razao_social,
-                'nome_fantasia' => $empresa->nome_fantasia,
-                'cnpj'          => $this->formatarCnpj($empresa->cnpj),
-                'ie'            => $empresa->ie,
-                'endereco'      => $empresa->logradouro . ', ' . $empresa->numero . ($empresa->complemento ? ' - ' . $empresa->complemento : ''),
-                'bairro'        => $empresa->bairro,
-                'municipio'     => $empresa->municipio,
-                'uf'            => $empresa->uf,
-                'cep'           => $this->formatarCep($empresa->cep),
-            ],
-
-            'destinatario' => [
-                'nome'      => $notaFiscal->cliente->nome,
-                'documento' => $notaFiscal->cliente->cpf_cnpj_formatado,
-                'ie'        => $notaFiscal->cliente->ie ?? 'ISENTO',
-                'endereco'  => $notaFiscal->cliente->logradouro . ', ' . $notaFiscal->cliente->numero . ($notaFiscal->cliente->complemento ? ' - ' . $notaFiscal->cliente->complemento : ''),
-                'bairro'    => $notaFiscal->cliente->bairro,
-                'municipio' => $notaFiscal->cliente->municipio,
-                'uf'        => $notaFiscal->cliente->uf,
-                'cep'       => $this->formatarCep($notaFiscal->cliente->cep),
-                'telefone'  => $notaFiscal->cliente->telefone,
-            ],
-
-            'totais' => [
-                'base_calculo_icms' => number_format($totalBaseIcms, 2, ',', '.'),
-                'valor_icms'        => number_format($totalValorIcms, 2, ',', '.'),
-                'valor_produtos'    => number_format($notaFiscal->valor_produtos, 2, ',', '.'),
-                'valor_frete'       => number_format($notaFiscal->valor_frete, 2, ',', '.'),
-                'valor_desconto'    => number_format($notaFiscal->valor_desconto, 2, ',', '.'),
-                'valor_total_nota'  => number_format($notaFiscal->valor_total, 2, ',', '.'),
-                'valor_outras_despesas' => number_format($notaFiscal->itens->sum('valor_outras_despesas'), 2, ',', '.'),
-            ],
-
-            'transporte' => [
-                'modalidade'     => NotaFiscal::MODALIDADES_FRETE[(int) $notaFiscal->mod_frete] ?? '—',
-                'transportador'  => $notaFiscal->transportador?->nome,
-                'documento'      => $notaFiscal->transportador?->documento_formatado,
-                'ie'             => $notaFiscal->transportador?->ie,
-                'endereco'       => $notaFiscal->transportador?->endereco_nfe,
-                'municipio_uf'   => $notaFiscal->transportador
-                    ? $notaFiscal->transportador->municipio . '/' . $notaFiscal->transportador->uf
-                    : null,
-                'placa'          => $notaFiscal->veiculo?->placa_formatada,
-                'uf_placa'       => $notaFiscal->veiculo?->uf,
-                'rntrc'          => $notaFiscal->veiculo?->rntrc,
-                'vol_quantidade' => $notaFiscal->vol_quantidade,
-                'vol_especie'    => $notaFiscal->vol_especie,
-                'vol_marca'      => $notaFiscal->vol_marca,
-                'vol_numeracao'  => $notaFiscal->vol_numeracao,
-                'peso_bruto'     => $notaFiscal->vol_peso_bruto !== null ? number_format((float) $notaFiscal->vol_peso_bruto, 3, ',', '.') : null,
-                'peso_liquido'   => $notaFiscal->vol_peso_liquido !== null ? number_format((float) $notaFiscal->vol_peso_liquido, 3, ',', '.') : null,
-            ],
-
-            'itens' => $itens,
-            'informacoes_complementares' => collect([
-                $notaFiscal->textoNotasReferenciadas(),
-                $notaFiscal->informacoes_complementares,
-            ])->filter()->implode(' | ') ?: null,
-        ];
-
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('notasfiscais.pdf.previsualizacao', compact('dados'))
-            ->setPaper('a4', 'portrait');
-
-        return $pdf->stream("previsualizacao-nf-{$notaFiscal->id}.pdf");
-    }
-
-    private function formatarCnpj(string $cnpj): string
-    {
-        return substr($cnpj, 0, 2) . '.' . substr($cnpj, 2, 3) . '.' . substr($cnpj, 5, 3) . '/' . substr($cnpj, 8, 4) . '-' . substr($cnpj, 12, 2);
-    }
-
-    private function formatarCep(?string $cep): string
-    {
-        return $cep ? substr($cep, 0, 5) . '-' . substr($cep, 5, 3) : '—';
-    }
-
-    private function formatarChave(string $chave): string
-    {
-        return implode(' ', str_split($chave, 4));
+        return response($pdf, 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="previa-nf-' . $notaFiscal->id . '.pdf"',
+        ]);
     }
 }
