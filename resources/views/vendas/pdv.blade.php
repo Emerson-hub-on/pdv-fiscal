@@ -682,6 +682,7 @@ inputBuscaModal.addEventListener('keydown', (e) => {
     // (util pra codigo de produto puramente numerico, sem multiplicador)
     if (e.key === 'Enter' && resultadosAtuais.length === 0 && inputBuscaModal.value.trim().length > 0) {
         e.preventDefault();
+        clearTimeout(timeoutBusca);   // <-- novo
         const { multiplicador, termo } = interpretarBusca(inputBuscaModal.value);
         quantidadeMultiplicador = multiplicador;
         if (termo.length > 0) {
@@ -717,6 +718,11 @@ inputBuscaModal.addEventListener('input', () => {
 
     if (/^\d+$/.test(valor)) {
         atualizarIndicadorMultiplicador();
+
+        // Código numérico longo (EAN 8/12/13/14): busca sozinho após uma pausa curta
+        if (valor.length >= 8) {
+            timeoutBusca = setTimeout(() => buscarProduto(valor), 150);
+        }
         return;
     }
 
@@ -735,7 +741,6 @@ inputBuscaModal.addEventListener('input', () => {
 });
 
 
-
 inputBusca.addEventListener('keydown', (e) => {
     // Mesma trava - se o modal ja esta aberto, esse campo nao participa mais da busca
     if (!document.getElementById('modal-busca-produto').classList.contains('hidden')) {
@@ -744,6 +749,7 @@ inputBusca.addEventListener('keydown', (e) => {
 
     if (e.key === 'Enter' && inputBusca.value.trim().length > 0) {
         e.preventDefault();
+        clearTimeout(timeoutBusca);   // <-- novo
         const { multiplicador, termo } = interpretarBusca(inputBusca.value);
         quantidadeMultiplicador = multiplicador;
         if (termo.length > 0) {
@@ -766,16 +772,19 @@ document.addEventListener('click', (e) => {
 
 
 function interpretarBusca(valor) {
-    const match = valor.match(/^(\d+)\*(.*)$/);
+    const v = valor.trim();
+
+    // "5*qualquer coisa"  ou  "5x7891234567890" (x só vale se o resto for número/código)
+    const match = v.match(/^(\d+)\*(.*)$/) || v.match(/^(\d+)[xX](\d+)$/);
 
     if (match) {
         return {
-            multiplicador: parseInt(match[1]),
+            multiplicador: Math.max(1, parseInt(match[1])),
             termo: match[2].trim(),
         };
     }
 
-    return { multiplicador: 1, termo: valor.trim() };
+    return { multiplicador: 1, termo: v };
 }
 
 
@@ -874,6 +883,10 @@ inputBusca.addEventListener('input', () => {
     const valor = inputBusca.value;
 
     if (/^\d+$/.test(valor)) {
+        // Código numérico longo (EAN 8/12/13/14): busca sozinho após uma pausa curta
+        if (valor.length >= 8) {
+            timeoutBusca = setTimeout(() => buscarProduto(valor), 150);
+        }
         return;
     }
 
@@ -889,15 +902,20 @@ inputBusca.addEventListener('input', () => {
 
 
 
-async function buscarProduto(termo) {
+function bateCodigoExato(op, termo) {
+    const t = String(termo).trim();
+    if (op.variante) return String(op.variante.codigo_barras ?? '') === t;
+    return String(op.produto.codigo_barras ?? '') === t
+        || String(op.produto.codigo_interno ?? '') === t;
+}
+
+async function buscarProduto(termo, quantidade = quantidadeMultiplicador) {
     const resp = await fetch(`{{ route('vendas.buscar-produto') }}?termo=${encodeURIComponent(termo)}`);
     const produtos = await resp.json();
 
     resultadosAtuais = [];
     produtos.forEach(p => {
         if (p.tem_variacao && p.variantes.length > 0) {
-            // Se o termo é o código de barras de uma variação, mostra só ela
-            // (senão, mostra todas as variações do produto, como antes)
             const exatas = p.variantes.filter(v => v.codigo_barras && v.codigo_barras === termo);
             (exatas.length ? exatas : p.variantes).forEach(v => resultadosAtuais.push({ produto: p, variante: v }));
         } else {
@@ -905,8 +923,24 @@ async function buscarProduto(termo) {
         }
     });
 
-    indiceSelecionado = resultadosAtuais.length > 0 ? 0 : -1;
+    // Leitor de código de barras: se só um item bate EXATAMENTE com o código,
+    // vai direto pro carrinho (com o multiplicador, se houver) sem abrir o modal.
+    const exatos = resultadosAtuais.filter(op => bateCodigoExato(op, termo));
+    if (exatos.length === 1) {
+        const op = exatos[0];
+        resultadosAtuais = [];
+        indiceSelecionado = -1;
+        fecharModalBusca();
 
+        if (op.produto.produto_balanca) {
+            abrirModalBalanca(op.produto, op.variante);
+        } else {
+            adicionarAoCarrinho(op.produto, op.variante, quantidade);
+        }
+        return;
+    }
+
+    indiceSelecionado = resultadosAtuais.length > 0 ? 0 : -1;
     abrirModalBusca();
     renderizarResultados();
 }
