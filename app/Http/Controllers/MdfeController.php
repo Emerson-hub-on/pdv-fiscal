@@ -60,16 +60,22 @@ class MdfeController extends Controller
 
     public function store(Request $request)
     {
-        $dados = $this->validarDados($request);
+        $dados  = $this->validarDados($request);
+        $grupos = $this->separarEmGrupos($dados);
 
-        $mdfe = DB::transaction(function () use ($dados) {
-            $mdfe = Mdfe::create($this->camposCabecalho($dados) + ['operador_id' => auth()->id()]);
-            $this->gravarFilhos($mdfe, $dados);
+        $criados = DB::transaction(function () use ($grupos) {
+            $mdfes = [];
 
-            return $mdfe;
+            foreach ($grupos as $grupo) {
+                $mdfe = Mdfe::create($this->camposCabecalho($grupo) + ['operador_id' => auth()->id()]);
+                $this->gravarFilhos($mdfe, $grupo);
+                $mdfes[] = $mdfe;
+            }
+
+            return $mdfes;
         });
 
-        return redirect()->route('mdfes.show', $mdfe)->with('sucesso', 'MDF-e salvo como rascunho.');
+        return $this->redirecionarAposSalvar($criados, 'MDF-e salvo como rascunho.');
     }
 
     public function edit(Mdfe $mdfe)
@@ -83,10 +89,13 @@ class MdfeController extends Controller
     {
         abort_if($mdfe->status !== Mdfe::STATUS_RASCUNHO, 403, 'Só é possível editar MDF-e em rascunho.');
 
-        $dados = $this->validarDados($request, $mdfe->id);
+        $dados  = $this->validarDados($request, $mdfe->id);
+        $grupos = $this->separarEmGrupos($dados);
 
-        DB::transaction(function () use ($mdfe, $dados) {
-            $mdfe->update($this->camposCabecalho($dados));
+        $salvos = DB::transaction(function () use ($mdfe, $grupos, $dados) {
+            // O primeiro grupo continua neste MDF-e; os demais (se houver separação por UF) viram novos rascunhos
+            $primeiro = array_shift($grupos);
+            $mdfe->update($this->camposCabecalho($primeiro));
 
             // Substitui tudo que é filho — mais simples e seguro que casar linha por linha
             $mdfe->documentos()->delete();
@@ -95,10 +104,19 @@ class MdfeController extends Controller
             $mdfe->municipios()->delete();
             $mdfe->percursos()->delete();
 
-            $this->gravarFilhos($mdfe, $dados);
+            $this->gravarFilhos($mdfe, $primeiro);
+
+            $mdfes = [$mdfe];
+            foreach ($grupos as $grupo) {
+                $novo = Mdfe::create($this->camposCabecalho($grupo) + ['operador_id' => auth()->id()]);
+                $this->gravarFilhos($novo, $grupo);
+                $mdfes[] = $novo;
+            }
+
+            return $mdfes;
         });
 
-        return redirect()->route('mdfes.show', $mdfe)->with('sucesso', 'MDF-e atualizado com sucesso.');
+        return $this->redirecionarAposSalvar($salvos, 'MDF-e atualizado com sucesso.');
     }
 
     public function destroy(Mdfe $mdfe)
@@ -287,6 +305,68 @@ class MdfeController extends Controller
         ]);
     }
 
+    /** DAMDFE (PDF) gerado a partir do XML autorizado, com o pacote nfephp-org/sped-da. */
+    public function pdf(Mdfe $mdfe)
+    {
+        abort_if(!$mdfe->xml, 404, 'Este MDF-e ainda não tem XML autorizado.');
+
+        try {
+            $damdfe = new \NFePHP\DA\MDFe\Damdfe($mdfe->xml);
+            $damdfe->debugMode(false);
+            $damdfe->printParameters('P');
+            $pdf = $damdfe->render();
+        } catch (\Throwable $e) {
+            return back()->withErrors(['pdf' => 'Não foi possível gerar o DAMDFE: ' . $e->getMessage()]);
+        }
+
+        return response($pdf, 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="MDFe-' . $mdfe->chave_acesso . '.pdf"',
+        ]);
+    }
+
+    // ------------------------------------------------------------------
+    // Separação por UF de descarga
+    // ------------------------------------------------------------------
+
+    /**
+     * Sem a opção marcada devolve um único conjunto de dados. Com ela, agrupa as NF-e pela UF do município
+     * de descarga e devolve um conjunto por UF — cada um com a sua UF de fim e o restante copiado.
+     */
+    private function separarEmGrupos(array $dados): array
+    {
+        if (empty($dados['dividir_por_uf'])) {
+            return [$dados];
+        }
+
+        $porUf = [];
+        foreach ($dados['documentos'] as $doc) {
+            $uf = Mdfe::ufDoMunicipio((string) $doc['nota']->cliente->cod_municipio);
+            $porUf[$uf][] = $doc;
+        }
+
+        $grupos = [];
+        foreach ($porUf as $uf => $documentos) {
+            $grupos[] = array_merge($dados, ['uf_fim' => $uf, 'documentos' => $documentos]);
+        }
+
+        return $grupos;
+    }
+
+    private function redirecionarAposSalvar(array $mdfes, string $mensagem)
+    {
+        if (count($mdfes) === 1) {
+            return redirect()->route('mdfes.show', $mdfes[0])->with('sucesso', $mensagem);
+        }
+
+        $ufs = collect($mdfes)->pluck('uf_fim')->implode(', ');
+
+        return redirect()->route('mdfes.index')->with(
+            'sucesso',
+            count($mdfes) . " MDF-e em rascunho, um por UF de descarga ({$ufs}). Revise o percurso de cada um antes de emitir."
+        );
+    }
+
     // ------------------------------------------------------------------
     // Validação e gravação
     // ------------------------------------------------------------------
@@ -303,7 +383,8 @@ class MdfeController extends Controller
             'tipo_emitente'      => ['required', Rule::in(array_keys(Mdfe::TIPOS_EMITENTE))],
             'tipo_transportador' => ['nullable', Rule::in(array_keys(Mdfe::TIPOS_TRANSPORTADOR))],
             'uf_inicio'          => ['required', Rule::in(Transportador::UFS)],
-            'uf_fim'             => ['required', Rule::in(Transportador::UFS)],
+            'uf_fim'             => ['required_without:dividir_por_uf', 'nullable', Rule::in(Transportador::UFS)],
+            'dividir_por_uf'     => ['nullable', 'boolean'],
             'inicio_viagem'      => ['nullable', 'date'],
             'rntrc'              => ['nullable', 'regex:/^\d{8}$/'],
             'informacoes_adicionais' => ['nullable', 'string', 'max:5000'],
@@ -339,6 +420,9 @@ class MdfeController extends Controller
             'rntrc.regex'                  => 'O RNTRC deve ter 8 dígitos.',
         ]);
 
+        $dados['dividir_por_uf'] = $request->boolean('dividir_por_uf');
+        $dados['uf_fim'] = $dados['uf_fim'] ?? null;
+
         // array_merge (e não +): os modelos resolvidos precisam sobrescrever os ids crus do formulário
         return array_merge($dados, $this->resolverRelacionados($dados, $ignorarMdfeId));
     }
@@ -350,6 +434,7 @@ class MdfeController extends Controller
     private function resolverRelacionados(array $dados, ?int $ignorarMdfeId): array
     {
         $erros = [];
+        $dividir = !empty($dados['dividir_por_uf']); // com a separação, a UF de fim é derivada de cada grupo
 
         // ---- Municípios x UF (rejeições 456 e 612 da SEFAZ) ----
         foreach ($dados['carregamentos'] as $m) {
@@ -395,8 +480,8 @@ class MdfeController extends Controller
                 $erros['documentos'][] = "{$rotulo}: cadastro do cliente inconsistente — a UF é {$ufCliente}, mas o código IBGE {$codigo} é de " . ($ufDoCodigo ?? 'UF desconhecida') . '. Corrija o município do cliente.';
                 continue;
             }
-            if ($ufDoCodigo !== $dados['uf_fim']) {
-                $erros['documentos'][] = "{$rotulo}: o município de descarga {$descarga} não pertence à UF de fim do MDF-e ({$dados['uf_fim']}). A SEFAZ exige municípios de descarga da UF de fim (rejeição 612): ajuste a UF de fim ou emita outro MDF-e para essa NF-e.";
+            if (!$dividir && $ufDoCodigo !== $dados['uf_fim']) {
+                $erros['documentos'][] = "{$rotulo}: o município de descarga {$descarga} não pertence à UF de fim do MDF-e ({$dados['uf_fim']}). A SEFAZ exige municípios de descarga da UF de fim (rejeição 612): ajuste a UF de fim, marque \"Separar automaticamente por UF de descarga\" ou emita outro MDF-e para essa NF-e.";
                 continue;
             }
 

@@ -121,6 +121,21 @@
         </div>
 
         <div class="col-span-3">
+            <label class="flex items-start gap-3 cursor-pointer">
+                <input type="checkbox" id="dividir-por-uf" name="dividir_por_uf" value="1"
+                       {{ old('dividir_por_uf') ? 'checked' : '' }}
+                       class="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500">
+                <span>
+                    <span class="block text-sm font-medium text-gray-700">Separar automaticamente por UF de descarga</span>
+                    <span class="block text-xs text-gray-400 mt-0.5">
+                        Cada MDF-e atende uma única UF de descarga. Com esta opção, as NF-e são divididas em um MDF-e por UF
+                        (a UF de fim de cada um vem do município do cliente) e os demais dados são copiados para todos.
+                    </span>
+                </span>
+            </label>
+        </div>
+
+        <div class="col-span-3">
             <label class="block text-sm font-medium text-gray-700 mb-1">
                 Informações adicionais <span class="text-xs text-gray-400 font-normal">(opcional)</span>
             </label>
@@ -247,6 +262,38 @@
     const ATIVA = ['border-blue-600', 'text-blue-600'];
     const INATIVA = ['border-transparent', 'text-gray-500', 'hover:text-gray-700'];
 
+    // ---------------- Separar por UF de descarga ----------------
+    const caixaDividir = document.getElementById('dividir-por-uf');
+    const ufFim = formulario.querySelector('[name="uf_fim"]');
+
+    // O texto da descarga vem como "Recife/PE"
+    const ufDaDescarga = (d) => (String(d.municipio ?? '').split('/').pop() || '').trim().toUpperCase();
+
+    function atualizarAvisoUf() {
+        const el = document.getElementById('aviso-uf');
+        if (!el) return;
+
+        const ufsDescarga = [...new Set(estado.documentos.map(ufDaDescarga).filter(Boolean))];
+
+        if (ufsDescarga.length < 2) { el.textContent = ''; return; }
+
+        if (caixaDividir.checked) {
+            el.className = 'mt-2 text-sm text-blue-700';
+            el.textContent = `Serão criados ${ufsDescarga.length} MDF-e, um por UF de descarga (${ufsDescarga.join(', ')}). Revise o percurso de cada um depois de salvar.`;
+        } else {
+            el.className = 'mt-2 text-sm text-amber-700';
+            el.textContent = `Estas NF-e descarregam em ${ufsDescarga.length} UFs (${ufsDescarga.join(', ')}). Marque "Separar automaticamente por UF de descarga" em Dados gerais ou remova as NF-e de outras UFs.`;
+        }
+    }
+
+    // Com a separação ligada, a UF de fim é definida pelo sistema em cada MDF-e
+    function atualizarUfFim() {
+        ufFim.disabled = caixaDividir.checked;
+        ufFim.required = !caixaDividir.checked;
+        atualizarAvisoUf();
+    }
+    caixaDividir.addEventListener('change', atualizarUfFim);
+
     // ---------------- Abas ----------------
     // Os painéis só ficam escondidos (não são removidos), então tudo continua indo no envio do formulário.
     function abrirAba(chave) {
@@ -365,9 +412,11 @@
                     </tbody>
                 </table>
             </div>
-            <p id="totais-documentos" class="mt-3 text-sm text-gray-600"></p>`;
+            <p id="totais-documentos" class="mt-3 text-sm text-gray-600"></p>
+            <p id="aviso-uf" class="mt-2 text-sm"></p>`;
 
         atualizarTotais();
+        atualizarAvisoUf();
     }
     function atualizarTotais() {
         const el = document.getElementById('totais-documentos');
@@ -500,5 +549,6 @@
     renderTracao();
     renderReboques();
     renderCondutores();
+    atualizarUfFim();
     abrirAba(ABA_INICIAL);
 </script>
