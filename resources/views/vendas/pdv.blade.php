@@ -112,13 +112,19 @@
             <p id="indicador-multiplicador" class="text-sm text-blue-600 font-semibold mb-2 hidden"></p>
             <input type="text" id="busca-produto-modal" placeholder="Buscar por nome, código ou código de barras..."
                    class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
-            <table class="w-full text-sm">
+            <table class="w-full text-sm table-fixed">
+                <colgroup>
+                    <col class="w-40">
+                    <col>
+                    <col class="w-28">
+                    <col class="w-20">
+                </colgroup>
                 <thead>
                     <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
-                        <th class="py-2">Código</th>
-                        <th class="py-2">Produto</th>
-                        <th class="py-2">Preço</th>
-                        <th class="py-2">Estoque</th>
+                        <th class="py-2 px-2">Código</th>
+                        <th class="py-2 px-2">Produto</th>
+                        <th class="py-2 px-2">Preço</th>
+                        <th class="py-2 px-2">Estoque</th>
                     </tr>
                 </thead>
                 <tbody id="linhas-busca-produto"></tbody>
@@ -387,7 +393,7 @@
     
 
 <!-- Container do Grid ajustado para ocupar a altura restante da tela -->
-<div class="grid grid-cols-3 gap-6 shadow-md flex-1 overflow-hidden pb-4 max-w-6xl mx-auto px-6 w-full">
+<div class="grid grid-cols-3 gap-6 shadow-md flex-1 overflow-hidden pt-4 pb-4 max-w-6xl mx-auto px-6 w-full">
     
     <!-- Coluna da Esquerda (Carrinho) -->
     <div class="col-span-2 bg-white rounded-xl shadow-lg overflow-hidden flex flex-col h-full">
@@ -952,10 +958,10 @@ linhasBuscaDiv.innerHTML = resultadosAtuais.map((op, index) => {
         <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
             data-index="${index}"
             onclick="selecionarResultado(${index})">
-            <td class="py-3 font-mono text-sm ${destacado ? 'text-slate-300' : 'text-gray-500'}">${codigo}</td>
-            <td class="py-3 font-medium">${nome}</td>
-            <td class="py-3 ${destacado ? 'text-emerald-300' : 'text-emerald-600'} font-semibold">R$ ${preco}</td>
-            <td class="py-3 ${destacado ? 'text-slate-300' : 'text-gray-500'}">${estoque}</td>
+            <td class="py-3 px-2 font-mono text-sm truncate ${destacado ? 'text-slate-300' : 'text-gray-500'}">${codigo}</td>
+            <td class="py-3 px-2 font-medium truncate" title="${nome}">${nome}</td>
+            <td class="py-3 px-2 whitespace-nowrap ${destacado ? 'text-emerald-300' : 'text-emerald-600'} font-semibold">R$ ${preco}</td>
+            <td class="py-3 px-2 ${destacado ? 'text-slate-300' : 'text-gray-500'}">${estoque}</td>
         </tr>
     `;
 }).join('');
