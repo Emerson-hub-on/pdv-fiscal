@@ -14,7 +14,7 @@
     <div class="w-full h-3/5 bg-white"></div>
 </div>
 
-<main class="px-6 pt-4">
+<main>
     @yield('conteudo')
 </main>
 

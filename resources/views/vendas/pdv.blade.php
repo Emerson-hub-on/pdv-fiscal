@@ -1,7 +1,6 @@
-@extends('layouts.app')
+@extends('layouts.caixa')
 
 @section('titulo', 'PDV - Venda')
-@section('body-class', 'sem-sidebar conteudo-largo')
 
 @section('conteudo')
 
