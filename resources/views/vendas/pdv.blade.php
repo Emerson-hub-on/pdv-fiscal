@@ -407,19 +407,27 @@
 
         <!-- Container da tabela com scroll interno se passar da altura -->
         <div class="flex-1 overflow-y-auto">
-            <table class="w-full">
-                <thead class="bg-slate-800 sticky top-0 z-10">
-                    <tr class="text-left text-xs text-slate-300 uppercase tracking-wide">
-                        <th class="py-3 pl-4">Item</th>
-                        <th class="py-3">Produto</th>
-                        <th class="py-3">Qtd</th>
-                        <th class="py-3">Preço</th>
-                        <th class="py-3">Desconto</th>
-                        <th class="py-3 pr-4">Subtotal</th>
-                    </tr>
-                </thead>
-                <tbody id="linhas-carrinho"></tbody>
-            </table>
+        <table class="w-full table-fixed">
+            <colgroup>
+                <col class="w-14">
+                <col>
+                <col class="w-16">
+                <col class="w-28">
+                <col class="w-28">
+                <col class="w-32">
+            </colgroup>
+            <thead class="bg-slate-800 sticky top-0 z-10">
+                <tr class="text-left text-xs text-slate-300 uppercase tracking-wide">
+                    <th class="py-3 pl-4">Item</th>
+                    <th class="py-3 px-2">Produto</th>
+                    <th class="py-3 px-2">Qtd</th>
+                    <th class="py-3 px-2">Preço</th>
+                    <th class="py-3 px-2">Desconto</th>
+                    <th class="py-3 px-2 pr-4">Subtotal</th>
+                </tr>
+            </thead>
+            <tbody id="linhas-carrinho"></tbody>
+        </table>
             <p id="carrinho-vazio" class="text-center text-gray-400 py-16">Nenhum item adicionado.</p>
         </div>
     </div>
@@ -1063,12 +1071,16 @@ function renderizarCarrinho() {
 tbody.innerHTML = itensCalculados.map((item, index) => `
     <tr class="border-b border-gray-100 hover:bg-slate-50 transition ${item.cancelado ? 'bg-red-50' : ''}">
         <td class="py-3 pl-4 text-gray-400 font-mono text-sm">${index + 1}</td>
-        <td class="py-3 font-medium ${item.cancelado ? 'text-red-500 line-through' : 'text-gray-800'}">${item.nome}</td>
-        <td class="py-3 ${item.cancelado ? 'text-red-500 line-through' : 'text-gray-600'}">${item.quantidade}</td>
-        <td class="py-3 ${item.cancelado ? 'text-red-500 line-through' : 'text-gray-600'}">R$ ${item.preco.toFixed(2)}</td>
-        <td class="py-3 ${item.cancelado ? 'text-red-500 line-through' : (item.descontoEfetivo > 0 ? 'text-green-600 font-medium' : 'text-gray-400')}">R$ ${item.descontoEfetivo.toFixed(2)}</td>
-        <td class="py-3 pr-4 font-semibold ${item.cancelado ? 'text-red-500 line-through' : 'text-gray-900'}">R$ ${item.subtotalLiquido.toFixed(2)}</td>
-        ${item.cancelado ? `<td class="py-3 pr-4 text-red-600 text-xs font-bold text-right">✕ Cancelado</td>` : ''}
+        <td class="py-3 px-2 font-medium">
+            <div class="flex items-center gap-2 min-w-0">
+                <span class="truncate ${item.cancelado ? 'text-red-500 line-through' : 'text-gray-800'}" title="${item.nome}">${item.nome}</span>
+                ${item.cancelado ? '<span class="shrink-0 text-red-600 text-xs font-bold">✕ Cancelado</span>' : ''}
+            </div>
+        </td>
+        <td class="py-3 px-2 ${item.cancelado ? 'text-red-500 line-through' : 'text-gray-600'}">${item.quantidade}</td>
+        <td class="py-3 px-2 whitespace-nowrap ${item.cancelado ? 'text-red-500 line-through' : 'text-gray-600'}">R$ ${item.preco.toFixed(2)}</td>
+        <td class="py-3 px-2 whitespace-nowrap ${item.cancelado ? 'text-red-500 line-through' : (item.descontoEfetivo > 0 ? 'text-green-600 font-medium' : 'text-gray-400')}">R$ ${item.descontoEfetivo.toFixed(2)}</td>
+        <td class="py-3 px-2 pr-4 whitespace-nowrap font-semibold ${item.cancelado ? 'text-red-500 line-through' : 'text-gray-900'}">R$ ${item.subtotalLiquido.toFixed(2)}</td>
     </tr>
 `).join('');
 
