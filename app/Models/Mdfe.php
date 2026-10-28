@@ -29,6 +29,22 @@ class Mdfe extends Model
         3 => 'CTC',
     ];
 
+    /** Código IBGE de cada UF (os 2 primeiros dígitos do código de município). */
+    public const CODIGOS_UF = [
+        'RO' => 11, 'AC' => 12, 'AM' => 13, 'RR' => 14, 'PA' => 15, 'AP' => 16, 'TO' => 17,
+        'MA' => 21, 'PI' => 22, 'CE' => 23, 'RN' => 24, 'PB' => 25, 'PE' => 26, 'AL' => 27,
+        'SE' => 28, 'BA' => 29, 'MG' => 31, 'ES' => 32, 'RJ' => 33, 'SP' => 35,
+        'PR' => 41, 'SC' => 42, 'RS' => 43, 'MS' => 50, 'MT' => 51, 'GO' => 52, 'DF' => 53,
+    ];
+
+    /** UF a que um código de município (7 dígitos) pertence, pelos 2 primeiros dígitos; null se desconhecida. */
+    public static function ufDoMunicipio(string $codigoIbge): ?string
+    {
+        $uf = array_search((int) substr($codigoIbge, 0, 2), self::CODIGOS_UF, true);
+
+        return $uf === false ? null : $uf;
+    }
+
     protected $fillable = [
         'operador_id',
         'tipo_emitente',

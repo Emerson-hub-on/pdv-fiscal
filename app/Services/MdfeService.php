@@ -76,6 +76,8 @@ class MdfeService
 
         // PASSO 1: montar e assinar — erro aqui é problema de DADOS
         try {
+            $this->conferirMunicipiosComUf($mdfe);
+
             $make = new Make();
 
             $this->montarIde($make, $mdfe, $codigoNumerico);
@@ -135,6 +137,30 @@ class MdfeService
             'xml'             => $xmlProcessado,
             'codigo_numerico' => $codigoNumerico,
         ];
+    }
+
+    /**
+     * Rejeições 456 e 612: os 2 primeiros dígitos do código do município precisam bater com a UF
+     * de carregamento (início) e de descarga (fim). Melhor avisar aqui do que gastar uma ida à SEFAZ.
+     */
+    protected function conferirMunicipiosComUf(Mdfe $mdfe): void
+    {
+        foreach ($mdfe->municipios as $m) {
+            $ufDoCodigo = Mdfe::ufDoMunicipio($m->codigo_ibge);
+            $descarga   = $m->tipo === MdfeMunicipio::DESCARREGAMENTO;
+            $esperada   = $descarga ? $mdfe->uf_fim : $mdfe->uf_inicio;
+
+            if ($ufDoCodigo !== $esperada) {
+                $onde = $descarga ? 'descarga' : 'carregamento';
+                $ufDe = $descarga ? 'fim' : 'início';
+
+                throw new Exception(
+                    "Município de {$onde} {$m->nome}/{$m->uf} (IBGE {$m->codigo_ibge}) não pertence à UF de {$ufDe} do MDF-e ({$esperada}): "
+                    . 'o código IBGE é de ' . ($ufDoCodigo ?? 'UF desconhecida') . '. '
+                    . ($descarga ? 'Ajuste a UF de fim ou corrija o município do cliente.' : 'Ajuste a UF de início ou o município.')
+                );
+            }
+        }
     }
 
     protected function montarIde(Make $make, Mdfe $mdfe, string $codigoNumerico): void

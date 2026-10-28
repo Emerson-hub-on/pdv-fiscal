@@ -20,7 +20,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use NFePHP\DA\MDFe\Damdfe;
 
 class MdfeController extends Controller
 {
@@ -288,52 +287,6 @@ class MdfeController extends Controller
         ]);
     }
 
-    /** DAMDFE em PDF, aberto no navegador para o operador conferir/imprimir. */
-    public function pdf(Mdfe $mdfe)
-    {
-        abort_if(!$mdfe->xml, 404, 'Este MDF-e ainda não tem XML autorizado.');
-
-        try {
-            $damdfe = new Damdfe($this->xmlParaDamdfe($mdfe->xml));
-            $damdfe->debugMode(false);
-            // O XML guardado é o da autorização; o cancelamento é um evento à parte, então sinalizamos aqui
-            $damdfe->setCancelFlag($mdfe->status === Mdfe::STATUS_CANCELADO);
-
-            $pdf = $damdfe->render();
-        } catch (\Throwable $e) {
-            report($e); // trace completo em storage/logs/laravel.log
-
-            // Arquivo:linha ajuda a achar qual tag do XML o DAMDFE não encontrou (pode remover depois)
-            return back()->withErrors(['pdf' => 'Não foi possível gerar o DAMDFE: ' . $e->getMessage()
-                . ' [' . basename($e->getFile()) . ':' . $e->getLine() . ']']);
-        }
-
-        return response($pdf, 200, [
-            'Content-Type'        => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="DAMDFE-' . $mdfe->chave_acesso . '.pdf"',
-        ]);
-    }
-
-    /**
-     * Contorna um bug do sped-da (v1.1.x): o DAMDFE quebra quando o <rodo> não tem <infANTT>, ou seja,
-     * quando o MDF-e foi emitido sem RNTRC (permitido, por exemplo, na carga própria).
-     * Só o XML usado para desenhar o PDF recebe um <infANTT/> vazio; o XML guardado/autorizado não muda.
-     */
-    private function xmlParaDamdfe(string $xml): string
-    {
-        $dom = new \DOMDocument();
-        if (!@$dom->loadXML($xml)) {
-            return $xml;
-        }
-
-        $rodo = $dom->getElementsByTagName('rodo')->item(0);
-        if ($rodo && $rodo->getElementsByTagName('infANTT')->length === 0) {
-            $rodo->insertBefore($dom->createElementNS($rodo->namespaceURI, 'infANTT'), $rodo->firstChild);
-        }
-
-        return $dom->saveXML();
-    }
-
     // ------------------------------------------------------------------
     // Validação e gravação
     // ------------------------------------------------------------------
@@ -359,7 +312,7 @@ class MdfeController extends Controller
             'percurso.*' => ['required', Rule::in(Transportador::UFS)],
 
             'carregamentos'               => ['required', 'array', 'min:1', 'max:50'],
-            'carregamentos.*.codigo_ibge' => ['required', 'regex:/^\d{7}$/'],
+            'carregamentos.*.codigo_ibge' => ['required', 'regex:/^\d{7}$/', 'distinct'],
             'carregamentos.*.nome'        => ['required', 'string', 'max:60'],
             'carregamentos.*.uf'          => ['required', Rule::in(Transportador::UFS)],
 
@@ -376,6 +329,7 @@ class MdfeController extends Controller
             'tipo_emitente.required'       => 'Informe o tipo de emitente.',
             'carregamentos.required'       => 'Informe ao menos um município de carregamento.',
             'carregamentos.min'            => 'Informe ao menos um município de carregamento.',
+            'carregamentos.*.codigo_ibge.distinct' => 'Há município de carregamento repetido.',
             'documentos.required'          => 'Adicione ao menos uma NF-e ao MDF-e.',
             'documentos.min'               => 'Adicione ao menos uma NF-e ao MDF-e.',
             'documentos.*.nota_fiscal_id.distinct' => 'Há NF-e repetida na lista.',
@@ -396,6 +350,15 @@ class MdfeController extends Controller
     private function resolverRelacionados(array $dados, ?int $ignorarMdfeId): array
     {
         $erros = [];
+
+        // ---- Municípios x UF (rejeições 456 e 612 da SEFAZ) ----
+        foreach ($dados['carregamentos'] as $m) {
+            $ufDoCodigo = Mdfe::ufDoMunicipio($m['codigo_ibge']);
+
+            if ($ufDoCodigo !== $dados['uf_inicio']) {
+                $erros['carregamentos'][] = "Município de carregamento {$m['nome']} (IBGE {$m['codigo_ibge']}) não pertence à UF de início ({$dados['uf_inicio']}): o código é de " . ($ufDoCodigo ?? 'UF desconhecida') . '.';
+            }
+        }
 
         // ---- Documentos ----
         $notas = NotaFiscal::with('cliente')
@@ -420,6 +383,20 @@ class MdfeController extends Controller
             }
             if (!preg_match('/^\d{7}$/', (string) $nota->cliente?->cod_municipio)) {
                 $erros['documentos'][] = "{$rotulo}: o cliente não tem município com código IBGE no cadastro (necessário para o município de descarga).";
+                continue;
+            }
+
+            $codigo     = (string) $nota->cliente->cod_municipio;
+            $ufDoCodigo = Mdfe::ufDoMunicipio($codigo);
+            $ufCliente  = strtoupper((string) $nota->cliente->uf);
+            $descarga   = "{$nota->cliente->municipio}/{$ufCliente} (IBGE {$codigo})";
+
+            if ($ufDoCodigo !== $ufCliente) {
+                $erros['documentos'][] = "{$rotulo}: cadastro do cliente inconsistente — a UF é {$ufCliente}, mas o código IBGE {$codigo} é de " . ($ufDoCodigo ?? 'UF desconhecida') . '. Corrija o município do cliente.';
+                continue;
+            }
+            if ($ufDoCodigo !== $dados['uf_fim']) {
+                $erros['documentos'][] = "{$rotulo}: o município de descarga {$descarga} não pertence à UF de fim do MDF-e ({$dados['uf_fim']}). A SEFAZ exige municípios de descarga da UF de fim (rejeição 612): ajuste a UF de fim ou emita outro MDF-e para essa NF-e.";
                 continue;
             }
 
