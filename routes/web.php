@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\MunicipioController;
 use App\Http\Controllers\CupomFiscalController;
 use App\Http\Controllers\PedidoCaixaController;
 use App\Http\Controllers\ProdutoController;
@@ -132,6 +133,9 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
     // SISTEMA DE CADASTROS E FATURAMENTO — Operador Fiscal (e admin)
     // =====================================================================
     Route::middleware(['auth:web', 'acesso:fiscal'])->group(function () {
+
+        // Rota global de municípios para o grupo fiscal (acessível em clientes, fornecedores, empresa e MDF-e)
+        Route::get('municipios/buscar', [MunicipioController::class, 'buscar'])->name('municipios.buscar');
 
         // ---------------- PRODUTOS E CLASSIFICAÇÕES FISCAIS ----------------
         Route::middleware('permissao:produtos')->group(function () {

@@ -5,5 +5,11 @@
     <form action="{{ route('clientes.store') }}" method="POST">
         @csrf
         @include('clientes._form')
+
+        @include('partials.municipio-autocomplete', [
+            'municipio' => '[name="municipio"]',
+            'codigo'    => '[name="cod_municipio"]',
+            'uf'        => '[name="uf"]',
+        ])
     </form>
 @endsection

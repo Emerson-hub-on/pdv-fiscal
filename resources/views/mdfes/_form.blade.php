@@ -168,7 +168,7 @@
     <div class="grid grid-cols-12 gap-2 mb-3">
         <input type="text" id="car-ibge" maxlength="7" inputmode="numeric" placeholder="Código IBGE (7 dígitos)" data-sem-enter
                class="{{ $campo }} col-span-3 font-mono">
-        <input type="text" id="car-nome" maxlength="60" placeholder="Município" data-sem-enter class="{{ $campo }} col-span-5">
+        <input type="text" id="car-nome" maxlength="60" placeholder="Digite o município e escolha na lista" data-sem-enter class="{{ $campo }} col-span-5">
         <select id="car-uf" class="{{ $campoSel }} col-span-2">
             <option value="">UF</option>
             @foreach ($ufs as $uf)
@@ -552,3 +552,10 @@
     atualizarUfFim();
     abrirAba(ABA_INICIAL);
 </script>
+
+@include('partials.municipio-autocomplete', [
+    'municipio' => '#car-nome',
+    'codigo'    => '#car-ibge',
+    'uf'        => '#car-uf',
+    'exigir'    => false,
+])
