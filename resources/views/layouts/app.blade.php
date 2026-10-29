@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('titulo', 'PDV Fiscal')</title>
+    {{-- Aba do navegador: "Produtos - Cyberly Sistema"; sem título na tela, só o nome do sistema --}}
+    @hasSection('titulo')
+        <title>@yield('titulo') - Cyberly Sistema</title>
+    @else
+        <title>Cyberly Sistema</title>
+    @endif
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-100 text-gray-800 min-h-screen relative @yield('body-class')">
@@ -21,7 +26,7 @@
 <aside id="nav-principal" class="bg-gray-900 fixed top-0 left-0 h-screen w-50 flex flex-col z-40 overflow-y-auto transition-[width] duration-200 [.sidebar-oculta_&]:w-16 [.sem-sidebar_&]:hidden">
     <div class="px-3 py-4 border-b border-white/10 shrink-0 flex items-center justify-between [.sidebar-oculta_&]:justify-center">
         <div class="px-2 overflow-hidden [.sidebar-oculta_&]:hidden">
-            <p class="text-amber-50 font-bold text-lg tracking-tight whitespace-nowrap">PDV Fiscal</p>
+            <p class="text-amber-50 font-bold text-lg tracking-tight whitespace-nowrap">Cyberly Sistema</p>
             <p class="text-slate-400 text-xs mt-0.5 whitespace-nowrap">Painel administrativo</p>
         </div>
         <button type="button" onclick="toggleSidebar()" title="Minimizar/Expandir menu"
