@@ -351,9 +351,9 @@ class SpedVerificacaoService
         // Itens de saída do período: CST gravado (vem da emissão ou do fiscal:completar-itens)
         $fimDia = $fim->copy()->endOfDay();
         $saidas = [
-            'NF-e'  => NotaFiscal::with('itens')->where('status', 'emitida')
+            'NF-e'  => NotaFiscal::with('itens.produto')->where('status', 'emitida')
                 ->whereBetween('emitida_em', [$inicio, $fimDia])->get()->flatMap->itens,
-            'NFC-e' => Venda::with('itens')->whereNotNull('chave_nfe')->whereNotNull('protocolo_nfe')
+            'NFC-e' => Venda::with('itens.produto')->whereNotNull('chave_nfe')->whereNotNull('protocolo_nfe')
                 ->whereBetween('emitida_em', [$inicio, $fimDia])->get()
                 ->reject(fn ($v) => str_contains(strtolower((string) $v->status), 'cancel'))
                 ->flatMap->itens->filter(fn ($i) => $i->produto_id),
@@ -373,6 +373,14 @@ class SpedVerificacaoService
             $this->registrar('aviso', $g, "Itens de {$rotulo} com CST 01 e alíquota diferente de {$rotuloAliq} do regime ({$divergentes})", $divergentes ? [
                 ['texto' => 'Documento já emitido não muda; corrija a classificação de PIS/COFINS (CST 01) para as próximas emissões', 'url' => route('produtos.index')],
             ] : []);
+
+            // CST 04 a 09 vão para o M400/M410 (M800/M810), que exige a natureza da receita (NAT_REC) do produto
+            $semNatureza = $itens->filter(fn ($i) => in_array((string) $i->cst_pis_cofins, SpedContribuicoesGerador::CST_SEM_INCIDENCIA, true)
+                && $i->produto && blank($i->produto->nat_rec_pis_cofins))
+                ->map->produto->unique('id')
+                ->map(fn ($p) => ['texto' => "{$p->codigo_interno} — {$p->nome}", 'url' => route('produtos.edit', $p)])
+                ->values()->all();
+            $this->registrar('erro', $g, "Produtos vendidos na {$rotulo} com CST 04 a 09 sem a natureza da receita (NAT_REC, registro M410/M810)", $semNatureza);
         }
 
         // Entradas com crédito (só no não cumulativo)
@@ -391,9 +399,20 @@ class SpedVerificacaoService
             $this->registrar('erro', $g, 'Entradas com crédito sem natureza da base de crédito', $semNatureza->map(fn ($id) => [
                 'texto' => "Entrada #{$id}", 'url' => route('entradas-nota.edit', $id),
             ])->all());
-        }
 
-        $this->registrar('aviso', $g, 'O Bloco M (apuração) ainda sai sem dados: depois de importar no PVA, use a opção de gerar as apurações', [['texto' => 'A geração do Bloco M entra na próxima etapa']]);
+            // CST 53 a 56 (crédito comum a receitas tributadas e não tributadas) exigem rateio (0111): não suportado
+            $rateio = (clone $entradas)->whereIn('i.cst_pis_cofins', ['53', '54', '55', '56'])->distinct()->pluck('e.id');
+            $this->registrar('erro', $g, 'Entradas com CST 53 a 56 (crédito com rateio proporcional): ainda não suportado', $rateio->map(fn ($id) => [
+                'texto' => "Entrada #{$id}: use CST 50 (crédito vinculado à receita tributada)", 'url' => route('entradas-nota.edit', $id),
+            ])->all());
+
+            // Saldo de crédito de meses anteriores vem do arquivo do mês passado gerado por aqui
+            $mesAnterior = $inicio->copy()->subMonthNoOverflow();
+            $temAnterior = \App\Models\SpedGeracao::where('tipo', 'contribuicoes')->whereDate('competencia', $mesAnterior->toDateString())->exists();
+            $this->registrar('aviso', $g, "Não há EFD-Contribuições de {$mesAnterior->format('m/Y')} gerada pelo sistema: saldos de crédito de meses anteriores (1100/1500) não serão aproveitados", $temAnterior ? [] : [
+                ['texto' => 'Se houver saldo de crédito de meses anteriores, gere primeiro os arquivos dos meses anteriores, em ordem'],
+            ]);
+        }
     }
 
     // ------------------------------------------------------------------

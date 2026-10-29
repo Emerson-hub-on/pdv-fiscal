@@ -37,6 +37,7 @@ class Produto extends Model
         'unidade_comercial',
         'unidade_tributavel',
         'tipo_item',
+        'nat_rec_pis_cofins',
         'origem_mercadoria', 
         'class_trib_ibs_cbs_id',
         'preco_venda', 

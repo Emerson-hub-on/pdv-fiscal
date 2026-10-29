@@ -229,7 +229,7 @@
 
                                     <div class="col-span-3 p-4 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-800 space-y-1">
                                         <p>O arquivo leva as NF-e e NFC-e autorizadas do mês (com o PIS/COFINS gravado na emissão) e, no regime não cumulativo, as NF-e de entrada com direito a crédito.</p>
-                                        <p>Nesta versão o Bloco M (apuração) sai sem dados: depois de importar o arquivo no PVA, use a opção de gerar as apurações antes de validar.</p>
+                                        <p>A apuração (Bloco M) é calculada pelo sistema: contribuição do mês, créditos descontados e o valor a recolher por código de DARF. Saldo de crédito que sobrar vai para o controle de créditos (1100/1500) e é aproveitado no arquivo do mês seguinte.</p>
                                     </div>
                                 </div>
                             @else
@@ -324,8 +324,14 @@
                                         <td class="px-4 py-3 text-gray-600">{{ $g->finalidade === '1' ? ($contrib ? 'Retificadora' : 'Substituto') : 'Original' }}</td>
                                         <td class="px-4 py-3 text-gray-600">
                                             @if ($contrib)
-                                                PIS R$ {{ number_format($g->totais['pis_debito'] ?? 0, 2, ',', '.') }}
-                                                · COFINS R$ {{ number_format($g->totais['cofins_debito'] ?? 0, 2, ',', '.') }}
+                                                @if (isset($g->totais['pis_recolher']))
+                                                    A recolher: PIS R$ {{ number_format($g->totais['pis_recolher'], 2, ',', '.') }}
+                                                    · COFINS R$ {{ number_format($g->totais['cofins_recolher'], 2, ',', '.') }}
+                                                    <span class="block text-xs text-gray-400">Apurado: PIS R$ {{ number_format($g->totais['pis_debito'] ?? 0, 2, ',', '.') }} · COFINS R$ {{ number_format($g->totais['cofins_debito'] ?? 0, 2, ',', '.') }}</span>
+                                                @else
+                                                    PIS R$ {{ number_format($g->totais['pis_debito'] ?? 0, 2, ',', '.') }}
+                                                    · COFINS R$ {{ number_format($g->totais['cofins_debito'] ?? 0, 2, ',', '.') }}
+                                                @endif
                                                 @if (($g->totais['pis_credito'] ?? 0) > 0 || ($g->totais['cofins_credito'] ?? 0) > 0)
                                                     <span class="block text-xs text-gray-400">Créditos: PIS R$ {{ number_format($g->totais['pis_credito'], 2, ',', '.') }} · COFINS R$ {{ number_format($g->totais['cofins_credito'], 2, ',', '.') }}</span>
                                                 @endif

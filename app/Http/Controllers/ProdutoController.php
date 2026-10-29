@@ -494,6 +494,8 @@ class ProdutoController extends Controller
             'unidade_tributavel' => ['required', 'string', 'max:6', Rule::exists('unidades', 'sigla')],
             'origem_mercadoria' => 'required|integer|between:0,8',
             'tipo_item' => ['sometimes', 'required', Rule::in(array_keys(Produto::TIPOS_ITEM))],
+            // Natureza da receita do PIS/COFINS (tabelas 4.3.10 a 4.3.16): só para CST 04 a 09 no regime normal
+            'nat_rec_pis_cofins' => ['sometimes', 'nullable', 'regex:/^\d{3}$/'],
             'preco_venda' => 'required|numeric|min:0',
             'preco_custo' => 'nullable|numeric|min:0',
             'tem_variacao' => 'boolean',
@@ -507,7 +509,9 @@ class ProdutoController extends Controller
             'atacado_tem_prazo' => 'boolean',
             'atacado_data_inicio' => 'required_if:atacado_tem_prazo,1|nullable|date',
             'atacado_data_fim' => 'required_if:atacado_tem_prazo,1|nullable|date|after_or_equal:atacado_data_inicio',
-        ], $this->mensagensQuantidade());
+        ], $this->mensagensQuantidade() + [
+            'nat_rec_pis_cofins.regex' => 'A natureza da receita do PIS/COFINS tem 3 dígitos (ex.: 101).',
+        ]);
  
         // Se o operador desligou o toggle "tem preço de atacado", zera tudo -
         // fica limpo em vez de guardar valores antigos escondidos

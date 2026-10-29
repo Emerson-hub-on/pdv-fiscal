@@ -323,6 +323,24 @@
             </select>
             <p class="text-xs text-gray-400 mt-1">No comércio, quase sempre é "00 - Mercadoria para revenda". Na indústria, informe se é matéria-prima, embalagem, produto acabado etc.</p>
         </div>
+
+        @if ($pisCofinsObrigatorio)
+            <div class="col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Natureza da receita do PIS/COFINS
+                    <span class="text-xs text-gray-400 font-normal">(NAT_REC — só para CST 04 a 09)</span>
+                </label>
+                <input type="text" name="nat_rec_pis_cofins" maxlength="3" inputmode="numeric" placeholder="Ex.: 101"
+                       value="{{ old('nat_rec_pis_cofins', $produto->nat_rec_pis_cofins ?? '') }}"
+                       oninput="this.value = this.value.replace(/\D/g, '').slice(0, 3)"
+                       class="w-48 border border-gray-300 rounded-lg px-3 py-2.5 text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                @error('nat_rec_pis_cofins') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+                <p class="text-xs text-gray-400 mt-1">
+                    Obrigatória na EFD-Contribuições (registros M410/M810) quando o produto é vendido com CST 04 (monofásico), 05, 06 (alíquota zero), 07, 08 ou 09.
+                    O código depende do NCM e vem das tabelas 4.3.10 a 4.3.16 da Receita Federal; confirme com o contador. Para CST 01, deixe em branco.
+                </p>
+            </div>
+        @endif
     </div>
 
     {{-- Tab: Preço e Estoque --}}
@@ -870,7 +888,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    @if ($errors->has('ncm_id') || $errors->has('tributacao_id') || $errors->has('cest_id') || $errors->has('unidade_comercial') || $errors->has('unidade_tributavel') || $errors->has('origem_mercadoria') || $errors->has('class_trib_ibs_cbs_id') || $errors->has('tipo_item'))
+    @if ($errors->has('ncm_id') || $errors->has('tributacao_id') || $errors->has('cest_id') || $errors->has('unidade_comercial') || $errors->has('unidade_tributavel') || $errors->has('origem_mercadoria') || $errors->has('class_trib_ibs_cbs_id') || $errors->has('tipo_item') || $errors->has('nat_rec_pis_cofins'))
         trocarTab('fiscal');
     @elseif ($errors->has('preco_venda') || $errors->has('preco_custo') || $errors->has('estoque') || collect($errors->keys())->contains(fn ($k) => str_starts_with($k, 'variantes')))
         trocarTab('preco');
