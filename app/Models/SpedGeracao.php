@@ -10,12 +10,13 @@ class SpedGeracao extends Model
     protected $table = 'sped_geracoes';
 
     protected $fillable = [
-        'competencia', 'finalidade', 'destacar_icms', 'saldo_credor_anterior',
+        'tipo', 'totais', 'competencia', 'finalidade', 'destacar_icms', 'saldo_credor_anterior',
         'icms_recolher', 'saldo_credor_transportar', 'arquivo', 'total_linhas', 'user_id',
     ];
 
     protected $casts = [
         'competencia'              => 'date',
+        'totais'                   => 'array',
         'destacar_icms'            => 'boolean',
         'saldo_credor_anterior'    => 'decimal:2',
         'icms_recolher'            => 'decimal:2',

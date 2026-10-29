@@ -31,8 +31,15 @@ class SpedConfiguracao extends Model
         '09' => 'Outros',
     ];
 
+    /** Regime do PIS/COFINS (só para CRT 3): Lucro Presumido = cumulativo; Lucro Real = não cumulativo */
+    public const REGIMES_PIS_COFINS = [
+        'cumulativo'     => 'Cumulativo (Lucro Presumido) — 0,65% / 3%, sem crédito',
+        'nao_cumulativo' => 'Não cumulativo (Lucro Real) — 1,65% / 7,6%, com crédito nas entradas',
+    ];
+
     protected $fillable = [
-        'ind_ativ', 'ind_perfil', 'clas_estab_ind', 'cod_receita_icms',
+        'ind_ativ', 'ind_perfil', 'clas_estab_ind', 'cod_receita_icms', 'regime_pis_cofins',
+        'cod_cta_receita', 'nome_cta_receita', 'cod_cta_compras', 'nome_cta_compras',
         'empresa_fone', 'empresa_email',
         'contador_nome', 'contador_cpf', 'contador_crc', 'contador_cnpj',
         'contador_cep', 'contador_endereco', 'contador_numero', 'contador_complemento',

@@ -69,6 +69,7 @@ use App\Http\Controllers\Relatorios\ComparativoDiarioVendasController;
 use App\Http\Controllers\CepController;
 use App\Http\Controllers\SpedController;
 use App\Http\Controllers\SpedConfiguracaoController;
+use App\Http\Controllers\CredenciadoraController;
 
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
@@ -260,6 +261,13 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::post('{inventario}/reabrir', [InventarioController::class, 'reabrir'])->name('reabrir');
                 Route::delete('{inventario}', [InventarioController::class, 'destroy'])->name('destroy');
             });
+
+            // Rotas de Credenciadoras
+            Route::resource('credenciadoras', CredenciadoraController::class)
+                ->except(['show', 'destroy'])
+                ->parameters(['credenciadoras' => 'credenciadora']);
+            Route::post('credenciadoras/{credenciadora}/toggle-ativo', [CredenciadoraController::class, 'toggleAtivo'])
+                ->name('credenciadoras.toggleAtivo');
 
             // ---------------- FATURAMENTO - ENTRADAS DE NOTA ----------------
             Route::prefix('faturamento/entradas-nota')->name('entradas-nota.')->group(function () {

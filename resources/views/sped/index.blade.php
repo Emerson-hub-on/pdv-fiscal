@@ -58,7 +58,7 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Finalidade do arquivo</label>
                 <select name="finalidade" class="{{ $campo }} bg-white">
                     <option value="0" {{ old('finalidade', request('finalidade', '0')) === '0' ? 'selected' : '' }}>Remessa do arquivo original</option>
-                    <option value="1" {{ old('finalidade', request('finalidade')) === '1' ? 'selected' : '' }}>Remessa do arquivo substituto</option>
+                    <option value="1" {{ old('finalidade', request('finalidade')) === '1' ? 'selected' : '' }}>Substituto (SPED Fiscal) / Retificadora (Contribuições)</option>
                 </select>
             </div>
         </div>
@@ -99,9 +99,25 @@
                 <input type="hidden" name="competencia" value="{{ request('competencia', $competencia) }}">
                 <input type="hidden" name="finalidade" value="{{ request('finalidade', '0') }}">
 
-                <h2 class="text-sm font-semibold text-gray-800 mb-1">Gerar arquivo</h2>
+                <h2 class="text-sm font-semibold text-gray-800 mb-1">Gerar arquivo — {{ $tipos[$tipo] }}</h2>
                 <p class="text-xs text-gray-400 mb-4">Nenhum erro encontrado. Confira os dados da apuração e gere o arquivo para validar no PVA.</p>
 
+                @if ($tipo === 'contribuicoes')
+                    <div class="grid grid-cols-3 gap-5">
+                        @if (request('finalidade') === '1')
+                            <div class="col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Recibo da escrituração original <span class="text-red-500">*</span></label>
+                                <input type="text" name="num_rec_anterior" maxlength="41" required value="{{ old('num_rec_anterior') }}" class="{{ $campo }} font-mono uppercase">
+                                <p class="text-xs text-gray-400 mt-1">Número do recibo de entrega do arquivo que está sendo retificado.</p>
+                            </div>
+                        @endif
+
+                        <div class="col-span-3 p-4 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-800 space-y-1">
+                            <p>O arquivo leva as NF-e e NFC-e autorizadas do mês (com o PIS/COFINS gravado na emissão) e, no regime não cumulativo, as NF-e de entrada com direito a crédito.</p>
+                            <p>Nesta versão o Bloco M (apuração) sai sem dados: depois de importar o arquivo no PVA, use a opção de gerar as apurações antes de validar.</p>
+                        </div>
+                    </div>
+                @else
                 <div class="grid grid-cols-3 gap-5">
                     <div class="col-span-3">
                         <label class="flex items-start gap-3 cursor-pointer">
@@ -151,10 +167,11 @@
                         </p>
                     </div>
                 </div>
+                @endif
 
                 <div class="mt-5">
                     <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-lg font-semibold text-sm transition">
-                        Gerar arquivo do SPED
+                        {{ $tipo === 'contribuicoes' ? 'Gerar arquivo da EFD-Contribuições' : 'Gerar arquivo do SPED' }}
                     </button>
                 </div>
             </form>
@@ -212,10 +229,10 @@
             <table class="w-full text-sm">
                 <thead class="bg-gray-700 font-medium text-xs uppercase tracking-wide">
                     <tr>
+                        <th class="px-4 py-3 text-left font-medium text-amber-50">Escrituração</th>
                         <th class="px-4 py-3 text-left font-medium text-amber-50">Competência</th>
                         <th class="px-4 py-3 text-left font-medium text-amber-50">Finalidade</th>
-                        <th class="px-4 py-3 text-left font-medium text-amber-50">ICMS a recolher</th>
-                        <th class="px-4 py-3 text-left font-medium text-amber-50">Saldo credor</th>
+                        <th class="px-4 py-3 text-left font-medium text-amber-50">Valores</th>
                         <th class="px-4 py-3 text-left font-medium text-amber-50">Gerado em</th>
                         <th class="px-4 py-3 text-left font-medium text-amber-50">Ações</th>
                     </tr>
@@ -223,10 +240,22 @@
                 <tbody class="divide-y divide-gray-100">
                     @foreach ($geracoes as $g)
                         <tr class="hover:bg-gray-200 transition">
+                            @php $contrib = $g->tipo === 'contribuicoes'; @endphp
+                            <td class="px-4 py-3 text-gray-600">{{ $contrib ? 'Contribuições' : 'SPED Fiscal' }}</td>
                             <td class="px-4 py-3 font-medium text-gray-800">{{ $g->competencia->format('m/Y') }}</td>
-                            <td class="px-4 py-3 text-gray-600">{{ $g->finalidade === '1' ? 'Substituto' : 'Original' }}</td>
-                            <td class="px-4 py-3 text-gray-600">R$ {{ number_format($g->icms_recolher, 2, ',', '.') }}</td>
-                            <td class="px-4 py-3 text-gray-600">R$ {{ number_format($g->saldo_credor_transportar, 2, ',', '.') }}</td>
+                            <td class="px-4 py-3 text-gray-600">{{ $g->finalidade === '1' ? ($contrib ? 'Retificadora' : 'Substituto') : 'Original' }}</td>
+                            <td class="px-4 py-3 text-gray-600">
+                                @if ($contrib)
+                                    PIS R$ {{ number_format($g->totais['pis_debito'] ?? 0, 2, ',', '.') }}
+                                    · COFINS R$ {{ number_format($g->totais['cofins_debito'] ?? 0, 2, ',', '.') }}
+                                    @if (($g->totais['pis_credito'] ?? 0) > 0 || ($g->totais['cofins_credito'] ?? 0) > 0)
+                                        <span class="block text-xs text-gray-400">Créditos: PIS R$ {{ number_format($g->totais['pis_credito'], 2, ',', '.') }} · COFINS R$ {{ number_format($g->totais['cofins_credito'], 2, ',', '.') }}</span>
+                                    @endif
+                                @else
+                                    ICMS a recolher R$ {{ number_format($g->icms_recolher, 2, ',', '.') }}
+                                    <span class="block text-xs text-gray-400">Saldo credor R$ {{ number_format($g->saldo_credor_transportar, 2, ',', '.') }}</span>
+                                @endif
+                            </td>
                             <td class="px-4 py-3 text-gray-600">{{ $g->created_at->format('d/m/Y H:i') }} · {{ $g->usuario?->name ?? '—' }}</td>
                             <td class="px-4 py-3">
                                 <a href="{{ route('sped.baixar', $g) }}" class="text-blue-600 hover:text-blue-700 font-medium">Baixar</a>

@@ -79,6 +79,48 @@
                     <p class="text-xs text-gray-400 mt-1">Código da guia de recolhimento do ICMS próprio, definido pela SEFAZ da UF. Só é usado quando o mês tiver ICMS a recolher.</p>
                 </div>
 
+                @if ((int) \App\Models\Empresa::atual()->crt === 3)
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Regime do PIS/COFINS <span class="text-red-500">*</span></label>
+                        <select name="regime_pis_cofins" class="{{ $campoSel }}">
+                            <option value="">Selecione...</option>
+                            @foreach (\App\Models\SpedConfiguracao::REGIMES_PIS_COFINS as $valor => $rotulo)
+                                <option value="{{ $valor }}" {{ old('regime_pis_cofins', $config->regime_pis_cofins) === $valor ? 'selected' : '' }}>{{ $rotulo }}</option>
+                            @endforeach
+                        </select>
+                        <p class="text-xs text-gray-400 mt-1">
+                            O CRT 3 não diferencia Lucro Presumido de Lucro Real. Define o crédito de PIS/COFINS nas entradas e a EFD-Contribuições.
+                            Ao mudar, recalcule as entradas já lançadas com <code class="font-mono">php artisan fiscal:pis-cofins-entradas</code>.
+                        </p>
+                    </div>
+
+                    <div class="col-span-2 border-t border-gray-100 pt-4">
+                        <p class="text-sm font-medium text-gray-700">Contas contábeis da EFD-Contribuições <span class="text-xs text-gray-400 font-normal">(campo COD_CTA e registro 0500)</span></p>
+                        <p class="text-xs text-gray-400 mt-0.5">Use o código e o nome do plano de contas do contador. Obrigatórias no Lucro Real; no Presumido só são dispensadas se a empresa não tiver contabilidade (ECD).</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Conta de receita de vendas — código</label>
+                        <input type="text" name="cod_cta_receita" maxlength="60" placeholder="Ex.: 3.1.1.01.001"
+                               value="{{ old('cod_cta_receita', $config->cod_cta_receita) }}" class="{{ $campo }} font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Conta de receita de vendas — nome</label>
+                        <input type="text" name="nome_cta_receita" maxlength="60" placeholder="Ex.: Receita de venda de mercadorias"
+                               value="{{ old('nome_cta_receita', $config->nome_cta_receita) }}" class="{{ $campo }}">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Conta de compras / estoque — código</label>
+                        <input type="text" name="cod_cta_compras" maxlength="60" placeholder="Ex.: 1.1.4.01.001"
+                               value="{{ old('cod_cta_compras', $config->cod_cta_compras) }}" class="{{ $campo }} font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Conta de compras / estoque — nome</label>
+                        <input type="text" name="nome_cta_compras" maxlength="60" placeholder="Ex.: Estoque de mercadorias para revenda"
+                               value="{{ old('nome_cta_compras', $config->nome_cta_compras) }}" class="{{ $campo }}">
+                    </div>
+                @endif
+
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Telefone da empresa <span class="text-xs text-gray-400 font-normal">(opcional)</span></label>
                     <input type="text" name="empresa_fone" maxlength="15" inputmode="numeric" placeholder="DDD + número"

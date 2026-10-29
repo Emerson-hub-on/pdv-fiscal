@@ -3,6 +3,7 @@
     $inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed';
     $labelCls = 'block text-sm font-medium text-gray-700 mb-1';
     $erroCls  = 'text-red-600 text-xs mt-1';
+    $pisCofins ??= ['regime' => null, 'csts' => [], 'naturezas' => [], 'comCredito' => []];   // PIS/COFINS de entrada (só CRT 3)
     $travadoXml = $ehEdicao && ! $somenteLeitura && $entrada->tipo_entrada === 'xml';
     $travarCab  = $somenteLeitura || $travadoXml;   // campos do documento da nota
 
@@ -203,6 +204,9 @@
                         <th class="text-right px-3 py-2">% ICMS</th>
                         <th class="text-right px-3 py-2">Vlr. IPI</th>
                         <th class="text-right px-3 py-2">% IPI</th>
+                        @if ($pisCofins['regime'])
+                            <th class="text-left px-3 py-2" title="CST de entrada e crédito de PIS + COFINS">PIS/COFINS</th>
+                        @endif
                         <th class="text-left px-3 py-2">Lote</th>
                         <th class="text-left px-3 py-2">Validade</th>
 
@@ -229,12 +233,15 @@
                         <td class="px-3 py-2 text-right" id="tot-aliq-icms" title="Média ponderada pela BC do ICMS">0,00%</td>
                         <td class="px-3 py-2 text-right" id="tot-vl-ipi">R$ 0,00</td>
                         <td class="px-3 py-2 text-right" id="tot-aliq-ipi" title="Média ponderada pela base do IPI">0,00%</td>
+                        @if ($pisCofins['regime'])
+                            <td class="px-3 py-2 text-left" id="tot-pis-cofins" title="Crédito de PIS + COFINS (valores do último salvamento)">R$ 0,00</td>
+                        @endif
                         <td colspan="2"></td>
                     </tr>
                     <tr>
                         <td colspan="10" class="px-3 py-2 text-right">Total da nota</td>
                         <td class="px-3 py-2 text-right" id="total-nota">R$ 0,00</td>
-                        <td colspan="11"></td>
+                        <td colspan="{{ $pisCofins['regime'] ? 12 : 11 }}"></td>
                     </tr>
                 </tfoot>
             </table>
@@ -484,6 +491,64 @@
                         </div>
                         <p class="text-xs text-gray-400 mt-2">O Vlr. IPI é calculado sobre Qtd × Vl Unit + outras despesas + frete quando o % é informado, e pode ser ajustado manualmente.</p>
                     </div>
+
+                    @if ($pisCofins['regime'])
+                        <div class="border-t border-gray-100 pt-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                                    PIS/COFINS de entrada
+                                    <span class="normal-case font-normal text-gray-400">({{ $pisCofins['regime'] === 'cumulativo' ? 'cumulativo — sem crédito' : 'não cumulativo' }})</span>
+                                </span>
+                                <label class="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+                                    <input type="checkbox" id="ed-pis-manual" onchange="alternarPisManual()">
+                                    Informar manualmente
+                                </label>
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-4">
+                                <div class="col-span-2">
+                                    <label class="{{ $labelCls }}">CST de entrada</label>
+                                    <select id="ed-pis-cst" onchange="atualizarPisEditor()" class="{{ $inputCls }} bg-white">
+                                        <option value="">— não definido —</option>
+                                        @foreach ($pisCofins['csts'] as $codigo => $descricao)
+                                            <option value="{{ $codigo }}">{{ $codigo }} — {{ $descricao }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="{{ $labelCls }}">Natureza do crédito</label>
+                                    <select id="ed-pis-nat" class="{{ $inputCls }} bg-white">
+                                        <option value="">—</option>
+                                        @foreach ($pisCofins['naturezas'] as $codigo => $descricao)
+                                            <option value="{{ $codigo }}">{{ $codigo }} — {{ $descricao }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="{{ $labelCls }}">Base do crédito (R$)</label>
+                                    <input type="number" id="ed-pis-bc" step="0.01" min="0" value="0" oninput="atualizarPisEditor()" class="{{ $inputCls }}">
+                                </div>
+                                <div>
+                                    <label class="{{ $labelCls }}">% PIS</label>
+                                    <input type="number" id="ed-pis-aliq" step="0.0001" min="0" max="100" value="0" oninput="atualizarPisEditor()" class="{{ $inputCls }}">
+                                </div>
+                                <div>
+                                    <label class="{{ $labelCls }}">% COFINS</label>
+                                    <input type="number" id="ed-cofins-aliq" step="0.0001" min="0" max="100" value="0" oninput="atualizarPisEditor()" class="{{ $inputCls }}">
+                                </div>
+                                <div>
+                                    <label class="{{ $labelCls }}">Crédito PIS (R$)</label>
+                                    <input type="text" id="ed-pis-vl" readonly class="{{ $inputCls }} bg-gray-100">
+                                </div>
+                                <div>
+                                    <label class="{{ $labelCls }}">Crédito COFINS (R$)</label>
+                                    <input type="text" id="ed-cofins-vl" readonly class="{{ $inputCls }} bg-gray-100">
+                                </div>
+                            </div>
+
+                            <p id="ed-pis-dica" class="text-xs text-gray-400 mt-2"></p>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -601,6 +666,7 @@ function totalItem(item) {
 // Classificação fiscal dos itens (CFOP e CST/CSOSN de entrada)
 // ---------------------------------------------------------------
 const regrasFiscais = {{ Illuminate\Support\Js::from($fiscal) }};
+const regrasPisCofins = {{ Illuminate\Support\Js::from($pisCofins) }};
 const rotuloCst = regrasFiscais.regime === 'normal' ? 'CST' : 'CSOSN';
 
 function operacaoAtual() {
@@ -791,6 +857,131 @@ function lerEditorFiscal() {
 }
 
 
+// ---------------------------------------------------------------
+// PIS/COFINS de entrada (crédito). O automático é calculado no servidor ao salvar;
+// aqui só se edita quando o operador marca "Informar manualmente".
+// ---------------------------------------------------------------
+const camposPis = ['ed-pis-cst', 'ed-pis-nat', 'ed-pis-bc', 'ed-pis-aliq', 'ed-cofins-aliq'];
+const pisComCredito = cst => (regrasPisCofins.comCredito || []).includes(cst);
+let pisAutomatico = null;   // valores gravados (automáticos) do item em edição
+
+// Base sugerida: valor do item + frete + outras + IPI − ICMS (mesma regra do servidor, sem o rateio do cabeçalho)
+function basePisSugerida() {
+    return arred2(Math.max((numero('ed-qtd') * numero('ed-unit')) - numero('ed-desc')
+        + numero('ed-frete') + numero('ed-outras') + numero('ed-vl-ipi') - numero('ed-vl-icms'), 0));
+}
+
+function aplicarPisNoEditor(v) {
+    document.getElementById('ed-pis-cst').value = v.cst ?? '';
+    document.getElementById('ed-pis-nat').value = v.nat ?? '';
+    document.getElementById('ed-pis-bc').value = (Number(v.bc) || 0).toFixed(2);
+    document.getElementById('ed-pis-aliq').value = Number(v.aliqPis) || 0;
+    document.getElementById('ed-cofins-aliq').value = Number(v.aliqCofins) || 0;
+    atualizarPisEditor();
+}
+
+function atualizarPisEditor() {
+    if (!document.getElementById('ed-pis-cst')) return;
+
+    const cst = document.getElementById('ed-pis-cst').value;
+    const credito = pisComCredito(cst);
+    const manual = document.getElementById('ed-pis-manual').checked;
+
+    // sem crédito: natureza, base e alíquotas não se aplicam
+    ['ed-pis-nat', 'ed-pis-bc', 'ed-pis-aliq', 'ed-cofins-aliq'].forEach(id => {
+        document.getElementById(id).disabled = !manual || !credito;
+    });
+    document.getElementById('ed-pis-cst').disabled = !manual;
+
+    const base = credito ? numero('ed-pis-bc') : 0;
+    document.getElementById('ed-pis-vl').value = moeda(credito ? arred2(base * numero('ed-pis-aliq') / 100) : 0);
+    document.getElementById('ed-cofins-vl').value = moeda(credito ? arred2(base * numero('ed-cofins-aliq') / 100) : 0);
+}
+
+function alternarPisManual() {
+    const manual = document.getElementById('ed-pis-manual').checked;
+
+    if (manual) {
+        // parte do que está gravado; sem nada gravado, sugere o crédito normal de revenda
+        const atual = pisAutomatico ?? {};
+        const naoCumulativo = regrasPisCofins.regime === 'nao_cumulativo';
+        aplicarPisNoEditor(atual.cst ? atual : {
+            cst: naoCumulativo ? '50' : '70',
+            nat: naoCumulativo ? '01' : '',
+            bc: basePisSugerida(),
+            aliqPis: naoCumulativo ? 1.65 : 0,
+            aliqCofins: naoCumulativo ? 7.6 : 0,
+        });
+        if (pisComCredito(document.getElementById('ed-pis-cst').value) && !numero('ed-pis-bc')) {
+            document.getElementById('ed-pis-bc').value = basePisSugerida().toFixed(2);
+            atualizarPisEditor();
+        }
+    } else {
+        aplicarPisNoEditor(pisAutomatico ?? {});
+    }
+
+    document.getElementById('ed-pis-dica').textContent = manual
+        ? 'Informado manualmente: o cálculo automático não altera este item.'
+        : 'Calculado automaticamente ao salvar a entrada (pelo CFOP de entrada, classificação de PIS/COFINS e tipo do produto). Os valores mostrados são os do último salvamento.';
+}
+
+function preencherEditorPis(item) {
+    if (!document.getElementById('ed-pis-cst')) return;
+
+    const gravado = {
+        cst: item.cst_pis_cofins || '', nat: item.nat_bc_cred || '', bc: item.bc_pis_cofins,
+        aliqPis: item.aliquota_pis, aliqCofins: item.aliquota_cofins,
+    };
+    pisAutomatico = flag(item.pis_cofins_manual) ? null : gravado;
+
+    document.getElementById('ed-pis-manual').checked = flag(item.pis_cofins_manual);
+    aplicarPisNoEditor(gravado);
+    alternarPisManual();
+    if (flag(item.pis_cofins_manual)) aplicarPisNoEditor(gravado);   // manual: mantém exatamente o digitado
+}
+
+// null = sem campos de PIS/COFINS na tela (Simples ou regime não configurado)
+function lerEditorPis() {
+    if (!document.getElementById('ed-pis-cst')) return null;
+
+    const manual = document.getElementById('ed-pis-manual').checked;
+    const cst = document.getElementById('ed-pis-cst').value;
+    const credito = pisComCredito(cst);
+
+    return {
+        manual,
+        cst,
+        nat: credito ? document.getElementById('ed-pis-nat').value : '',
+        bc: credito ? numero('ed-pis-bc') : 0,
+        aliqPis: credito ? numero('ed-pis-aliq') : 0,
+        aliqCofins: credito ? numero('ed-cofins-aliq') : 0,
+    };
+}
+
+function celulaPisCofins(item) {
+    const td = document.createElement('td');
+    td.className = 'px-3 py-2 text-left';
+
+    if (!item.cst_pis_cofins) {
+        td.appendChild(elemento('span', 'inline-block px-2 py-0.5 rounded bg-amber-50 text-amber-700 text-xs font-medium', 'Pendente',
+            flag(item.pis_cofins_manual) ? 'CST de PIS/COFINS não informado'
+                : 'Calculado ao salvar. Se continuar pendente: o produto não tem classificação de PIS/COFINS ou o CFOP de entrada está pendente.'));
+        return td;
+    }
+
+    const credito = (Number(item.valor_pis) || 0) + (Number(item.valor_cofins) || 0);
+    const descricao = regrasPisCofins.csts[item.cst_pis_cofins] ?? '';
+
+    td.appendChild(elemento('span',
+        'inline-block px-2 py-0.5 rounded bg-violet-50 text-violet-700 font-mono text-xs font-semibold',
+        item.cst_pis_cofins,
+        `${descricao}${item.nat_bc_cred ? ` · natureza ${item.nat_bc_cred}` : ''} · PIS ${moeda(item.valor_pis)} · COFINS ${moeda(item.valor_cofins)}`));
+    if (credito > 0) td.appendChild(elemento('span', 'ml-1 text-xs text-gray-500', moeda(credito)));
+    if (flag(item.pis_cofins_manual)) td.appendChild(marcaManual());
+
+    return td;
+}
+
 function renderizarGrid() {
     const corpo = document.getElementById('linhas-grid-itens');
     const campos = document.getElementById('campos-itens');
@@ -850,6 +1041,11 @@ function renderizarGrid() {
             [pct(item.aliquota_icms), 'text-right'],
             [moeda(item.valor_ipi), 'text-right'],
             [pct(item.aliquota_ipi), 'text-right'],
+        ]);
+
+        if (regrasPisCofins.regime) tr.appendChild(celulaPisCofins(item));
+
+        adicionarCelulas([
             [item.lote || '—', 'text-left'],
             [dataBr(item.validade), 'text-left'],
         ]);
@@ -864,15 +1060,19 @@ function renderizarGrid() {
 
         // Campos enviados ao servidor
         const camposFiscaisManuais = ['cfop_entrada', 'cst_entrada', 'gera_credito'];
+        const camposPisManuais = ['cst_pis_cofins', 'nat_bc_cred', 'bc_pis_cofins', 'aliquota_pis', 'aliquota_cofins'];
 
         ['produto_id', 'produto_variante_id', 'codigo', 'codigo_barras', 'descricao', 'codigo_fornecedor', 'quantidade','qtd_por_caixa', 'valor_unitario', 'valor_desconto',
         'valor_outras_despesas', 'valor_frete', 'bc_icms', 'valor_icms', 'aliquota_icms', 'valor_ipi', 'aliquota_ipi', 'lote', 'validade',
-        'cfop_origem', 'cst_origem', 'csosn_origem', 'origem_mercadoria', 'fiscal_manual', ...camposFiscaisManuais]
+        'cfop_origem', 'cst_origem', 'csosn_origem', 'origem_mercadoria', 'fiscal_manual', ...camposFiscaisManuais,
+        'pis_cofins_manual', ...camposPisManuais]
             .forEach(campo => {
                 const input = document.createElement('input');
                 input.type = 'hidden';
                 input.name = `itens[${i}][${campo}]`;
-                input.value = (camposFiscaisManuais.includes(campo) && !flag(item.fiscal_manual)) ? '' : (item[campo] ?? '');
+                input.value = (camposFiscaisManuais.includes(campo) && !flag(item.fiscal_manual))
+                    || (camposPisManuais.includes(campo) && !flag(item.pis_cofins_manual))
+                    ? '' : (item[campo] ?? '');
                 campos.appendChild(input);
             });
     });
@@ -911,6 +1111,7 @@ function atualizarTotais() {
     texto('tot-aliq-icms', pct(bcIcms > 0 ? (vlIcms / bcIcms) * 100 : 0));
     texto('tot-vl-ipi', moeda(vlIpi));
     texto('tot-aliq-ipi', pct(baseIpi > 0 ? (vlIpi / baseIpi) * 100 : 0));
+    if (regrasPisCofins.regime) texto('tot-pis-cofins', moeda(soma(item => (Number(item.valor_pis) || 0) + (Number(item.valor_cofins) || 0))));
 
     // total da nota: itens + outras despesas/frete dos itens + campos do rodapé − desconto geral
     const total = produtos + outras + frete + numero('valor_frete') + numero('valor_outras') - numero('valor_desconto');
@@ -1011,6 +1212,7 @@ function abrirEditor(produto, dados = {}) {
     set('ed-vl-ipi', dados.valor_ipi ?? 0);
     set('ed-aliq-ipi', dados.aliquota_ipi ?? 0);
     preencherEditorFiscal(dados);
+    preencherEditorPis(dados);
     atualizarTotalEditor();
 
     const modal = document.getElementById('modal-editor-item');
@@ -1026,6 +1228,7 @@ function cancelarEditor() {
     produtoEditor = null;
     fiscalPreservado = null;
     fiscalEditor = null;
+    pisAutomatico = null;
     indiceEdicao = null;
 
     const modal = document.getElementById('modal-editor-item');
@@ -1065,6 +1268,36 @@ function adicionarLinhaNaGrid() {
     if (['ed-aliq-icms', 'ed-aliq-ipi'].some(id => numero(id) < 0 || numero(id) > 100)) return erro('impostos', 'As alíquotas devem estar entre 0 e 100.');
 
     const fiscal = lerEditorFiscal();
+    const pis = lerEditorPis();
+
+    if (pis?.manual) {
+        if (!pis.cst) return erro('impostos', 'Informe o CST de PIS/COFINS de entrada ou desmarque "Informar manualmente".');
+        if (pisComCredito(pis.cst) && regrasPisCofins.regime === 'cumulativo') return erro('impostos', 'No regime cumulativo (Lucro Presumido) não há crédito de PIS/COFINS. Use CST 70, 98 ou 99.');
+        if (pisComCredito(pis.cst) && !pis.nat) return erro('impostos', `O CST ${pis.cst} gera crédito e exige a natureza da base de crédito.`);
+        if ([pis.bc, pis.aliqPis, pis.aliqCofins].some(v => v < 0) || pis.aliqPis > 100 || pis.aliqCofins > 100) return erro('impostos', 'Base e alíquotas de PIS/COFINS inválidas.');
+    }
+
+    // automático: mantém os valores do último salvamento só para exibição (o servidor recalcula)
+    const anterior = indiceEdicao !== null ? itensNota[indiceEdicao] : {};
+    const dadosPis = !pis ? {} : (pis.manual ? {
+        pis_cofins_manual: '1',
+        cst_pis_cofins: pis.cst,
+        nat_bc_cred: pis.nat,
+        bc_pis_cofins: pis.bc,
+        aliquota_pis: pis.aliqPis,
+        aliquota_cofins: pis.aliqCofins,
+        valor_pis: arred2(pis.bc * pis.aliqPis / 100),
+        valor_cofins: arred2(pis.bc * pis.aliqCofins / 100),
+    } : {
+        pis_cofins_manual: '0',
+        cst_pis_cofins: flag(anterior.pis_cofins_manual) ? '' : (anterior.cst_pis_cofins ?? ''),
+        nat_bc_cred: flag(anterior.pis_cofins_manual) ? '' : (anterior.nat_bc_cred ?? ''),
+        bc_pis_cofins: flag(anterior.pis_cofins_manual) ? 0 : (anterior.bc_pis_cofins ?? 0),
+        aliquota_pis: flag(anterior.pis_cofins_manual) ? 0 : (anterior.aliquota_pis ?? 0),
+        aliquota_cofins: flag(anterior.pis_cofins_manual) ? 0 : (anterior.aliquota_cofins ?? 0),
+        valor_pis: flag(anterior.pis_cofins_manual) ? 0 : (anterior.valor_pis ?? 0),
+        valor_cofins: flag(anterior.pis_cofins_manual) ? 0 : (anterior.valor_cofins ?? 0),
+    });
 
     const item = {
         produto_id: produtoEditor.id,
@@ -1090,6 +1323,7 @@ function adicionarLinhaNaGrid() {
         cfop_entrada: fiscal.manual ? fiscal.cfop : '',
         cst_entrada: fiscal.manual ? fiscal.cst : '',
         gera_credito: fiscal.manual ? fiscal.credito : '',
+        ...dadosPis,
     };
 
     const itemNovo = indiceEdicao === null;
@@ -1341,6 +1575,14 @@ itensNota = itensIniciais.map(i => ({
     cfop_entrada: i.cfop_entrada ?? '',
     cst_entrada: i.cst_entrada ?? '',
     gera_credito: creditoDe(i.gera_credito) === null ? '' : (creditoDe(i.gera_credito) ? '1' : '0'),
+    pis_cofins_manual: flag(i.pis_cofins_manual) ? '1' : '0',
+    cst_pis_cofins: i.cst_pis_cofins ?? '',
+    nat_bc_cred: i.nat_bc_cred ?? '',
+    bc_pis_cofins: parseFloat(i.bc_pis_cofins) || 0,
+    aliquota_pis: parseFloat(i.aliquota_pis) || 0,
+    aliquota_cofins: parseFloat(i.aliquota_cofins) || 0,
+    valor_pis: parseFloat(i.valor_pis) || 0,
+    valor_cofins: parseFloat(i.valor_cofins) || 0,
 }));
 document.getElementById('fornecedor_id').addEventListener('change', renderizarGrid);
 if (!somenteLeitura) popularOpcoesFiscais();

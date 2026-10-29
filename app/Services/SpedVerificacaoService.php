@@ -16,6 +16,7 @@ use App\Models\Unidade;
 use App\Models\Venda;
 use App\Models\VendaItem;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Confere, antes de gerar o SPED, se os dados do período têm o que o arquivo vai exigir.
@@ -27,6 +28,10 @@ class SpedVerificacaoService
     private const CST_COM_BASE = ['00', '10', '20', '70', '90'];
 
     private bool $industrial = false;
+
+    /** icms_ipi (SPED Fiscal) ou contribuicoes (EFD-Contribuições) */
+    private string $tipo = 'icms_ipi';
+    private ?string $regimePis = null;
     private array $problemas = [];
     private array $resumo = [];
 
@@ -34,14 +39,22 @@ class SpedVerificacaoService
     private array $clienteIds = [];
     private array $fornecedorIds = [];
 
-    public function verificar(Carbon $inicio): array
+    public function verificar(Carbon $inicio, string $tipo = 'icms_ipi'): array
     {
         $inicio = $inicio->copy()->startOfMonth();
         $fim    = $inicio->copy()->endOfMonth();
+        $this->tipo = $tipo;
 
         $this->verificarEmpresa();
         $this->verificarConfiguracao();
-        $this->verificarInventario($inicio);
+
+        if ($this->tipo === 'contribuicoes') {
+            $this->verificarContribuicoes($inicio, $fim);
+        } else {
+            $this->verificarInventario($inicio);
+            $this->verificarPagamentosEletronicos($inicio, $fim);
+        }
+
         $this->verificarSaidasNfe($inicio, $fim);
         $this->verificarNfce($inicio, $fim);
         $this->verificarEntradas($inicio, $fim);
@@ -101,6 +114,22 @@ class SpedVerificacaoService
         }
 
         $this->industrial = (bool) $config?->isIndustrial();
+    }
+
+    /** Registro 1601: todo recebimento eletrônico (cartão, PIX...) precisa de uma credenciadora. */
+    private function verificarPagamentosEletronicos(Carbon $inicio, Carbon $fim): void
+    {
+        $pagamentos = (new SpedPagamentosEletronicos())->calcular($inicio, $fim->copy()->endOfDay());
+
+        $this->resumo['Pagamentos eletrônicos'] = collect($pagamentos['porCredenciadora'])
+            ->mapWithKeys(fn ($p) => [$p['credenciadora']->nome => 'R$ ' . number_format($p['total'], 2, ',', '.')])
+            ->all();
+
+        $exemplos = collect($pagamentos['semCredenciadora'])
+            ->map(fn ($valor, $meio) => ['texto' => "{$meio}: R$ " . number_format($valor, 2, ',', '.'), 'url' => route('credenciadoras.index')])
+            ->values()->all();
+
+        $this->registrar('erro', 'Pagamentos eletrônicos', 'Recebimentos por cartão/PIX sem credenciadora cadastrada (registro 1601)', $exemplos);
     }
 
     /** No arquivo de fevereiro o PVA cobra o inventário de 31/12 do ano anterior. */
@@ -182,7 +211,9 @@ class SpedVerificacaoService
         $this->registrar('erro', $g, 'Itens sem CST/CSOSN', $achados['cst']);
         $this->registrar('erro', $g, 'Itens sem CFOP', $achados['cfop']);
         $this->registrar('erro', $g, 'Itens sem NCM', $achados['ncm']);
-        $this->registrar('aviso', $g, 'Itens com CST tributado e base de ICMS zerada', $achados['base']);
+        if ($this->tipo === 'icms_ipi') {
+            $this->registrar('aviso', $g, 'Itens com CST tributado e base de ICMS zerada', $achados['base']);
+        }
     }
 
     // ------------------------------------------------------------------
@@ -207,9 +238,12 @@ class SpedVerificacaoService
         $semCst = $itens()->where(fn ($q) => $q->whereNull('cst_csosn')->orWhere('cst_csosn', ''))->count();
 
         $g = 'NFC-e';
-        $this->registrar('erro', $g, "Itens de NFC-e sem NCM ({$semNcm})", $semNcm ? [['texto' => 'Itens de vendas do período; corrija o cadastro dos produtos e confira o histórico']] : []);
         $this->registrar('erro', $g, "Itens de NFC-e sem CFOP ({$semCfop})", $semCfop ? [['texto' => 'Itens de vendas do período']] : []);
-        $this->registrar('erro', $g, "Itens de NFC-e sem CST/CSOSN ({$semCst})", $semCst ? [['texto' => 'Itens de vendas do período']] : []);
+
+        if ($this->tipo === 'icms_ipi') {
+            $this->registrar('erro', $g, "Itens de NFC-e sem NCM ({$semNcm})", $semNcm ? [['texto' => 'Itens de vendas do período; corrija o cadastro dos produtos e confira o histórico']] : []);
+            $this->registrar('erro', $g, "Itens de NFC-e sem CST/CSOSN ({$semCst})", $semCst ? [['texto' => 'Itens de vendas do período']] : []);
+        }
     }
 
     // ------------------------------------------------------------------
@@ -218,6 +252,11 @@ class SpedVerificacaoService
 
     private function verificarEntradas(Carbon $inicio, Carbon $fim): void
     {
+        // Contribuições no cumulativo: as entradas não são escrituradas (não há crédito)
+        if ($this->tipo === 'contribuicoes' && $this->regimePis !== 'nao_cumulativo') {
+            return;
+        }
+
         $entradas = EntradaNota::with(['fornecedor', 'itens'])
             ->where('status', 'finalizada')
             ->whereBetween('data_entrada', [$inicio->toDateString(), $fim->toDateString()])
@@ -261,9 +300,100 @@ class SpedVerificacaoService
         $g = 'Entradas';
         $this->registrar('erro', $g, 'Entradas modelo 55 sem chave de acesso de 44 dígitos', $semChave);
         $this->registrar('erro', $g, 'Itens de entrada sem CFOP de entrada', $achados['cfop']);
-        $this->registrar('erro', $g, 'Itens de entrada sem CST/CSOSN de entrada', $achados['cst']);
-        $this->registrar('aviso', $g, 'Itens sem definição se geram crédito de ICMS', $achados['credito']);
-        $this->registrar('aviso', $g, 'Itens com ICMS destacado e base zerada', $achados['base']);
+        if ($this->tipo === 'icms_ipi') {
+            $this->registrar('erro', $g, 'Itens de entrada sem CST/CSOSN de entrada', $achados['cst']);
+            $this->registrar('aviso', $g, 'Itens sem definição se geram crédito de ICMS', $achados['credito']);
+            $this->registrar('aviso', $g, 'Itens com ICMS destacado e base zerada', $achados['base']);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // EFD-Contribuições (PIS/COFINS)
+    // ------------------------------------------------------------------
+
+    private function verificarContribuicoes(Carbon $inicio, Carbon $fim): void
+    {
+        $g = 'PIS/COFINS';
+        $config = SpedConfiguracao::first();
+        $empresa = Empresa::first();
+        $linkConfig = [['texto' => 'Abrir Configuração do SPED', 'url' => route('sped-config.editar')]];
+
+        if ((int) $empresa?->crt !== 3) {
+            $this->registrar('erro', $g, 'A EFD-Contribuições é só para empresas do regime normal (CRT 3). No Simples Nacional o PIS/COFINS é apurado no PGDAS-D.', [['texto' => 'Abrir cadastro da empresa', 'url' => route('empresa.editar')]]);
+
+            return;
+        }
+
+        $this->regimePis = $config?->regime_pis_cofins;
+
+        if (!$this->regimePis) {
+            $this->registrar('erro', $g, 'Regime do PIS/COFINS (cumulativo ou não cumulativo) não definido', $linkConfig);
+
+            return;
+        }
+
+        $this->resumo['PIS/COFINS'] = ['regime' => $this->regimePis === 'nao_cumulativo' ? 'não cumulativo' : 'cumulativo'];
+
+        // COD_CTA: obrigatório desde 11/2017, exceto para quem está dispensado da ECD (Presumido com livro caixa)
+        $faltaConta = !$config->cod_cta_receita || ($this->regimePis === 'nao_cumulativo' && !$config->cod_cta_compras);
+        if ($faltaConta) {
+            $this->registrar($this->regimePis === 'nao_cumulativo' ? 'erro' : 'aviso', $g,
+                $this->regimePis === 'nao_cumulativo'
+                    ? 'Contas contábeis de receita e de compras (COD_CTA/0500) não cadastradas: obrigatórias no Lucro Real'
+                    : 'Conta contábil de receita (COD_CTA/0500) não cadastrada: só é dispensada se a empresa não for obrigada à ECD',
+                $linkConfig);
+        }
+
+        // Alíquota básica do CST 01 conforme o regime
+        [$pPis, $pCofins] = $this->regimePis === 'nao_cumulativo' ? [1.65, 7.60] : [0.65, 3.00];
+        $rotuloAliq = number_format($pPis, 2, ',', '') . '% / ' . number_format($pCofins, 2, ',', '') . '%';
+
+        // Itens de saída do período: CST gravado (vem da emissão ou do fiscal:completar-itens)
+        $fimDia = $fim->copy()->endOfDay();
+        $saidas = [
+            'NF-e'  => NotaFiscal::with('itens')->where('status', 'emitida')
+                ->whereBetween('emitida_em', [$inicio, $fimDia])->get()->flatMap->itens,
+            'NFC-e' => Venda::with('itens')->whereNotNull('chave_nfe')->whereNotNull('protocolo_nfe')
+                ->whereBetween('emitida_em', [$inicio, $fimDia])->get()
+                ->reject(fn ($v) => str_contains(strtolower((string) $v->status), 'cancel'))
+                ->flatMap->itens->filter(fn ($i) => $i->produto_id),
+        ];
+
+        foreach ($saidas as $rotulo => $itens) {
+            $semCst = $itens->filter(fn ($i) => blank($i->cst_pis_cofins))->count();
+            $this->registrar('erro', $g, "Itens de {$rotulo} sem CST de PIS/COFINS gravado ({$semCst})", $semCst ? [
+                ['texto' => 'Rode php artisan fiscal:completar-itens --de=' . $inicio->toDateString() . ' --ate=' . $fim->toDateString() . ' (preenche a partir do XML autorizado)'],
+            ] : []);
+
+            $cst03 = $itens->where('cst_pis_cofins', '03')->count();
+            $this->registrar('erro', $g, "Itens de {$rotulo} com CST 03 (alíquota por unidade de medida): ainda não suportado ({$cst03})", $cst03 ? [['texto' => 'Revise a classificação de PIS/COFINS dos produtos']] : []);
+
+            $divergentes = $itens->filter(fn ($i) => (string) $i->cst_pis_cofins === '01'
+                && (round((float) $i->aliquota_pis, 2) != $pPis || round((float) $i->aliquota_cofins, 2) != $pCofins))->count();
+            $this->registrar('aviso', $g, "Itens de {$rotulo} com CST 01 e alíquota diferente de {$rotuloAliq} do regime ({$divergentes})", $divergentes ? [
+                ['texto' => 'Documento já emitido não muda; corrija a classificação de PIS/COFINS (CST 01) para as próximas emissões', 'url' => route('produtos.index')],
+            ] : []);
+        }
+
+        // Entradas com crédito (só no não cumulativo)
+        if ($this->regimePis === 'nao_cumulativo') {
+            $entradas = DB::table('entrada_nota_itens as i')->join('entradas_nota as e', 'e.id', '=', 'i.entrada_nota_id')
+                ->where('e.status', 'finalizada')->where('e.modelo', '55')
+                ->whereBetween('e.data_entrada', [$inicio->toDateString(), $fim->toDateString()]);
+
+            $semCst = (clone $entradas)->whereNull('i.cst_pis_cofins')->distinct()->pluck('e.id');
+            $this->registrar('erro', $g, 'Entradas com itens sem CST de PIS/COFINS de entrada', $semCst->map(fn ($id) => [
+                'texto' => "Entrada #{$id} (produto sem classificação ou CFOP pendente; depois rode php artisan fiscal:pis-cofins-entradas)",
+                'url'   => route('entradas-nota.edit', $id),
+            ])->all());
+
+            $semNatureza = (clone $entradas)->whereIn('i.cst_pis_cofins', CreditoPisCofinsEntrada::CSTS_COM_CREDITO)->whereNull('i.nat_bc_cred')->distinct()->pluck('e.id');
+            $this->registrar('erro', $g, 'Entradas com crédito sem natureza da base de crédito', $semNatureza->map(fn ($id) => [
+                'texto' => "Entrada #{$id}", 'url' => route('entradas-nota.edit', $id),
+            ])->all());
+        }
+
+        $this->registrar('aviso', $g, 'O Bloco M (apuração) ainda sai sem dados: depois de importar no PVA, use a opção de gerar as apurações', [['texto' => 'A geração do Bloco M entra na próxima etapa']]);
     }
 
     // ------------------------------------------------------------------

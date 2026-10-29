@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Credenciadora;
 use App\Models\Empresa;
 use App\Models\EntradaNota;
 use App\Models\Inventario;
@@ -39,11 +40,10 @@ class SpedFiscalGerador
     private const CSOSN = ['101', '102', '103', '201', '202', '203', '300', '400', '500', '900'];
 
     /**
-     * EFD não aceita CSOSN: para empresa do Simples o CST_ICMS é convertido.
-     * Conversão usual de mercado (não há tabela oficial) — confirmar com o contador.
+     * Empresa do Simples informa o próprio CSOSN no CST_ICMS (3 dígitos, sem a origem),
+     * como fazem os sistemas de mercado e o PVA aceita.
      */
-    private const CSOSN_PARA_CST = ['500' => '60'];
-    private const CST_PADRAO_SIMPLES = '90';
+    private const CST_PADRAO = '90';
 
     private Carbon $inicio;
     private Carbon $fim;
@@ -88,6 +88,7 @@ class SpedFiscalGerador
         $this->montarBlocoC();
         $apuracao = $this->montarBlocoE();
         $this->montarBlocoH();
+        $this->montarBloco1();
         $this->montarBloco0();
         $this->montarBlocosSemMovimento();
 
@@ -175,6 +176,37 @@ class SpedFiscalGerador
         }
 
         return $codigo;
+    }
+
+    /** Registra a credenciadora como participante (0150) e devolve o COD_PART. */
+    private function participanteCredenciadora(Credenciadora $c): string
+    {
+        $codigo = 'I' . $c->id;
+
+        $this->participantes[$codigo] ??= ['0150', $codigo, $this->texto($c->nome, 100), '01058', $this->digitos($c->cnpj), '',
+            '', $c->cod_municipio, '', $this->texto($c->logradouro, 60), $this->texto($c->numero, 10),
+            $this->texto($c->complemento, 60), $this->texto($c->bairro, 60)];
+
+        return $codigo;
+    }
+
+    /**
+     * Entrada ou saída da NF-e própria. Vale o tpNF do XML autorizado; sem XML, o CFOP
+     * (1, 2, 3 = entrada); por último o campo tipo_operacao. Ex.: a NF-e de entrada com CFOP 1949
+     * que anula uma saída fora do prazo de cancelamento é escriturada como ENTRADA.
+     */
+    public static function indicadorOperacao(NotaFiscal $nota): string
+    {
+        if ($nota->xml && preg_match('/<tpNF>([01])<\/tpNF>/', $nota->xml, $m)) {
+            return $m[1];
+        }
+
+        $cfop = (string) ($nota->itens?->first()?->cfop ?? '');
+        if ($cfop !== '') {
+            return in_array($cfop[0], ['1', '2', '3'], true) ? '0' : '1';
+        }
+
+        return in_array((string) $nota->tipo_operacao, ['0', 'entrada'], true) ? '0' : '1';
     }
 
     /** Registra o item (0200) e a unidade dele (0190); devolve o COD_ITEM. */
@@ -330,7 +362,7 @@ class SpedFiscalGerador
 
     private function linhasNfePropria(NotaFiscal $nota): array
     {
-        $indOper = in_array((string) $nota->tipo_operacao, ['0', 'entrada'], true) ? '0' : '1';
+        $indOper = self::indicadorOperacao($nota);
         $serie = $this->digitos((string) $nota->serie) ?: '0';
 
         if ($nota->status === 'cancelada') {
@@ -509,21 +541,21 @@ class SpedFiscalGerador
         return [round((float) $bc, 2), (float) $aliq, round((float) $icms, 2)];
     }
 
-    /** CST_ICMS de 3 dígitos (origem + CST). CSOSN do Simples é convertido. */
+    /** CST_ICMS de 3 dígitos: origem + CST no regime normal; o próprio CSOSN no Simples. */
     private function cstIcms(?string $codigo, $origem): string
     {
         $codigo = $this->digitos($codigo);
         $origem = (string) (int) ($origem ?? 0);
 
         if ($this->usaCsosn && in_array($codigo, self::CSOSN, true)) {
-            return $origem . (self::CSOSN_PARA_CST[$codigo] ?? self::CST_PADRAO_SIMPLES);
+            return $codigo;
         }
 
         if (strlen($codigo) === 2) {
             return $origem . $codigo;
         }
 
-        return strlen($codigo) === 3 ? $codigo : $origem . self::CST_PADRAO_SIMPLES;
+        return strlen($codigo) === 3 ? $codigo : $origem . self::CST_PADRAO;
     }
 
     /** Divide $valor proporcionalmente às bases; o arredondamento vai para a maior base. */
@@ -643,9 +675,38 @@ class SpedFiscalGerador
         foreach (['B', 'D', 'G', 'K'] as $bloco) {
             $this->fecharBloco($bloco, []);
         }
+    }
 
-        // 1010: nenhuma das obrigações específicas do Bloco 1 se aplica
-        $this->fecharBloco('1', [array_merge(['1010'], array_fill(0, 13, 'N'))]);
+    // ==================================================================
+    // BLOCO 1 — 1010 (indicadores) e 1601 (pagamentos eletrônicos)
+    // ==================================================================
+
+    private function montarBloco1(): void
+    {
+        $pagamentos = (new SpedPagamentosEletronicos())->calcular($this->inicio, $this->fim);
+
+        $semCredenciadora = $pagamentos['semCredenciadora'];
+        if ($semCredenciadora) {
+            $lista = collect($semCredenciadora)->map(fn ($v, $meio) => "{$meio}: R$ " . number_format($v, 2, ',', '.'))->implode('; ');
+
+            throw ValidationException::withMessages([
+                'sped' => "Há recebimentos eletrônicos sem credenciadora cadastrada ({$lista}). Cadastre a instituição que recebe esses pagamentos.",
+            ]);
+        }
+
+        $linhas1601 = [];
+        foreach ($pagamentos['porCredenciadora'] as ['credenciadora' => $credenciadora, 'total' => $total]) {
+            // REG, COD_PART_IP, COD_PART_IT (intermediador/marketplace: não usado), TOT_VS, TOT_ISS, TOT_OUTROS
+            $linhas1601[] = ['1601', $this->participanteCredenciadora($credenciadora), '', $this->numero($total), $this->numero(0), $this->numero(0)];
+        }
+
+        $this->resumo['credenciadoras_1601'] = count($linhas1601);
+
+        // 1010: só o indicador de operações com cartão/meios eletrônicos (IND_CART, 7º indicador) muda
+        $indicadores = array_fill(0, 13, 'N');
+        $indicadores[6] = $linhas1601 ? 'S' : 'N';
+
+        $this->fecharBloco('1', array_merge([array_merge(['1010'], $indicadores)], $linhas1601));
     }
 
     /**

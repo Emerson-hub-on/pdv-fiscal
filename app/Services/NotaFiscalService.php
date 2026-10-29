@@ -439,6 +439,7 @@ class NotaFiscalService
                 'desconto_efetivo' => round($descontoEfetivo, 2),
                 'bc_icms' => 0, 'aliquota_icms' => 0, 'valor_icms' => 0,
                 'valor_pis' => 0, 'valor_cofins' => 0, 'valor_ipi' => 0, 'aliquota_ipi' => 0,
+                'cst_pis_cofins' => null, 'bc_pis_cofins' => 0, 'aliquota_pis' => 0, 'aliquota_cofins' => 0,
                 'valor_ibs' => 0, 'valor_cbs' => 0,
                 // Custo do produto no momento da venda (preco_custo do cadastro); vazio quando o produto não tem custo
                 'custo_unitario' => (float) ($produto->preco_custo ?? 0) > 0 ? round((float) $produto->preco_custo, 4) : null,
@@ -612,6 +613,11 @@ if ($this->empresa->crt <= 2) {
 
                 $reg['valor_pis'] = (float) $pis->vPIS;
                 $reg['valor_cofins'] = (float) $cofins->vCOFINS;
+                // CST, base e alíquotas também, para a EFD-Contribuições (mesmos valores do XML)
+                $reg['cst_pis_cofins'] = (string) $pis->CST;
+                $reg['bc_pis_cofins'] = (float) $pis->vBC;
+                $reg['aliquota_pis'] = (float) $pis->pPIS;
+                $reg['aliquota_cofins'] = (float) $cofins->pCOFINS;
 
                 // IPI — a lib decide sozinha a estrutura interna (IPITrib com base/alíquota/valor,
                 // ou IPINT sem esses campos) conforme a presença de vBC/pIPI/vIPI no std.
@@ -1033,7 +1039,7 @@ if ($this->empresa->crt <= 2) {
     protected function codigoUf(string $uf): int
     {
         $codigos = [
-            'AC'=>12,'AL'=>17,'AP'=>16,'AM'=>13,'BA'=>29,'CE'=>23,'DF'=>53,'ES'=>32,
+            'AC'=>12,'AL'=>27,'AP'=>16,'AM'=>13,'BA'=>29,'CE'=>23,'DF'=>53,'ES'=>32,
             'GO'=>52,'MA'=>21,'MT'=>51,'MS'=>50,'MG'=>31,'PA'=>15,'PB'=>25,'PR'=>41,
             'PE'=>26,'PI'=>22,'RJ'=>33,'RN'=>24,'RS'=>43,'RO'=>11,'RR'=>14,'SC'=>42,
             'SP'=>35,'SE'=>28,'TO'=>17,

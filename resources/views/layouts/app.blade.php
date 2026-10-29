@@ -494,6 +494,10 @@
                                class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                                 Inventário
                             </a>
+                            <a href="{{ route('credenciadoras.index') }}"
+                               class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                                Credenciadoras
+                            </a>
                             <a href="{{ route('sped-config.editar') }}"
                                class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                                 Configuração do SPED
@@ -535,6 +539,7 @@
                     'sped' => ['Fiscal', 'Gerar SPED'],
                     'sped-config' => ['Fiscal', 'Configuração do SPED'],
                     'inventarios' => ['Fiscal', 'Inventário do SPED'],
+                    'credenciadoras' => ['Fiscal', 'Credenciadoras'],
                     'transportadores' => ['Cadastros', 'Transportadoras'],
                     'veiculos' => ['Cadastros', 'Veículos'],
                     'condutores' => ['Cadastros', 'Condutores'],

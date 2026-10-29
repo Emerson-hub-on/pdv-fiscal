@@ -28,6 +28,7 @@ use App\Models\FormaPagamento;
 use App\Models\CstEntradaConversao;
 use App\Services\ContaPagarService;
 use App\Services\EstoqueService;
+use App\Services\CreditoPisCofinsEntrada;
 use App\Support\XmlDuplicatas;
 
 
@@ -520,6 +521,8 @@ class EntradaNotaController extends Controller
                     $avisos[] = "{$pendentes} item(ns) com conversão de CFOP pendente (o CFOP do fornecedor não tem regra para esta operação).";
                 }
 
+                array_push($avisos, ...CreditoPisCofinsEntrada::avisos($entrada));
+
                 return $entrada;
             });
         } catch (\DomainException $e) {
@@ -707,7 +710,8 @@ class EntradaNotaController extends Controller
         }
 
         return redirect()->route('entradas-nota.edit', $entrada)
-            ->with('sucesso', 'Rascunho da entrada salvo.');
+            ->with('sucesso', 'Rascunho da entrada salvo.')
+            ->with('avisos', CreditoPisCofinsEntrada::avisos($entrada));
     }
 
     public function edit(EntradaNota $entrada)
@@ -731,7 +735,8 @@ class EntradaNotaController extends Controller
         }
 
         return redirect()->route('entradas-nota.edit', $entrada)
-            ->with('sucesso', 'Rascunho da entrada salvo.');
+            ->with('sucesso', 'Rascunho da entrada salvo.')
+            ->with('avisos', CreditoPisCofinsEntrada::avisos($entrada));
     }
 
     public function destroy(EntradaNota $entrada)
@@ -850,6 +855,15 @@ class EntradaNotaController extends Controller
                 'cst_entrada'       => $i->cst_csosn_entrada,
                 'gera_credito'      => $i->gera_credito,
                 'fiscal_manual'     => (bool) $i->fiscal_manual,
+                // PIS/COFINS de entrada (crédito da empresa)
+                'pis_cofins_manual' => (bool) $i->pis_cofins_manual,
+                'cst_pis_cofins'    => $i->cst_pis_cofins,
+                'nat_bc_cred'       => $i->nat_bc_cred,
+                'bc_pis_cofins'     => (float) $i->bc_pis_cofins,
+                'aliquota_pis'      => (float) $i->aliquota_pis,
+                'aliquota_cofins'   => (float) $i->aliquota_cofins,
+                'valor_pis'         => (float) $i->valor_pis,
+                'valor_cofins'      => (float) $i->valor_cofins,
             ])
             ->values()
             ->all();
@@ -863,6 +877,12 @@ class EntradaNotaController extends Controller
             'formasPagamento' => FormaPagamento::ativos()->paraEntrada()
                 ->orderByRaw('ordem IS NULL, ordem ASC, descricao ASC')->get(), 
             'fiscal'          => $this->regrasFiscais(),     
+            'pisCofins'       => [
+                'regime'     => CreditoPisCofinsEntrada::regime(), // null = Simples ou não configurado
+                'csts'       => CreditoPisCofinsEntrada::CSTS,
+                'naturezas'  => CreditoPisCofinsEntrada::NATUREZAS,
+                'comCredito' => CreditoPisCofinsEntrada::CSTS_COM_CREDITO,
+            ],
         ];
     }
 
@@ -1097,6 +1117,12 @@ class EntradaNotaController extends Controller
             'itens.*.cfop_entrada'      => ['nullable', 'digits:4', Rule::exists('cfops_entrada', 'codigo')],
             'itens.*.cst_entrada'       => ['nullable', Rule::in($cstValidos)],
             'itens.*.gera_credito'      => ['nullable', 'boolean'],
+            'itens.*.pis_cofins_manual' => ['nullable', 'boolean'],
+            'itens.*.cst_pis_cofins'    => ['nullable', Rule::in(array_keys(CreditoPisCofinsEntrada::CSTS))],
+            'itens.*.nat_bc_cred'       => ['nullable', Rule::in(array_keys(CreditoPisCofinsEntrada::NATUREZAS))],
+            'itens.*.bc_pis_cofins'     => ['nullable', 'numeric', 'min:0'],
+            'itens.*.aliquota_pis'      => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'itens.*.aliquota_cofins'   => ['nullable', 'numeric', 'min:0', 'max:100'],
         ], [
             'operacao_entrada_id.required' => 'Selecione a operação (CFOP) da entrada.',
             'itens.required'       => 'Adicione ao menos um item à entrada.',
@@ -1118,6 +1144,33 @@ class EntradaNotaController extends Controller
             throw ValidationException::withMessages([
                 'numero' => 'Esta nota já foi lançada para este fornecedor.',
             ]);
+        }
+
+        foreach ($dados['itens'] as $i => $item) {
+            if (! filter_var($item['pis_cofins_manual'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                continue;
+            }
+
+            $n = $i + 1;
+
+            if (empty($item['cst_pis_cofins'])) {
+                throw ValidationException::withMessages([
+                    "itens.{$i}.cst_pis_cofins" => "Item {$n}: informe o CST de PIS/COFINS de entrada (ou desmarque o ajuste manual).",
+                ]);
+            }
+
+            if (in_array($item['cst_pis_cofins'], CreditoPisCofinsEntrada::CSTS_COM_CREDITO, true)
+                && CreditoPisCofinsEntrada::regime() === 'cumulativo') {
+                throw ValidationException::withMessages([
+                    "itens.{$i}.cst_pis_cofins" => "Item {$n}: no regime cumulativo (Lucro Presumido) não há crédito de PIS/COFINS. Use CST 70, 98 ou 99.",
+                ]);
+            }
+
+            if (in_array($item['cst_pis_cofins'], CreditoPisCofinsEntrada::CSTS_COM_CREDITO, true) && empty($item['nat_bc_cred'])) {
+                throw ValidationException::withMessages([
+                    "itens.{$i}.nat_bc_cred" => "Item {$n}: CST {$item['cst_pis_cofins']} gera crédito e exige a natureza da base de crédito.",
+                ]);
+            }
         }
 
         return $dados;
@@ -1216,8 +1269,9 @@ class EntradaNotaController extends Controller
                 $unit     = (float) $item['valor_unitario'];
                 $desconto = (float) ($item['valor_desconto'] ?? 0);
                 $manual = filter_var($item['fiscal_manual'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                $pisManual = filter_var($item['pis_cofins_manual'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-                $entrada->itens()->create([
+                $criado = $entrada->itens()->create([
                     'produto_id'        => $produto->id,
                     'produto_variante_id' => ! empty($item['produto_variante_id']) ? $variantes[$item['produto_variante_id']]->id : null,
                     'codigo_fornecedor' => $item['codigo_fornecedor'] ?? null,
@@ -1249,6 +1303,18 @@ class EntradaNotaController extends Controller
                                                 ? filter_var($item['gera_credito'], FILTER_VALIDATE_BOOLEAN) : null,
                     ] : []),
                 ]);
+
+                // PIS/COFINS digitado na aba Impostos: os valores são recalculados pelo serviço (base × alíquota)
+                if ($pisManual) {
+                    $criado->forceFill([
+                        'pis_cofins_manual' => true,
+                        'cst_pis_cofins'    => $item['cst_pis_cofins'],
+                        'nat_bc_cred'       => ($item['nat_bc_cred'] ?? null) ?: null,
+                        'bc_pis_cofins'     => round((float) ($item['bc_pis_cofins'] ?? 0), 2),
+                        'aliquota_pis'      => round((float) ($item['aliquota_pis'] ?? 0), 4),
+                        'aliquota_cofins'   => round((float) ($item['aliquota_cofins'] ?? 0), 4),
+                    ])->save();
+                }
             }
 
             $entrada->recalcularTotais();
@@ -1276,6 +1342,9 @@ class EntradaNotaController extends Controller
                 $item->csosn_origem
             ));
         }
+
+        // PIS/COFINS de entrada depende do CFOP de entrada já convertido acima
+        app(CreditoPisCofinsEntrada::class)->aplicar($entrada);
     }
 
     /**

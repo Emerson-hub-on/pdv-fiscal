@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Completa CFOP, CST/CSOSN, NCM e ICMS dos itens de notas antigas, emitidas antes de o sistema
+ * Completa CFOP, CST/CSOSN, NCM, ICMS e PIS/COFINS dos itens de notas antigas, emitidas antes de o sistema
  * gravar esses dados no banco. A fonte é o XML AUTORIZADO de cada nota (o que a SEFAZ aceitou),
  * casando o item do XML (nItem) com o item do banco pela ordem de gravação.
  *
@@ -21,7 +21,7 @@ class CompletarItensFiscais extends Command
         {--ate= : Data final (AAAA-MM-DD) da emissão}
         {--simular : Só mostra o que seria alterado, sem gravar}';
 
-    protected $description = 'Completa CFOP, CST/CSOSN, NCM e ICMS dos itens de NF-e e NFC-e antigas a partir do XML autorizado';
+    protected $description = 'Completa CFOP, CST/CSOSN, NCM, ICMS e PIS/COFINS dos itens de NF-e e NFC-e antigas a partir do XML autorizado';
 
     private array $resumo = [];
     private array $problemas = [];
@@ -67,7 +67,8 @@ class CompletarItensFiscais extends Command
         $notas = NotaFiscal::query()
             ->whereIn('status', ['emitida', 'cancelada'])
             ->whereHas('itens', fn ($q) => $q->where(fn ($q) => $q->whereNull('cfop')->orWhere('cfop', '')
-                ->orWhereNull('cst_csosn')->orWhere('cst_csosn', '')))
+                ->orWhereNull('cst_csosn')->orWhere('cst_csosn', '')
+                ->orWhereNull('cst_pis_cofins')->orWhere('cst_pis_cofins', '')))
             ->when($this->option('de'), fn ($q, $d) => $q->whereDate('emitida_em', '>=', $d))
             ->when($this->option('ate'), fn ($q, $d) => $q->whereDate('emitida_em', '<=', $d))
             ->with(['itens' => fn ($q) => $q->orderBy('id')])
@@ -98,7 +99,8 @@ class CompletarItensFiscais extends Command
             ->whereNotNull('chave_nfe')
             ->whereHas('itens', fn ($q) => $q->where(fn ($q) => $q->whereNull('cfop')->orWhere('cfop', '')
                 ->orWhereNull('cst_csosn')->orWhere('cst_csosn', '')
-                ->orWhereNull('ncm')->orWhere('ncm', '')))
+                ->orWhereNull('ncm')->orWhere('ncm', '')
+                ->orWhereNull('cst_pis_cofins')->orWhere('cst_pis_cofins', '')))
             ->when($this->option('de'), fn ($q, $d) => $q->whereDate('emitida_em', '>=', $d))
             ->when($this->option('ate'), fn ($q, $d) => $q->whereDate('emitida_em', '<=', $d))
             ->with(['itens' => fn ($q) => $q->orderBy('id')])
@@ -207,6 +209,17 @@ class CompletarItensFiscais extends Command
                     $dados['valor_icms']    = $xml['vicms'];
                 }
 
+                // PIS/COFINS (EFD-Contribuições): só quando o CST ainda não foi gravado
+                if (blank($item->cst_pis_cofins) && $xml['cst_pis']) {
+                    $dados['cst_pis_cofins']  = $xml['cst_pis'];
+                    $dados['bc_pis_cofins']   = $xml['vbc_pis'];
+                    $dados['aliquota_pis']    = $xml['ppis'];
+                    $dados['aliquota_cofins'] = $xml['pcofins'];
+
+                    if ((float) $item->valor_pis == 0.0)    $dados['valor_pis'] = $xml['vpis'];
+                    if ((float) $item->valor_cofins == 0.0) $dados['valor_cofins'] = $xml['vcofins'];
+                }
+
                 if ($dados) {
                     $alterados++;
 
@@ -247,6 +260,8 @@ class CompletarItensFiscais extends Command
             }
 
             $valor = fn ($pai, $tag) => $pai?->getElementsByTagName($tag)->item(0)?->nodeValue;
+            $pis    = $det->getElementsByTagName('PIS')->item(0);
+            $cofins = $det->getElementsByTagName('COFINS')->item(0);
 
             $itens[(int) $det->getAttribute('nItem')] = [
                 'cfop'      => $valor($prod, 'CFOP'),
@@ -255,6 +270,12 @@ class CompletarItensFiscais extends Command
                 'vbc'       => round((float) $valor($grupo, 'vBC'), 2),
                 'picms'     => round((float) $valor($grupo, 'pICMS'), 4),
                 'vicms'     => round((float) $valor($grupo, 'vICMS'), 2),
+                'cst_pis'   => $valor($pis, 'CST'),
+                'vbc_pis'   => round((float) $valor($pis, 'vBC'), 2),
+                'ppis'      => round((float) $valor($pis, 'pPIS'), 4),
+                'vpis'      => round((float) $valor($pis, 'vPIS'), 2),
+                'pcofins'   => round((float) $valor($cofins, 'pCOFINS'), 4),
+                'vcofins'   => round((float) $valor($cofins, 'vCOFINS'), 2),
             ];
         }
 

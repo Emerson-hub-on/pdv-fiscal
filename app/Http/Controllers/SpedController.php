@@ -6,6 +6,7 @@ use App\Models\Empresa;
 use App\Models\Inventario;
 use App\Models\SpedConfiguracao;
 use App\Models\SpedGeracao;
+use App\Services\SpedContribuicoesGerador;
 use App\Services\SpedFiscalGerador;
 use App\Services\SpedVerificacaoService;
 use Illuminate\Http\Request;
@@ -17,7 +18,8 @@ use Illuminate\Validation\ValidationException;
 class SpedController extends Controller
 {
     public const TIPOS = [
-        'icms_ipi' => 'EFD ICMS/IPI (SPED Fiscal)',
+        'icms_ipi'      => 'EFD ICMS/IPI (SPED Fiscal)',
+        'contribuicoes' => 'EFD-Contribuições (PIS/COFINS)',
     ];
 
     public function index(Request $request)
@@ -27,26 +29,31 @@ class SpedController extends Controller
 
         if ($request->filled('verificar')) {
             $dados = $this->validarPeriodo($request);
-            $resultado = (new SpedVerificacaoService())->verificar($this->inicioDaCompetencia($dados['competencia']));
+            $resultado = (new SpedVerificacaoService())->verificar($this->inicioDaCompetencia($dados['competencia']), $dados['tipo']);
         }
 
         $crt = (int) Empresa::atual()->crt;
 
         return view('sped.index', [
             'tipos'       => self::TIPOS,
+            'tipo'        => array_key_exists($request->get('tipo'), self::TIPOS) ? $request->get('tipo') : 'icms_ipi',
             'resultado'   => $resultado,
             'competencia' => $competencia,
             // Regime normal (CRT 2 e 3) destaca ICMS por padrão; Simples (1) e MEI (4) não
             'destacarPadrao'      => in_array($crt, [2, 3], true),
             'saldoAnteriorPadrao' => $this->saldoDoMesAnterior($competencia),
             'config'      => SpedConfiguracao::first(),
-            'geracoes'    => SpedGeracao::with('usuario')->latest()->limit(10)->get(),
+            'geracoes'    => SpedGeracao::with('usuario')->latest()->limit(15)->get(),
             ...$this->opcoesInventario($competencia),
         ]);
     }
 
     public function gerar(Request $request)
     {
+        if ($request->input('tipo') === 'contribuicoes') {
+            return $this->gerarContribuicoes($request);
+        }
+
         $dados = $this->validarPeriodo($request) + $request->validate([
             'destacar_icms'         => ['nullable', 'boolean'],
             'saldo_credor_anterior' => ['nullable', 'numeric', 'min:0'],
@@ -59,7 +66,7 @@ class SpedController extends Controller
         $inicio = $this->inicioDaCompetencia($dados['competencia']);
 
         // Não gera arquivo com erro de cadastro: o PVA recusaria (ou, pior, aceitaria dados errados)
-        $verificacao = (new SpedVerificacaoService())->verificar($inicio);
+        $verificacao = (new SpedVerificacaoService())->verificar($inicio, 'icms_ipi');
         $erros = collect($verificacao['problemas'])->where('nivel', 'erro');
 
         if ($erros->isNotEmpty()) {
@@ -92,12 +99,68 @@ class SpedController extends Controller
         Storage::disk('local')->put($caminho, $conteudo);
 
         SpedGeracao::create([
+            'tipo'                     => 'icms_ipi',
             'competencia'              => $inicio->toDateString(),
             'finalidade'               => $opcoes['finalidade'],
             'destacar_icms'            => $opcoes['destacar_icms'],
             'saldo_credor_anterior'    => $opcoes['saldo_credor_anterior'],
             'icms_recolher'            => $resultado['apuracao']['recolher'],
             'saldo_credor_transportar' => $resultado['apuracao']['transportar'],
+            'arquivo'                  => $caminho,
+            'total_linhas'             => $resultado['total_linhas'],
+            'user_id'                  => auth()->id(),
+        ]);
+
+        return response($conteudo, 200, [
+            'Content-Type'        => 'text/plain; charset=ISO-8859-1',
+            'Content-Disposition' => 'attachment; filename="' . $nome . '"',
+        ]);
+    }
+
+    /** EFD-Contribuições: mesma trava da verificação; retificadora exige o recibo da original. */
+    private function gerarContribuicoes(Request $request)
+    {
+        $dados = $this->validarPeriodo($request) + $request->validate([
+            'num_rec_anterior' => ['nullable', 'required_if:finalidade,1', 'string', 'max:41'],
+        ], [
+            'num_rec_anterior.required_if' => 'Na retificadora, informe o número do recibo da escrituração original.',
+        ]);
+
+        $inicio = $this->inicioDaCompetencia($dados['competencia']);
+
+        $erros = collect((new SpedVerificacaoService())->verificar($inicio, 'contribuicoes')['problemas'])->where('nivel', 'erro');
+
+        if ($erros->isNotEmpty()) {
+            return redirect()->route('sped.index', [
+                'tipo' => 'contribuicoes', 'competencia' => $dados['competencia'], 'finalidade' => $dados['finalidade'], 'verificar' => 1,
+            ])->withErrors(['sped' => "Corrija os {$erros->count()} erro(s) da verificação antes de gerar o arquivo."]);
+        }
+
+        try {
+            $resultado = (new SpedContribuicoesGerador())->gerar($inicio, [
+                'finalidade'       => $dados['finalidade'],
+                'num_rec_anterior' => $dados['num_rec_anterior'] ?? null,
+            ]);
+        } catch (ValidationException $e) {
+            return back()->withInput()->withErrors($e->errors());
+        }
+
+        $cnpj = preg_replace('/\D/', '', (string) Empresa::atual()->cnpj);
+        $nome = "EFD_CONTRIBUICOES_{$cnpj}_{$inicio->format('Ym')}" . ($dados['finalidade'] === '1' ? '_RETIFICADORA' : '') . '.txt';
+        $caminho = "sped/{$inicio->format('Y')}/{$nome}";
+
+        $conteudo = mb_convert_encoding($resultado['conteudo'], 'ISO-8859-1', 'UTF-8');
+        Storage::disk('local')->put($caminho, $conteudo);
+
+        SpedGeracao::create([
+            'tipo'                     => 'contribuicoes',
+            'competencia'              => $inicio->toDateString(),
+            'finalidade'               => $dados['finalidade'],
+            'destacar_icms'            => false,
+            'saldo_credor_anterior'    => 0,
+            'icms_recolher'            => 0,
+            'saldo_credor_transportar' => 0,
+            'totais'                   => $resultado['resumo'],
             'arquivo'                  => $caminho,
             'total_linhas'             => $resultado['total_linhas'],
             'user_id'                  => auth()->id(),
@@ -171,6 +234,6 @@ class SpedController extends Controller
             return 0.0;
         }
 
-        return (float) (SpedGeracao::whereDate('competencia', $anterior)->latest()->value('saldo_credor_transportar') ?? 0);
+        return (float) (SpedGeracao::where('tipo', 'icms_ipi')->whereDate('competencia', $anterior)->latest()->value('saldo_credor_transportar') ?? 0);
     }
 }
