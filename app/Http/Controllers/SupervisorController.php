@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Services\UsuarioCache;
 use App\Support\AutorizacaoSupervisor;
+use App\Support\OcorrenciaCaixa;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -65,6 +66,13 @@ class SupervisorController extends Controller
         if ($tipo = AutorizacaoSupervisor::tipoDaAcao($acao)) {
             AutorizacaoSupervisor::conceder($tipo, $user->id);
         }
+
+        // Relatório de fechamento: quem liberou o quê neste caixa
+        OcorrenciaCaixa::registrar([
+            'tipo' => OcorrenciaCaixa::AUTORIZACAO,
+            'acao' => $acao,
+            'supervisor_id' => $user->id,
+        ]);
 
         Log::info('Autorização de supervisor', [
             'supervisor_id' => $user->id,

@@ -8,6 +8,7 @@ use App\Services\FiscalEmissorService;
 use App\Services\SyncService;
 use App\Support\AutorizacaoSupervisor;
 use App\Support\EmissaoLocal;
+use App\Support\OcorrenciaCaixa;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -73,6 +74,7 @@ class CancelamentoController extends Controller
             if ($local) {
                 $resultado = (new EmissorLocalService())->cancelarLocal($venda, $validado['justificativa']);
                 $vendaRef = $venda;
+                $vendaUuid = $venda;
             } else {
                 $registro = Venda::findOrFail($venda);
                 $resultado = (new FiscalEmissorService())->cancelar($registro, $validado['justificativa']);
@@ -82,10 +84,25 @@ class CancelamentoController extends Controller
                     ->update(['status' => 'cancelada', 'updated_at' => now()]);
 
                 $vendaRef = $registro->id;
+                $vendaUuid = $registro->uuid;
             }
 
             // Uso único: só gasta a autorização quando o cancelamento deu certo
             AutorizacaoSupervisor::consumir('cancelar_nfce');
+
+            // Relatório de fechamento: cancelamento no caixa em que a venda foi feita
+            $vendaLocal = DB::connection('sqlite_local')->table('vendas_pendentes')
+                ->where('uuid', $vendaUuid)->first(['caixa_uuid', 'total']);
+
+            OcorrenciaCaixa::registrar([
+                'tipo' => OcorrenciaCaixa::CANCELAMENTO_NFCE,
+                'venda_uuid' => $vendaUuid,
+                'caixa_uuid' => $vendaLocal->caixa_uuid ?? null,
+                'descricao' => $validado['justificativa'],
+                'valor' => $vendaLocal->total ?? ($registro->total ?? 0),
+                'supervisor_id' => $supervisorId,
+                'liberado_operador' => $liberado,
+            ]);
 
             Log::info('NFC-e cancelada', [
                 'venda_id'      => $vendaRef,
@@ -133,4 +150,4 @@ class CancelamentoController extends Controller
             })
             ->values();
     }
-}
+}                                                                                                                           

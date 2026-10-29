@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use App\Support\Maquina;
 use App\Services\UsuarioCache;
+use App\Services\RelatorioFechamentoService;
 use Illuminate\Support\Facades\DB;
 
 class CaixaController extends Controller
@@ -160,7 +161,53 @@ class CaixaController extends Controller
             ? 'Caixa fechado. O fechamento será enviado ao servidor quando a conexão voltar.'
             : 'Caixa fechado com sucesso.';
 
-        return redirect()->route('auth.escolha')->with('sucesso', $mensagem);
+        // Tela "Caixa fechado", que pergunta se imprime o relatório de fechamento
+        return redirect()->route('caixa.fechado', $caixa->uuid)->with('sucesso', $mensagem);
+    }
+
+    /** Depois do fechamento: resumo e a pergunta "Deseja imprimir o relatório de fechamento?" */
+    public function fechado(string $uuid, RelatorioFechamentoService $servico)
+    {
+        $caixa = $this->caixaFechadoDoOperador($uuid);
+
+        if (!$caixa) {
+            return redirect()->route('auth.escolha');
+        }
+
+        return view('caixa.fechado', [
+            'caixa' => $caixa,
+            'r' => $servico->dados($caixa),
+        ]);
+    }
+
+    /** Relatório de fechamento em bobina 80 mm. ?auto=1 abre a impressão; ?reimpressao=1 marca a via. */
+    public function relatorioFechamento(Request $request, string $uuid, RelatorioFechamentoService $servico)
+    {
+        $caixa = $this->caixaFechadoDoOperador($uuid);
+
+        if (!$caixa) {
+            abort(404, 'Caixa fechado não encontrado para este operador.');
+        }
+
+        return view('caixa.relatorio-fechamento', [
+            'caixa' => $caixa,
+            'r' => $servico->dados($caixa),
+            'empresa' => DB::connection('sqlite_local')->table('empresa_cache')->first(),
+            'operador' => UsuarioCache::porId($caixa->operador_id) ?? Auth::user(),
+            'maquina' => Maquina::nome(),
+            'reimpressao' => $request->boolean('reimpressao'),
+            'auto' => $request->boolean('auto'),
+        ]);
+    }
+
+    // Só o próprio operador vê o fechamento do seu caixa
+    private function caixaFechadoDoOperador(string $uuid): ?CaixaLocal
+    {
+        return CaixaLocal::with('pdv')
+            ->where('uuid', $uuid)
+            ->where('operador_id', Auth::id())
+            ->where('status', '!=', 'aberto')
+            ->first();
     }
 
 

@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
 use App\Services\EmissorLocalService;
 use App\Support\EmissaoLocal;
 use App\Models\PdvCache;
+use App\Support\OcorrenciaCaixa;
 
 
 class VendaController extends Controller
@@ -219,6 +220,49 @@ class VendaController extends Controller
         return $dentroDoPrazo ? (float) $produto->preco_atacado : (float) $produto->preco_venda;
     }
 
+    // Uma ocorrência por item com desconto e uma pelo desconto no total, com o supervisor que liberou
+    private function registrarDescontos(string $uuid, CaixaLocal $caixa, array $itens, float $descontoGlobal): void
+    {
+        $usuario = Auth::user();
+        $db = DB::connection('sqlite_local');
+
+        $liberadoItem = $usuario->caixaLiberado('desconto_item');
+        $supervisorItem = $liberadoItem ? null : AutorizacaoSupervisor::supervisorId('desconto_item');
+
+        foreach ($itens as $item) {
+            if ((float) $item['desconto'] <= 0) {
+                continue;
+            }
+
+            $nome = $db->table('produtos_cache')->where('id', $item['produto_id'])->value('nome')
+                ?? 'Produto #' . $item['produto_id'];
+
+            OcorrenciaCaixa::registrar([
+                'tipo' => OcorrenciaCaixa::DESCONTO_ITEM,
+                'venda_uuid' => $uuid,
+                'caixa_uuid' => $caixa->uuid,
+                'descricao' => $nome . ' x' . $item['quantidade'],
+                'valor' => $item['desconto'],
+                'supervisor_id' => $supervisorItem,
+                'liberado_operador' => $liberadoItem,
+            ]);
+        }
+
+        if ($descontoGlobal > 0) {
+            $liberadoGlobal = $usuario->caixaLiberado('desconto_global');
+
+            OcorrenciaCaixa::registrar([
+                'tipo' => OcorrenciaCaixa::DESCONTO_GLOBAL,
+                'venda_uuid' => $uuid,
+                'caixa_uuid' => $caixa->uuid,
+                'descricao' => 'Desconto no total da venda',
+                'valor' => $descontoGlobal,
+                'supervisor_id' => $liberadoGlobal ? null : AutorizacaoSupervisor::supervisorId('desconto_global'),
+                'liberado_operador' => $liberadoGlobal,
+            ]);
+        }
+    }
+
     // PDV do caixa foi inativado no servidor (já sincronizado para o cache local)
     private function pdvInativo(CaixaLocal $caixa): bool
     {
@@ -293,10 +337,11 @@ class VendaController extends Controller
         try {
             $uuid = (string) Str::uuid();
             $totalComDesconto = 0;
+            $itensGravados = [];
 
             // Baixa de estoque, conferências e gravação da venda pendente na MESMA transação:
             // se qualquer conferência falhar, a baixa de estoque é desfeita junto.
-            DB::connection('sqlite_local')->transaction(function () use ($validado, $caixa, $uuid, &$totalComDesconto, $pedidoVendaId) {
+            DB::connection('sqlite_local')->transaction(function () use ($validado, $caixa, $uuid, &$totalComDesconto, &$itensGravados, $pedidoVendaId) {
                 $total = 0;
                 $itensParaSalvar = [];
 
@@ -398,7 +443,12 @@ class VendaController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+
+                $itensGravados = $itensParaSalvar;
             });
+
+            // Relatório de fechamento: descontos da venda e quem liberou (antes de consumir as autorizações)
+            $this->registrarDescontos($uuid, $caixa, $itensGravados, (float) ($validado['desconto_global'] ?? 0));
 
             // Venda gravada: encerra o carrinho e a autorização de desconto desta venda
             session()->forget('venda_carrinho');
