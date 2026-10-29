@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ContagemEstoque;
 use App\Models\Inventario;
 use App\Models\InventarioItem;
 use App\Services\InventarioService;
@@ -16,8 +17,16 @@ class InventarioController extends Controller
             'inventarios'      => Inventario::with('usuario')->withCount('itens')->orderByDesc('data')->orderByDesc('id')->paginate(15),
             'inicioHistorico'  => InventarioService::inicioDoHistorico(),
             // Sugestão: o último dia do ano anterior (inventário que vai no arquivo de fevereiro)
-            'dataSugerida'     => now()->subYear()->endOfYear()->format('Y-m-d'),
+            // Depois de aplicar uma contagem, o link "calcular inventário" já traz a data dela
+            'dataSugerida'     => $this->dataValida(request('data')) ?? now()->subYear()->endOfYear()->format('Y-m-d'),
+            'contagens'        => ContagemEstoque::with('usuario')->withCount('itens')->latest()->limit(10)->get(),
+            'hoje'             => now()->format('Y-m-d'),
         ]);
+    }
+
+    private function dataValida(?string $data): ?string
+    {
+        return $data && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data) ? $data : null;
     }
 
     public function store(Request $request, InventarioService $service)

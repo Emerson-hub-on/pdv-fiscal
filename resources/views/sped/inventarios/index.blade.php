@@ -71,6 +71,101 @@
         </div>
     </form>
 
+    {{-- ===================== CONTAGEM FÍSICA ===================== --}}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <h2 class="text-sm font-semibold text-gray-800 mb-1">Contagem física</h2>
+        <p class="text-xs text-gray-400 mb-4">
+            Quando o estoque do sistema não bate com o que está na loja: baixe a planilha, preencha a coluna "Quantidade contada"
+            com o que foi contado e importe. O sistema mostra as sobras e faltas antes de mudar qualquer coisa; ao aplicar,
+            cada diferença vira um ajuste de estoque na data da contagem (com histórico) e o inventário passa a refletir a contagem.
+            Item deixado em branco na planilha não é alterado.
+        </p>
+
+        <div class="grid grid-cols-2 gap-6">
+            {{-- 1. Baixar a planilha --}}
+            <form method="GET" action="{{ route('contagens.planilha') }}" class="border border-gray-200 rounded-lg p-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">1. Baixar planilha para contar</p>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Data da contagem</label>
+                <input type="date" name="data" required max="{{ $hoje }}" value="{{ $hoje }}" class="{{ $campo }}">
+
+                <label class="flex items-center gap-2 cursor-pointer mt-3">
+                    <input type="hidden" name="com_saldo" value="0">
+                    <input type="checkbox" name="com_saldo" value="1" checked
+                           class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500">
+                    <span class="text-sm text-gray-700">Mostrar o saldo do sistema na planilha</span>
+                </label>
+                <p class="text-xs text-gray-400 mt-1">Desmarcado = contagem "cega": quem conta não vê o número esperado, o que evita contar pelo sistema.</p>
+
+                <button type="submit" class="mt-4 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition">
+                    Baixar planilha (.xlsx)
+                </button>
+            </form>
+
+            {{-- 2. Importar a planilha preenchida --}}
+            <form method="POST" action="{{ route('contagens.importar') }}" enctype="multipart/form-data" class="border border-gray-200 rounded-lg p-4">
+                @csrf
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">2. Importar contagem preenchida</p>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Data da contagem <span class="text-red-500">*</span></label>
+                        <input type="date" name="data" required max="{{ $hoje }}" value="{{ old('data', $hoje) }}" class="{{ $campo }}">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Planilha <span class="text-red-500">*</span></label>
+                        <input type="file" name="planilha" required accept=".xlsx,.xls,.csv"
+                               class="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Observação <span class="text-xs text-gray-400 font-normal">(opcional)</span></label>
+                        <input type="text" name="observacao" maxlength="255" value="{{ old('observacao') }}" placeholder="Ex.: contagem de fim de ano — equipe da loja"
+                               class="{{ $campo }}">
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400 mt-2">Use a mesma data da planilha baixada. Os ajustes entram no fim desse dia; vendas posteriores continuam valendo.</p>
+
+                <button type="submit" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition">
+                    Importar e comparar
+                </button>
+            </form>
+        </div>
+
+        @if ($contagens->isNotEmpty())
+            <div class="mt-5 border border-gray-200 rounded-lg overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                        <tr>
+                            <th class="px-4 py-2 text-left font-medium">Data</th>
+                            <th class="px-4 py-2 text-left font-medium">Itens contados</th>
+                            <th class="px-4 py-2 text-left font-medium">Importada por</th>
+                            <th class="px-4 py-2 text-left font-medium">Status</th>
+                            <th class="px-4 py-2 text-left font-medium">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @foreach ($contagens as $c)
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-2 font-medium text-gray-800">{{ $c->data->format('d/m/Y') }}</td>
+                                <td class="px-4 py-2 text-gray-600">{{ $c->itens_count }}</td>
+                                <td class="px-4 py-2 text-gray-600">{{ $c->usuario?->name ?? '—' }} · {{ $c->created_at->format('d/m/Y H:i') }}</td>
+                                <td class="px-4 py-2">
+                                    @if ($c->isRascunho())
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700">Aguardando aplicação</span>
+                                    @else
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">Aplicada em {{ $c->aplicada_em?->format('d/m/Y') }}</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-2">
+                                    <a href="{{ route('contagens.show', $c) }}" class="text-blue-600 hover:text-blue-700 font-medium">Abrir</a>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </div>
+
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <table class="w-full text-sm">
             <thead class="bg-gray-700 font-medium text-xs uppercase tracking-wide">

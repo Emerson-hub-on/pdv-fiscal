@@ -47,6 +47,7 @@ use App\Http\Controllers\PedidoCompraController;
 use App\Http\Controllers\PedidoVendaController;
 use App\Http\Controllers\OrdemServicoController;
 use App\Http\Controllers\InventarioController;
+use App\Http\Controllers\ContagemEstoqueController;
 use App\Http\Controllers\EstoqueBaixoController;
 use App\Http\Controllers\EntradaProdutosController;
 use App\Http\Controllers\SaidaProdutoController;
@@ -260,6 +261,15 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::post('{inventario}/fechar', [InventarioController::class, 'fechar'])->name('fechar');
                 Route::post('{inventario}/reabrir', [InventarioController::class, 'reabrir'])->name('reabrir');
                 Route::delete('{inventario}', [InventarioController::class, 'destroy'])->name('destroy');
+            });
+
+            // Contagem física do estoque (fora do grupo acima para os nomes ficarem "contagens.*")
+            Route::prefix('fiscal/sped/inventarios/contagens')->name('contagens.')->group(function () {
+                Route::get('planilha', [ContagemEstoqueController::class, 'planilha'])->name('planilha');
+                Route::post('/', [ContagemEstoqueController::class, 'importar'])->name('importar');
+                Route::get('{contagem}', [ContagemEstoqueController::class, 'show'])->name('show');
+                Route::post('{contagem}/aplicar', [ContagemEstoqueController::class, 'aplicar'])->name('aplicar');
+                Route::delete('{contagem}', [ContagemEstoqueController::class, 'destroy'])->name('destroy');
             });
 
             // Rotas de Credenciadoras
