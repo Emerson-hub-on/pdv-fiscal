@@ -28,6 +28,7 @@ use App\Http\Controllers\ClassificacaoIpiController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\NotaFiscalController;
 use App\Http\Controllers\MdfeController;
+use App\Http\Controllers\SerieMdfeController;
 use App\Http\Controllers\CfopSaidaController;
 use App\Http\Controllers\FormaPagamentoController;
 use App\Http\Controllers\SerieNfeController;
@@ -531,6 +532,9 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 ->name('notasfiscais.recalcular');
 
             Route::get('mdfes/buscar-nfe', [MdfeController::class, 'buscarNfe'])->name('mdfes.buscar-nfe');
+            // Última numeração (antes do resource, senão "numeracao" seria lido como {mdfe})
+            Route::get('mdfes/numeracao', [SerieMdfeController::class, 'editar'])->name('mdfes.numeracao.editar');
+            Route::put('mdfes/numeracao', [SerieMdfeController::class, 'salvar'])->name('mdfes.numeracao.salvar');
             Route::resource('mdfes', MdfeController::class)->parameters(['mdfes' => 'mdfe']);
             Route::post('mdfes/{mdfe}/emitir', [MdfeController::class, 'emitir'])->name('mdfes.emitir');
             Route::post('mdfes/{mdfe}/cancelar', [MdfeController::class, 'cancelar'])->name('mdfes.cancelar');

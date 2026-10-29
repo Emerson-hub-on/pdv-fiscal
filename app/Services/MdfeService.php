@@ -126,6 +126,8 @@ class MdfeService
         try {
             $xmlProcessado = Complements::toAuthorize($xmlAssinado, $resposta);
         } catch (\Throwable $e) {
+            // Sem o protocolo anexado o DAMDFE não sai; xmlComProtocolo() completa depois consultando a SEFAZ
+            \Illuminate\Support\Facades\Log::warning('MDF-e autorizado, mas o protocolo não foi anexado ao XML: ' . $e->getMessage());
             $xmlProcessado = $xmlAssinado;
         }
 
@@ -386,6 +388,38 @@ class MdfeService
     // ------------------------------------------------------------------
 
     /** @return array{protocolo: ?string, motivo: ?string, xml: string} */
+    /**
+     * XML autorizado com o protocolo (mdfeProc), que o DAMDFE exige.
+     * Se o XML gravado é só o assinado (o protocolo não foi anexado na emissão), consulta a
+     * SEFAZ pela chave e anexa o protocolo. Devolve null quando não há o que corrigir.
+     */
+    public function xmlComProtocolo(Mdfe $mdfe): ?string
+    {
+        if (str_contains((string) $mdfe->xml, '<mdfeProc')) {
+            return null;
+        }
+
+        if (!$mdfe->chave_acesso) {
+            throw new Exception('O MDF-e não tem chave de acesso gravada para consultar o protocolo na SEFAZ.');
+        }
+
+        $resposta = $this->tools->sefazConsultaChave($mdfe->chave_acesso);
+
+        try {
+            $xml = Complements::toAuthorize($mdfe->xml, $resposta);
+        } catch (\Throwable $e) {
+            $dom = new \DOMDocument();
+            @$dom->loadXML($resposta);
+            $motivo = $dom->getElementsByTagName('xMotivo')->item(0)?->nodeValue ?? $e->getMessage();
+
+            throw new Exception('A SEFAZ não devolveu o protocolo deste MDF-e: ' . $motivo);
+        }
+
+        $this->salvarXmlEmDisco($xml, '', $mdfe->chave_acesso);
+
+        return $xml;
+    }
+
     public function cancelar(Mdfe $mdfe, string $justificativa): array
     {
         $this->exigirAutorizado($mdfe, 'cancelar');

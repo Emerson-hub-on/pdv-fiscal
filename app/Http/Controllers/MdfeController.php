@@ -310,19 +310,62 @@ class MdfeController extends Controller
     {
         abort_if(!$mdfe->xml, 404, 'Este MDF-e ainda não tem XML autorizado.');
 
+        // XML gravado sem o protocolo (mdfeProc): o DAMDFE quebra. Busca o protocolo na SEFAZ e grava o XML completo.
+        if (!str_contains((string) $mdfe->xml, '<mdfeProc')) {
+            try {
+                $xml = (new MdfeService())->xmlComProtocolo($mdfe);
+                if ($xml) {
+                    $mdfe->forceFill(['xml' => $xml])->save();
+                }
+            } catch (\Throwable $e) {
+                return back()->withErrors(['pdf' => 'O XML deste MDF-e está sem o protocolo de autorização e não foi possível buscá-lo na SEFAZ: ' . $e->getMessage()]);
+            }
+        }
+
         try {
-            $damdfe = new \NFePHP\DA\MDFe\Damdfe($mdfe->xml);
+            $damdfe = new \NFePHP\DA\MDFe\Damdfe($this->xmlParaImpressao($mdfe->xml));
             $damdfe->debugMode(false);
             $damdfe->printParameters('P');
             $pdf = $damdfe->render();
         } catch (\Throwable $e) {
-            return back()->withErrors(['pdf' => 'Não foi possível gerar o DAMDFE: ' . $e->getMessage()]);
+            // Arquivo e linha no log para saber em que parte do DAMDFE o XML não bateu
+            report($e);
+            return back()->withErrors(['pdf' => 'Não foi possível gerar o DAMDFE: ' . $e->getMessage()
+                . ' (' . basename($e->getFile()) . ':' . $e->getLine() . ')']);
         }
 
         return response($pdf, 200, [
             'Content-Type'        => 'application/pdf',
             'Content-Disposition' => 'inline; filename="MDFe-' . $mdfe->chave_acesso . '.pdf"',
         ]);
+    }
+
+    /**
+     * Cópia do XML só para imprimir (o XML autorizado gravado não muda).
+     * O sped-da 1.1.x lê o RNTRC de <rodo><infANTT> sem conferir se o grupo existe; MDF-e sem RNTRC
+     * (carga própria) não tem <infANTT> e o DAMDFE quebra. Um <infANTT/> vazio é aceito pelo schema
+     * e faz o DAMDFE sair com o campo RNTRC em branco.
+     */
+    private function xmlParaImpressao(string $xml): string
+    {
+        $dom = new \DOMDocument();
+        $dom->preserveWhiteSpace = false;
+
+        if (!@$dom->loadXML($xml)) {
+            return $xml;
+        }
+
+        $ns = 'http://www.portalfiscal.inf.br/mdfe';
+        $rodo = $dom->getElementsByTagNameNS($ns, 'rodo')->item(0);
+
+        if ($rodo && $dom->getElementsByTagNameNS($ns, 'infANTT')->length === 0) {
+            // infANTT é o primeiro filho de <rodo> no leiaute 3.00
+            $rodo->insertBefore($dom->createElementNS($ns, 'infANTT'), $rodo->firstChild);
+
+            return $dom->saveXML();
+        }
+
+        return $xml;
     }
 
     // ------------------------------------------------------------------
