@@ -18,6 +18,10 @@
                     class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-sm font-medium px-4 py-2 cursor-pointer transition flex items-center gap-1.5">
                 Atualizar Caixa
             </button>
+            <button type="button" onclick="imprimirRelatorioAbertura(true)"
+                    class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-sm font-medium px-4 py-2 cursor-pointer transition flex items-center gap-1.5">
+                Relatório de Abertura
+            </button>
             <a href="{{ route('caixa.fechar-form') }}"
                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
                 Fechar Caixa
@@ -71,3 +75,24 @@
         </button>
     </div>
 </div>
+
+{{-- Relatório de abertura: a página de impressão carrega num iframe fora da tela e chama a impressão sozinha.
+     (display:none faz alguns navegadores imprimirem em branco, por isso w-0/h-0 em vez de hidden) --}}
+<iframe id="frame-relatorio-abertura" title="Relatório de abertura"
+        class="fixed bottom-0 right-0 w-0 h-0 border-0 opacity-0 pointer-events-none"></iframe>
+<script>
+    function imprimirRelatorioAbertura(reimpressao) {
+        const url = new URL(@json(route('caixa.relatorio-abertura')), window.location.origin);
+        url.searchParams.set('auto', '1');
+        if (reimpressao) {
+            url.searchParams.set('reimpressao', '1');
+        }
+        url.searchParams.set('t', Date.now()); // sempre carrega de novo (sem cache)
+
+        document.getElementById('frame-relatorio-abertura').src = url.toString();
+    }
+
+    @if (session('imprimir_abertura'))
+        window.addEventListener('load', () => imprimirRelatorioAbertura(false));
+    @endif
+</script>

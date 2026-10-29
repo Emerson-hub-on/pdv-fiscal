@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use App\Support\Maquina;
+use App\Services\UsuarioCache;
+use Illuminate\Support\Facades\DB;
 
 class CaixaController extends Controller
 {
@@ -81,7 +83,35 @@ class CaixaController extends Controller
 
         (new SyncService())->enviarCaixas();
 
-        return redirect()->route('vendas.pdv')->with('sucesso', 'Caixa aberto com sucesso.');
+        // O PDV imprime o relatório de abertura assim que carrega
+        return redirect()->route('vendas.pdv')
+            ->with('sucesso', 'Caixa aberto com sucesso.')
+            ->with('imprimir_abertura', true);
+    }
+
+    /**
+     * Relatório de abertura do caixa aberto do operador, em bobina 80 mm.
+     * ?auto=1 abre a impressão sozinho; ?reimpressao=1 marca a via como reimpressão.
+     */
+    public function relatorioAbertura(Request $request)
+    {
+        $caixa = CaixaLocal::aberto(Auth::id())?->load('pdv');
+
+        if (!$caixa) {
+            abort(404, 'Nenhum caixa aberto para este operador.');
+        }
+
+        $empresa = DB::connection('sqlite_local')->table('empresa_cache')->first();
+        $operador = UsuarioCache::porId($caixa->operador_id) ?? Auth::user();
+
+        return view('caixa.relatorio-abertura', [
+            'caixa' => $caixa,
+            'empresa' => $empresa,
+            'operador' => $operador,
+            'maquina' => Maquina::nome(),
+            'reimpressao' => $request->boolean('reimpressao'),
+            'auto' => $request->boolean('auto'),
+        ]);
     }
 
     /**

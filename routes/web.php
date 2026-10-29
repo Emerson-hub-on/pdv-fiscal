@@ -91,6 +91,7 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
         Route::post('caixa/abrir', [CaixaController::class, 'abrir'])->name('caixa.abrir');
         Route::get('caixa/fechar', [CaixaController::class, 'fecharForm'])->name('caixa.fechar-form');
         Route::post('caixa/fechar', [CaixaController::class, 'fechar'])->name('caixa.fechar');
+        Route::get('caixa/relatorio-abertura', [CaixaController::class, 'relatorioAbertura'])->name('caixa.relatorio-abertura');
 
         Route::get('pdv', [VendaController::class, 'pdv'])->name('vendas.pdv');
         Route::get('pdv/buscar-produto', [VendaController::class, 'buscarProduto'])->name('vendas.buscar-produto');
