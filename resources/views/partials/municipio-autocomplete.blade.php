@@ -34,6 +34,9 @@
 
         campoMun.setAttribute('autocomplete', 'off');
 
+        // Outro script (ex.: preenchimento por CEP) definiu município e código juntos
+        campoMun.addEventListener('municipio-definido', (e) => { nomeEscolhido = e.detail.nome; });
+
         // A lista fica no <body> com posição fixa, então não depende do HTML ao redor do campo
         const lista = document.createElement('div');
         lista.className = 'hidden fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto';

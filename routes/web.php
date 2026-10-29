@@ -66,6 +66,8 @@ use App\Http\Controllers\Relatorios\VendasPorVendedorController;
 use App\Http\Controllers\Relatorios\ComparativoMensalVendasController;
 use App\Http\Controllers\Relatorios\ComparativoSemanalVendasController;
 use App\Http\Controllers\Relatorios\ComparativoDiarioVendasController;
+use App\Http\Controllers\CepController;
+
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
@@ -134,6 +136,9 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
     // =====================================================================
     Route::middleware(['auth:web', 'acesso:fiscal'])->group(function () {
 
+    
+
+        Route::get('cep/buscar', [CepController::class, 'buscar'])->middleware('throttle:60,1')->name('cep.buscar');
         // Rota global de municípios para o grupo fiscal (acessível em clientes, fornecedores, empresa e MDF-e)
         Route::get('municipios/buscar', [MunicipioController::class, 'buscar'])->name('municipios.buscar');
 

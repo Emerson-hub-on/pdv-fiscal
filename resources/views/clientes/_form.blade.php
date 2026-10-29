@@ -200,6 +200,22 @@
     </div>
 </div>
 
+@include('partials.municipio-autocomplete', [
+    'municipio' => '[name="municipio"]',
+    'codigo'    => '[name="cod_municipio"]',
+    'uf'        => '[name="uf"]',
+])
+
+@include('partials.cep-autocomplete', [
+    'cep'        => '[name="cep"]',
+    'logradouro' => '[name="logradouro"]',
+    'numero'     => '[name="numero"]',
+    'bairro'     => '[name="bairro"]',
+    'municipio'  => '[name="municipio"]',
+    'codigo'     => '[name="cod_municipio"]',
+    'uf'         => '[name="uf"]',
+])
+
 <script>
     
 function mudarAba(aba) {
