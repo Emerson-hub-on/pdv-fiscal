@@ -1,5 +1,5 @@
-<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-    <table class="w-full text-sm">
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+    <table class="w-full text-sm whitespace-nowrap">
         <thead class="bg-gray-700 rounded-lg font-medium  text-xs uppercase tracking-wide">
             <tr>
                 <th class="px-4 py-3 text-left font-medium text-amber-50">Código</th>
@@ -18,7 +18,10 @@
                 <tr class="hover:bg-gray-200 transition">
                     <td class="px-4 py-3 text-gray-600 font-mono text-xs">{{ $produto->codigo_interno }}</td>
                     <td class="px-4 py-3 text-gray-600 font-mono text-xs">{{ $produto->codigo_barras ?: '—' }}</td>                    
-                    <td class="px-4 py-3 font-medium text-gray-800">{{ $produto->nome }}</td>                   
+                    {{-- Nome longo: uma linha só, com "..." no fim (o nome inteiro aparece ao passar o mouse) --}}
+                    <td class="px-4 py-3 font-medium text-gray-800">
+                        <div class="max-w-[16rem] truncate" title="{{ $produto->nome }}">{{ $produto->nome }}</div>
+                    </td>
                     <td class="px-4 py-3 font-medium text-gray-800">{{ $produto->unidade_tributavel }}</td> 
                     <td class="px-4 py-3 text-gray-600">R$ {{ number_format($produto->preco_custo, 2, ',', '.') }}</td>
                     <td class="px-4 py-3 text-gray-600">R$ {{ number_format($produto->preco_venda, 2, ',', '.') }}</td>
@@ -51,7 +54,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7" class="px-4 py-10 text-center text-gray-400 text-sm">Nenhum produto encontrado.</td>
+                    <td colspan="9" class="px-4 py-10 text-center text-gray-400 text-sm">Nenhum produto encontrado.</td>
                 </tr>
             @endforelse
         </tbody>
