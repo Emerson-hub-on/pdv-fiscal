@@ -500,6 +500,8 @@ class ProdutoController extends Controller
             'preco_custo' => 'nullable|numeric|min:0',
             'tem_variacao' => 'boolean',
             'produto_balanca' => 'boolean',
+            // Toggle "Produto ativo" do formulário (o cadastro rápido pela entrada de nota não envia: fica ativo)
+            'ativo' => 'sometimes|boolean',
             'estoque' => ['required_if:tem_variacao,false', 'numeric', 'min:0', $regraQtd],
             'estoque_minimo' => ['nullable', 'numeric', 'min:0', $regraQtd],
  

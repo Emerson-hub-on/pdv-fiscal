@@ -10,12 +10,13 @@
                 <th class="px-4 py-3 text-left font-medium text-amber-50">Preço</th>
                 <th class="px-4 py-3 text-left font-medium text-amber-50">Estoque</th>
                 <th class="px-4 py-3 text-left font-medium text-amber-50">Status</th>
-                <th class="px-4 py-3 text-left font-medium text-amber-50">Ações</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse ($produtos as $produto)
-                <tr class="hover:bg-gray-200 transition">
+                {{-- Clicar na linha abre a edição do produto --}}
+                <tr class="hover:bg-gray-200 transition cursor-pointer" title="Clique para editar"
+                    onclick="window.location='{{ route('produtos.edit', $produto) }}'">
                     <td class="px-4 py-3 text-gray-600 font-mono text-xs">{{ $produto->codigo_interno }}</td>
                     <td class="px-4 py-3 text-gray-600 font-mono text-xs">{{ $produto->codigo_barras ?: '—' }}</td>                    
                     {{-- Nome longo: uma linha só, com "..." no fim (o nome inteiro aparece ao passar o mouse) --}}
@@ -39,22 +40,10 @@
                             </span>
                         @endif
                     </td>
-                    <td class="px-4 py-3">
-                        <div class="flex items-center gap-3">
-                            <a href="{{ route('produtos.edit', $produto) }}" class="text-blue-600 hover:text-blue-700 font-medium ">Editar</a>
-                            <form action="{{ route('produtos.toggle-ativo', $produto) }}" method="POST">
-                                @csrf
-                                @method('PATCH')
-                                <button type="submit" class="text-orange-600 hover:text-orange-700 font-medium">
-                                    {{ $produto->ativo ? 'Inativar' : 'Reativar' }}
-                                </button>
-                            </form>
-                        </div>
-                    </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="9" class="px-4 py-10 text-center text-gray-400 text-sm">Nenhum produto encontrado.</td>
+                    <td colspan="8" class="px-4 py-10 text-center text-gray-400 text-sm">Nenhum produto encontrado.</td>
                 </tr>
             @endforelse
         </tbody>

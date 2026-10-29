@@ -108,6 +108,20 @@
                 class="tab-btn px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">
             Atacado
         </button>
+
+        {{-- Situação do produto: inativo some do PDV e das buscas, mas o histórico continua (produto nunca é excluído) --}}
+        @php $ativo = (bool) old('ativo', $produto->ativo ?? true); @endphp
+        <div class="ml-auto flex items-center gap-3 px-6">
+            <span id="ativo-texto" class="text-sm font-medium {{ $ativo ? 'text-green-700' : 'text-red-600' }}">
+                {{ $ativo ? 'Produto ativo' : 'Produto inativo' }}
+            </span>
+            <label class="relative inline-flex items-center cursor-pointer" title="Ativar ou inativar o produto">
+                <input type="hidden" name="ativo" value="0">
+                <input type="checkbox" id="ativo" name="ativo" value="1" {{ $ativo ? 'checked' : '' }}
+                       class="sr-only peer" onchange="alternarAtivo(this)">
+                <div class="w-11 h-6 bg-red-400 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+            </label>
+        </div>
     </div>
 
     {{-- Tab: Dados Gerais --}}
@@ -896,6 +910,13 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
+
+function alternarAtivo(campo) {
+    const texto = document.getElementById('ativo-texto');
+    texto.textContent = campo.checked ? 'Produto ativo' : 'Produto inativo';
+    texto.classList.toggle('text-green-700', campo.checked);
+    texto.classList.toggle('text-red-600', !campo.checked);
+}
 
 function toggleAtacado(ativo) {
     document.getElementById('bloco-atacado').classList.toggle('hidden', !ativo);
