@@ -307,6 +307,22 @@
                 </span>
             </button>
         </div>
+
+        <div class="col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+                Tipo do item <span class="text-red-500">*</span>
+                <span class="text-xs text-gray-400 font-normal">(usado no SPED Fiscal)</span>
+            </label>
+            <select name="tipo_item"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white">
+                @foreach (\App\Models\Produto::TIPOS_ITEM as $codigo => $texto)
+                    <option value="{{ $codigo }}" {{ (string) old('tipo_item', $produto->tipo_item ?? '00') === (string) $codigo ? 'selected' : '' }}>
+                        {{ $codigo }} - {{ $texto }}
+                    </option>
+                @endforeach
+            </select>
+            <p class="text-xs text-gray-400 mt-1">No comércio, quase sempre é "00 - Mercadoria para revenda". Na indústria, informe se é matéria-prima, embalagem, produto acabado etc.</p>
+        </div>
     </div>
 
     {{-- Tab: Preço e Estoque --}}
@@ -854,7 +870,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    @if ($errors->has('ncm_id') || $errors->has('tributacao_id') || $errors->has('cest_id') || $errors->has('unidade_comercial') || $errors->has('unidade_tributavel') || $errors->has('origem_mercadoria') || $errors->has('class_trib_ibs_cbs_id'))
+    @if ($errors->has('ncm_id') || $errors->has('tributacao_id') || $errors->has('cest_id') || $errors->has('unidade_comercial') || $errors->has('unidade_tributavel') || $errors->has('origem_mercadoria') || $errors->has('class_trib_ibs_cbs_id') || $errors->has('tipo_item'))
         trocarTab('fiscal');
     @elseif ($errors->has('preco_venda') || $errors->has('preco_custo') || $errors->has('estoque') || collect($errors->keys())->contains(fn ($k) => str_starts_with($k, 'variantes')))
         trocarTab('preco');

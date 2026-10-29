@@ -7,6 +7,22 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Produto extends Model
 {
+    /** TIPO_ITEM do registro 0200 do SPED. 00 (revenda) é o padrão do comércio. */
+    public const TIPOS_ITEM = [
+        '00' => 'Mercadoria para revenda',
+        '01' => 'Matéria-prima',
+        '02' => 'Embalagem',
+        '03' => 'Produto em processo',
+        '04' => 'Produto acabado',
+        '05' => 'Subproduto',
+        '06' => 'Produto intermediário',
+        '07' => 'Material de uso e consumo',
+        '08' => 'Ativo imobilizado',
+        '09' => 'Serviços',
+        '10' => 'Outros insumos',
+        '99' => 'Outras',
+    ];
+
     protected $fillable = [
         'nome', 
         'descricao',
@@ -20,6 +36,7 @@ class Produto extends Model
         'cest_id',
         'unidade_comercial',
         'unidade_tributavel',
+        'tipo_item',
         'origem_mercadoria', 
         'class_trib_ibs_cbs_id',
         'preco_venda', 

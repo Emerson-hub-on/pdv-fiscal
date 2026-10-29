@@ -67,6 +67,8 @@ use App\Http\Controllers\Relatorios\ComparativoMensalVendasController;
 use App\Http\Controllers\Relatorios\ComparativoSemanalVendasController;
 use App\Http\Controllers\Relatorios\ComparativoDiarioVendasController;
 use App\Http\Controllers\CepController;
+use App\Http\Controllers\SpedController;
+use App\Http\Controllers\SpedConfiguracaoController;
 
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
@@ -239,6 +241,25 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
 
         // ---------------- NOTA FISCAL - SAÍDA (NF-e modelo 55) ----------------
         Route::middleware('permissao:notas')->group(function () {
+    
+            // Rotas SPED
+            Route::get('fiscal/sped', [SpedController::class, 'index'])->name('sped.index');
+            Route::post('fiscal/sped/gerar', [SpedController::class, 'gerar'])->name('sped.gerar');
+            Route::get('fiscal/sped/arquivos/{geracao}', [SpedController::class, 'baixar'])->name('sped.baixar');
+            Route::get('fiscal/sped/configuracoes', [SpedConfiguracaoController::class, 'editar'])->name('sped-config.editar');
+            Route::post('fiscal/sped/configuracoes', [SpedConfiguracaoController::class, 'salvar'])->name('sped-config.salvar');
+
+            // Rotas de Inventários do SPED
+            Route::prefix('fiscal/sped/inventarios')->name('inventarios.')->group(function () {
+                Route::get('/', [InventarioController::class, 'index'])->name('index');
+                Route::post('/', [InventarioController::class, 'store'])->name('store');
+                Route::get('{inventario}', [InventarioController::class, 'show'])->name('show');
+                Route::patch('{inventario}/itens/{item}', [InventarioController::class, 'atualizarItem'])->name('itens.atualizar');
+                Route::post('{inventario}/recalcular', [InventarioController::class, 'recalcular'])->name('recalcular');
+                Route::post('{inventario}/fechar', [InventarioController::class, 'fechar'])->name('fechar');
+                Route::post('{inventario}/reabrir', [InventarioController::class, 'reabrir'])->name('reabrir');
+                Route::delete('{inventario}', [InventarioController::class, 'destroy'])->name('destroy');
+            });
 
             // ---------------- FATURAMENTO - ENTRADAS DE NOTA ----------------
             Route::prefix('faturamento/entradas-nota')->name('entradas-nota.')->group(function () {

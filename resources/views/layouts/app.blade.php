@@ -457,6 +457,53 @@
             </div>
         </div>
 
+        <!-- Menu Dropdown: Fiscal -->
+        @if (auth()->user()?->podeVer('notas'))
+            <div class="flex flex-col">
+                <button onclick="toggleFiscal()"
+                        class="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 text-sm font-medium transition cursor-pointer [.sidebar-oculta_&]:justify-center [.sidebar-oculta_&]:px-0">
+                    <span class="flex items-center gap-3">
+                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <span class="whitespace-nowrap [.sidebar-oculta_&]:hidden">Fiscal</span>
+                    </span>
+                    <svg id="seta-fiscal" class="w-4 h-4 transition-transform duration-200 [.sidebar-oculta_&]:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+
+                <div id="sub-fiscal" class="hidden [.sidebar-oculta_&]:hidden flex flex-col gap-1 pl-4 mt-1 border-l border-white/10 ml-3">
+                    <!-- SPED (nível 2, abre lateral) -->
+                    <div class="relative">
+                        <button id="btn-sped" onclick="toggleFlyout('sub-sped', 'btn-sped')"
+                                class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                            <span>SPED</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
+
+                        <div id="sub-sped" data-flyout data-botao="btn-sped"
+                             class="hidden fixed bg-gray-900 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                            <a href="{{ route('sped.index') }}"
+                               class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                                Gerar SPED
+                            </a>
+                            <a href="{{ route('inventarios.index') }}"
+                               class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                                Inventário
+                            </a>
+                            <a href="{{ route('sped-config.editar') }}"
+                               class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                                Configuração do SPED
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
     </nav>
 
     <div class="px-3 py-4 border-t border-white/10 shrink-0 [.sidebar-oculta_&]:px-2">
@@ -485,6 +532,9 @@
                     'entradas-nota' => ['Faturamento', 'Nota Fiscal - Entrada'],
                     'series-nfe' => ['Faturamento', 'Séries de NF-e'],
                     'mdfes' => ['Faturamento', 'MDF-e'],
+                    'sped' => ['Fiscal', 'Gerar SPED'],
+                    'sped-config' => ['Fiscal', 'Configuração do SPED'],
+                    'inventarios' => ['Fiscal', 'Inventário do SPED'],
                     'transportadores' => ['Cadastros', 'Transportadoras'],
                     'veiculos' => ['Cadastros', 'Veículos'],
                     'condutores' => ['Cadastros', 'Condutores'],
@@ -636,6 +686,15 @@ function toggleRelatorios() {
 
     document.getElementById('sub-relatorios').classList.toggle('hidden');
     document.getElementById('seta-relatorios').classList.toggle('rotate-180');
+}
+
+function toggleFiscal() {
+    if (document.body.classList.contains('sidebar-oculta')) {
+        document.body.classList.remove('sidebar-oculta');
+    }
+
+    document.getElementById('sub-fiscal').classList.toggle('hidden');
+    document.getElementById('seta-fiscal').classList.toggle('rotate-180');
 }
 
 function toggleNotaFiscal() {

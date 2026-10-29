@@ -493,6 +493,7 @@ class ProdutoController extends Controller
             'unidade_comercial' => ['required', 'string', 'max:6', Rule::exists('unidades', 'sigla')],
             'unidade_tributavel' => ['required', 'string', 'max:6', Rule::exists('unidades', 'sigla')],
             'origem_mercadoria' => 'required|integer|between:0,8',
+            'tipo_item' => ['sometimes', 'required', Rule::in(array_keys(Produto::TIPOS_ITEM))],
             'preco_venda' => 'required|numeric|min:0',
             'preco_custo' => 'nullable|numeric|min:0',
             'tem_variacao' => 'boolean',
