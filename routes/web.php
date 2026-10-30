@@ -68,6 +68,7 @@ use App\Http\Controllers\Relatorios\VendasPorVendedorController;
 use App\Http\Controllers\Relatorios\ComparativoMensalVendasController;
 use App\Http\Controllers\Relatorios\ComparativoSemanalVendasController;
 use App\Http\Controllers\Relatorios\ComparativoDiarioVendasController;
+use App\Http\Controllers\Relatorios\CaixaRelatorioController;
 use App\Http\Controllers\CepController;
 use App\Http\Controllers\SpedController;
 use App\Http\Controllers\SpedConfiguracaoController;
@@ -431,6 +432,14 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
                 Route::get('comparativo-mensal', [ComparativoMensalVendasController::class, 'index'])->name('comparativo-mensal.index');
                 Route::get('comparativo-mensal/exportar-excel', [ComparativoMensalVendasController::class, 'exportarExcel'])->name('comparativo-mensal.exportar-excel');
                 Route::get('comparativo-mensal/exportar-pdf', [ComparativoMensalVendasController::class, 'exportarPdf'])->name('comparativo-mensal.exportar-pdf');
+            });
+
+            // ---------------- RELATÓRIOS - CAIXA (abertura e fechamento) ----------------
+            Route::prefix('relatorios/caixa')->name('relatorios.caixa.')->group(function () {
+                Route::get('abertura', [CaixaRelatorioController::class, 'abertura'])->name('abertura');
+                Route::get('abertura/{caixa}/imprimir', [CaixaRelatorioController::class, 'imprimirAbertura'])->name('abertura.imprimir');
+                Route::get('fechamento', [CaixaRelatorioController::class, 'fechamento'])->name('fechamento');
+                Route::get('fechamento/{caixa}/imprimir', [CaixaRelatorioController::class, 'imprimirFechamento'])->name('fechamento.imprimir');
             });
 
             // ---------------- CONTAS A RECEBER ----------------

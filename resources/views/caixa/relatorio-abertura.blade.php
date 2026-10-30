@@ -18,15 +18,16 @@
     <meta charset="UTF-8">
     <title>Relatório de abertura - Caixa {{ $numeroCaixa }}</title>
     @vite(['resources/css/app.css'])
-    {{-- @page não tem equivalente em classe do Tailwind: define a bobina de 80 mm sem margem --}}
-    <style>@page { size: 80mm auto; margin: 0; }</style>
+    {{-- @page não tem equivalente em classe do Tailwind: bobina de 80 mm sem margem.
+         A altura é ajustada pelo script no fim da página para o relatório sair numa folha só (um único corte). --}}
+    <style id="pagina-bobina">@page { size: 80mm 297mm; margin: 0; }</style>
 </head>
 <body class="bg-white text-black">
-<div class="w-[72mm] mx-auto px-[2mm] py-[3mm] font-mono text-[11px] leading-snug">
+<div id="bobina" class="w-[72mm] mx-auto px-[2mm] py-[3mm] font-mono text-[13px] leading-snug">
 
     {{-- Empresa --}}
     <div class="text-center">
-        <p class="font-bold uppercase text-[12px]">{{ $empresa->razao_social ?? 'EMPRESA' }}</p>
+        <p class="font-bold uppercase text-[14px]">{{ $empresa->razao_social ?? 'EMPRESA' }}</p>
         @if (!empty($empresa?->nome_fantasia) && $empresa->nome_fantasia !== $empresa->razao_social)
             <p class="uppercase">{{ $empresa->nome_fantasia }}</p>
         @endif
@@ -46,7 +47,7 @@
 
     <div class="border-t border-dashed border-black my-2"></div>
 
-    <p class="text-center font-bold text-[13px]">RELATÓRIO DE ABERTURA DE CAIXA</p>
+    <p class="text-center font-bold text-[15px]">RELATÓRIO DE ABERTURA DE CAIXA</p>
     @if ($reimpressao)
         <p class="text-center font-bold mt-1">*** REIMPRESSÃO ***</p>
     @endif
@@ -73,11 +74,11 @@
     <div class="border-t border-dashed border-black my-2"></div>
 
     {{-- Valor --}}
-    <div class="flex justify-between gap-2 font-bold text-[13px]">
+    <div class="flex justify-between gap-2 font-bold text-[15px]">
         <span>FUNDO DE TROCO</span>
         <span>{{ $moeda($caixa->valor_abertura) }}</span>
     </div>
-    <p class="text-[10px]">Valor em dinheiro na gaveta na abertura</p>
+    <p class="text-[12px]">Valor em dinheiro na gaveta na abertura</p>
 
     <div class="border-t border-dashed border-black my-2"></div>
 
@@ -90,36 +91,48 @@
             enviado ao servidor
         @endif
     </p>
-    <p class="text-[10px] break-all">ID {{ $caixa->uuid }}</p>
+    <p class="text-[12px] break-all">ID {{ $caixa->uuid }}</p>
 
     {{-- Conferência --}}
     <p class="mt-3">Valor conferido: R$ ______________</p>
     <p class="mt-2">Observação: _____________________</p>
     <p class="mt-1">________________________________</p>
 
-    <div class="mt-10 border-t border-black"></div>
-    <p class="text-center">{{ $operador->name ?? 'Operador' }}</p>
-    <p class="text-center text-[10px]">Assinatura do operador</p>
+    {{-- Assinaturas e rodapé nunca se separam (nem quebram de página no meio) --}}
+    <div class="break-inside-avoid">
+        <div class="mt-10 border-t border-black"></div>
+        <p class="text-center">{{ $operador->name ?? 'Operador' }}</p>
+        <p class="text-center text-[12px]">Assinatura do operador</p>
 
-    <div class="mt-10 border-t border-black"></div>
-    <p class="text-center text-[10px]">Assinatura do responsável</p>
+        <div class="mt-10 border-t border-black"></div>
+        <p class="text-center text-[12px]">Assinatura do responsável</p>
 
-    <div class="border-t border-dashed border-black my-2"></div>
+        <div class="border-t border-dashed border-black my-2"></div>
 
-    <p class="text-center text-[10px]">Impresso em {{ now()->format('d/m/Y H:i:s') }}</p>
-    <p class="text-center text-[10px]">Cyberly Sistema</p>
+        <p class="text-center text-[12px]">Impresso em {{ now()->format('d/m/Y H:i:s') }}</p>
+        <p class="text-center text-[12px]">Cyberly Sistema</p>
 
-    {{-- Espaço para o corte da bobina --}}
-    <div class="h-8"></div>
+        {{-- Espaço para o corte da bobina --}}
+        <div class="h-8"></div>
+    </div>
 </div>
 
-@if ($auto)
-    <script>
-        window.addEventListener('load', () => {
+<script>
+    // Altura da folha = altura do relatório: o driver da POS imprime tudo e corta uma vez só, no fim
+    function ajustarBobina() {
+        const alturaMm = Math.ceil(document.getElementById('bobina').scrollHeight * 25.4 / 96) + 5;
+        document.getElementById('pagina-bobina').textContent =
+            '@page { size: 80mm ' + alturaMm + 'mm; margin: 0; }';
+    }
+
+    window.addEventListener('beforeprint', ajustarBobina);
+    window.addEventListener('load', () => {
+        ajustarBobina();
+        @if ($auto)
             window.focus();
             window.print();
-        });
-    </script>
-@endif
+        @endif
+    });
+</script>
 </body>
 </html>

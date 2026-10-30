@@ -15,15 +15,16 @@
     <meta charset="UTF-8">
     <title>Relatório de fechamento - Caixa {{ $numeroCaixa }}</title>
     @vite(['resources/css/app.css'])
-    {{-- @page não tem equivalente em classe do Tailwind: define a bobina de 80 mm sem margem --}}
-    <style>@page { size: 80mm auto; margin: 0; }</style>
+    {{-- @page não tem equivalente em classe do Tailwind: bobina de 80 mm sem margem.
+         A altura é ajustada pelo script no fim da página para o relatório sair numa folha só (um único corte). --}}
+    <style id="pagina-bobina">@page { size: 80mm 297mm; margin: 0; }</style>
 </head>
 <body class="bg-white text-black">
-<div class="w-[72mm] mx-auto px-[2mm] py-[3mm] font-mono text-[11px] leading-snug">
+<div id="bobina" class="w-[72mm] mx-auto px-[2mm] py-[3mm] font-mono text-[13px] leading-snug">
 
     {{-- Empresa --}}
     <div class="text-center">
-        <p class="font-bold uppercase text-[12px]">{{ $empresa->razao_social ?? 'EMPRESA' }}</p>
+        <p class="font-bold uppercase text-[14px]">{{ $empresa->razao_social ?? 'EMPRESA' }}</p>
         @if (!empty($empresa?->nome_fantasia) && $empresa->nome_fantasia !== $empresa->razao_social)
             <p class="uppercase">{{ $empresa->nome_fantasia }}</p>
         @endif
@@ -34,7 +35,7 @@
 
     <div class="border-t border-dashed border-black my-2"></div>
 
-    <p class="text-center font-bold text-[13px]">RELATÓRIO DE FECHAMENTO DE CAIXA</p>
+    <p class="text-center font-bold text-[15px]">RELATÓRIO DE FECHAMENTO DE CAIXA</p>
     @if ($reimpressao)
         <p class="text-center font-bold mt-1">*** REIMPRESSÃO ***</p>
     @endif
@@ -62,23 +63,23 @@
     {{-- Vendas --}}
     <p class="font-bold">VENDAS</p>
     <div class="flex gap-1 font-bold mt-1">
-        <span class="w-[13mm]">NFC-e</span>
-        <span class="w-[9mm]">Hora</span>
+        <span class="w-[15mm]">NFC-e</span>
+        <span class="w-[11mm]">Hora</span>
         <span class="flex-1">Pagto</span>
-        <span class="w-[17mm] text-right">Total</span>
+        <span class="w-[19mm] text-right">Total</span>
     </div>
     @forelse ($r['vendas'] as $v)
         <div class="flex gap-1">
-            <span class="w-[13mm]">{{ $v['numero'] }}</span>
-            <span class="w-[9mm]">{{ $v['hora'] }}</span>
-            <span class="flex-1 truncate">{{ $v['situacao'] ? '[' . $v['situacao'] . '] ' : '' }}{{ $v['pagamento'] }}</span>
-            <span class="w-[17mm] text-right {{ $v['situacao'] === 'CANC' ? 'line-through' : '' }}">{{ $n($v['total']) }}</span>
+            <span class="w-[15mm]">{{ $v['numero'] }}</span>
+            <span class="w-[11mm]">{{ $v['hora'] }}</span>
+            <span class="flex-1 truncate">{{ $v['situacao'] === 'CANC' ? 'CANCELADA' : ($v['situacao'] ? '[' . $v['situacao'] . '] ' : '') . $v['pagamento'] }}</span>
+            <span class="w-[19mm] text-right {{ $v['situacao'] === 'CANC' ? 'line-through' : '' }}">{{ $n($v['total']) }}</span>
         </div>
     @empty
         <p class="mt-1">Nenhuma venda neste caixa.</p>
     @endforelse
     @if ($r['vendas'])
-        <p class="text-[10px] mt-1">[CANC] cancelada · [CONT] contingência · [PEND] sem NFC-e</p>
+        <p class="text-[12px] mt-1">[CONT] contingência · [PEND] sem NFC-e</p>
     @endif
 
     <div class="border-t border-dashed border-black my-2"></div>
@@ -160,7 +161,7 @@
         <div class="flex justify-between font-bold"><span>Esperado na gaveta</span><span>{{ $n($r['dinheiro_esperado']) }}</span></div>
         <div class="flex justify-between"><span>Informado pelo operador</span><span>{{ $r['informado'] !== null ? $n($r['informado']) : '-' }}</span></div>
         @if ($r['diferenca'] !== null)
-            <div class="flex justify-between font-bold text-[12px]">
+            <div class="flex justify-between font-bold text-[14px]">
                 <span>{{ abs($r['diferenca']) < 0.01 ? 'SEM DIFERENÇA' : ($r['diferenca'] > 0 ? 'SOBRA' : 'FALTA') }}</span>
                 <span>{{ $n($r['diferenca']) }}</span>
             </div>
@@ -175,32 +176,44 @@
 
     <p>Situação: {{ $caixa->sync_pendente ? 'aguardando envio ao servidor' : 'enviado ao servidor' }}</p>
 
-    <div class="mt-10 border-t border-black"></div>
-    <p class="text-center">{{ $operador->name ?? 'Operador' }}</p>
-    <p class="text-center text-[10px]">Assinatura do operador</p>
+    {{-- Assinaturas e rodapé nunca se separam (nem quebram de página no meio) --}}
+    <div class="break-inside-avoid">
+        <div class="mt-10 border-t border-black"></div>
+        <p class="text-center">{{ $operador->name ?? 'Operador' }}</p>
+        <p class="text-center text-[12px]">Assinatura do operador</p>
 
-    <div class="mt-10 border-t border-black"></div>
-    <p class="text-center text-[10px]">Assinatura do responsável</p>
+        <div class="mt-10 border-t border-black"></div>
+        <p class="text-center text-[12px]">Assinatura do responsável</p>
 
-    <div class="border-t border-dashed border-black my-2"></div>
+        <div class="border-t border-dashed border-black my-2"></div>
 
-    <p class="text-center text-[10px]">Impresso em {{ now()->format('d/m/Y H:i:s') }}</p>
-    <p class="text-center text-[10px]">Cyberly Sistema</p>
+        <p class="text-center text-[12px]">Impresso em {{ now()->format('d/m/Y H:i:s') }}</p>
+        <p class="text-center text-[12px]">Cyberly Sistema</p>
 
-    {{-- Espaço para o corte da bobina --}}
-    <div class="h-8"></div>
+        {{-- Espaço para o corte da bobina --}}
+        <div class="h-8"></div>
+    </div>
 </div>
 
-@if ($auto)
-    <script>
-        window.addEventListener('load', () => {
+<script>
+    // Altura da folha = altura do relatório: o driver da POS imprime tudo e corta uma vez só, no fim
+    function ajustarBobina() {
+        const alturaMm = Math.ceil(document.getElementById('bobina').scrollHeight * 25.4 / 96) + 5;
+        document.getElementById('pagina-bobina').textContent =
+            '@page { size: 80mm ' + alturaMm + 'mm; margin: 0; }';
+    }
+
+    window.addEventListener('beforeprint', ajustarBobina);
+    window.addEventListener('load', () => {
+        ajustarBobina();
+        @if ($auto)
             window.focus();
             window.print();
             try {
                 window.parent?.relatorioImpresso?.();
             } catch (e) {}
-        });
-    </script>
-@endif
+        @endif
+    });
+</script>
 </body>
 </html>

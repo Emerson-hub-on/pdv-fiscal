@@ -2,18 +2,26 @@
 
 namespace App\Services;
 
+use App\Models\Caixa;
 use App\Models\CaixaLocal;
+use App\Models\User;
+use App\Models\Venda;
 use App\Support\AutorizacaoSupervisor;
 use App\Support\OcorrenciaCaixa;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Dados do relatório de fechamento de um caixa, montados só com o SQLite local
- * (funciona com o servidor fora do ar).
+ * Dados do relatório de fechamento de um caixa.
+ * dados(): só com o SQLite local (no caixa, funciona com o servidor fora do ar).
+ * dadosServidor(): com o MySQL (painel administrativo).
  */
 class RelatorioFechamentoService
 {
+    /** @var callable id do usuário => código */
+    private $codigoDe;
+
     public const FORMAS = [
         'dinheiro' => 'Dinheiro',
         'pix' => 'Pix',
@@ -41,6 +49,78 @@ class RelatorioFechamentoService
             ->where('caixa_uuid', $caixa->uuid)
             ->orderBy('id')
             ->get();
+
+        return $this->montar(
+            (float) $caixa->valor_abertura,
+            $caixa->valor_fechamento_informado,
+            $vendas,
+            $ocorrencias,
+            fn ($id) => $db->table('usuarios_cache')->where('id', $id)->value('codigo')
+        );
+    }
+
+    /**
+     * Mesmo relatório montado com os dados do servidor (painel administrativo).
+     * Vendas, pagamentos e itens vêm do MySQL e as ocorrências da tabela caixa_ocorrencias (sincronizada pelos caixas).
+     */
+    public function dadosServidor(Caixa $caixa): array
+    {
+        $vendas = Venda::with(['pagamentos', 'itens'])
+            ->where('caixa_id', $caixa->id)
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get()
+            // Mesmo formato das linhas de vendas_pendentes do caixa
+            ->map(fn (Venda $v) => (object) [
+                'uuid' => $v->uuid,
+                'numero_nfce' => $v->numero_nfce,
+                'vendida_em' => $v->created_at,
+                'updated_at' => $v->updated_at,
+                'total' => (float) $v->total,
+                'troco' => (float) $v->troco,
+                'desconto' => (float) $v->desconto,
+                'forma_pagamento' => $v->forma_pagamento,
+                'status' => $v->status,
+                'status_fiscal' => $v->status,
+                'motivo_cancelamento' => $v->motivo_cancelamento,
+                'pagamentos' => json_encode($v->pagamentos->map(fn ($p) => [
+                    'forma_pagamento' => $p->forma_pagamento,
+                    'valor' => (float) $p->valor,
+                ])->all()),
+                'itens' => json_encode($v->itens->map(fn ($i) => [
+                    'preco_unitario' => (float) $i->preco_unitario,
+                    'quantidade' => (float) $i->quantidade,
+                ])->all()),
+            ]);
+
+        $ocorrencias = DB::table('caixa_ocorrencias')
+            ->where('caixa_uuid', $caixa->uuid)
+            ->orderBy('ocorrida_em')
+            ->orderBy('id')
+            ->get()
+            ->map(function ($o) {
+                $o->created_at = $o->ocorrida_em ?? $o->created_at;
+
+                return $o;
+            });
+
+        return $this->montar(
+            (float) $caixa->valor_abertura,
+            $caixa->valor_fechamento_informado,
+            $vendas,
+            $ocorrencias,
+            fn ($id) => User::whereKey($id)->value('codigo')
+        );
+    }
+
+    /**
+     * @param Collection $vendas      linhas no formato de vendas_pendentes
+     * @param Collection $ocorrencias linhas no formato de ocorrencias_caixa
+     * @param callable   $codigoDe    id do usuário => código (para "Liberado por")
+     */
+    private function montar(float $valorAbertura, $informado, Collection $vendas, Collection $ocorrencias, callable $codigoDe): array
+    {
+        $this->codigoDe = $codigoDe;
 
         $porUuid = $vendas->keyBy('uuid');
         $numeroDe = fn (?string $uuid) => $uuid && isset($porUuid[$uuid]) && $porUuid[$uuid]->numero_nfce
@@ -155,8 +235,8 @@ class RelatorioFechamentoService
             ])->values()->all();
 
         // ---------------- Gaveta ----------------
-        $dinheiroEsperado = (float) $caixa->valor_abertura + $formas['dinheiro'] - $troco;
-        $informado = $caixa->valor_fechamento_informado !== null ? (float) $caixa->valor_fechamento_informado : null;
+        $dinheiroEsperado = $valorAbertura + $formas['dinheiro'] - $troco;
+        $informado = $informado !== null ? (float) $informado : null;
 
         return [
             'vendas' => $linhas,
@@ -208,8 +288,7 @@ class RelatorioFechamentoService
         }
 
         if ($o->supervisor_id) {
-            $codigo = DB::connection('sqlite_local')->table('usuarios_cache')
-                ->where('id', $o->supervisor_id)->value('codigo');
+            $codigo = ($this->codigoDe)($o->supervisor_id);
 
             return trim(($codigo ? str_pad($codigo, 4, '0', STR_PAD_LEFT) . ' - ' : '') . ($o->supervisor_nome ?? 'Supervisor #' . $o->supervisor_id));
         }

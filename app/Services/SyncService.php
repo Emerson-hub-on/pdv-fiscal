@@ -450,10 +450,75 @@ class SyncService
             $this->enviarVendasPendentes();
             $this->enviarInutilizacoes();
             $this->enviarNumeracao();
+            $this->enviarOcorrencias();
         } catch (\Throwable $e) {
             if (CentralStatus::erroDeConexao($e)) {
                 CentralStatus::marcarFora();
             }
+        }
+    }
+
+    /**
+     * Direcao 2c: sobe as ocorrências do caixa (descontos, cancelamentos, autorizações do supervisor)
+     * para os relatórios de caixa do painel. Envia o que vier depois do último id já enviado;
+     * idempotente no servidor pelo par (maquina, local_id).
+     */
+    public function enviarOcorrencias(): array
+    {
+        if (CentralStatus::fora()) {
+            return ['sucesso' => true, 'enviadas' => 0];
+        }
+
+        try {
+            $local = DB::connection('sqlite_local');
+
+            if (!$local->getSchemaBuilder()->hasTable('ocorrencias_caixa')) {
+                return ['sucesso' => true, 'enviadas' => 0];
+            }
+
+            $ultimoId = (int) $this->obterMeta('ultima_ocorrencia_enviada', '0');
+            $maquina = Maquina::nome();
+            $enviadas = 0;
+
+            $local->table('ocorrencias_caixa')
+                ->where('id', '>', $ultimoId)
+                ->orderBy('id')
+                ->chunk(200, function ($bloco) use ($maquina, &$enviadas, &$ultimoId) {
+                    $agora = now();
+
+                    $linhas = $bloco->map(fn ($o) => [
+                        'maquina' => $maquina,
+                        'local_id' => $o->id,
+                        'caixa_uuid' => $o->caixa_uuid,
+                        'venda_uuid' => $o->venda_uuid,
+                        'tipo' => $o->tipo,
+                        'acao' => $o->acao,
+                        'descricao' => $o->descricao,
+                        'valor' => $o->valor,
+                        'operador_id' => $o->operador_id,
+                        'supervisor_id' => $o->supervisor_id,
+                        'supervisor_nome' => $o->supervisor_nome,
+                        'liberado_operador' => (bool) $o->liberado_operador,
+                        'ocorrida_em' => $o->created_at,
+                        'created_at' => $agora,
+                        'updated_at' => $agora,
+                    ])->all();
+
+                    DB::table('caixa_ocorrencias')->upsert(
+                        $linhas,
+                        ['maquina', 'local_id'],
+                        ['caixa_uuid', 'venda_uuid', 'tipo', 'acao', 'descricao', 'valor', 'operador_id',
+                         'supervisor_id', 'supervisor_nome', 'liberado_operador', 'ocorrida_em', 'updated_at']
+                    );
+
+                    $ultimoId = (int) $bloco->last()->id;
+                    $this->salvarMeta('ultima_ocorrencia_enviada', (string) $ultimoId);
+                    $enviadas += $bloco->count();
+                });
+
+            return ['sucesso' => true, 'enviadas' => $enviadas];
+        } catch (\Throwable $e) {
+            return $this->registrarFalha($e);
         }
     }
 
@@ -1058,6 +1123,7 @@ class SyncService
             : $this->puxarSituacaoFiscal();
         $resultado['inutilizacoes'] = $this->enviarInutilizacoes();
         $resultado['numeracao'] = $this->enviarNumeracao();
+        $resultado['ocorrencias'] = $this->enviarOcorrencias();
 
         return $resultado;
     }
