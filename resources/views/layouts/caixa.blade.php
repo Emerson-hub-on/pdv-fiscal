@@ -18,6 +18,8 @@
     @yield('conteudo')
 </main>
 
+@include('partials.aviso-licenca')
+
 @yield('scripts')
 
 <script>

@@ -73,6 +73,7 @@ use App\Http\Controllers\CepController;
 use App\Http\Controllers\SpedController;
 use App\Http\Controllers\SpedConfiguracaoController;
 use App\Http\Controllers\CredenciadoraController;
+use App\Http\Controllers\LicencaController;
 
 
 Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
@@ -82,6 +83,11 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
 Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
     ->middleware('throttle:60,1')
     ->name('auth.usuario');
+
+Route::get('licenca', [LicencaController::class, 'tela'])->name('licenca.tela');
+Route::post('licenca', [LicencaController::class, 'registrar'])
+    ->middleware('throttle:10,1')
+    ->name('licenca.registrar');
 
 
     // =====================================================================

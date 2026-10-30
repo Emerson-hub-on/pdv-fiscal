@@ -621,6 +621,8 @@
         </main>
     </div>
 
+    @include('partials.aviso-licenca')
+
     @yield('scripts')
 
 <script>

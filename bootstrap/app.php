@@ -17,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'permissao' => \App\Http\Middleware\PermissaoModulo::class,
         ]);
 
+        // Licença mensal: vale para todas as telas (admin e caixa)
+        $middleware->web(append: [\App\Http\Middleware\VerificaLicenca::class]);
+
         // Quem não está logado volta para o login do contexto certo (caixa x cadastros)
         $middleware->redirectGuestsTo(function (Request $request) {
                     \Log::info('barrado como visitante', [
