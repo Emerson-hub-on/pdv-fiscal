@@ -610,6 +610,9 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
         Route::get('pdvs/{pdv}/emissao', [PdvEmissaoController::class, 'mostrar'])->name('pdvs.emissao');
         Route::post('pdvs/{pdv}/emissao/servidor', [PdvEmissaoController::class, 'passarParaServidor'])->name('pdvs.emissao.servidor');
         Route::post('pdvs/{pdv}/emissao/caixa', [PdvEmissaoController::class, 'devolverAoCaixa'])->name('pdvs.emissao.caixa');
+
+        // Configuração → Licença (o registro usa a mesma rota pública licenca.registrar)
+        Route::get('configuracao/licenca', [LicencaController::class, 'painel'])->name('licenca.painel');
     });
 
     // =====================================================================

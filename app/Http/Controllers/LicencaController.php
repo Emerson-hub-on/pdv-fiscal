@@ -13,6 +13,12 @@ class LicencaController extends Controller
         return view('licenca.tela', ['situacao' => $licenca->situacao()]);
     }
 
+    // Configuração → Licença, dentro do painel administrativo
+    public function painel(LicencaService $licenca)
+    {
+        return view('licenca.painel', ['situacao' => $licenca->situacao()]);
+    }
+
     public function registrar(Request $request, LicencaService $licenca)
     {
         $request->validate(['codigo' => 'required|string|max:1000']);
@@ -23,6 +29,7 @@ class LicencaController extends Controller
             return back()->withErrors(['codigo' => $erro])->withInput();
         }
 
-        return redirect()->route('licenca.tela')->with('sucesso', 'Licença registrada. ' . $licenca->situacao()['mensagem']);
+        // Volta para a tela de onde veio (pública ou Configuração → Licença)
+        return back()->with('sucesso', 'Licença registrada. ' . $licenca->situacao()['mensagem']);
     }
 }
