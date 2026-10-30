@@ -1,0 +1,59 @@
+1. Trocar o npm run dev por um build
+
+O npm run dev só é necessário enquanto você está programando, porque recarrega a tela a cada alteração. No uso do dia a dia, você compila uma vez:
+
+bash
+cd C:\pdv-fiscal
+npm run build
+
+Isso gera os arquivos finais em public\build, e o @vite passa a usá-los sozinho.
+
+Apague o arquivo public\hot, se existir. Ele é criado pelo npm run dev, e enquanto existir o sistema tenta buscar as telas no Vite, que estará desligado.
+Rode o npm run build de novo sempre que alterar alguma view ou CSS. Se não rodar, a tela não muda.
+2. Trocar o php artisan serve pelo Apache do Laragon
+
+O Laragon cria um endereço para cada pasta dentro de C:\laragon\www. Para não precisar mover o projeto, crie um atalho de pasta. Abra o cmd como administrador:
+
+bash
+mklink /J C:\laragon\www\pdv-fiscal C:\pdv-fiscal
+
+Depois, no Laragon:
+
+Clique com o botão direito → Apache → Reload, ou Stop / Start All. Ele cria sozinho o endereço http://pdv-fiscal.test, apontando para a pasta public.
+Confira em PHP → Version se está selecionado o 8.3, o mesmo do terminal.
+Em Preferences → General, marque Run Laragon when Windows starts e Start All automatically.
+
+No .env, ajuste o endereço e limpe os caches:
+
+APP_URL=http://pdv-fiscal.test
+bash
+php artisan optimize:clear
+
+A partir daí é só ligar o computador e abrir http://pdv-fiscal.test no navegador.
+
+3. Se você usa o agendador (sincronização automática)
+
+O php artisan serve não roda o agendador, então se a sincronização acontece sozinha hoje, é porque você roda outro comando para isso. Se roda o schedule:work, coloque-o no Procfile do Laragon (menu → Procfile) com esta linha:
+
+scheduler: php C:\pdv-fiscal\artisan schedule:work
+
+O Laragon passa a iniciá-lo junto com o Start All.
+
+4. Nos computadores de caixa
+
+Faça o mesmo em cada caixa: Laragon com início automático, o mesmo mklink e npm run build (ou copie a pasta public\build pronta). Depois crie um atalho do Chrome na área de trabalho com este destino:
+
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk-printing --app=http://pdv-fiscal.test/login
+
+O --app abre o sistema numa janela própria, sem barra de endereço. O --kiosk-printing imprime direto na impressora padrão, sem a janela de impressão. Coloque esse atalho na pasta Inicializar do Windows (Win+R → shell:startup) para o caixa abrir sozinho ao ligar o computador.
+
+Ao atualizar o sistema, depois de copiar os arquivos novos, rode:
+
+bash
+npm run build
+php artisan migrate
+php artisan optimize:clear
+
+Nos caixas, rode também a migration do SQLite local.
+
+Quando voltar a programar, rode o npm run dev normalmente. Ao terminar, pare com Ctrl+C e confira se o public\hot foi apagado.
