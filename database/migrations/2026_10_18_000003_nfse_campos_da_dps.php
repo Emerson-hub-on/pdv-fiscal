@@ -9,16 +9,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Confere o arquivo ANTES de mexer no banco: o MySQL não desfaz alterações de tabela, então uma
-        // falha no meio deixaria a migration pela metade.
-        $arquivo = database_path('data/lista_servico_nacional.csv');
-
-        if (! is_file($arquivo)) {
-            throw new RuntimeException(
-                "Arquivo não encontrado: {$arquivo}. Copie lista_servico_nacional.csv para a pasta database/data do projeto."
-            );
-        }
-
         // Lista nacional de serviços (Anexo B do leiaute NFS-e): valida o código de tributação nacional.
         // dropIfExists deixa a migration repetível caso uma tentativa anterior tenha parado depois de criá-la.
         Schema::dropIfExists('lista_servico_nacional');
@@ -69,9 +59,16 @@ return new class extends Migration
         Schema::dropIfExists('lista_servico_nacional');
     }
 
+    // Sem o CSV a tabela fica vazia: numa instalação nova os dados vêm do referencia.sql
     private function carregarListaNacional(): void
     {
-        $f = fopen(database_path('data/lista_servico_nacional.csv'), 'r');
+        $arquivo = database_path('data/lista_servico_nacional.csv');
+
+        if (! is_file($arquivo)) {
+            return;
+        }
+
+        $f = fopen($arquivo, 'r');
         fgetcsv($f, 0, ';'); // cabeçalho
 
         $lote = [];
