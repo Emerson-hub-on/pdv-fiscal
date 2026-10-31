@@ -648,7 +648,7 @@
         </main>
     </div>
 
-    @include('partials.aviso-licenca')
+    @include('partials.aviso-licenca', ['rotaLicenca' => auth()->user()?->isAdmin() ? 'licenca.painel' : 'licenca.tela'])
 
     @yield('scripts')
 

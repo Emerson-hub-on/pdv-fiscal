@@ -80,13 +80,14 @@ Route::get('/', [AuthController::class, 'tela'])->name('auth.escolha');
 Route::get('/login', [AuthController::class, 'formulario'])->name('auth.login');
 Route::post('/login', [AuthController::class, 'login'])->name('auth.login.submit');
 Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
+// Fora do login, o limite conta por IP (o throttle comum consulta o usuário logado no servidor)
 Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
-    ->middleware('throttle:60,1')
+    ->middleware('throttle:consulta-login')
     ->name('auth.usuario');
 
 Route::get('licenca', [LicencaController::class, 'tela'])->name('licenca.tela');
 Route::post('licenca', [LicencaController::class, 'registrar'])
-    ->middleware('throttle:10,1')
+    ->middleware('throttle:registro-licenca')
     ->name('licenca.registrar');
 
 
@@ -114,7 +115,6 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
         Route::post('pdv/limpar-sessao', [VendaController::class, 'limparSessaoCarrinho'])->name('vendas.limpar-sessao');
 
         Route::get('contingencias', [ContingenciaController::class, 'listar'])->name('contingencias.listar');
-        Route::post('contingencias/reenviar', [ContingenciaController::class, 'reenviar'])->name('contingencias.reenviar');
         Route::post('contingencias/{venda}/reenviar', [ContingenciaController::class, 'reenviar'])->name('contingencias.reenviar');
         Route::post('inutilizacao', [InutilizacaoController::class, 'executar'])->name('inutilizacao.executar');
         Route::get('cancelamento/listar', [CancelamentoController::class, 'listar'])->name('cancelamento.listar');
@@ -140,7 +140,8 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
     // =====================================================================
     // USADAS PELOS DOIS SISTEMAS (caixa e cadastros)
     // =====================================================================
-    Route::middleware(['auth:web,caixa', 'acesso:caixa,fiscal'])->group(function () {
+    // Caixa primeiro: com o servidor fora do ar, um login de admin antigo na mesma sessão não é consultado no MySQL
+    Route::middleware(['auth:caixa,web', 'acesso:caixa,fiscal'])->group(function () {
         Route::post('sincronizar-agora', [SincronizacaoController::class, 'executar'])->name('sincronizacao.executar');
         Route::get('/api/consulta-cnpj/{cnpj}', [ClienteController::class, 'consultarCnpj'])
             ->name('clientes.consultarCnpj');

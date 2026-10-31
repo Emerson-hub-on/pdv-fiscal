@@ -61,6 +61,8 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                // Servidor fora do ar: o caixa desiste em poucos segundos e entra em contingência (o padrão do PHP é 60 s)
+                PDO::ATTR_TIMEOUT => (int) env('DB_TIMEOUT', 5),
             ]) : [],
         ],
 

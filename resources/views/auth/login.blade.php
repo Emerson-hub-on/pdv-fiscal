@@ -202,6 +202,16 @@
     </main>
 </div>
 
+{{-- Aparece ao enviar o login e fica até a tela do caixa ou do painel carregar --}}
+<div id="modal-validando" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-6"
+     role="dialog" aria-modal="true" aria-labelledby="titulo-validando">
+    <div class="w-full max-w-xs rounded-2xl bg-white px-6 py-8 text-center shadow-xl">
+        <div class="mx-auto h-12 w-12 rounded-full border-4 border-blue-100 border-t-[#163f86] animate-spin" aria-hidden="true"></div>
+        <h3 id="titulo-validando" class="mt-5 text-base font-semibold text-gray-900">Validando informações...</h3>
+        <p id="texto-validando" class="mt-1 text-sm text-gray-500" aria-live="polite"></p>
+    </div>
+</div>
+
 <script>
     const MODOS = @json($modos);
     let modoLogin = @json($modo);
@@ -259,10 +269,37 @@
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') alternarLista(false); });
 
     // Sem acesso escolhido, Enter não envia o formulário
+    const modalValidando = document.getElementById('modal-validando');
+    const textoValidando = document.getElementById('texto-validando');
+    const botaoEntrar = document.querySelector('#form-login button[type="submit"]');
+    let timeoutDemora;
+
     document.getElementById('form-login').addEventListener('submit', (e) => {
         if (!modoLogin) {
             e.preventDefault();
             alternarLista(true);
+            return;
+        }
+
+        // Enviado: modal até a próxima tela carregar (e sem segundo envio no meio)
+        if (botaoEntrar.disabled) {
+            e.preventDefault();
+            return;
+        }
+        botaoEntrar.disabled = true;
+        textoValidando.textContent = modoLogin === 'admin' ? 'Abrindo o painel administrativo' : 'Preparando o caixa';
+        modalValidando.classList.remove('hidden');
+        timeoutDemora = setTimeout(() => {
+            textoValidando.textContent = 'Está demorando mais que o normal. Aguarde...';
+        }, 8000);
+    });
+
+    // Voltou para esta tela pelo botão Voltar (página guardada pelo navegador): some com o modal
+    window.addEventListener('pageshow', (e) => {
+        if (e.persisted) {
+            clearTimeout(timeoutDemora);
+            modalValidando.classList.add('hidden');
+            botaoEntrar.disabled = false;
         }
     });
 
