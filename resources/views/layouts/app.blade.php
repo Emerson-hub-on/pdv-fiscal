@@ -809,45 +809,7 @@ document.addEventListener('click', function (evento) {
         flyout.classList.add('hidden');
     }
 });
-
-async function sincronizarAgora() {
-    const btn = document.getElementById('btn-sincronizar');
-    const textoOriginal = btn.innerText;
-
-    btn.disabled = true;
-    btn.innerText = 'Sincronizando...';
-
-    try {
-        const resp = await fetch('{{ route("sincronizacao.executar") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            },
-        });
-
-        const resultado = await resp.json();
-
-        if (resultado.sucesso) {
-            alert(
-                `Sincronização concluída!\n` +
-                `Produtos atualizados: ${resultado.produtos_atualizados}\n` +
-                `Vendas enviadas: ${resultado.vendas_enviadas}` +
-                (resultado.vendas_falhas > 0 ? `\nVendas com falha: ${resultado.vendas_falhas}` : '') +
-                (resultado.usuarios_ok
-                    ? `\nUsuários atualizados: ${resultado.usuarios_atualizados}`
-                    : `\nFalha ao sincronizar usuários: ${resultado.usuarios_erro}`)
-            );
-        } else {
-            alert('Erro ao sincronizar: ' + resultado.erro);
-        }
-    } catch (e) {
-        alert('Erro de conexão ao tentar sincronizar.');
-    }
-
-    btn.disabled = false;
-    btn.innerText = textoOriginal;
-}
 </script>
+@include('partials.sincronizacao')
 </body>
 </html>

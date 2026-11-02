@@ -82,7 +82,8 @@ class CaixaController extends Controller
             'sync_pendente' => true,
         ]);
 
-        (new SyncService())->enviarCaixas();
+        // Sem envio aqui: o agendador (a cada minuto) e o Atualizar Caixa levam a abertura ao servidor,
+        // para a tela nunca esperar pela rede
 
         // O PDV imprime o relatório de abertura assim que carrega
         return redirect()->route('vendas.pdv')
@@ -155,14 +156,10 @@ class CaixaController extends Controller
             'sync_pendente' => true,
         ]);
 
-        (new SyncService())->enviarCaixas();
-
-        $mensagem = $caixa->fresh()->sync_pendente
-            ? 'Caixa fechado. O fechamento será enviado ao servidor quando a conexão voltar.'
-            : 'Caixa fechado com sucesso.';
+        // O fechamento sobe pelo agendador ou pelo Atualizar Caixa, como a abertura
 
         // Tela "Caixa fechado", que pergunta se imprime o relatório de fechamento
-        return redirect()->route('caixa.fechado', $caixa->uuid)->with('sucesso', $mensagem);
+        return redirect()->route('caixa.fechado', $caixa->uuid)->with('sucesso', 'Caixa fechado com sucesso.');
     }
 
     /** Depois do fechamento: resumo e a pergunta "Deseja imprimir o relatório de fechamento?" */

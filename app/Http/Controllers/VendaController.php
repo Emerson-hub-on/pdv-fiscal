@@ -423,13 +423,31 @@ class VendaController extends Controller
                     }
                 }
 
+                // Id negativo = cliente do cadastro rápido, ainda só neste caixa (clientes_pendentes).
+                // A sincronização troca pelo id do servidor quando o cliente sobe.
+                $clienteId = $validado['cliente_id'] ?? null;
+                $clienteLocalId = null;
+
+                if ($clienteId !== null && $clienteId < 0) {
+                    $pendente = DB::connection('sqlite_local')->table('clientes_pendentes')->where('id', -$clienteId)->first();
+
+                    if (!$pendente) {
+                        throw new \Exception('Consumidor não encontrado neste caixa. Busque o cliente de novo.');
+                    }
+
+                    // Se ele já subiu enquanto a venda estava na tela, usa direto o id do servidor
+                    $clienteId = $pendente->id_central;
+                    $clienteLocalId = $pendente->id_central ? null : $pendente->id;
+                }
+
                 DB::connection('sqlite_local')->table('vendas_pendentes')->insert([
                     'uuid' => $uuid,
                     'pedido_venda_id' => $pedidoVendaId, // <--- Vinculando o ID seguro da sessão aqui
                     'caixa_id_central' => $caixa->id_central,
                     'caixa_uuid' => $caixa->uuid,
                     'operador_id_central' => Auth::id(),
-                    'cliente_id' => $validado['cliente_id'] ?? null,
+                    'cliente_id' => $clienteId,
+                    'cliente_local_id' => $clienteLocalId,
                     'cpf_na_nota' => $validado['cpf_na_nota'] ?? null,
                     'total' => $totalComDesconto,
                     'troco' => $troco,
@@ -458,11 +476,9 @@ class VendaController extends Controller
             $emissao = ['sucesso' => false, 'contingencia' => false, 'erro' => null];
 
             if (EmissaoLocal::ativa((int) $caixa->pdv_id)) {
-                // O caixa emite a NFC-e sozinho, sem depender do servidor
+                // O caixa emite a NFC-e sozinho, sem depender do servidor. A venda sobe pelo agendador
+                // (a cada minuto) ou pelo Atualizar Caixa: a tela não espera pela rede
                 $emissao = $this->emitirNoCaixa($uuid);
-
-                // Depois tenta enviar a venda (já com a situação fiscal) ao servidor
-                (new SyncService())->enviarSePossivel();
             } elseif (CentralStatus::fora()) {
                 // PDV ainda emitindo pelo servidor e ele está fora: a venda fica no caixa
                 $emissao['erro'] = 'Servidor indisponível: a venda foi salva no caixa e será enviada quando a conexão voltar.';

@@ -293,19 +293,22 @@ function buscarCliente() {
         const lista = document.getElementById('cliente-lista');
         const vazio = document.getElementById('cliente-vazio');
 
+        lista.replaceChildren();
+
         if (items.length === 0) {
-            lista.innerHTML = '';
             vazio.classList.remove('hidden');
             return;
         }
 
         vazio.classList.add('hidden');
-        lista.innerHTML = items.map(c => `
-            <li class="py-2 px-1 hover:bg-blue-50 rounded text-sm cursor-pointer"
-                onclick="selecionarCliente(${c.id}, '${c.label.replace(/'/g, "\\'")}')">
-                ${c.label}
-            </li>
-        `).join('');
+        // Nome digitado no caixa: vai como texto, nunca como HTML
+        items.forEach(c => {
+            const li = document.createElement('li');
+            li.className = 'py-2 px-1 hover:bg-blue-50 rounded text-sm cursor-pointer';
+            li.textContent = c.label;
+            li.addEventListener('click', () => selecionarCliente(c.id, c.label));
+            lista.appendChild(li);
+        });
     }, 200);
 }
 

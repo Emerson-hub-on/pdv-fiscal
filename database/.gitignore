@@ -1,1 +1,3 @@
 *.sqlite*
+# Banco base do caixa (vazio, só estrutura): vai no repositório e no ZIP
+!local-base.sqlite

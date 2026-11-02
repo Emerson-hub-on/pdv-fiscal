@@ -26,6 +26,7 @@ use App\Http\Controllers\ClassificacaoTributariaController;
 use App\Http\Controllers\ClassificacaoPisCofinsController;
 use App\Http\Controllers\ClassificacaoIpiController;
 use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\ClienteCaixaController;
 use App\Http\Controllers\NotaFiscalController;
 use App\Http\Controllers\MdfeController;
 use App\Http\Controllers\SerieMdfeController;
@@ -127,8 +128,8 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
             ->name('supervisor.usuario');
 
         // Endpoints JSON usados pelo modal "Adicionar consumidor" no caixa
-        Route::get('/clientes/buscar', [ClienteController::class, 'buscar'])->name('clientes.buscar');
-        Route::post('/clientes/criar-rapido', [ClienteController::class, 'criarRapido'])->name('clientes.criarRapido');
+        Route::get('/clientes/buscar', [ClienteCaixaController::class, 'buscar'])->name('clientes.buscar');
+        Route::post('/clientes/criar-rapido', [ClienteCaixaController::class, 'criarRapido'])->name('clientes.criarRapido');
 
         // Pedidos de venda no caixa (lidos do espelho SQLite local)
         Route::get('pedidos-caixa', [PedidoCaixaController::class, 'listar'])->name('pedidos-caixa.listar');

@@ -44,7 +44,7 @@ class VendaLocal extends Venda
         $venda->setRelation('caixa', (object) ['pdv' => DadosFiscaisLocais::pdv((int) $caixa->pdv_id)]);
         $venda->setRelation('itens', self::montarItens($db, $linha));
         $venda->setRelation('pagamentos', collect(json_decode($linha->pagamentos ?? '[]', true) ?? [])->map(fn ($p) => (object) $p));
-        $venda->setRelation('cliente', self::montarCliente($db, $linha->cliente_id));
+        $venda->setRelation('cliente', self::montarCliente($db, $linha));
 
         return $venda;
     }
@@ -176,10 +176,33 @@ class VendaLocal extends Venda
         });
     }
 
-    private static function montarCliente($db, $clienteId): ?object
+    private static function montarCliente($db, object $linha): ?object
     {
-        return $clienteId
-            ? $db->table('clientes_cache')->where('id', $clienteId)->first()
+        if ($linha->cliente_id) {
+            return $db->table('clientes_cache')->where('id', $linha->cliente_id)->first();
+        }
+
+        // Cliente do cadastro rápido, ainda só no caixa: tem só nome e documento
+        $pendente = !empty($linha->cliente_local_id)
+            ? $db->table('clientes_pendentes')->where('id', $linha->cliente_local_id)->first()
             : null;
+
+        return $pendente ? (object) [
+            'id' => null,
+            'tipo_pessoa' => $pendente->tipo_pessoa,
+            'nome' => $pendente->nome,
+            'cpf_cnpj' => $pendente->cpf_cnpj,
+            'indicador_ie' => 'nao_contribuinte',
+            'ie' => null,
+            'email' => null,
+            'cep' => null,
+            'logradouro' => null,
+            'numero' => null,
+            'complemento' => null,
+            'bairro' => null,
+            'municipio' => null,
+            'cod_municipio' => null,
+            'uf' => null,
+        ] : null;
     }
 }

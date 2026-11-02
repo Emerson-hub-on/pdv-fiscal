@@ -345,6 +345,12 @@ class SyncService
                     ]
                 );
 
+                // O id do servidor manda: se outro caixa local guardava esse id (banco central recriado), ele perde o id antigo
+                DB::connection('sqlite_local')->table('caixas_local')
+                    ->where('id_central', $central->id)
+                    ->where('id', '!=', $c->id)
+                    ->update(['id_central' => null, 'updated_at' => now()]);
+
                 DB::connection('sqlite_local')->table('caixas_local')
                     ->where('id', $c->id)
                     ->update([
@@ -615,28 +621,7 @@ class SyncService
             $clientes = Cliente::where('updated_at', '>', $ultimaSync)->get();
 
             foreach ($clientes as $cliente) {
-                DB::connection('sqlite_local')->table('clientes_cache')->updateOrInsert(
-                    ['id' => $cliente->id],
-                    [
-                        'tipo_pessoa' => $cliente->tipo_pessoa,
-                        'nome' => $cliente->nome,
-                        'nome_fantasia' => $cliente->nome_fantasia,
-                        'cpf_cnpj' => $cliente->cpf_cnpj,
-                        'indicador_ie' => $cliente->indicador_ie,
-                        'ie' => $cliente->ie,
-                        'email' => $cliente->email,
-                        'cep' => $cliente->cep,
-                        'logradouro' => $cliente->logradouro,
-                        'numero' => $cliente->numero,
-                        'complemento' => $cliente->complemento,
-                        'bairro' => $cliente->bairro,
-                        'municipio' => $cliente->municipio,
-                        'cod_municipio' => $cliente->cod_municipio,
-                        'uf' => $cliente->uf,
-                        'ativo' => $cliente->ativo,
-                        'updated_at' => now(),
-                    ]
-                );
+                $this->gravarClienteCache($cliente);
             }
 
             $this->salvarMeta('ultima_sincronizacao_clientes', now()->toDateTimeString());
@@ -645,6 +630,91 @@ class SyncService
         } catch (\Throwable $e) {
             return $this->registrarFalha($e);
         }
+    }
+
+    private function gravarClienteCache(Cliente $cliente): void
+    {
+        DB::connection('sqlite_local')->table('clientes_cache')->updateOrInsert(
+            ['id' => $cliente->id],
+            [
+                'tipo_pessoa' => $cliente->tipo_pessoa,
+                'nome' => $cliente->nome,
+                'nome_fantasia' => $cliente->nome_fantasia,
+                'cpf_cnpj' => $cliente->cpf_cnpj,
+                'indicador_ie' => $cliente->indicador_ie,
+                'ie' => $cliente->ie,
+                'email' => $cliente->email,
+                'cep' => $cliente->cep,
+                'logradouro' => $cliente->logradouro,
+                'numero' => $cliente->numero,
+                'complemento' => $cliente->complemento,
+                'bairro' => $cliente->bairro,
+                'municipio' => $cliente->municipio,
+                'cod_municipio' => $cliente->cod_municipio,
+                'uf' => $cliente->uf,
+                'ativo' => $cliente->ativo,
+                'updated_at' => now(),
+            ]
+        );
+    }
+
+    /**
+     * Direção 2: sobe os clientes do cadastro rápido do caixa. Idempotente pelo CPF/CNPJ:
+     * se o servidor já tem o documento (cadastrado no painel ou por outro caixa), usa esse cadastro.
+     * Depois as vendas desse cliente passam a apontar para o id do servidor.
+     */
+    public function enviarClientesPendentes(): array
+    {
+        if (CentralStatus::fora()) {
+            return ['sucesso' => true, 'enviados' => 0, 'falhas' => 0];
+        }
+
+        $local = DB::connection('sqlite_local');
+        $pendentes = $local->table('clientes_pendentes')->whereNull('id_central')->orderBy('id')->get();
+
+        $enviados = 0;
+        $falhas = 0;
+
+        foreach ($pendentes as $p) {
+            try {
+                // refresh(): o create não traz os padrões do banco (ativo, indicador_ie) que o espelho exige
+                $cliente = Cliente::where('cpf_cnpj', $p->cpf_cnpj)->first()
+                    ?? Cliente::create([
+                        'tipo_pessoa' => $p->tipo_pessoa,
+                        'nome' => $p->nome,
+                        'cpf_cnpj' => $p->cpf_cnpj,
+                    ])->refresh();
+
+                $this->gravarClienteCache($cliente);
+
+                $local->transaction(function () use ($local, $p, $cliente) {
+                    $local->table('vendas_pendentes')
+                        ->where('cliente_local_id', $p->id)
+                        ->whereNull('cliente_id')
+                        ->update(['cliente_id' => $cliente->id, 'updated_at' => now()]);
+
+                    $local->table('clientes_pendentes')->where('id', $p->id)->update([
+                        'id_central' => $cliente->id,
+                        'sync_erro' => null,
+                        'updated_at' => now(),
+                    ]);
+                });
+
+                $enviados++;
+            } catch (\Throwable $e) {
+                if (CentralStatus::erroDeConexao($e)) {
+                    CentralStatus::marcarFora();
+                    break;
+                }
+
+                $local->table('clientes_pendentes')->where('id', $p->id)
+                    ->update(['sync_erro' => mb_substr($e->getMessage(), 0, 500), 'updated_at' => now()]);
+
+                $falhas++;
+            }
+        }
+
+        return ['sucesso' => true, 'enviados' => $enviados, 'falhas' => $falhas];
     }
 
     /**
@@ -840,6 +910,9 @@ class SyncService
             return ['sucesso' => true, 'enviadas' => 0, 'falhas' => 0];
         }
 
+        // Clientes do cadastro rápido primeiro: as vendas deles precisam do id do servidor
+        $this->enviarClientesPendentes();
+
         $pendentes = DB::connection('sqlite_local')->table('vendas_pendentes')
             ->where(function ($q) {
                 $q->whereIn('status', ['pendente_sync', 'erro_sync'])
@@ -860,11 +933,16 @@ class SyncService
                         $itens = json_decode($vendaLocal->itens, true);
                         $pagamentos = json_decode($vendaLocal->pagamentos, true) ?? [];
 
-                        $caixaId = $vendaLocal->caixa_id_central
-                            ?? Caixa::where('uuid', $vendaLocal->caixa_uuid)->value('id');
+                        // Pelo uuid primeiro: o id guardado no caixa pode ser antigo (banco central recriado)
+                        $caixaId = ($vendaLocal->caixa_uuid ? Caixa::where('uuid', $vendaLocal->caixa_uuid)->value('id') : null)
+                            ?? $vendaLocal->caixa_id_central;
 
                         if (!$caixaId) {
                             throw new Exception('O caixa desta venda ainda não foi sincronizado com o servidor.');
+                        }
+
+                        if (!$vendaLocal->cliente_id && !empty($vendaLocal->cliente_local_id)) {
+                            throw new Exception('O cliente desta venda (cadastro rápido do caixa) ainda não foi enviado ao servidor.');
                         }
 
                         $vendaId = DB::table('vendas')->insertGetId([
