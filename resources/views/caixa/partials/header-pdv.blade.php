@@ -13,17 +13,6 @@
                 </span>
             @endunless
         </div>
-        <div class="flex gap-2">
-            <button id="btn-sincronizar" onclick="sincronizarAgora()"
-                    class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-sm font-medium px-4 py-2 cursor-pointer transition flex items-center gap-1.5">
-                Atualizar Caixa
-            </button>
-            <a href="{{ route('caixa.fechar-form') }}"
-               class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
-                Fechar Caixa
-            </a>
-
-        </div>
     </div>
 
     <div class="flex flex-wrap gap-2 px-6 py-3 bg-black/20">
@@ -67,18 +56,35 @@
         </button>
         <div class="relative">
             <button onclick="toggleDropdownImpressao()" id="btn-impressao-main"
-                    class="bg-sky-500/20 hover:bg-sky-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
+                    class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
                 Impressão <span class="opacity-60">F7</span> ▾
             </button>
             <div id="dropdown-impressao" class="absolute hidden bg-slate-200 rounded-lg shadow-xl mt-2 w-56 overflow-hidden z-50 border border-white/10">
                 <button onclick="fecharDropdownImpressao(); abrirModalReimpressao();"
-                        class="opcao-dropdown-impressao w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-700 hover:text-white transition">
+                        class="opcao-menu-caixa w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-700 hover:text-white transition">
                     Reimprimir Cupom
                 </button>
                 <button onclick="fecharDropdownImpressao(); imprimirRelatorioAbertura(true);"
-                        class="opcao-dropdown-impressao w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-700 hover:text-white transition border-t border-white/10">
+                        class="opcao-menu-caixa w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-700 hover:text-white transition border-t border-white/10">
                     Relatório de Abertura
                 </button>
+            </div>
+        </div>
+        <div class="relative">
+            <button type="button" onclick="toggleDropdownOpcoes()"
+                    class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
+                Opções <span class="opacity-60">F8</span> ▾
+            </button>
+            <div id="dropdown-opcoes" class="absolute hidden bg-slate-200 rounded-lg shadow-xl mt-2 w-52 overflow-hidden z-50 border border-white/10">
+                {{-- id usado por sincronizarAgora() para mostrar "Sincronizando..." --}}
+                <button id="btn-sincronizar" onclick="fecharDropdownOpcoes(); sincronizarAgora();"
+                        class="opcao-menu-caixa w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-700 hover:text-white transition">
+                    Atualizar Caixa
+                </button>
+                <a href="{{ route('caixa.fechar-form') }}" onclick="fecharDropdownOpcoes()"
+                   class="opcao-menu-caixa block w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-700 hover:text-white transition border-t border-white/10">
+                    Fechar Caixa
+                </a>
             </div>
         </div>
     </div>
@@ -100,56 +106,85 @@
         document.getElementById('frame-relatorio-abertura').src = url.toString();
     }
 
-    // Menu "Impressão" (F7): mesmo comportamento do menu de Cancelamento (↑ ↓ Enter, Esc ou clique fora fecha)
-    let indiceDropdownImpressao = -1;
+    // Menus do cabeçalho: "Impressão" (F7) e "Opções" (F8). Mesmo comportamento do menu de Cancelamento:
+    // abre com a 1ª opção marcada, ↑ ↓ trocam, Enter escolhe, Esc ou clique fora fecha. Só um menu aberto por vez.
+    const MENUS_CAIXA = ['dropdown-impressao', 'dropdown-opcoes'];
+    const indiceMenuCaixa = {};
 
-    function toggleDropdownImpressao() {
-        const dropdown = document.getElementById('dropdown-impressao');
-        const abrir = dropdown.classList.contains('hidden');
-        if (abrir && typeof fecharDropdownCancelamento === 'function') fecharDropdownCancelamento();
-        dropdown.classList.toggle('hidden', !abrir);
-        indiceDropdownImpressao = abrir ? 0 : -1;
-        if (abrir) atualizarFocoDropdownImpressao();
+    function menuCaixaAberto() {
+        return MENUS_CAIXA.find(id => !document.getElementById(id)?.classList.contains('hidden')) ?? null;
     }
 
-    function fecharDropdownImpressao() {
-        document.getElementById('dropdown-impressao')?.classList.add('hidden');
-        indiceDropdownImpressao = -1;
+    function fecharMenuCaixa(id) {
+        document.getElementById(id)?.classList.add('hidden');
+        indiceMenuCaixa[id] = -1;
     }
 
-    function atualizarFocoDropdownImpressao() {
-        document.querySelectorAll('#dropdown-impressao .opcao-dropdown-impressao').forEach((opcao, i) => {
-            const ativa = i === indiceDropdownImpressao;
-            opcao.classList.toggle('bg-slate-800', ativa);
+    function marcarOpcaoMenuCaixa(id) {
+        document.querySelectorAll(`#${id} .opcao-menu-caixa`).forEach((opcao, i) => {
+            const ativa = i === indiceMenuCaixa[id];
+            opcao.classList.toggle('bg-slate-700', ativa);
             opcao.classList.toggle('text-white', ativa);
             if (ativa) opcao.focus();
         });
     }
 
-    document.addEventListener('keydown', (e) => {
-        const dropdown = document.getElementById('dropdown-impressao');
-        if (!dropdown || dropdown.classList.contains('hidden')) return;
+    function alternarMenuCaixa(id) {
+        const menu = document.getElementById(id);
+        const abrir = menu.classList.contains('hidden');
 
-        const opcoes = dropdown.querySelectorAll('.opcao-dropdown-impressao');
+        MENUS_CAIXA.forEach(fecharMenuCaixa);
+        if (typeof fecharDropdownCancelamento === 'function') fecharDropdownCancelamento();
+        if (!abrir) return;
+
+        menu.classList.remove('hidden');
+        indiceMenuCaixa[id] = 0;
+        marcarOpcaoMenuCaixa(id);
+    }
+
+    // nomes usados pela tela do PDV (atalhos F7/F8 e "fechar tudo")
+    function toggleDropdownImpressao() { alternarMenuCaixa('dropdown-impressao'); }
+    function fecharDropdownImpressao() { fecharMenuCaixa('dropdown-impressao'); }
+    function toggleDropdownOpcoes() { alternarMenuCaixa('dropdown-opcoes'); }
+    function fecharDropdownOpcoes() { fecharMenuCaixa('dropdown-opcoes'); }
+
+    document.addEventListener('keydown', (e) => {
+        const id = menuCaixaAberto();
+        if (!id) return;
+
+        const opcoes = document.querySelectorAll(`#${id} .opcao-menu-caixa`);
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
             e.preventDefault();
             const passo = e.key === 'ArrowDown' ? 1 : -1;
-            indiceDropdownImpressao = (indiceDropdownImpressao + passo + opcoes.length) % opcoes.length;
-            atualizarFocoDropdownImpressao();
+            indiceMenuCaixa[id] = (indiceMenuCaixa[id] + passo + opcoes.length) % opcoes.length;
+            marcarOpcaoMenuCaixa(id);
         } else if (e.key === 'Enter') {
             e.preventDefault();
-            opcoes[indiceDropdownImpressao]?.click();
+            opcoes[indiceMenuCaixa[id]]?.click();
         } else if (e.key === 'Escape') {
             e.preventDefault();
-            fecharDropdownImpressao();
+            fecharMenuCaixa(id);
+        }
+    });
+
+    // Mouse sobre uma opção: ela passa a ser a marcada (senão a marcada pelo teclado continuaria acesa)
+    document.addEventListener('mouseover', (e) => {
+        const opcao = e.target.closest?.('.opcao-menu-caixa');
+        const id = opcao?.parentElement?.id;
+        if (!opcao || !MENUS_CAIXA.includes(id)) return;
+
+        const indice = [...document.querySelectorAll(`#${id} .opcao-menu-caixa`)].indexOf(opcao);
+        if (indice !== indiceMenuCaixa[id]) {
+            indiceMenuCaixa[id] = indice;
+            marcarOpcaoMenuCaixa(id);
         }
     });
 
     document.addEventListener('click', (e) => {
-        const dropdown = document.getElementById('dropdown-impressao');
-        if (dropdown && !dropdown.classList.contains('hidden') && !dropdown.closest('.relative').contains(e.target)) {
-            fecharDropdownImpressao();
-        }
+        MENUS_CAIXA.forEach(id => {
+            const menu = document.getElementById(id);
+            if (menu && !menu.classList.contains('hidden') && !menu.closest('.relative').contains(e.target)) fecharMenuCaixa(id);
+        });
     });
 
     @if (session('imprimir_abertura'))

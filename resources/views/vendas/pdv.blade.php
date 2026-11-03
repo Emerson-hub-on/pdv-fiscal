@@ -644,17 +644,27 @@ document.addEventListener('keydown', (e) => {
 
 
 function atualizarFocoDropdownCancelamento(opcoes) {
+    // mesmo destaque do mouse (hover) e dos menus Impressão/Opções
     opcoes.forEach((opcao, index) => {
-        if (index === indiceDropdownCancelamento) {
-            opcao.classList.add('bg-slate-800', 'text-white');
-            opcao.classList.remove('text-slate-300');
-            opcao.focus();
-        } else {
-            opcao.classList.remove('bg-slate-800', 'text-white');
-            opcao.classList.add('text-slate-300');
-        }
+        const ativa = index === indiceDropdownCancelamento;
+        opcao.classList.toggle('bg-slate-700', ativa);
+        opcao.classList.toggle('text-white', ativa);
+        if (ativa) opcao.focus();
     });
 }
+
+// Mouse sobre uma opção do Cancelamento: ela passa a ser a marcada (igual aos menus Impressão/Opções)
+document.addEventListener('mouseover', (e) => {
+    const opcao = e.target.closest?.('#dropdown-cancelamento .opcao-dropdown');
+    if (!opcao) return;
+
+    const opcoes = document.querySelectorAll('#dropdown-cancelamento .opcao-dropdown');
+    const indice = [...opcoes].indexOf(opcao);
+    if (indice !== indiceDropdownCancelamento) {
+        indiceDropdownCancelamento = indice;
+        atualizarFocoDropdownCancelamento(opcoes);
+    }
+});
 
 // Modifique a função que abre o dropdown para resetar o índice
 function toggleDropdownCancelamento() {
@@ -663,7 +673,7 @@ function toggleDropdownCancelamento() {
     
     if (!dropdown.classList.contains('hidden')) {
         indiceDropdownCancelamento = -1; // Reseta ao abrir
-        if (typeof fecharDropdownImpressao === 'function') fecharDropdownImpressao();
+        if (typeof fecharDropdownImpressao === 'function') { fecharDropdownImpressao(); fecharDropdownOpcoes(); }
     }
 }
 
@@ -682,6 +692,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'F4') { e.preventDefault(); abrirModalDescontoItem(); }
     if (e.key === 'F6') { e.preventDefault(); abrirModalPedidos(); }
     if (e.key === 'F7') { e.preventDefault(); toggleDropdownImpressao(); }
+    if (e.key === 'F8') { e.preventDefault(); toggleDropdownOpcoes(); }
     if (e.key === 'Escape') { fecharTodosModais(); }
 });
 
@@ -877,7 +888,7 @@ function fecharTodosModais() {
     }
 
     fecharDropdownCancelamento();
-    if (typeof fecharDropdownImpressao === 'function') fecharDropdownImpressao();
+    if (typeof fecharDropdownImpressao === 'function') { fecharDropdownImpressao(); fecharDropdownOpcoes(); }
     tipoDescontoPendente = null;
 }
 
