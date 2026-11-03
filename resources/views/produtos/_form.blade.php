@@ -656,7 +656,8 @@ function moverParaProximoCampo(atual) {
 // listener nunca chega a rodar para ele.
 
 document.addEventListener('DOMContentLoaded', () => {
-    const form = document.querySelector('form');
+    // Pelo id: o primeiro <form> da página é o "Sair" do perfil, no cabeçalho
+    const form = document.getElementById('form-produto');
     if (!form) return;
 
     form.addEventListener('keydown', (e) => {
@@ -773,8 +774,8 @@ function salvarProduto() {
             return;
         }
     }
-    // Todas as validações passaram — submete o form pai
-    document.querySelector('form').submit();
+    // Todas as validações passaram — submete o formulário do produto (pelo id: o primeiro <form> da página é o "Sair")
+    document.getElementById('form-produto').submit();
 }
 
 // ===================== UNIDADE FRACIONADA =====================

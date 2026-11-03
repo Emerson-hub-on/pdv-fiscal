@@ -60,7 +60,7 @@
                         </button>
                     </div>
                 </div>
-                <p class="mt-1 text-xs text-gray-500">Os arquivos vão para uma subpasta com o período no nome.</p>
+                <p class="mt-1 text-xs text-gray-500">Os XMLs são gravados num arquivo .zip com o período no nome.</p>
             </div>
 
             <p id="xml-erro" class="hidden text-sm text-red-600"></p>

@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Caixa → Opções (F8) → Exportar XMLs: copia os XMLs das NFC-e deste computador, de um período,
- * para uma pasta escolhida pelo operador (pen drive, área de trabalho, pasta da contabilidade...).
+ * Caixa → Opções (F8) → Exportar XMLs: grava os XMLs das NFC-e deste computador, de um período,
+ * num .zip na pasta escolhida pelo operador (pen drive, área de trabalho, pasta da contabilidade...).
  *
  * Os XMLs ficam em storage/app/XML_nfce/aa/mm/dd (dia em que foram gravados). Vão na exportação:
  * NFC-e autorizadas (*-nfe.xml), eventos de cancelamento (*-cancelamento.xml, gravados no dia do
@@ -103,34 +103,55 @@ class ExportacaoXmlController extends Controller
             return response()->json(['erro' => 'Nenhum XML encontrado neste período.'], 422);
         }
 
-        // Uma subpasta por exportação, com o período no nome
-        $pasta = $this->juntar($destino, 'XML NFC-e ' . $de->format('d-m-Y') . ' a ' . $ate->format('d-m-Y'));
+        // Um .zip por exportação, com o período no nome; dentro, uma pasta com o mesmo nome
+        $nome = 'XML NFC-e ' . $de->format('d-m-Y') . ' a ' . $ate->format('d-m-Y');
+        $arquivoZip = $this->juntar($destino, $nome . '.zip');
 
-        if (!is_dir($pasta) && !@mkdir($pasta, 0755, true)) {
-            return response()->json(['erro' => 'Não foi possível criar a pasta em "' . $destino . '". Confira se ela permite gravação (pen drive protegido, pasta do sistema...).'], 422);
+        // Monta o zip numa pasta temporária e só depois copia: um pen drive retirado no meio não fica com zip pela metade
+        $temporario = storage_path('app/tmp-exportacao-' . uniqid() . '.zip');
+        if (!is_dir(dirname($temporario))) {
+            @mkdir(dirname($temporario), 0755, true);
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($temporario, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            return response()->json(['erro' => 'Não foi possível montar o arquivo .zip.'], 500);
         }
 
         $copiados = 0;
         $falhas = [];
         foreach ($lista as $origem) {
-            if (@copy($origem, $this->juntar($pasta, basename($origem)))) {
+            if (is_readable($origem) && $zip->addFile($origem, $nome . '/' . basename($origem))) {
                 $copiados++;
             } else {
                 $falhas[] = basename($origem);
             }
         }
 
+        if (!$zip->close()) {
+            @unlink($temporario);
+
+            return response()->json(['erro' => 'Não foi possível montar o arquivo .zip.'], 500);
+        }
+
+        $gravou = @copy($temporario, $arquivoZip);
+        @unlink($temporario);
+
+        if (!$gravou) {
+            return response()->json(['erro' => 'Não foi possível gravar o arquivo em "' . $destino . '". Confira se a pasta permite gravação (pen drive protegido, pasta do sistema...).'], 422);
+        }
+
         Log::info('Exportação de XMLs do caixa', [
             'operador_id' => Auth::id(),
             'de' => $de->toDateString(),
             'ate' => $ate->toDateString(),
-            'pasta' => $pasta,
+            'arquivo' => $arquivoZip,
             'copiados' => $copiados,
             'falhas' => count($falhas),
         ]);
 
         return response()->json([
-            'pasta' => $pasta,
+            'pasta' => $arquivoZip,
             'copiados' => $copiados,
             'autorizadas' => count($arquivos['autorizadas']),
             'cancelamentos' => count($arquivos['cancelamentos']),
