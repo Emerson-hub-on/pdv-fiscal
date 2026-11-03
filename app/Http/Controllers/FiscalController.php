@@ -14,17 +14,7 @@ use Exception;
 
 class FiscalController extends Controller
 {
-    public function comprovante(string $uuid)
-    {
-        $dados = $this->buscarVendaPorUuid($uuid);
-
-        if (!$dados) {
-            abort(404, 'Venda não encontrada.');
-        }
-
-        return view('vendas.comprovante', $dados);
-    }
-
+    // Chamado pelo modal de emissão da tela de pagamento (F2), logo depois de registrar a venda
     public function emitir(string $uuid)
     {
         $vendaLocal = DB::connection('sqlite_local')->table('vendas_pendentes')->where('uuid', $uuid)->first();

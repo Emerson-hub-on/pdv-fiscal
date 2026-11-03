@@ -236,10 +236,60 @@
     </div>
 </div>
 
+<!-- Modal de emissão (F2): carregando → venda emitida / em contingência → imprimir o comprovante? -->
+<div id="modal-emissao" class="hidden fixed inset-0 z-[60] bg-black/60 items-center justify-center px-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center">
+        {{-- Carregando --}}
+        <div id="emissao-carregando">
+            <div class="mx-auto w-14 h-14 rounded-full border-4 border-emerald-100 border-t-emerald-600 animate-spin"></div>
+            <p class="mt-5 text-lg font-bold text-gray-800">Emitindo venda...</p>
+            <p id="emissao-demora" class="mt-1 text-sm text-gray-500 invisible">Só mais um momento...</p>
+        </div>
+
+        {{-- Resultado --}}
+        <div id="emissao-resultado" class="hidden">
+            <div id="emissao-icone" class="mx-auto w-16 h-16 rounded-full flex items-center justify-center"></div>
+            <p id="emissao-titulo" class="mt-4 text-lg font-bold text-gray-800"></p>
+            <p id="emissao-detalhe" class="mt-1 text-sm text-gray-500 break-words"></p>
+
+            <div id="emissao-pergunta">
+                <p class="mt-5 text-sm font-medium text-gray-700">Deseja imprimir o comprovante?</p>
+                <div class="grid grid-cols-2 gap-3 mt-4">
+                    <button type="button" onclick="responderImpressaoVenda(true)"
+                            class="bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-lg font-semibold cursor-pointer">
+                        Sim <span class="opacity-70 text-xs">Enter</span>
+                    </button>
+                    <button type="button" onclick="responderImpressaoVenda(false)"
+                            class="bg-gray-200 hover:bg-gray-300 text-gray-800 py-2.5 rounded-lg font-semibold cursor-pointer">
+                        Não <span class="opacity-60 text-xs">Esc</span>
+                    </button>
+                </div>
+            </div>
+
+            {{-- Venda registrada, mas a NFC-e não saiu (rejeição, erro de configuração...) --}}
+            <div id="emissao-falha" class="hidden">
+                <div class="grid grid-cols-2 gap-3 mt-5">
+                    <button type="button" onclick="emitirVendaFinalizada()"
+                            class="bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-lg font-semibold cursor-pointer">
+                        Tentar de novo <span class="opacity-70 text-xs">Enter</span>
+                    </button>
+                    <button type="button" onclick="irParaNovaVenda()"
+                            class="bg-gray-200 hover:bg-gray-300 text-gray-800 py-2.5 rounded-lg font-semibold cursor-pointer">
+                        Nova venda <span class="opacity-60 text-xs">Esc</span>
+                    </button>
+                </div>
+            </div>
+
+            <p id="emissao-impressao" class="hidden mt-4 text-sm text-gray-600"></p>
+        </div>
+    </div>
+</div>
+
 </div>
 @endsection
 
 @section('scripts')
+<script src="{{ asset('js/cupom-fiscal.js') }}"></script>
 <script>
 const itensDaVenda = @json($itens);
 const totalDaVenda = {{ $total }};
@@ -753,7 +803,71 @@ function renderizarPagamentos() {
     atualizarRestante();
 }
 
+// ===================== FINALIZAR (F2): registra a venda, emite a NFC-e e pergunta se imprime =====================
+const URL_EMITIR = @json(route('vendas.emitir', '__UUID__'));
+const URL_NOVA_VENDA = @json(route('vendas.pdv'));
+let vendaFinalizadaUuid = null;
+let etapaEmissao = null; // null | 'carregando' | 'pergunta' | 'imprimindo' | 'falha'
+let timerDemora = null;
+
+const ICONES_EMISSAO = {
+    ok: ['bg-green-100 text-green-600', '<svg class="w-9 h-9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>'],
+    contingencia: ['bg-amber-100 text-amber-600', '<svg class="w-9 h-9" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>'],
+    falha: ['bg-red-100 text-red-600', '<svg class="w-9 h-9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>'],
+};
+
+function mostrarCarregandoEmissao() {
+    etapaEmissao = 'carregando';
+    const modal = document.getElementById('modal-emissao');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    document.getElementById('emissao-carregando').classList.remove('hidden');
+    document.getElementById('emissao-resultado').classList.add('hidden');
+
+    const demora = document.getElementById('emissao-demora');
+    demora.classList.add('invisible');
+    clearTimeout(timerDemora);
+    timerDemora = setTimeout(() => demora.classList.remove('invisible'), 5000);
+}
+
+function fecharModalEmissao() {
+    clearTimeout(timerDemora);
+    etapaEmissao = null;
+    const modal = document.getElementById('modal-emissao');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function mostrarResultadoEmissao(tipo, titulo, detalhe) {
+    clearTimeout(timerDemora);
+    document.getElementById('emissao-carregando').classList.add('hidden');
+    document.getElementById('emissao-resultado').classList.remove('hidden');
+
+    const [cores, svg] = ICONES_EMISSAO[tipo];
+    const icone = document.getElementById('emissao-icone');
+    icone.className = 'mx-auto w-16 h-16 rounded-full flex items-center justify-center ' + cores;
+    icone.innerHTML = svg;
+
+    document.getElementById('emissao-titulo').textContent = titulo;
+    document.getElementById('emissao-detalhe').textContent = detalhe || '';
+    document.getElementById('emissao-impressao').classList.add('hidden');
+
+    const falhou = tipo === 'falha';
+    document.getElementById('emissao-pergunta').classList.toggle('hidden', falhou);
+    document.getElementById('emissao-falha').classList.toggle('hidden', !falhou);
+    etapaEmissao = falhou ? 'falha' : 'pergunta';
+}
+
+function erroNoPagamento(mensagem) {
+    fecharModalEmissao();
+    const erroP = document.getElementById('erro-venda');
+    erroP.innerText = mensagem;
+    erroP.classList.remove('hidden');
+}
+
 async function finalizarVenda() {
+    if (etapaEmissao || vendaFinalizadaUuid) return; // já está emitindo (F2 repetido)
+
     const diferenca = atualizarRestante();
     if (diferenca < -0.009) {
         document.getElementById('erro-venda').innerText = 'A soma dos pagamentos é menor que o total da venda.';
@@ -761,14 +875,8 @@ async function finalizarVenda() {
         return;
     }
 
-    const btn = document.getElementById('btn-finalizar');
-    const erroP = document.getElementById('erro-venda');
-
-    btn.disabled = true;
-    btn.innerText = 'Processando...';
-    btn.classList.remove('bg-green-600', 'hover:bg-green-700');
-    btn.classList.add('bg-blue-600');
-    erroP.classList.add('hidden');
+    document.getElementById('erro-venda').classList.add('hidden');
+    mostrarCarregandoEmissao();
 
     const payload = {
         itens: itensDaVenda.map(i => ({
@@ -788,33 +896,104 @@ async function finalizarVenda() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
             },
             body: JSON.stringify(payload),
         });
 
-        const data = await resp.json();
+        const data = await resp.json().catch(() => ({}));
 
-        if (!resp.ok) {
-            erroP.innerText = data.erro || 'Erro ao finalizar venda.';
-            erroP.classList.remove('hidden');
-            btn.disabled = false;
-            btn.innerText = 'Finalizar Venda';
-            btn.classList.remove('bg-blue-600');
-            btn.classList.add('bg-green-600', 'hover:bg-green-700');
+        if (!resp.ok || !data.venda_uuid) {
+            erroNoPagamento(data.erro || data.message || 'Erro ao finalizar venda.');
             return;
         }
 
-        window.location.href = `/pdv/venda/${data.venda_uuid}/comprovante`;
+        vendaFinalizadaUuid = data.venda_uuid;
     } catch (e) {
-        erroP.innerText = 'Erro de conexão. Tente novamente.';
-        erroP.classList.remove('hidden');
-        btn.disabled = false;
-        btn.innerText = 'Finalizar Venda';
-        btn.classList.remove('bg-blue-600');
-        btn.classList.add('bg-green-600', 'hover:bg-green-700');
+        erroNoPagamento('Erro de conexão. Tente novamente.');
+        return;
+    }
+
+    // A venda já está gravada: daqui em diante não volta mais para a tela de pagamento
+    await emitirVendaFinalizada();
+}
+
+async function emitirVendaFinalizada() {
+    mostrarCarregandoEmissao();
+
+    let resultado;
+    try {
+        const resp = await fetch(URL_EMITIR.replace('__UUID__', encodeURIComponent(vendaFinalizadaUuid)), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            },
+        });
+        resultado = await resp.json();
+    } catch (e) {
+        resultado = { sucesso: false, erro: 'Erro de conexão ao tentar emitir.' };
+    }
+
+    if (resultado.sucesso) {
+        mostrarResultadoEmissao('ok', 'Venda emitida', resultado.chave ? 'Chave: ' + resultado.chave : '');
+    } else if (resultado.contingencia) {
+        mostrarResultadoEmissao('contingencia', 'Venda emitida em contingência',
+            'Sem comunicação no momento. A NFC-e será transmitida automaticamente quando a conexão voltar.');
+    } else {
+        mostrarResultadoEmissao('falha', 'A NFC-e não foi emitida',
+            (resultado.erro || 'Erro desconhecido.') + ' A venda já está registrada.');
     }
 }
+
+async function responderImpressaoVenda(imprimir) {
+    if (etapaEmissao !== 'pergunta') return;
+    if (!imprimir) {
+        irParaNovaVenda();
+        return;
+    }
+
+    etapaEmissao = 'imprimindo';
+    document.getElementById('emissao-pergunta').classList.add('hidden');
+    const msg = document.getElementById('emissao-impressao');
+    msg.className = 'mt-4 text-sm text-gray-600';
+    msg.textContent = 'Imprimindo comprovante...';
+
+    let espera = 800;
+    try {
+        await imprimirCupomFiscal(vendaFinalizadaUuid); // só segue quando a impressão terminar
+        msg.className = 'mt-4 text-sm text-green-700';
+        msg.textContent = '✓ Comprovante enviado para a impressora.';
+    } catch (e) {
+        msg.className = 'mt-4 text-sm text-red-600';
+        msg.textContent = 'Não foi possível imprimir: ' + e.message + ' Reimprima pelo menu Impressão (F7).';
+        espera = 4000;
+    }
+
+    setTimeout(irParaNovaVenda, espera);
+}
+
+function irParaNovaVenda() {
+    etapaEmissao = 'saindo';
+    window.location.href = URL_NOVA_VENDA;
+}
+
+// Com o modal aberto, só ele responde ao teclado (Enter/Esc); os atalhos da tela ficam bloqueados
+window.addEventListener('keydown', (e) => {
+    if (!etapaEmissao) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    if (etapaEmissao === 'pergunta') {
+        if (e.key === 'Enter') responderImpressaoVenda(true);
+        else if (e.key === 'Escape') responderImpressaoVenda(false);
+    } else if (etapaEmissao === 'falha') {
+        if (e.key === 'Enter') emitirVendaFinalizada();
+        else if (e.key === 'Escape') irParaNovaVenda();
+    }
+}, true);
 atualizarRestante();
 </script>
 @endsection
