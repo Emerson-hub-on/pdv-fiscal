@@ -310,6 +310,7 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
                 Route::post('importar-xml/cadastrar-pendentes', [EntradaNotaController::class, 'cadastrarPendentes'])->middleware('permissao:produtos')->name('importar-xml.cadastrar-pendentes');
                 Route::post('importar-xml/confirmar', [EntradaNotaController::class, 'confirmarImportacaoXml'])->name('importar-xml.confirmar');
                 Route::post('operacoes', [EntradaNotaController::class, 'criarOperacao'])->name('operacoes.store');
+                Route::get('operacoes/{operacao}', [EntradaNotaController::class, 'mostrarOperacao'])->name('operacoes.show');
                 Route::put('operacoes/{operacao}', [EntradaNotaController::class, 'atualizarOperacao'])->name('operacoes.update');
 
                 Route::get('/', [EntradaNotaController::class, 'index'])->name('index');

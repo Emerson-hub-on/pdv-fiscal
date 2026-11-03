@@ -1,5 +1,14 @@
 <div id="modal-operacao-entrada" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[65]">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+        {{-- Aviso enquanto busca a operação no banco / monta a tabela --}}
+        <div id="op-carregando" class="hidden absolute inset-0 z-20 rounded-xl bg-white/85 flex-col items-center justify-center gap-3">
+            <svg class="w-9 h-9 text-blue-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            <p id="op-carregando-texto" class="text-sm font-medium text-gray-700">Buscando informações no banco...</p>
+        </div>
+
         <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900 rounded-t-xl">
             <h2 class="text-lg font-bold text-white">CFOP / Operação da entrada</h2>
             <button type="button" onclick="fecharModalOperacao()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
@@ -297,11 +306,43 @@ function opAbrirFormulario(o) {
     document.getElementById(o ? 'op-descricao' : 'op-preencher').focus();
 }
 
-function opMostrarCadastro() { opAbrirFormulario(null); }
+// Aviso "buscando..." por cima do modal; espera o navegador desenhá-lo antes de seguir
+function opCarregando(mostrar, texto = 'Buscando informações no banco...') {
+    const aviso = document.getElementById('op-carregando');
+    document.getElementById('op-carregando-texto').textContent = texto;
+    aviso.classList.toggle('hidden', !mostrar);
+    aviso.classList.toggle('flex', mostrar);
+    return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
 
-function opMostrarEdicao(id) {
-    const o = opLista.find(x => String(x.id) === String(id));
-    if (o) opAbrirFormulario(o);
+async function opMostrarCadastro() {
+    await opCarregando(true, 'Montando a tabela de conversão...');
+    try {
+        opAbrirFormulario(null);
+    } finally {
+        opCarregando(false);
+    }
+}
+
+// Editar: busca a operação no banco (pega alterações feitas em outro computador) e abre a tabela
+async function opMostrarEdicao(id) {
+    await opCarregando(true);
+    try {
+        const resp = await fetch(@json(route('entradas-nota.operacoes.show', '__ID__')).replace('__ID__', id), {
+            headers: { 'Accept': 'application/json' },
+        });
+        const dados = (resp.headers.get('content-type') || '').includes('application/json') ? await resp.json() : null;
+        if (!resp.ok || !dados) throw new Error(dados?.message || `O servidor retornou erro ${resp.status}.`);
+
+        const i = opLista.findIndex(x => String(x.id) === String(dados.id));
+        if (i >= 0) opLista[i] = dados;
+        opAtualizarRegrasDaGrade(dados);
+        opAbrirFormulario(dados);
+    } catch (e) {
+        alert('Não foi possível carregar a operação: ' + e.message);
+    } finally {
+        opCarregando(false);
+    }
 }
 
 function opOpcoesEntrada(valor) {

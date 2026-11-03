@@ -971,6 +971,15 @@ class EntradaNotaController extends Controller
             ->values();
     }
 
+    /** Operação com a tabela de conversão atual do banco (o modal busca ao clicar em Editar). */
+    public function mostrarOperacao(OperacaoEntrada $operacao)
+    {
+        $dados = $this->operacoesParaModal()->firstWhere('id', $operacao->id);
+        abort_if(! $dados, 404, 'Operação inativa ou não encontrada.');
+
+        return response()->json($dados);
+    }
+
     public function criarOperacao(Request $request)
     {
         return $this->salvarOperacao($request, null);
