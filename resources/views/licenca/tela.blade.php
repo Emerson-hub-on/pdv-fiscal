@@ -11,11 +11,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Licença - Cyberly Sistema</title>
+    @include('partials.favicon')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-slate-100 text-gray-800 antialiased flex items-center justify-center p-6">
 <div class="w-full max-w-xl bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-    <p class="text-sm font-semibold text-[#163f86]">Cyberly Sistema</p>
+    <p class="flex items-center gap-2 text-sm font-semibold text-[#163f86]">
+        @include('partials.logo-simbolo', ['tamanho' => 24, 'fundo' => 'claro'])
+        Cyberly Sistema
+    </p>
     <h1 class="text-2xl font-bold mt-1">{{ $situacao['bloqueada'] ? 'Sistema bloqueado' : 'Licença do sistema' }}</h1>
 
     @if (session('sucesso'))

@@ -9,6 +9,7 @@
     @else
         <title>Cyberly Sistema</title>
     @endif
+    @include('partials.favicon')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-100 text-gray-800 min-h-screen relative @yield('body-class')">
@@ -25,12 +26,15 @@
      criar/editar nota, e que também pode ser alternada pelo botão do topo. -->
 <aside id="nav-principal" class="bg-gray-900 fixed top-0 left-0 h-screen w-50 flex flex-col z-40 overflow-y-auto transition-[width] duration-200 [.sidebar-oculta_&]:w-16 [.sem-sidebar_&]:hidden">
     <div class="px-3 py-4 border-b border-white/10 shrink-0 flex items-center justify-between [.sidebar-oculta_&]:justify-center">
-        <div class="px-2 overflow-hidden [.sidebar-oculta_&]:hidden">
-            <p class="text-amber-50 font-bold text-lg tracking-tight whitespace-nowrap">Cyberly Sistema</p>
-            <p class="text-slate-400 text-xs mt-0.5 whitespace-nowrap">Painel administrativo</p>
+        <div class="overflow-hidden flex items-center gap-1.5 [.sidebar-oculta_&]:hidden">
+            @include('partials.logo-simbolo', ['tamanho' => 26, 'rotulo' => 'Cyberly Sistema'])
+            <div class="min-w-0">
+                <p class="text-amber-50 font-bold text-sm leading-tight tracking-tight whitespace-nowrap">Cyberly Sistema</p>
+                <p class="text-slate-400 text-xs mt-0.5 whitespace-nowrap">Painel administrativo</p>
+            </div>
         </div>
         <button type="button" onclick="toggleSidebar()" title="Minimizar/Expandir menu"
-                class="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                class="shrink-0 flex items-center justify-center w-8 h-8 rounded-lg text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <rect x="3" y="4" width="18" height="16" rx="2" stroke-width="2"></rect>
                 <line x1="9" y1="4" x2="9" y2="20" stroke-width="2"></line>

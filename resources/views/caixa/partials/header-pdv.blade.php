@@ -2,6 +2,8 @@
 <div class="bg-linear-to-r from-slate-800 via-slate-900 to-slate-900
             shadow-lg shrink-0">
     <div class="flex justify-between items-center px-6 py-4 border-b border-white/10">
+        <div class="flex items-center gap-4">
+        @include('partials.logo-simbolo', ['tamanho' => 40, 'rotulo' => 'Cyberly Sistema'])
         <div>
             <h1 class="text-xl font-bold text-white tracking-tight">{{ $caixa->pdv->nome }}</h1>
             <p class="text-xs text-slate-400 mt-0.5">
@@ -12,6 +14,7 @@
                     Emissão pelo servidor (modo de emergência)
                 </span>
             @endunless
+        </div>
         </div>
         @include('caixa.partials.perfil-operador')
     </div>

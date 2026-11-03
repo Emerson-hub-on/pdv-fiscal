@@ -22,6 +22,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entrar - Cyberly Sistema</title>
+    @include('partials.favicon')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-slate-100 text-gray-800 antialiased">
@@ -42,10 +43,10 @@
         <div class="absolute top-36 right-20 h-24 w-24 rounded-full bg-white/10"></div>
 
         <div class="relative flex items-center gap-3">
-            <div class="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center">
-                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4 3 20h18L12 4Z"/></svg>
+            <div class="h-12 w-12 rounded-xl bg-slate-900 ring-1 ring-white/20 flex items-center justify-center">
+                @include('partials.logo-simbolo', ['tamanho' => 34])
             </div>
-            <span class="text-lg font-semibold tracking-tight">Cyberly Sistema</span>
+            <span class="text-xl font-semibold tracking-tight">Cyberly Sistema</span>
         </div>
 
         <div class="relative mt-20 max-w-md">
@@ -79,8 +80,8 @@
 
             {{-- Marca no celular (o lado esquerdo some em telas pequenas) --}}
             <div class="lg:hidden flex items-center gap-2 mb-8">
-                <div class="h-9 w-9 rounded-xl bg-[#163f86] text-white flex items-center justify-center">
-                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4 3 20h18L12 4Z"/></svg>
+                <div class="h-10 w-10 rounded-xl bg-slate-900 flex items-center justify-center">
+                    @include('partials.logo-simbolo', ['tamanho' => 28])
                 </div>
                 <span class="font-semibold">Cyberly Sistema</span>
             </div>
