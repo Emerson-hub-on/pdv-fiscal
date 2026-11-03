@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\CfopEntradaConversao;
 use App\Models\CstEntradaConversao;
 use App\Models\Empresa;
+use App\Models\EntradaRegraConversao;
 use App\Models\Fornecedor;
 use App\Models\OperacaoEntrada;
 use Illuminate\Support\Collection;
@@ -13,6 +14,7 @@ class ConversaoFiscalEntrada
 {
     private Collection $cfops;
     private Collection $csts;
+    private Collection $regras;
     private string $regime;
 
     public function __construct(OperacaoEntrada $operacao)
@@ -25,6 +27,12 @@ class ConversaoFiscalEntrada
 
         $this->csts = CstEntradaConversao::where('regime', $this->regime)->get()
             ->keyBy(fn ($c) => $c->tipo_origem . ':' . $c->codigo_origem);
+
+        // regras criadas pelo usuário nesta operação (CFOP + CST juntos)
+        $this->regras = EntradaRegraConversao::where('operacao_entrada_id', $operacao->id)
+            ->where('regime', $this->regime)
+            ->get()
+            ->keyBy(fn ($r) => EntradaRegraConversao::chave($r->cfop_origem, $r->tipo_origem, $r->codigo_origem));
     }
 
     public function regime(): string
@@ -34,6 +42,21 @@ class ConversaoFiscalEntrada
 
     public function converter(?string $cfopOrigem, ?string $cst, ?string $csosn): array
     {
+        // 1º: regra do usuário para exatamente este CFOP + CST/CSOSN
+        $tipo = $csosn ? 'csosn' : ($cst ? 'cst' : null);
+        $regra = ($cfopOrigem && $tipo)
+            ? $this->regras->get(EntradaRegraConversao::chave($cfopOrigem, $tipo, $csosn ?: $cst))
+            : null;
+
+        if ($regra) {
+            return [
+                'cfop_entrada_id'   => $regra->cfop_entrada_id,
+                'cst_csosn_entrada' => $regra->codigo_entrada,
+                'gera_credito'      => $regra->gera_credito,
+            ];
+        }
+
+        // 2º: regras automáticas da operação (CFOP) e do regime (CST/CSOSN)
         $cstConv = $csosn
             ? $this->csts->get("csosn:{$csosn}")
             : ($cst ? $this->csts->get("cst:{$cst}") : null);

@@ -26,6 +26,7 @@ use App\Services\ConversaoFiscalEntrada;
 use App\Models\CfopEntradaConversao;
 use App\Models\FormaPagamento;
 use App\Models\CstEntradaConversao;
+use App\Models\EntradaRegraConversao;
 use App\Services\ContaPagarService;
 use App\Services\EstoqueService;
 use App\Services\CreditoPisCofinsEntrada;
@@ -903,11 +904,24 @@ class EntradaNotaController extends Controller
                 $c->tipo_origem . ':' . $c->codigo_origem => ['cst' => $c->codigo_entrada, 'credito' => (bool) $c->gera_credito],
             ])->all();
 
+        // regras do usuário (CFOP + CST juntos), por operação: têm prioridade sobre as automáticas
+        $regras = [];
+        foreach (EntradaRegraConversao::with('cfopEntrada:id,codigo')->where('regime', $regime)->get() as $r) {
+            $regras[$r->operacao_entrada_id][EntradaRegraConversao::chave($r->cfop_origem, $r->tipo_origem, $r->codigo_origem)] = [
+                'cfop' => $r->cfopEntrada?->codigo, 'cst' => $r->codigo_entrada, 'credito' => (bool) $r->gera_credito,
+            ];
+        }
+
         return [
             'regime'       => $regime,
             'ufEmpresa'    => $empresa->getAttributes()['uf'] ?? null,
             'cfops'        => $cfops,
             'csts'         => $csts,
+            'regras'       => (object) $regras,
+            'origensCst'   => [
+                'cst'   => collect(self::CST)->map(fn ($d, $c) => ['codigo' => (string) $c, 'descricao' => $d])->values(),
+                'csosn' => collect(self::CSOSN)->map(fn ($d, $c) => ['codigo' => (string) $c, 'descricao' => $d])->values(),
+            ],
             'descricoes'   => CfopEntrada::pluck('descricao', 'codigo'),
             'cfopsEntrada' => CfopEntrada::where('ativo', true)->orderBy('codigo')->get(['codigo', 'descricao']),
             'opcoesCst'    => collect($regime === 'normal' ? self::CST : self::CSOSN)
@@ -916,154 +930,211 @@ class EntradaNotaController extends Controller
         ];
     }
 
-    /** Operações com os CFOPs principais (o que a 5102/6102 do fornecedor vira). */
+    /**
+     * Operações para o modal. A tabela da tela (cada CFOP x cada CST/CSOSN) é montada no navegador a partir de:
+     * - base:   CFOP de origem -> CFOP de entrada (cfop_entrada_conversoes);
+     * - regras: as linhas que fogem do padrão (entrada_regras_conversao).
+     * O CST/CSOSN de entrada padrão vem da tabela de conversão do regime (cst_entrada_conversoes).
+     */
     private function operacoesParaModal()
     {
+        $regime = Empresa::atual()->crt == 3 ? 'normal' : 'simples';
         $codigos = CfopEntrada::pluck('codigo', 'id');
         $conversoes = CfopEntradaConversao::get()->groupBy('operacao_entrada_id');
-        $mapa = CfopEntradaConversao::whereIn('cfop_origem', ['5102', '6102'])
-            ->get()
-            ->groupBy('operacao_entrada_id');
+        $regras = EntradaRegraConversao::where('regime', $regime)->get()->groupBy('operacao_entrada_id');
 
         return OperacaoEntrada::where('ativo', true)
             ->orderBy('ordem')
             ->orderBy('descricao')
             ->get()
-            ->map(function ($op) use ($codigos, $conversoes, $mapa) {
-                // sufixos (3 últimos dígitos) usados pelas regras desta operação
-                $sufixos = collect($conversoes->get($op->id, []))
-                    ->map(fn ($c) => substr((string) $codigos->get($c->cfop_entrada_id), 1))
-                    ->filter()->unique()->values();
-
-                $baseConversao = collect($mapa->get($op->id, []))->firstWhere('cfop_origem', '5102');
-                $sufBase = $baseConversao ? substr((string) $codigos->get($baseConversao->cfop_entrada_id), 1) : null;
-
-                // operação criada por esta tela usa no máximo 2 sufixos (normal e ST): dá para editar os CFOPs com segurança
-                $editavel = $sufBase && $sufixos->count() <= 2;
-                $sufSt = ($editavel && $sufixos->count() === 2) ? $sufixos->first(fn ($s) => $s !== $sufBase) : null;
+            ->map(function ($op) use ($codigos, $conversoes, $regras) {
+                $base = collect($conversoes->get($op->id, []))
+                    ->sortBy('cfop_origem')
+                    ->mapWithKeys(fn ($c) => [$c->cfop_origem => $codigos->get($c->cfop_entrada_id)]);
 
                 return [
                     'id'                => $op->id,
                     'descricao'         => $op->descricao,
-                    'cfops'             => collect($mapa->get($op->id, []))
-                        ->sortBy('cfop_origem')
-                        ->map(fn ($c) => $codigos->get($c->cfop_entrada_id))
-                        ->filter()
-                        ->unique()
-                        ->implode(' / '),
-                    'cfop'              => $sufBase ? '1' . $sufBase : null,
-                    'cfop_st'           => $sufSt ? '1' . $sufSt : null,
-                    'cfop_editavel'     => (bool) $editavel,
+                    // rótulo da lista: o que a 5102/6102 do fornecedor vira
+                    'cfops'             => $base->only(['5102', '6102'])->filter()->unique()->implode(' / '),
                     'movimenta_estoque' => (bool) $op->movimenta_estoque,
+                    'base'              => (object) $base->all(),
+                    'regras'            => collect($regras->get($op->id, []))->map(fn ($r) => [
+                        'cfop_origem'    => $r->cfop_origem,
+                        'origem'         => $r->tipo_origem . ':' . $r->codigo_origem,
+                        'cfop_entrada'   => $codigos->get($r->cfop_entrada_id),
+                        'codigo_entrada' => $r->codigo_entrada,
+                        'gera_credito'   => (bool) $r->gera_credito,
+                    ])->values(),
                 ];
             })
             ->values();
     }
 
-    /** Garante no catálogo os CFOPs 1xxx/2xxx (e os de ST, se informados) de uma operação. */
-    private function garantirCfopsNoCatalogo(string $descricao, string $sufixo, string $sufixoSt): void
-    {
-        foreach (['1', '2'] as $area) {
-            CfopEntrada::firstOrCreate(
-                ['codigo' => $area . $sufixo],
-                ['descricao' => $descricao, 'ativo' => true]
-            );
-
-            if ($sufixoSt !== $sufixo) {
-                CfopEntrada::firstOrCreate(
-                    ['codigo' => $area . $sufixoSt],
-                    ['descricao' => $descricao . ' (com ST)', 'ativo' => true]
-                );
-            }
-        }
-    }
-
     public function criarOperacao(Request $request)
     {
-        $dados = $request->validate([
-            'cfop'              => ['required', 'regex:/^[12]\d{3}$/'],
-            'cfop_st'           => ['nullable', 'regex:/^[12]\d{3}$/'],
-            'descricao'         => ['required', 'string', 'max:60', Rule::unique('operacoes_entrada', 'descricao')],
-            'movimenta_estoque' => ['required', 'boolean'],
-        ], [
-            'cfop.regex'          => 'Informe o CFOP com 4 dígitos, começando por 1 (dentro do estado) ou 2 (outros estados).',
-            'cfop_st.regex'       => 'O CFOP de ST deve ter 4 dígitos, começando por 1 ou 2.',
-            'descricao.required'  => 'Informe a natureza da operação.',
-            'descricao.unique'    => 'Já existe uma operação com esta natureza.',
-        ]);
+        return $this->salvarOperacao($request, null);
+    }
 
-        $sufixo   = substr($dados['cfop'], 1);
-        $sufixoSt = ! empty($dados['cfop_st']) ? substr($dados['cfop_st'], 1) : $sufixo;
-
-        $operacao = DB::transaction(function () use ($dados, $sufixo, $sufixoSt) {
-            $this->garantirCfopsNoCatalogo($dados['descricao'], $sufixo, $sufixoSt);
-
-            $base = Str::limit(Str::slug($dados['descricao'], '_'), 36, '') ?: 'operacao';
-            $codigo = $base;
-            for ($n = 2; OperacaoEntrada::where('codigo', $codigo)->exists(); $n++) {
-                $codigo = $base . '_' . $n;
-            }
-
-            $operacao = OperacaoEntrada::create([
-                'codigo'            => $codigo,
-                'descricao'         => $dados['descricao'],
-                'movimenta_estoque' => $dados['movimenta_estoque'],
-                'ordem'             => (int) OperacaoEntrada::max('ordem') + 1,
-                'ativo'             => true,
-            ]);
-
-            CfopEntradaConversao::gerar($operacao, $sufixo, $sufixoSt, array_keys(CfopEntradaConversao::ORIGENS));
-
-            return $operacao;
-        });
-
-        return response()->json($this->operacoesParaModal()->firstWhere('id', $operacao->id));
+    public function atualizarOperacao(Request $request, OperacaoEntrada $operacao)
+    {
+        return $this->salvarOperacao($request, $operacao);
     }
 
     /**
-     * Edita uma operação: natureza e "movimenta estoque" sempre; os CFOPs só quando
-     * recriar_cfops = true (recria as regras de conversão da operação).
+     * Cadastra ou edita uma operação com a tabela inteira (cada CFOP x cada CST/CSOSN de origem).
+     * Grava só o necessário: o CFOP de entrada mais usado de cada CFOP vira a regra base (vale também
+     * para item digitado, sem CST) e as linhas diferentes do padrão viram regras específicas.
      */
-    public function atualizarOperacao(Request $request, OperacaoEntrada $operacao)
+    private function salvarOperacao(Request $request, ?OperacaoEntrada $operacao)
     {
-        $recriar = $request->boolean('recriar_cfops');
+        $regime = Empresa::atual()->crt == 3 ? 'normal' : 'simples';
+        $rotuloEntrada = $regime === 'normal' ? 'CST' : 'CSOSN';
+        $origensValidas = collect(self::CST)->keys()->map(fn ($c) => 'cst:' . $c)
+            ->concat(collect(self::CSOSN)->keys()->map(fn ($c) => 'csosn:' . $c))
+            ->all();
+        $entradasValidas = array_map('strval', array_keys($regime === 'normal' ? self::CST : self::CSOSN));
+
+        $unicaDescricao = Rule::unique('operacoes_entrada', 'descricao');
+        if ($operacao) {
+            $unicaDescricao->ignore($operacao->id);
+        }
 
         $dados = $request->validate([
-            'cfop'              => [Rule::requiredIf($recriar), 'nullable', 'regex:/^[12]\d{3}$/'],
-            'cfop_st'           => ['nullable', 'regex:/^[12]\d{3}$/'],
-            'descricao'         => ['required', 'string', 'max:60', Rule::unique('operacoes_entrada', 'descricao')->ignore($operacao->id)],
-            'movimenta_estoque' => ['required', 'boolean'],
+            'descricao'                => ['required', 'string', 'max:60', $unicaDescricao],
+            'movimenta_estoque'        => ['required', 'boolean'],
+            'linhas'                   => ['required', 'array', 'min:1', 'max:3000'],
+            'linhas.*.cfop_origem'     => ['required', 'regex:/^[56]\d{3}$/'],
+            'linhas.*.origem'          => ['required', Rule::in($origensValidas)],
+            'linhas.*.cfop_entrada'    => ['required', 'regex:/^[12]\d{3}$/'],
+            'linhas.*.codigo_entrada'  => ['required', Rule::in($entradasValidas)],
+            'linhas.*.gera_credito'    => ['nullable', 'boolean'],
         ], [
-            'cfop.required'       => 'Informe o CFOP de entrada.',
-            'cfop.regex'          => 'Informe o CFOP com 4 dígitos, começando por 1 (dentro do estado) ou 2 (outros estados).',
-            'cfop_st.regex'       => 'O CFOP de ST deve ter 4 dígitos, começando por 1 ou 2.',
-            'descricao.required'  => 'Informe a natureza da operação.',
-            'descricao.unique'    => 'Já existe uma operação com esta natureza.',
+            'descricao.required'               => 'Informe a natureza da operação.',
+            'descricao.unique'                 => 'Já existe uma operação com esta natureza.',
+            'linhas.required'                  => 'Inclua ao menos um CFOP na tabela de conversão.',
+            'linhas.*.cfop_origem.regex'       => 'Linha :position: o CFOP de origem deve ter 4 dígitos, começando por 5 ou 6.',
+            'linhas.*.origem.required'         => 'Linha :position: CST/CSOSN de origem não informado.',
+            'linhas.*.origem.in'               => 'Linha :position: CST/CSOSN de origem inválido.',
+            'linhas.*.cfop_entrada.required'   => 'Linha :position: informe o CFOP de entrada.',
+            'linhas.*.cfop_entrada.regex'      => 'Linha :position: o CFOP de entrada deve ter 4 dígitos, começando por 1 ou 2.',
+            'linhas.*.codigo_entrada.required' => "Linha :position: escolha o {$rotuloEntrada} de entrada.",
+            'linhas.*.codigo_entrada.in'       => "Linha :position: {$rotuloEntrada} de entrada inválido.",
         ]);
 
+        // códigos sempre como texto (um CFOP numérico perderia o tratamento de string abaixo)
+        $dados['linhas'] = array_map(fn ($l) => [
+            'cfop_origem'    => (string) $l['cfop_origem'],
+            'origem'         => (string) $l['origem'],
+            'cfop_entrada'   => (string) $l['cfop_entrada'],
+            'codigo_entrada' => (string) $l['codigo_entrada'],
+            'gera_credito'   => ! empty($l['gera_credito']),
+        ], $dados['linhas']);
+
+        // Regras de negócio que o validate não cobre: área do CFOP e origem repetida
+        $erros = [];
+        $vistas = [];
+        foreach ($dados['linhas'] as $i => $l) {
+            $n = $i + 1;
+            $area = $l['cfop_origem'][0] === '5' ? '1' : '2';
+            if ($l['cfop_entrada'][0] !== $area) {
+                $erros[] = "Linha {$n}: o CFOP {$l['cfop_origem']} é de " . ($area === '1' ? 'dentro' : 'fora')
+                    . " do estado, o CFOP de entrada deve começar por {$area}.";
+            }
+
+            $chave = $l['cfop_origem'] . '|' . $l['origem'];
+            if (isset($vistas[$chave])) {
+                $erros[] = "Linha {$n}: repete a linha {$vistas[$chave]} (CFOP {$l['cfop_origem']} com "
+                    . strtoupper(str_replace(':', ' ', $l['origem'])) . ').';
+            }
+            $vistas[$chave] ??= $n;
+        }
+        if ($erros) {
+            throw ValidationException::withMessages(['linhas' => array_slice($erros, 0, 15)]);
+        }
+
         // o estorno de entradas finalizadas consulta "movimenta estoque": não pode mudar por baixo delas
-        if ((bool) $operacao->movimenta_estoque !== (bool) $dados['movimenta_estoque']
+        if ($operacao && (bool) $operacao->movimenta_estoque !== (bool) $dados['movimenta_estoque']
             && EntradaNota::where('operacao_entrada_id', $operacao->id)->where('status', 'finalizada')->exists()) {
             throw ValidationException::withMessages([
                 'movimenta_estoque' => 'Não é possível alterar "Movimenta estoque": já existem entradas finalizadas com esta operação.',
             ]);
         }
 
-        DB::transaction(function () use ($dados, $operacao, $recriar) {
-            $operacao->update([
-                'descricao'         => $dados['descricao'],
-                'movimenta_estoque' => $dados['movimenta_estoque'],
-            ]);
+        // padrão do regime para comparar: só o que for diferente vira regra específica
+        $padraoCst = CstEntradaConversao::where('regime', $regime)->get()
+            ->keyBy(fn ($c) => $c->tipo_origem . ':' . $c->codigo_origem);
 
-            if ($recriar) {
-                $sufixo   = substr($dados['cfop'], 1);
-                $sufixoSt = ! empty($dados['cfop_st']) ? substr($dados['cfop_st'], 1) : $sufixo;
+        $operacao = DB::transaction(function () use ($dados, $operacao, $regime, $padraoCst) {
+            if ($operacao) {
+                $operacao->update([
+                    'descricao'         => $dados['descricao'],
+                    'movimenta_estoque' => $dados['movimenta_estoque'],
+                ]);
+            } else {
+                $base = Str::limit(Str::slug($dados['descricao'], '_'), 36, '') ?: 'operacao';
+                $codigo = $base;
+                for ($n = 2; OperacaoEntrada::where('codigo', $codigo)->exists(); $n++) {
+                    $codigo = $base . '_' . $n;
+                }
 
-                $this->garantirCfopsNoCatalogo($dados['descricao'], $sufixo, $sufixoSt);
-
-                CfopEntradaConversao::where('operacao_entrada_id', $operacao->id)->delete();
-                CfopEntradaConversao::gerar($operacao, $sufixo, $sufixoSt, array_keys(CfopEntradaConversao::ORIGENS));
+                $operacao = OperacaoEntrada::create([
+                    'codigo'            => $codigo,
+                    'descricao'         => $dados['descricao'],
+                    'movimenta_estoque' => $dados['movimenta_estoque'],
+                    'ordem'             => (int) OperacaoEntrada::max('ordem') + 1,
+                    'ativo'             => true,
+                ]);
             }
+
+            // A tabela enviada passa a ser a tabela da operação (regras do outro regime ficam como estão)
+            CfopEntradaConversao::where('operacao_entrada_id', $operacao->id)->delete();
+            EntradaRegraConversao::where('operacao_entrada_id', $operacao->id)->where('regime', $regime)->delete();
+
+            // CFOP de entrada novo entra no catálogo com a natureza da operação
+            $idCfop = fn (string $codigo) => CfopEntrada::firstOrCreate(
+                ['codigo' => $codigo],
+                ['descricao' => $dados['descricao'], 'ativo' => true]
+            )->id;
+
+            foreach (collect($dados['linhas'])->groupBy('cfop_origem') as $cfopOrigem => $linhas) {
+                // CFOP de entrada mais usado entre as linhas deste CFOP = regra base
+                $cfopBase = $linhas->countBy('cfop_entrada')->sortDesc()->keys()->first();
+
+                CfopEntradaConversao::create([
+                    'operacao_entrada_id' => $operacao->id,
+                    'cfop_origem'         => (string) $cfopOrigem,
+                    'cfop_entrada_id'     => $idCfop((string) $cfopBase),
+                ]);
+
+                foreach ($linhas as $l) {
+                    $credito = $regime === 'normal' && ! empty($l['gera_credito']);
+                    $padrao = $padraoCst->get($l['origem']);
+
+                    $igualAoPadrao = $l['cfop_entrada'] === (string) $cfopBase
+                        && $padrao
+                        && $padrao->codigo_entrada === $l['codigo_entrada']
+                        && (bool) $padrao->gera_credito === $credito;
+
+                    if ($igualAoPadrao) {
+                        continue;
+                    }
+
+                    [$tipo, $codigo] = explode(':', $l['origem']);
+                    EntradaRegraConversao::create([
+                        'operacao_entrada_id' => $operacao->id,
+                        'regime'              => $regime,
+                        'cfop_origem'         => (string) $cfopOrigem,
+                        'tipo_origem'         => $tipo,
+                        'codigo_origem'       => $codigo,
+                        'cfop_entrada_id'     => $idCfop($l['cfop_entrada']),
+                        'codigo_entrada'      => $l['codigo_entrada'],
+                        'gera_credito'        => $credito,
+                    ]);
+                }
+            }
+
+            return $operacao;
         });
 
         return response()->json($this->operacoesParaModal()->firstWhere('id', $operacao->id));

@@ -714,6 +714,25 @@ function fiscalDoItem(item) {
     const presumido = !item.cfop_origem;
     const cfopOrigem = item.cfop_origem || cfopOrigemPresumido();
 
+    // 1º: regra do usuário nesta operação para exatamente este CFOP + CST/CSOSN
+    const regra = (operacao && cfopOrigem && tipo)
+        ? regrasFiscais.regras?.[operacao]?.[`${cfopOrigem}|${tipo}:${codigoOrigem}`]
+        : null;
+
+    if (regra) {
+        return {
+            semOperacao: false,
+            manual: false,
+            presumido,
+            regra: true,
+            cfopOrigem,
+            cfopEntrada: regra.cfop,
+            tipo,
+            codigoOrigem,
+            cst: { cst: regra.cst, credito: regra.credito },
+        };
+    }
+
     return {
         semOperacao: !operacao,
         manual: false,
