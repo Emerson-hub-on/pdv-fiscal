@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Services\SyncService;
 use App\Services\UsuarioCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,7 +18,8 @@ class AuthController extends Controller
     public function formulario(Request $request)
     {
         $modo = $request->query('modo', 'admin'); // admin | operador
-        return view('auth.login', compact('modo'));
+        $caixaVazio = UsuarioCache::vazio(); // caixa novo: a tela faz a primeira carga ao escolher Operador
+        return view('auth.login', compact('modo', 'caixaVazio'));
     }
 
     public function login(Request $request)
@@ -38,7 +38,14 @@ class AuthController extends Controller
 
         $usuario = $modo === 'admin'
             ? User::where('codigo', $codigo)->where('ativo', true)->first()
-            : $this->usuarioDoCaixa($codigo);
+            : UsuarioCache::porCodigo($codigo); // caixa: só o SQLite local
+
+        // Caixa novo: os dados chegam só pela primeira carga (modal da tela de login), sempre completa
+        if (!$usuario && $modo === 'operador' && UsuarioCache::vazio()) {
+            return back()->withErrors([
+                'codigo' => 'Este caixa ainda não recebeu os dados do servidor. Escolha Operador de Caixa de novo para fazer a primeira carga.',
+            ])->withInput($request->only('modo'));
+        }
 
         if (!$usuario || !Hash::check($credenciais['password'], $usuario->password)) {
             return back()->withErrors(['codigo' => 'Código ou senha inválidos.'])->withInput($request->only('modo'));
@@ -107,13 +114,9 @@ class AuthController extends Controller
         return redirect()->route('auth.escolha');
     }
 
-    // Primeira vez (cache vazio): tenta puxar os usuários do servidor uma única vez
-    private function usuarioDoCaixa(int $codigo): ?User
+    // Tela de login, ao escolher Operador de Caixa: o banco deste caixa já tem os dados do servidor?
+    public function situacaoCaixa()
     {
-        if (UsuarioCache::vazio()) {
-            (new SyncService())->puxarUsuarios();
-        }
-
-        return UsuarioCache::porCodigo($codigo);
+        return response()->json(['vazio' => UsuarioCache::vazio()]);
     }
 }

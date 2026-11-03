@@ -41,7 +41,7 @@ class CaixaInstalarBanco extends Command
         ]);
 
         $this->info("Banco do caixa criado em {$destino}.");
-        $this->line('Agora entre como operador e clique em Atualizar Caixa para trazer os dados do servidor.');
+        $this->line('Agora abra a tela de login e escolha Operador de Caixa: a primeira carga traz os dados do servidor.');
 
         return self::SUCCESS;
     }

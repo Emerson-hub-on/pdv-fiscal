@@ -804,6 +804,20 @@ CREATE TABLE `jobs` (
   KEY `jobs_queue_index` (`queue`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `licencas`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `licencas` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `codigo` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cnpj` char(14) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `valida_ate` date NOT NULL,
+  `emitida_em` date NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `lista_servico_nacional`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -2151,3 +2165,4 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (159,'2026_10_29_16
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (160,'2026_10_29_170000_add_nat_rec_aos_produtos',110);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (161,'2026_10_29_180000_create_contagens_estoque',111);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (162,'2026_10_29_210000_create_caixa_ocorrencias_table',112);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (163,'2026_10_30_000001_create_licencas_table',113);

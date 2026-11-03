@@ -21,7 +21,9 @@ class CaixaController extends Controller
     {
         $caixa = CaixaLocal::aberto(Auth::id());
 
+        // Caixa aberto no servidor por outro caminho: traz junto os PDVs, senão o PDV dele fica sem cadastro aqui
         if (!$caixa && !CentralStatus::fora()) {
+            (new SyncService())->puxarPdvs();
             (new SyncService())->puxarCaixasAbertos();
             $caixa = CaixaLocal::aberto(Auth::id());
         }

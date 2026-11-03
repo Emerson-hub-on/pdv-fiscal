@@ -86,6 +86,14 @@ Route::get('login/usuario', [AuthController::class, 'nomePorCodigo'])
     ->middleware('throttle:consulta-login')
     ->name('auth.usuario');
 
+// Caixa novo: a tela de login confere o banco do caixa e faz a carga inicial (só enquanto não tem usuários)
+Route::get('caixa/situacao', [AuthController::class, 'situacaoCaixa'])
+    ->middleware('throttle:consulta-login')
+    ->name('caixa.situacao');
+Route::post('caixa/primeira-carga', [SincronizacaoController::class, 'primeiraCarga'])
+    ->middleware('throttle:primeira-carga')
+    ->name('caixa.primeira-carga');
+
 Route::get('licenca', [LicencaController::class, 'tela'])->name('licenca.tela');
 Route::post('licenca', [LicencaController::class, 'registrar'])
     ->middleware('throttle:registro-licenca')

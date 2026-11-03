@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Services\SyncService;
+use App\Services\UsuarioCache;
 use App\Support\CentralStatus;
+use App\Support\Maquina;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -50,6 +52,65 @@ class SincronizacaoController extends Controller
         } catch (\Exception $e) {
             return response()->json(['sucesso' => false, 'erro' => $this->motivoLegivel($e->getMessage())], 500);
         }
+    }
+
+    /**
+     * POST /caixa/primeira-carga — tela de login de um caixa novo (banco do caixa sem usuários).
+     * Traz tudo do servidor de uma vez; depois disso o caixa só fala com o servidor no Atualizar Caixa
+     * e no agendador. Sem login: só roda enquanto o caixa está vazio.
+     */
+    public function primeiraCarga()
+    {
+        if (!UsuarioCache::vazio()) {
+            return response()->json(['sucesso' => true, 'ja_carregado' => true]);
+        }
+
+        try {
+            CentralStatus::marcarOnline();
+            $resultado = (new SyncService())->sincronizarTudo();
+        } catch (\Exception $e) {
+            return response()->json(['sucesso' => false, 'erro' => $this->motivoLegivel($e->getMessage()), 'detalhe' => $e->getMessage()]);
+        }
+
+        if (CentralStatus::fora()) {
+            return response()->json([
+                'sucesso' => false,
+                'erro' => 'Não foi possível falar com o servidor. Confira a rede e o endereço do servidor (DB_HOST no .env deste computador).',
+                'detalhe' => $resultado['usuarios']['erro'] ?? null,
+            ]);
+        }
+
+        if (UsuarioCache::vazio()) {
+            $mensagem = (string) ($resultado['usuarios']['erro'] ?? '');
+
+            return response()->json([
+                'sucesso' => false,
+                'erro' => $mensagem !== ''
+                    ? $this->motivoLegivel($mensagem)
+                    : 'O servidor não tem nenhum usuário ativo com código. Cadastre os operadores no painel.',
+                'detalhe' => $mensagem ?: null,
+            ]);
+        }
+
+        $pdvs = (int) ($resultado['pdvs']['pdvs_atualizados'] ?? 0);
+        $avisos = $this->partesComErro($resultado);
+
+        if ($pdvs === 0) {
+            $avisos[] = [
+                'parte' => 'PDVs',
+                'motivo' => 'Nenhum PDV ativo para este computador (' . Maquina::nome() . '). No painel, em PDVs, informe esse nome no campo máquina e clique em Atualizar Caixa.',
+                'detalhe' => null,
+            ];
+        }
+
+        return response()->json([
+            'sucesso' => true,
+            'usuarios' => (int) ($resultado['usuarios']['usuarios_atualizados'] ?? 0),
+            'produtos' => (int) ($resultado['catalogo']['produtos_atualizados'] ?? 0),
+            'clientes' => (int) ($resultado['clientes']['clientes_atualizados'] ?? 0),
+            'pdvs' => $pdvs,
+            'avisos' => $avisos,
+        ]);
     }
 
     // Vendas ainda não enviadas por falta de conexão (não são erro da venda)

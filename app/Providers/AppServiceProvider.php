@@ -27,6 +27,7 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('consulta-login', fn (Request $request) => Limit::perMinute(60)->by($request->ip()));
         RateLimiter::for('registro-licenca', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
+        RateLimiter::for('primeira-carga', fn (Request $request) => Limit::perMinute(6)->by($request->ip()));
 
         View::composer(['layouts.app', 'layouts.caixa'], function ($view) {
             $view->with('licenca', app(LicencaService::class)->situacao());

@@ -155,7 +155,8 @@
                 </div>
 
                 {{-- ===== 2. Usuário e senha (aparecem depois de escolher o acesso) ===== --}}
-                <div id="bloco-credenciais" class="space-y-5 {{ $modo ? '' : 'hidden' }}">
+                {{-- Operador com o caixa vazio: o formulário só aparece depois da primeira carga --}}
+                <div id="bloco-credenciais" class="space-y-5 {{ $modo && !($modo === 'operador' && ($caixaVazio ?? false)) ? '' : 'hidden' }}">
                     <div class="grid grid-cols-3 gap-3">
                         <div>
                             <label for="campo-codigo" class="block text-sm font-medium text-gray-700 mb-1.5">Código</label>
@@ -212,6 +213,36 @@
     </div>
 </div>
 
+{{-- Caixa novo (banco do caixa vazio): primeira carga dos dados do servidor ao escolher Operador de Caixa --}}
+<div id="modal-primeira-carga" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-6"
+     role="dialog" aria-modal="true" aria-labelledby="pc-titulo">
+    <div class="w-full max-w-md rounded-2xl bg-white px-6 py-8 shadow-xl">
+        <div id="pc-carregando" class="text-center">
+            <div class="mx-auto h-12 w-12 rounded-full border-4 border-blue-100 border-t-[#163f86] animate-spin" aria-hidden="true"></div>
+            <h3 class="mt-5 text-base font-semibold text-gray-900">Primeiro acesso deste caixa</h3>
+            <p class="mt-1 text-sm text-gray-500">Carregando dados do servidor: usuários, PDVs, empresa, produtos e clientes...</p>
+        </div>
+
+        <div id="pc-resultado" class="hidden">
+            <div class="text-center">
+                <span id="pc-icone" class="mx-auto h-12 w-12 rounded-full flex items-center justify-center text-xl font-bold"></span>
+                <h3 id="pc-titulo" class="mt-4 text-base font-semibold text-gray-900"></h3>
+                <p id="pc-texto" class="mt-1 text-sm text-gray-600" aria-live="polite"></p>
+            </div>
+            <div id="pc-lista" class="mt-4 space-y-2 text-sm"></div>
+            <div class="mt-6 flex justify-end gap-2">
+                <button type="button" id="pc-fechar" onclick="fecharPrimeiraCarga()"
+                        class="hidden rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                    Fechar
+                </button>
+                <button type="button" id="pc-botao"
+                        class="rounded-lg bg-[#163f86] px-5 py-2 text-sm font-semibold text-white hover:bg-[#12346f] focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     const MODOS = @json($modos);
     let modoLogin = @json($modo);
@@ -249,10 +280,7 @@
         lista.querySelectorAll('[data-opcao]').forEach(b =>
             b.querySelector('[data-check]').classList.toggle('invisible', b.dataset.opcao !== modo));
 
-        // Mostra usuário e senha; trocar de acesso limpa o usuário (o código é de outro cadastro)
-        document.getElementById('bloco-credenciais').classList.remove('hidden');
-        campoCodigo.required = true;
-        campoSenha.required = true;
+        // Trocar de acesso limpa o usuário (o código é de outro cadastro)
         if (mudou) {
             campoSenha.value = '';
             buscarUsuario();
@@ -260,7 +288,20 @@
 
         alternarLista(false);
         history.replaceState(null, '', `{{ route('auth.login') }}?modo=${modo}`);
-        campoCodigo.focus();
+
+        // Operador: antes do formulário, confere se este caixa já tem os dados do servidor
+        if (modo === 'operador') {
+            verificarCaixa();
+        } else {
+            mostrarCredenciais(true);
+        }
+    }
+
+    function mostrarCredenciais(mostrar) {
+        document.getElementById('bloco-credenciais').classList.toggle('hidden', !mostrar);
+        campoCodigo.required = mostrar;
+        campoSenha.required = mostrar;
+        if (mostrar) campoCodigo.focus();
     }
 
     document.addEventListener('click', (e) => {
@@ -326,6 +367,9 @@
             return;
         }
 
+        // Primeira carga em andamento: ela mesma traz os usuários (duas cargas juntas disputariam o SQLite)
+        if (carregandoPrimeira) return;
+
         try {
             const url = `{{ route('auth.usuario') }}?modo=${modoLogin}&codigo=${encodeURIComponent(codigo)}`;
             const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
@@ -352,6 +396,129 @@
         }
     });
 
+    // ---------------- Primeira carga de um caixa novo ----------------
+    let caixaVazio = @json($caixaVazio ?? false);
+    let carregandoPrimeira = false;
+    const modalPrimeira = document.getElementById('modal-primeira-carga');
+
+    function itemPrimeiraCarga(classes, titulo, texto, detalhe) {
+        const caixa = document.createElement('div');
+        caixa.className = 'rounded-lg border px-3 py-2 ' + classes;
+        const t = document.createElement('p');
+        t.className = 'font-medium';
+        t.textContent = titulo;
+        caixa.appendChild(t);
+        if (texto) {
+            const p = document.createElement('p');
+            p.textContent = texto;
+            caixa.appendChild(p);
+        }
+        if (detalhe && detalhe !== texto) {
+            const d = document.createElement('p');
+            d.className = 'mt-1 font-mono text-[11px] opacity-70 break-all';
+            d.textContent = detalhe;
+            caixa.appendChild(d);
+        }
+        document.getElementById('pc-lista').appendChild(caixa);
+    }
+
+    function resultadoPrimeiraCarga(tipo, titulo, texto, rotuloBotao, acaoBotao, mostrarFechar) {
+        const estilos = {
+            ok:    ['bg-emerald-100 text-emerald-700', '✓'],
+            aviso: ['bg-amber-100 text-amber-700', '!'],
+            erro:  ['bg-red-100 text-red-700', '✕'],
+        };
+        const icone = document.getElementById('pc-icone');
+        icone.className = 'mx-auto h-12 w-12 rounded-full flex items-center justify-center text-xl font-bold ' + estilos[tipo][0];
+        icone.textContent = estilos[tipo][1];
+        document.getElementById('pc-titulo').textContent = titulo;
+        document.getElementById('pc-texto').textContent = texto;
+
+        const botao = document.getElementById('pc-botao');
+        botao.textContent = rotuloBotao;
+        botao.onclick = acaoBotao;
+        document.getElementById('pc-fechar').classList.toggle('hidden', !mostrarFechar);
+
+        document.getElementById('pc-carregando').classList.add('hidden');
+        document.getElementById('pc-resultado').classList.remove('hidden');
+        botao.focus();
+    }
+
+    // Banco do caixa vazio: modal da primeira carga; preenchido: formulário de código e senha
+    async function verificarCaixa() {
+        mostrarCredenciais(false);
+
+        try {
+            const resp = await fetch('{{ route('caixa.situacao') }}', { headers: { 'Accept': 'application/json' } });
+            caixaVazio = (await resp.json()).vazio;
+        } catch (e) {
+            caixaVazio = false; // na dúvida mostra o formulário: o login avisa se o caixa estiver vazio
+        }
+
+        if (modoLogin !== 'operador') return; // trocou de acesso enquanto conferia
+
+        caixaVazio ? primeiraCarga() : mostrarCredenciais(true);
+    }
+
+    // Fechar sem carregar: o formulário continua escondido; escolher Operador de novo tenta outra vez
+    function fecharPrimeiraCarga() {
+        modalPrimeira.classList.add('hidden');
+    }
+
+    function continuarAposCarga() {
+        modalPrimeira.classList.add('hidden');
+        mostrarCredenciais(true);
+    }
+
+    async function primeiraCarga() {
+        if (carregandoPrimeira) return;
+        carregandoPrimeira = true;
+
+        document.getElementById('pc-lista').replaceChildren();
+        document.getElementById('pc-resultado').classList.add('hidden');
+        document.getElementById('pc-carregando').classList.remove('hidden');
+        modalPrimeira.classList.remove('hidden');
+
+        try {
+            const resp = await fetch('{{ route('caixa.primeira-carga') }}', {
+                method: 'POST',
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            });
+
+            if (resp.status === 419) {
+                resultadoPrimeiraCarga('erro', 'Sessão expirada', 'Recarregue a página (F5) e tente de novo.', 'Fechar', fecharPrimeiraCarga, false);
+            } else if (resp.status === 429) {
+                resultadoPrimeiraCarga('erro', 'Muitas tentativas', 'Aguarde um minuto e tente de novo.', 'Tentar novamente', primeiraCarga, true);
+            } else {
+                const r = await resp.json();
+
+                if (r.ja_carregado) {
+                    caixaVazio = false;
+                    continuarAposCarga();
+                } else if (r.sucesso) {
+                    caixaVazio = false;
+                    const avisos = r.avisos || [];
+                    const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
+                    itemPrimeiraCarga('border-gray-200 bg-gray-50 text-gray-700', 'Dados recebidos',
+                        [plural(r.usuarios, 'usuário', 'usuários'), plural(r.pdvs, 'PDV', 'PDVs'),
+                         plural(r.produtos, 'produto', 'produtos'), plural(r.clientes, 'cliente', 'clientes')].join(' · '));
+                    avisos.forEach(a => itemPrimeiraCarga('border-amber-200 bg-amber-50 text-amber-800', a.parte, a.motivo, a.detalhe));
+
+                    avisos.length
+                        ? resultadoPrimeiraCarga('aviso', 'Sincronização realizada com avisos', 'O caixa já pode ser usado, mas confira os avisos abaixo.', 'Continuar', continuarAposCarga, false)
+                        : resultadoPrimeiraCarga('ok', 'Sincronização realizada', 'Este caixa já tem os dados do servidor. Entre com seu código e senha.', 'Continuar', continuarAposCarga, false);
+                } else {
+                    if (r.erro) itemPrimeiraCarga('border-red-200 bg-red-50 text-red-700', 'Motivo', r.erro, r.detalhe);
+                    resultadoPrimeiraCarga('erro', 'Não foi possível carregar os dados', 'Sem esses dados o operador ainda não consegue entrar neste caixa.', 'Tentar novamente', primeiraCarga, true);
+                }
+            }
+        } catch (e) {
+            resultadoPrimeiraCarga('erro', 'Erro de conexão', 'Este computador não conseguiu completar a carga. Tente de novo em instantes.', 'Tentar novamente', primeiraCarga, true);
+        }
+
+        carregandoPrimeira = false;
+    }
+
     // Voltou de uma tentativa com erro (ou veio com ?modo=): já abre no campo certo
     if (modoLogin) {
         if (campoCodigo.value) {
@@ -361,6 +528,9 @@
             campoCodigo.focus();
         }
     }
+
+    // Veio com ?modo=operador (atalho do caixa): confere o banco do caixa já ao abrir
+    if (modoLogin === 'operador') verificarCaixa();
 </script>
 </body>
 </html>

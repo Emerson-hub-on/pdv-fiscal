@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CaixaLocal;
 use App\Support\CentralStatus;
+use App\Support\Maquina;
 use App\Services\SyncService;
 use Illuminate\Http\Request;
 use App\Support\AutorizacaoSupervisor;
@@ -31,6 +32,19 @@ class VendaController extends Controller
 
         if (!$caixa) {
             return redirect()->route('caixa.abrir-form');
+        }
+
+        // Caixa sem o PDV no cadastro local (caixa novo ou PDV trocado de computador): tenta trazer uma vez
+        if (!$caixa->pdv) {
+            if (!CentralStatus::fora()) {
+                (new SyncService())->puxarPdvs();
+                $caixa->unsetRelation('pdv');
+            }
+
+            if (!$caixa->pdv) {
+                abort(503, 'O PDV deste caixa (nº ' . $caixa->pdv_id . ') não está cadastrado para este computador ('
+                    . Maquina::nome() . '). Confira o campo máquina do PDV no painel e clique em Atualizar Caixa.');
+            }
         }
 
         // Abrir o PDV sem carrinho salvo na sessão = venda nova: descarta autorizações antigas

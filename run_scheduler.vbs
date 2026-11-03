@@ -9,7 +9,7 @@ Set objShell = CreateObject("WScript.Shell")
 
 ' ===================== 1. LOCALIZA A PASTA DO PROJETO =====================
 ' Este arquivo precisa estar salvo dentro da pasta raiz do projeto
-' (ex: C:\pdv-fiscal\run_scheduler.vbs). Assim ele acha o projeto sozinho,
+' (ex: C:\cyberly-sistema\run_scheduler.vbs). Assim ele acha o projeto sozinho,
 ' não importa em qual máquina ou em qual pasta ele esteja.
 strProjeto = objFSO.GetParentFolderName(WScript.ScriptFullName)
 objShell.CurrentDirectory = strProjeto
