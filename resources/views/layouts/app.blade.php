@@ -596,8 +596,6 @@
     <div id="conteudo-principal" class="ml-50 min-h-screen transition-[margin] duration-200 [.sidebar-oculta_&]:ml-16 [.sem-sidebar_&]:ml-0">
         @include('partials.aviso-licenca', ['faixa' => true, 'rotaLicenca' => auth()->user()?->isAdmin() ? 'licenca.painel' : 'licenca.tela'])
 
-        <main class="max-w-5xl mx-auto p-8 [.conteudo-largo_&]:max-w-none [.conteudo-largo_&]:mx-0 [.conteudo-largo_&]:px-6 [.conteudo-largo_&]:pt-4">
-
             @php
                 // Mapa central do breadcrumb: prefixo da rota => [Grupo, Página]
                 $breadcrumbMapa = [
@@ -628,26 +626,28 @@
                 $breadcrumbAuto = $breadcrumbMapa[$prefixoRota] ?? null;
             @endphp
 
-            {{-- Linha do topo: caminho da tela à esquerda, perfil do usuário à direita --}}
-            <div class="flex items-start justify-between gap-4 mb-5">
-                <div class="flex items-center gap-2 pt-1 text-sm text-gray-500">
-                    @hasSection('breadcrumb')
-                        @yield('breadcrumb')
-                    @elseif ($breadcrumbAuto)
-                        <span>{{ $breadcrumbAuto[0] }}</span>
-                        <span class="text-gray-300">›</span>
-                        <span class="text-gray-700 font-medium">{{ $breadcrumbAuto[1] }}</span>
-                    @endif
-                </div>
-                <div class="[.sem-sidebar_&]:hidden">
-                    @include('partials.perfil-usuario')
-                </div>
+        {{-- Cabeçalho do topo (do menu até a borda direita): caminho da tela à esquerda, perfil do usuário à direita --}}
+        <header class="h-14 px-6 bg-white border-b border-gray-200 shadow-sm flex items-center justify-between gap-4">
+            <div class="flex items-center gap-2 min-w-0 text-sm text-gray-500">
+                @hasSection('breadcrumb')
+                    @yield('breadcrumb')
+                @elseif ($breadcrumbAuto)
+                    <span>{{ $breadcrumbAuto[0] }}</span>
+                    <span class="text-gray-300">›</span>
+                    <span class="text-gray-700 font-medium truncate">{{ $breadcrumbAuto[1] }}</span>
+                @endif
             </div>
+            <div class="[.sem-sidebar_&]:hidden">
+                @include('partials.perfil-usuario')
+            </div>
+        </header>
+
+        <main class="max-w-5xl mx-auto p-8 [.conteudo-largo_&]:max-w-none [.conteudo-largo_&]:mx-0 [.conteudo-largo_&]:px-6 [.conteudo-largo_&]:pt-4">
 
             @if (session('sucesso'))
                 {{-- Aviso flutuante: some em 5 s, ao clicar em qualquer lugar ou ao trocar de tela --}}
                 <div id="toast-sucesso" role="status"
-                     class="fixed top-4 right-4 z-50 flex items-start gap-3 max-w-sm bg-white border border-green-200 shadow-lg rounded-lg px-4 py-3 text-sm text-gray-800 transition-all duration-300">
+                     class="fixed top-16 right-4 z-50 flex items-start gap-3 max-w-sm bg-white border border-green-200 shadow-lg rounded-lg px-4 py-3 text-sm text-gray-800 transition-all duration-300">
                     <svg class="w-5 h-5 text-green-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                     <span class="flex-1">{{ session('sucesso') }}</span>
                     <button type="button" aria-label="Fechar" class="text-gray-400 hover:text-gray-600 leading-none">&times;</button>
