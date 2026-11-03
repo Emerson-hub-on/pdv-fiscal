@@ -13,8 +13,10 @@ use Illuminate\Support\Facades\Log;
  *
  * Os XMLs ficam em storage/app/XML_nfce/aa/mm/dd (dia em que foram gravados). Vão na exportação:
  * NFC-e autorizadas (*-nfe.xml), eventos de cancelamento (*-cancelamento.xml, gravados no dia do
- * cancelamento) e inutilizações (*-inutilizado.xml). As que ainda estão em
- * contingência (sem autorização da SEFAZ) ficam de fora e só são contadas.
+ * cancelamento), inutilizações (*-inutilizada.xml) e NFC-e emitidas em contingência off-line
+ * (*-contingencia.xml com tpEmis=9: documento válido, ainda aguardando transmissão).
+ * Notas REJEITADAS ou com erro de dados (*-rejeitada.xml; antes da separação também ficavam em
+ * *-contingencia.xml com tpEmis=1) não são documento fiscal válido: ficam de fora e só são contadas.
  *
  * O caixa roda neste mesmo computador, então o PHP enxerga as pastas do operador: a escolha da
  * pasta é feita por aqui (o navegador não informa o caminho de uma pasta).
@@ -81,7 +83,8 @@ class ExportacaoXmlController extends Controller
             'autorizadas' => count($arquivos['autorizadas']),
             'cancelamentos' => count($arquivos['cancelamentos']),
             'inutilizadas' => count($arquivos['inutilizadas']),
-            'contingencia' => $arquivos['contingencia'],
+            'contingencia' => count($arquivos['contingencia']),
+            'nao_autorizadas' => $arquivos['nao_autorizadas'],
         ]);
     }
 
@@ -97,7 +100,7 @@ class ExportacaoXmlController extends Controller
         }
 
         $arquivos = $this->arquivosDoPeriodo($de, $ate);
-        $lista = array_merge($arquivos['autorizadas'], $arquivos['cancelamentos'], $arquivos['inutilizadas']);
+        $lista = array_merge($arquivos['autorizadas'], $arquivos['contingencia'], $arquivos['cancelamentos'], $arquivos['inutilizadas']);
 
         if (!$lista) {
             return response()->json(['erro' => 'Nenhum XML encontrado neste período.'], 422);
@@ -156,7 +159,8 @@ class ExportacaoXmlController extends Controller
             'autorizadas' => count($arquivos['autorizadas']),
             'cancelamentos' => count($arquivos['cancelamentos']),
             'inutilizadas' => count($arquivos['inutilizadas']),
-            'contingencia' => $arquivos['contingencia'],
+            'contingencia' => count($arquivos['contingencia']),
+            'nao_autorizadas' => $arquivos['nao_autorizadas'],
             'falhas' => array_slice($falhas, 0, 10),
             'qtd_falhas' => count($falhas),
         ]);
@@ -187,11 +191,11 @@ class ExportacaoXmlController extends Controller
         return [$de, $ate];
     }
 
-    /** @return array{autorizadas: string[], inutilizadas: string[], contingencia: int} */
+    /** @return array{autorizadas: string[], contingencia: string[], cancelamentos: string[], inutilizadas: string[], nao_autorizadas: int} */
     private function arquivosDoPeriodo(Carbon $de, Carbon $ate): array
     {
         $base = storage_path('app/XML_nfce');
-        $resultado = ['autorizadas' => [], 'cancelamentos' => [], 'inutilizadas' => [], 'contingencia' => 0];
+        $resultado = ['autorizadas' => [], 'contingencia' => [], 'cancelamentos' => [], 'inutilizadas' => [], 'nao_autorizadas' => 0];
 
         for ($dia = $de->copy(); $dia->lte($ate); $dia->addDay()) {
             $pasta = $base . DIRECTORY_SEPARATOR . $dia->format('y') . DIRECTORY_SEPARATOR . $dia->format('m') . DIRECTORY_SEPARATOR . $dia->format('d');
@@ -205,13 +209,26 @@ class ExportacaoXmlController extends Controller
                     $resultado['cancelamentos'][] = $arquivo;
                 } elseif (str_ends_with($nome, '-inutilizada.xml') || str_ends_with($nome, '-inutilizado.xml')) { // -inutilizado: nome antigo
                     $resultado['inutilizadas'][] = $arquivo;
-                } elseif (str_contains($nome, '-contingencia')) {
-                    $resultado['contingencia']++;
+                } elseif (str_ends_with($nome, '-contingencia.xml') && $this->contingenciaOffline($arquivo)) {
+                    // Contingência off-line (tpEmis=9): documento válido, entregue ao consumidor; vai junto
+                    $resultado['contingencia'][] = $arquivo;
+                } elseif (str_ends_with($nome, '-rejeitada.xml') || str_contains($nome, '-contingencia')) {
+                    // -rejeitada.xml: SEFAZ recusou ou erro de dados. -contingencia com tpEmis=1 ou -contingencia-HHMMSS:
+                    // rejeitadas gravadas antes da separação e cópias antigas. Nenhum é documento válido: não vão para o contador
+                    $resultado['nao_autorizadas']++;
                 }
             }
         }
 
         return $resultado;
+    }
+
+    // tpEmis=9 = NFC-e emitida em contingência off-line (o tpEmis fica no começo do XML, dentro de <ide>)
+    private function contingenciaOffline(string $arquivo): bool
+    {
+        $inicio = @file_get_contents($arquivo, false, null, 0, 4096);
+
+        return is_string($inicio) && str_contains($inicio, '<tpEmis>9</tpEmis>');
     }
 
     private function atalhos(): array

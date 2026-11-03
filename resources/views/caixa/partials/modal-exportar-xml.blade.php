@@ -178,11 +178,12 @@
             try {
                 const r = await xmlJson(await fetch(`${XML_URLS.resumo}?de=${de}&ate=${ate}`, { headers: { Accept: 'application/json' } }));
                 const partes = [`${r.autorizadas} NFC-e autorizada${r.autorizadas === 1 ? '' : 's'}`];
+                if (r.contingencia) partes.push(`${r.contingencia} em contingência`);
                 if (r.cancelamentos) partes.push(`${r.cancelamentos} cancelamento${r.cancelamentos === 1 ? '' : 's'}`);
                 if (r.inutilizadas) partes.push(`${r.inutilizadas} inutilizaç${r.inutilizadas === 1 ? 'ão' : 'ões'}`);
                 let texto = partes.join(' · ');
-                if (r.contingencia) texto += ` (${r.contingencia} em contingência, ainda sem autorização, ficam de fora)`;
-                const total = r.autorizadas + r.cancelamentos + r.inutilizadas;
+                if (r.nao_autorizadas) texto += ` (${r.nao_autorizadas} rejeitada${r.nao_autorizadas === 1 ? '' : 's'} pela SEFAZ, sem validade fiscal, fica${r.nao_autorizadas === 1 ? '' : 'm'} de fora)`;
+                const total = r.autorizadas + r.contingencia + r.cancelamentos + r.inutilizadas;
                 resumo.className = 'mt-2 text-sm min-h-5 ' + (total ? 'text-gray-700' : 'text-amber-700');
                 resumo.textContent = total ? texto : 'Nenhum XML neste período.';
             } catch (e) {
@@ -290,7 +291,7 @@
             xmlEl('xml-resultado-pasta').textContent = r.pasta;
 
             const detalhes = [];
-            if (r.contingencia) detalhes.push(`${r.contingencia} em contingência ficaram de fora (ainda sem autorização).`);
+            if (r.nao_autorizadas) detalhes.push(`${r.nao_autorizadas} rejeitada${r.nao_autorizadas === 1 ? '' : 's'} pela SEFAZ ficaram de fora: corrija e reenvie pelas Contingências (F1) ou inutilize o número.`);
             if (r.qtd_falhas) detalhes.push(`${r.qtd_falhas} não puderam ser copiados: ${r.falhas.join(', ')}${r.qtd_falhas > r.falhas.length ? '...' : ''}`);
             xmlEl('xml-resultado-detalhe').textContent = detalhes.join(' ');
         } catch (e) {

@@ -51,16 +51,6 @@
         </a>
     </div>
 
-    @if ($errors->any())
-        <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-            <ul class="list-disc pl-5 space-y-0.5">
-                @foreach ($errors->all() as $erro)
-                    <li>{{ $erro }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
     @if (!$config || !$config->contadorCompleto())
         <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
             Antes de gerar o arquivo, preencha os dados do contador e da atividade em

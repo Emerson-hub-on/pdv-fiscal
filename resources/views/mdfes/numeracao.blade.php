@@ -11,16 +11,6 @@
 
     <h1 class="text-2xl font-bold text-gray-800 mb-6">Última numeração de MDF-e</h1>
 
-    @if ($errors->any())
-        <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-            <ul class="list-disc pl-5 space-y-0.5">
-                @foreach ($errors->all() as $erro)
-                    <li>{{ $erro }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
     <div class="grid grid-cols-3 gap-6">
         {{-- ===================== FORMULÁRIO ===================== --}}
         <form method="POST" action="{{ route('mdfes.numeracao.salvar') }}" class="col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 p-6">

@@ -106,9 +106,9 @@ public function emitir(Venda $venda): array
             // prioriza o assinado (mais completo); se a falha foi no proprio
             // signNFe(), salva pelo menos o bruto (sem assinatura) como evidencia
             if ($xmlAssinado) {
-                $this->salvarXmlEmDisco($xmlAssinado, contingencia: true, venda: $venda);
+                $this->salvarXmlEmDisco($xmlAssinado, tipo: 'rejeitada', venda: $venda);
             } elseif ($xmlBruto) {
-                $this->salvarXmlEmDisco($xmlBruto, contingencia: true, venda: $venda);
+                $this->salvarXmlEmDisco($xmlBruto, tipo: 'rejeitada', venda: $venda);
             }
 
             $venda->update([
@@ -133,7 +133,7 @@ public function emitir(Venda $venda): array
                     'motivo_rejeicao' => 'Rejeitado por schema/dados antes do envio: ' . $e->getMessage(),
                 ]);
 
-                $this->salvarXmlEmDisco($xmlAssinado, contingencia: true, venda: $venda);
+                $this->salvarXmlEmDisco($xmlAssinado, tipo: 'rejeitada', venda: $venda);
 
                 throw new Exception("XML rejeitado por schema/dados (NFC-e nº {$numero}): " . $e->getMessage());
             }
@@ -311,7 +311,7 @@ public function emitir(Venda $venda): array
                 'motivo_rejeicao' => 'Emitido em contingência SEFAZ: ' . $motivoFalha,
             ]);
     
-            $this->salvarXmlEmDisco($xmlAssinado, contingencia: true, venda: $venda);
+            $this->salvarXmlEmDisco($xmlAssinado, tipo: 'contingencia', venda: $venda);
     
             throw new Exception(
                 "Sem conexão com a SEFAZ. NFC-e nº {$numero} emitida em CONTINGÊNCIA (tpEmis=9), " .
@@ -373,7 +373,7 @@ public function emitir(Venda $venda): array
                 'motivo_rejeicao' => $protocolo['motivo'],
             ]);
 
-            $this->salvarXmlEmDisco($xmlAssinado, contingencia: true, venda: $venda);
+            $this->salvarXmlEmDisco($xmlAssinado, tipo: 'rejeitada', venda: $venda);
 
             throw new Exception('Rejeitada pela SEFAZ: ' . $protocolo['motivo']);
         }
@@ -392,7 +392,7 @@ public function emitir(Venda $venda): array
             $xmlProcessado = $xmlAssinado;
         }
 
-        $this->salvarXmlEmDisco($xmlProcessado, contingencia: false, venda: $venda);
+        $this->salvarXmlEmDisco($xmlProcessado, tipo: 'nfe', venda: $venda);
 
         return [
             'xml_assinado' => $xmlAssinado,
@@ -461,7 +461,14 @@ public function emitir(Venda $venda): array
         $nfe->tagide($std);
     }
 
-protected function salvarXmlEmDisco(string $xmlAssinado, bool $contingencia, Venda $venda): void
+/**
+     * Grava o XML da NFC-e em storage/app/XML_nfce/aa/mm/dd/{chave}-{tipo}.xml:
+     *   nfe          = autorizada (com o protocolo)
+     *   contingencia = emitida em contingência off-line (tpEmis=9): documento válido, aguardando transmissão
+     *   rejeitada    = rejeitada pela SEFAZ ou com erro de dados/schema: sem validade fiscal, precisa de correção
+     * Só "nfe" e "contingencia" vão para o contador (Exportar XMLs do caixa).
+     */
+    protected function salvarXmlEmDisco(string $xmlAssinado, string $tipo, Venda $venda): void
     {
         if (!$this->chaveGerada) {
             return;
@@ -485,7 +492,7 @@ protected function salvarXmlEmDisco(string $xmlAssinado, bool $contingencia, Ven
             mkdir($pasta, 0755, true);
         }
 
-        $sufixo = $contingencia ? 'contingencia' : 'nfe';
+        $sufixo = in_array($tipo, ['nfe', 'contingencia', 'rejeitada'], true) ? $tipo : 'rejeitada';
         $arquivo = "{$pasta}/{$this->chaveGerada}-{$sufixo}.xml";
 
         file_put_contents($arquivo, $xmlAssinado);

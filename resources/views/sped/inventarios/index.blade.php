@@ -9,16 +9,6 @@
 
     <h1 class="text-2xl font-bold text-gray-800 mb-6">Inventário do SPED</h1>
 
-    @if ($errors->any())
-        <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-            <ul class="list-disc pl-5 space-y-0.5">
-                @foreach ($errors->all() as $erro)
-                    <li>{{ $erro }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
     <form method="POST" action="{{ route('inventarios.store') }}" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
         @csrf
         <h2 class="text-sm font-semibold text-gray-800 mb-1">Novo inventário</h2>

@@ -4,16 +4,6 @@
     $permiteLogin = (bool) $cfg['tipo']->permite_login;
 @endphp
 
-@if ($errors->any())
-    <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-        <ul class="list-disc pl-5 space-y-0.5">
-            @foreach ($errors->all() as $erro)
-                <li>{{ $erro }}</li>
-            @endforeach
-        </ul>
-    </div>
-@endif
-
 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 max-w-xl">
     <div class="space-y-5">
         <div>

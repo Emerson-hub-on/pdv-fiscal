@@ -318,18 +318,9 @@ class SyncService
 
         foreach ($pendentes as $c) {
             try {
-                // Um operador não pode ter dois caixas abertos no servidor
-                if ($c->status === 'aberto') {
-                    $conflito = Caixa::where('operador_id', $c->operador_id)
-                        ->where('status', 'aberto')
-                        ->where(fn ($q) => $q->whereNull('uuid')->orWhere('uuid', '!=', $c->uuid))
-                        ->exists();
-
-                    if ($conflito) {
-                        throw new Exception('O operador já tem outro caixa aberto no servidor.');
-                    }
-                }
-
+                // O mesmo operador pode ter caixas abertos em mais de um PDV ao mesmo tempo (ex.: um caixa esquecido
+                // aberto num computador que foi desinstalado): cada caixa é identificado pelo próprio uuid, e as
+                // vendas de cada um sobem normalmente. Não há mais a trava "um caixa aberto por operador".
                 $central = Caixa::updateOrCreate(
                     ['uuid' => $c->uuid],
                     [
@@ -854,9 +845,10 @@ class SyncService
                     if ($arquivo) {
                         $campos['ultimo_arquivo_xml'] = $arquivo;
 
-                        // Contingência autorizada pelo servidor: o -contingencia.xml do caixa dá lugar ao -nfe.xml
+                        // Autorizada pelo servidor: o -contingencia.xml / -rejeitada.xml do caixa dá lugar ao -nfe.xml
                         $anterior = $local->table('vendas_pendentes')->where('uuid', $c->uuid)->value('ultimo_arquivo_xml');
-                        if ($anterior && $anterior !== $arquivo && str_contains(basename($anterior), '-contingencia') && is_file($anterior)) {
+                        $nomeAnterior = $anterior ? basename($anterior) : '';
+                        if ($anterior && $anterior !== $arquivo && (str_contains($nomeAnterior, '-contingencia') || str_contains($nomeAnterior, '-rejeitada')) && is_file($anterior)) {
                             @unlink($anterior);
                         }
                     }

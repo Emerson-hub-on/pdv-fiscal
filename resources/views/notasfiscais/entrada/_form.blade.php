@@ -9,6 +9,8 @@
 
 @endphp
 
+{{-- Os erros aparecem na janela de aviso desta tela: sem o aviso flutuante do layout --}}
+@section('erros-no-formulario', '1')
 @if ($errors->any())
     <script>
         document.addEventListener('DOMContentLoaded', () => {

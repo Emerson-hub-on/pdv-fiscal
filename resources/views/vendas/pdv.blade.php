@@ -167,7 +167,7 @@
     <div class="bg-white rounded-xl shadow-lg w-full max-w-4xl max-h-[85vh] flex flex-col">
         <div class="flex justify-between items-start px-6 pt-5 pb-3">
             <div>
-                <h2 class="text-lg font-bold">Vendas em Contingência</h2>
+                <h2 class="text-lg font-bold">Vendas em Contingência e Rejeitadas</h2>
                 <p class="text-xs text-gray-400">Clique em uma venda para ver o motivo e os itens.</p>
             </div>
             <button onclick="fecharModalContingencias()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
@@ -1118,7 +1118,17 @@ function moedaBR(valor) {
 }
 
 
-const BADGE_CONTINGENCIA = '<span class="inline-flex items-center rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-medium">Contingência</span>';
+// Contingência = emitida sem SEFAZ (tpEmis=9), documento válido aguardando transmissão.
+// Rejeitada = SEFAZ recusou ou erro de dados: sem validade fiscal até corrigir e reenviar.
+const BADGES_SITUACAO = {
+    contingencia: '<span class="inline-flex items-center rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-medium">Contingência</span>',
+    rejeitada: '<span class="inline-flex items-center rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-xs font-medium">Rejeitada</span>',
+};
+const situacaoContingencias = {}; // id da venda -> situacao, para restaurar o selo depois de um reenvio que falhou
+
+function badgeSituacao(situacao) {
+    return BADGES_SITUACAO[situacao] ?? BADGES_SITUACAO.contingencia;
+}
 
 function definirStatusLinha(id, html) {
     const linha = document.querySelector(`.check-contingencia[value="${id}"]`)?.closest('tr');
@@ -1139,7 +1149,7 @@ function marcarLinhaEmitindo(id) {
 }
 
 function restaurarLinhaContingencia(id) {
-    definirStatusLinha(id, BADGE_CONTINGENCIA);
+    definirStatusLinha(id, badgeSituacao(situacaoContingencias[id]));
 }
 
 async function carregarContingencias() {
@@ -1149,9 +1159,11 @@ async function carregarContingencias() {
     const container = document.getElementById('lista-contingencias');
 
     if (vendas.length === 0) {
-        container.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-gray-400">Nenhuma venda em contingência.</td></tr>';
+        container.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-gray-400">Nenhuma venda em contingência ou rejeitada.</td></tr>';
         return;
     }
+
+    vendas.forEach(v => { situacaoContingencias[v.id] = v.situacao; });
 
     container.innerHTML = vendas.map(v => `
         <tr class="hover:bg-gray-50 cursor-pointer" onclick="toggleExpandir('${v.id}')">
@@ -1164,13 +1176,16 @@ async function carregarContingencias() {
             <td class="px-4 py-2 text-right">${moedaBR(v.total)}</td>
             <td class="px-4 py-2 text-gray-500">${v.criada_em}</td>
             <td class="px-4 py-2 status-celula">
-                ${BADGE_CONTINGENCIA}
+                ${badgeSituacao(v.situacao)}
             </td>
         </tr>
         <tr id="detalhe-${v.id}" class="hidden bg-gray-50">
             <td></td>
             <td colspan="6" class="px-4 py-3 text-sm">
                 <p class="text-red-600 mb-2"><strong>Motivo:</strong> ${v.motivo ?? 'Não informado'}</p>
+                ${v.situacao === 'rejeitada'
+                    ? '<p class="text-xs text-gray-500 mb-2">Sem validade fiscal: corrija o problema (cadastro do produto, CFOP...) e reenvie, ou inutilize o número.</p>'
+                    : '<p class="text-xs text-gray-500 mb-2">Documento válido emitido sem a SEFAZ: será transmitido no reenvio.</p>'}
                 <p class="text-gray-600"><strong>Itens:</strong> ${v.itens.join(', ')}</p>
                 ${v.chave_nfe ? `<p class="text-xs text-gray-400 break-all mt-2">Chave: ${v.chave_nfe}</p>` : ''}
             </td>

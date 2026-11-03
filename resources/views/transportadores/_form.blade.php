@@ -3,17 +3,6 @@
     $tipoInicial = old('tipo_pessoa_ui', $transportador && strlen($transportador->documento) === 11 ? 'fisica' : 'juridica');
 @endphp
 
-@if ($errors->any())
-    <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-        <p class="font-semibold mb-1">Corrija os erros abaixo:</p>
-        <ul class="list-disc pl-5 space-y-0.5">
-            @foreach ($errors->all() as $erro)
-                <li>{{ $erro }}</li>
-            @endforeach
-        </ul>
-    </div>
-@endif
-
 <div class="bg-white rounded-xl shadow-sm border border-gray-200">
 
     <div class="border-b border-gray-200 px-6 pt-4">

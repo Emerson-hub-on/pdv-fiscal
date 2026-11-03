@@ -58,17 +58,6 @@
     $pisCofinsObrigatorio = \App\Models\Empresa::atual()->crt == 3;
 @endphp
 
-@if ($errors->any())
-    <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-        <p class="font-semibold mb-1">Corrija os erros abaixo:</p>
-        <ul class="list-disc pl-5 space-y-0.5">
-            @foreach ($errors->all() as $erro)
-                <li>{{ $erro }}</li>
-            @endforeach
-        </ul>
-    </div>
-@endif
-
 {{-- Modal de aviso de validação --}}
 <div id="modal-aviso-validacao" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-6">

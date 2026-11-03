@@ -57,7 +57,8 @@ class FiscalController extends Controller
         } catch (Exception $e) {
             // Se a venda caiu em contingencia (reserva de numero ja feita), avisa nesse formato especifico
             $venda->refresh();
-            $contingencia = $venda->status === 'contingencia';
+            // Contingência de verdade = emitida off-line (tpEmis=9). Status "contingencia" sem isso é rejeição/erro de dados.
+            $contingencia = $venda->status === 'contingencia' && (int) $venda->tp_emis === 9;
 
             return response()->json([
                 'sucesso' => false,
@@ -84,11 +85,12 @@ class FiscalController extends Controller
             $resposta = ['sucesso' => true, 'chave' => $resultado['chave']];
         } catch (\Throwable $e) {
             $situacao = DB::connection('sqlite_local')->table('vendas_pendentes')
-                ->where('uuid', $uuid)->value('status_fiscal');
+                ->where('uuid', $uuid)->first(['status_fiscal', 'tp_emis']);
 
             $resposta = [
                 'sucesso' => false,
-                'contingencia' => $situacao === 'contingencia',
+                // Contingência de verdade = emitida off-line (tpEmis=9); sem isso é rejeição/erro de dados
+                'contingencia' => $situacao?->status_fiscal === 'contingencia' && (int) $situacao->tp_emis === 9,
                 'erro' => $e->getMessage(),
             ];
         }

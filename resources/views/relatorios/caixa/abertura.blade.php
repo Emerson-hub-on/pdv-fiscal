@@ -9,10 +9,6 @@
 @section('conteudo')
     <h1 class="text-2xl font-bold text-gray-800 mb-6">Abertura de Caixa</h1>
 
-    @if ($errors->any())
-        <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{{ $errors->first() }}</div>
-    @endif
-
     @include('relatorios.caixa._filtros', [
         'rota' => 'relatorios.caixa.abertura',
         'rotuloData' => 'Aberto de',

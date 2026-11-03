@@ -36,6 +36,8 @@ class ContingenciaController extends Controller
                     'total' => $venda->total,
                     'criada_em' => $venda->created_at->format('d/m/Y H:i'),
                     'motivo' => $venda->motivo_rejeicao,
+                    // contingencia = emitida off-line (tpEmis=9), aguardando transmissão; rejeitada = SEFAZ recusou ou erro de dados
+                    'situacao' => (int) $venda->tp_emis === 9 ? 'contingencia' : 'rejeitada',
                     'itens' => $venda->itens->map(fn($i) => $i->produto->nome . ' x' . $i->quantidade)->values(),
                 ];
             });
@@ -90,6 +92,8 @@ class ContingenciaController extends Controller
                     'total' => $v->total,
                     'criada_em' => !empty($v->created_at) ? Carbon::parse($v->created_at)->format('d/m/Y H:i') : '',
                     'motivo' => $v->motivo_rejeicao,
+                    // contingencia = emitida off-line (tpEmis=9), aguardando transmissão; rejeitada = SEFAZ recusou ou erro de dados
+                    'situacao' => (int) $v->tp_emis === 9 ? 'contingencia' : 'rejeitada',
                     'itens' => $itens->values(),
                 ];
             })

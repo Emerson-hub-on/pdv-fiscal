@@ -671,6 +671,42 @@
                 </script>
             @endif
 
+            @if ($errors->any() && !View::hasSection('erros-no-formulario'))
+                {{-- Erros de validação: aviso flutuante. Some em 8 s (pausa com o mouse em cima), no X ou ao trocar de tela.
+                     Não fecha com qualquer clique: o operador lê enquanto clica no campo para corrigir.
+                     Telas que mostram os erros do seu jeito (janela própria) declaram @section('erros-no-formulario', '1'). --}}
+                <div id="toast-erros" role="alert"
+                     class="fixed {{ session('sucesso') ? 'top-36' : 'top-16' }} right-4 z-50 flex items-start gap-3 w-full max-w-md bg-white border border-red-200 border-l-4 border-l-red-500 shadow-lg rounded-lg px-4 py-3 text-sm text-gray-800 transition-all duration-300">
+                    <svg class="w-5 h-5 text-red-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-semibold text-red-700">{{ $errors->count() > 1 ? 'Corrija os erros:' : 'Corrija o erro:' }}</p>
+                        <ul class="mt-1 space-y-0.5 text-red-700 {{ $errors->count() > 1 ? 'list-disc pl-4' : '' }}">
+                            @foreach ($errors->all() as $erro)
+                                <li>{{ $erro }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                    <button type="button" aria-label="Fechar" class="text-gray-400 hover:text-gray-600 text-lg leading-none cursor-pointer">&times;</button>
+                </div>
+                <script>
+                    (function () {
+                        const toast = document.getElementById('toast-erros');
+                        let timer;
+                        const fechar = () => {
+                            if (!toast.isConnected) return;
+                            toast.classList.add('opacity-0', 'translate-x-4');
+                            setTimeout(() => toast.remove(), 300);
+                        };
+                        const agendar = () => { clearTimeout(timer); timer = setTimeout(fechar, 8000); };
+                        agendar();
+                        toast.addEventListener('mouseenter', () => clearTimeout(timer));
+                        toast.addEventListener('mouseleave', agendar);
+                        toast.querySelector('button').addEventListener('click', fechar);
+                        window.addEventListener('pagehide', () => toast.remove(), { once: true });
+                    })();
+                </script>
+            @endif
+
             @yield('conteudo')
         </main>
     </div>

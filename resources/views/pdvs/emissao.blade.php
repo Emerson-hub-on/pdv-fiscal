@@ -13,16 +13,6 @@
     <h1 class="text-2xl font-bold mb-1">Emissão de NFC-e: {{ $pdv->nome }}</h1>
     <p class="text-sm text-gray-500 mb-6">Define quem numera e emite as NFC-e deste PDV. Por padrão é o caixa.</p>
 
-    @if ($errors->any())
-        <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 max-w-xl">
-            <ul class="list-disc pl-5 space-y-0.5">
-                @foreach ($errors->all() as $erro)
-                    <li>{{ $erro }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 max-w-xl mb-6">
         <div class="flex items-center justify-between mb-4">
             <span class="text-sm font-medium text-gray-700">Emissor atual</span>

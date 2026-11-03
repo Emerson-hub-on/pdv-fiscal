@@ -44,6 +44,8 @@
     $statusDisponiveis = collect(\App\Models\OrdemServico::STATUS)->except('cancelada');
 @endphp
 
+{{-- Os erros aparecem na janela de aviso desta tela: sem o aviso flutuante do layout --}}
+@section('erros-no-formulario', '1')
 @if ($errors->any())
     @php
         $camposPorAba = [

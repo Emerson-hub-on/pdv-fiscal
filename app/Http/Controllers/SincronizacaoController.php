@@ -203,8 +203,6 @@ class SincronizacaoController extends Controller
                 'O caixa desta venda ainda não está no servidor. Veja o problema do caixa em "Outros problemas"; a venda sobe depois dele.',
             str_contains($m, 'cliente desta venda (cadastro rápido do caixa)') =>
                 'O consumidor cadastrado no caixa para esta venda ainda não está no servidor. Veja o problema do cliente em "Outros problemas"; a venda sobe depois dele.',
-            str_contains($m, 'já tem outro caixa aberto') =>
-                'O operador deste caixa já tem outro caixa aberto no servidor (em outro PDV). Feche aquele caixa e sincronize de novo.',
             str_contains($m, 'duplicate entry') =>
                 'Já existe um registro igual no servidor (possível envio duplicado).',
             str_contains($m, "doesn't have a default value") || str_contains($m, 'cannot be null') =>
