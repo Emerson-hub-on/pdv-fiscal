@@ -109,6 +109,11 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
         Route::post('caixa/abrir', [CaixaController::class, 'abrir'])->name('caixa.abrir');
         Route::get('caixa/fechar', [CaixaController::class, 'fecharForm'])->name('caixa.fechar-form');
         Route::post('caixa/fechar', [CaixaController::class, 'fechar'])->name('caixa.fechar');
+        // Supervisor/administrador fecha o caixa que outro operador deixou aberto
+        Route::get('caixa/{uuid}/fechar-outro', [CaixaController::class, 'fecharOutroForm'])->name('caixa.fechar-outro-form');
+        Route::post('caixa/{uuid}/fechar-outro', [CaixaController::class, 'fecharOutro'])
+            ->middleware('throttle:10,1')
+            ->name('caixa.fechar-outro');
         Route::get('caixa/relatorio-abertura', [CaixaController::class, 'relatorioAbertura'])->name('caixa.relatorio-abertura');
         Route::get('caixa/fechado/{uuid}', [CaixaController::class, 'fechado'])->name('caixa.fechado');
         Route::get('caixa/fechado/{uuid}/relatorio', [CaixaController::class, 'relatorioFechamento'])->name('caixa.relatorio-fechamento');

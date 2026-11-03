@@ -342,6 +342,9 @@ class SyncService
                         'valor_fechamento_esperado' => $c->valor_fechamento_esperado,
                         'status' => $c->status,
                         'observacao' => $c->observacao,
+                        'fechado_por_id' => $c->fechado_por_id ?? null,
+                        'fechado_por_nome' => $c->fechado_por_nome ?? null,
+                        'fechado_por_perfil' => $c->fechado_por_perfil ?? null,
                     ]
                 );
 
@@ -574,6 +577,9 @@ class SyncService
                         'valor_fechamento_informado' => $c->valor_fechamento_informado,
                         'valor_fechamento_esperado' => $c->valor_fechamento_esperado,
                         'observacao' => $c->observacao,
+                        'fechado_por_id' => $c->fechado_por_id,
+                        'fechado_por_nome' => $c->fechado_por_nome,
+                        'fechado_por_perfil' => $c->fechado_por_perfil,
                         'updated_at' => $agora,
                     ]);
                 }

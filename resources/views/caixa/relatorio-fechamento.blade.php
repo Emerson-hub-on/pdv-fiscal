@@ -56,7 +56,16 @@
         </div>
         <div class="flex justify-between gap-2"><span>Abertura</span><span>{{ $caixa->data_abertura->format('d/m/Y H:i:s') }}</span></div>
         <div class="flex justify-between gap-2"><span>Fechamento</span><span>{{ $caixa->data_fechamento?->format('d/m/Y H:i:s') ?? '-' }}</span></div>
+        @if ($caixa->fechado_por_id)
+            <div class="flex justify-between gap-2">
+                <span>Fechado por</span>
+                <span class="text-right font-bold">{{ $caixa->fechado_por_nome }} ({{ $caixa->fechado_por_perfil }})</span>
+            </div>
+        @endif
     </div>
+    @if ($caixa->fechado_por_id)
+        <p class="text-center font-bold mt-1">*** FECHADO PELO {{ mb_strtoupper($caixa->fechado_por_perfil) }} ***</p>
+    @endif
 
     <div class="border-t border-dashed border-black my-2"></div>
 
@@ -159,7 +168,7 @@
         <div class="flex justify-between"><span>(+) Vendas em dinheiro</span><span>{{ $n($r['formas']['dinheiro'] ?? 0) }}</span></div>
         <div class="flex justify-between"><span>(-) Troco devolvido</span><span>{{ $n($r['troco']) }}</span></div>
         <div class="flex justify-between font-bold"><span>Esperado na gaveta</span><span>{{ $n($r['dinheiro_esperado']) }}</span></div>
-        <div class="flex justify-between"><span>Informado pelo operador</span><span>{{ $r['informado'] !== null ? $n($r['informado']) : '-' }}</span></div>
+        <div class="flex justify-between"><span>Informado pelo {{ $caixa->fechado_por_id ? $caixa->fechado_por_perfil : 'operador' }}</span><span>{{ $r['informado'] !== null ? $n($r['informado']) : '-' }}</span></div>
         @if ($r['diferenca'] !== null)
             <div class="flex justify-between font-bold text-[14px]">
                 <span>{{ abs($r['diferenca']) < 0.01 ? 'SEM DIFERENÇA' : ($r['diferenca'] > 0 ? 'SOBRA' : 'FALTA') }}</span>
@@ -183,7 +192,12 @@
         <p class="text-center text-[12px]">Assinatura do operador</p>
 
         <div class="mt-10 border-t border-black"></div>
-        <p class="text-center text-[12px]">Assinatura do responsável</p>
+        @if ($caixa->fechado_por_id)
+            <p class="text-center">{{ $caixa->fechado_por_nome }}</p>
+            <p class="text-center text-[12px]">Assinatura do {{ $caixa->fechado_por_perfil }}</p>
+        @else
+            <p class="text-center text-[12px]">Assinatura do responsável</p>
+        @endif
 
         <div class="border-t border-dashed border-black my-2"></div>
 

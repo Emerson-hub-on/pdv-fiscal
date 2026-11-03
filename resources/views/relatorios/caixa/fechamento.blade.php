@@ -70,6 +70,11 @@
                         <td class="px-4 py-3">{{ $caixa->pdv->nome ?? '-' }}</td>
                         <td class="px-4 py-3">
                             {{ $caixa->operador?->codigo ? str_pad($caixa->operador->codigo, 4, '0', STR_PAD_LEFT) . ' - ' : '' }}{{ $caixa->operador->name ?? 'Operador #' . $caixa->operador_id }}
+                            @if ($caixa->fechado_por_id)
+                                <span class="block text-xs font-medium text-amber-700" title="{{ $caixa->observacao }}">
+                                    Fechado pelo {{ $caixa->fechado_por_perfil }}: {{ $caixa->fechado_por_nome }}
+                                </span>
+                            @endif
                         </td>
                         <td class="px-4 py-3 text-right">{{ (int) $caixa->qtd_vendas }}</td>
                         <td class="px-4 py-3 text-right">{{ $moeda($caixa->total_vendido) }}</td>

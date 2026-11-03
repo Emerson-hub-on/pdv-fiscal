@@ -22,6 +22,12 @@
             <p class="mb-4 text-sm bg-green-50 text-green-800 border border-green-200 rounded px-3 py-2">{{ session('sucesso') }}</p>
         @endif
 
+        @if ($caixa->fechado_por_id)
+            <p class="mb-4 text-sm bg-amber-50 text-amber-800 border border-amber-200 rounded px-3 py-2">
+                Fechado pelo {{ $caixa->fechado_por_perfil }} <strong>{{ $caixa->fechado_por_nome }}</strong> no lugar do operador.
+            </p>
+        @endif
+
         <dl class="text-sm divide-y divide-gray-100 border border-gray-200 rounded">
             <div class="flex justify-between px-3 py-2">
                 <dt class="text-gray-600">Vendas</dt>
@@ -66,7 +72,7 @@
                     class="flex-1 bg-slate-700 hover:bg-slate-800 text-white py-2 rounded font-semibold cursor-pointer">
                 <span id="rotulo-imprimir">Imprimir relatório</span>
             </button>
-            <a href="{{ route('auth.escolha') }}"
+            <a href="{{ $urlConcluir }}"
                class="flex-1 text-center bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded font-semibold">
                 Concluir
             </a>
@@ -99,7 +105,7 @@
 @section('scripts')
 <script>
     const urlRelatorio = @json(route('caixa.relatorio-fechamento', $caixa->uuid));
-    const urlConcluir = @json(route('auth.escolha'));
+    const urlConcluir = @json($urlConcluir);
     let jaImpresso = false;
 
     function imprimirRelatorioFechamento() {

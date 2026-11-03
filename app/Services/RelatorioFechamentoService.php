@@ -298,6 +298,10 @@ class RelatorioFechamentoService
 
     private function rotuloAcao(?string $acao): string
     {
+        if ($acao === 'fechar_caixa_outro') {
+            return 'Fechamento do caixa';
+        }
+
         $config = config('permissoes.caixa.acoes.' . $acao);
 
         if (is_string($config)) {

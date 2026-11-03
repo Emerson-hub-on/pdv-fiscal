@@ -18,6 +18,9 @@ class Caixa extends Model
         'valor_fechamento_esperado',
         'status', 
         'observacao',
+        'fechado_por_id',     // supervisor/administrador que fechou no lugar do operador (vazio = o próprio operador)
+        'fechado_por_nome',
+        'fechado_por_perfil', // administrador | supervisor
     ];
 
     protected $casts = [

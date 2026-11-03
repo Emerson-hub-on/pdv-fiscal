@@ -1,5 +1,6 @@
 {{-- Perfil do operador de caixa logado (canto superior direito do cabeçalho do PDV): clique abre o menu com "Sair".
-     Sair desloga só o caixa (contexto=caixa); o caixa continua aberto para o próximo operador ou para o fechamento. --}}
+     Sair desloga só o caixa (contexto=caixa); o caixa continua aberto. Se o operador não voltar, um supervisor ou
+     administrador fecha pela tela de abertura ("Caixas abertos neste computador"). --}}
 @auth('caixa')
     @php
         $operador = auth('caixa')->user();
