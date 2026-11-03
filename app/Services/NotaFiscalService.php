@@ -1114,21 +1114,41 @@ if ($this->empresa->crt <= 2) {
             throw new Exception('Falha no cancelamento: ' . ($xMotivo ?? 'SEFAZ não retornou motivo.'));
         }
 
-        $this->salvarXmlCancelamentoEmDisco($resposta, $notaFiscal);
+        $this->salvarXmlCancelamentoEmDisco($resposta, $notaFiscal, $this->tools->lastRequest);
 
         return ['protocolo' => $nProt, 'motivo' => $xMotivo];
     }
 
-    protected function salvarXmlCancelamentoEmDisco(string $resposta, NotaFiscal $notaFiscal): void
+    /**
+     * procEventoNFe (pedido + retorno da SEFAZ) em XML_nfe/aa/mm/dd/{chave}-cancelamento.xml, no dia do cancelamento.
+     * Nunca derruba o cancelamento, que já foi homologado: se falhar, só registra no log.
+     */
+    protected function salvarXmlCancelamentoEmDisco(string $resposta, NotaFiscal $notaFiscal, ?string $pedido = null): void
     {
-        $agora = new \DateTime('now', new \DateTimeZone('America/Sao_Paulo'));
-        $pasta = storage_path("app/XML_nfe/{$agora->format('y')}/{$agora->format('m')}/{$agora->format('d')}");
+        try {
+            $xml = $resposta;
+            if ($pedido) {
+                try {
+                    $xml = Complements::toAuthorize($pedido, $resposta);
+                } catch (\Throwable $e) {
+                    // sem o procEvento, guarda ao menos o retorno da SEFAZ
+                }
+            }
 
-        if (!is_dir($pasta)) {
-            mkdir($pasta, 0755, true);
+            $agora = new \DateTime('now', new \DateTimeZone('America/Sao_Paulo'));
+            $pasta = storage_path("app/XML_nfe/{$agora->format('y')}/{$agora->format('m')}/{$agora->format('d')}");
+
+            if (!is_dir($pasta)) {
+                mkdir($pasta, 0755, true);
+            }
+
+            file_put_contents("{$pasta}/{$notaFiscal->chave_acesso}-cancelamento.xml", $xml);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Não foi possível gravar o XML do cancelamento da NF-e', [
+                'chave' => $notaFiscal->chave_acesso,
+                'erro' => $e->getMessage(),
+            ]);
         }
-
-        file_put_contents("{$pasta}/{$notaFiscal->chave_acesso}-cancelamento.xml", $resposta);
     }
 
 
@@ -1150,16 +1170,28 @@ if ($this->empresa->crt <= 2) {
             throw new Exception('Falha na inutilização: ' . ($xMotivo ?? 'SEFAZ não retornou motivo.'));
         }
 
-        $this->salvarXmlInutilizacaoEmDisco($resposta, $idEvento);
+        $this->salvarXmlInutilizacaoEmDisco($resposta, $idEvento, $this->tools->lastRequest);
 
         return ['protocolo' => $nProt, 'motivo' => $xMotivo];
     }
 
-    protected function salvarXmlInutilizacaoEmDisco(string $resposta, ?string $idEvento): void
+    /** procInutNFe (pedido + retorno) em XML_nfe/aa/mm/dd/{id da inutilização}-inutilizada.xml */
+    protected function salvarXmlInutilizacaoEmDisco(string $resposta, ?string $idEvento, ?string $pedido = null): void
     {
-        if (!$idEvento) {
-            $idEvento = 'inutilizacao_nfe_' . now()->format('YmdHis');
+        if ($pedido) {
+            try {
+                $resposta = Complements::toAuthorize($pedido, $resposta);
+            } catch (\Throwable $e) {
+                // sem o procInutNFe, guarda ao menos o retorno da SEFAZ
+            }
+
+            // O retorno da SEFAZ costuma vir sem Id: usa o do pedido (ID + UF + ano + CNPJ + modelo + série + faixa)
+            if (!$idEvento && preg_match('/<infInut[^>]*\bId="ID(\d+)"/', $pedido, $m)) {
+                $idEvento = $m[1];
+            }
         }
+
+        $idEvento = $idEvento ? preg_replace('/^ID/', '', $idEvento) : 'inutilizacao_nfe_' . now()->format('YmdHis');
 
         $agora = new \DateTime('now', new \DateTimeZone('America/Sao_Paulo'));
         $pasta = storage_path("app/XML_nfe/{$agora->format('y')}/{$agora->format('m')}/{$agora->format('d')}");
@@ -1168,6 +1200,6 @@ if ($this->empresa->crt <= 2) {
             mkdir($pasta, 0755, true);
         }
 
-        file_put_contents("{$pasta}/{$idEvento}-inutilizado.xml", $resposta);
+        file_put_contents("{$pasta}/{$idEvento}-inutilizada.xml", $resposta);
     }
 }

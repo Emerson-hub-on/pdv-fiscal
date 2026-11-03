@@ -232,7 +232,12 @@
                         <a href="{{ route('series-nfe.index') }}"
                         class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition border-t border-white/10">
                             Última numeração de NF-e
-                        </a>   
+                        </a>
+
+                        <a href="{{ route('notasfiscais.exportar-xml') }}"
+                        class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition border-t border-white/10">
+                            Exportar XML NF-e
+                        </a>
                     </div>
 
                 </div>
@@ -579,6 +584,10 @@
                        class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
                         Licença
                     </a>
+                    <a href="{{ route('versao.painel') }}"
+                       class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                        Versão
+                    </a>
                 </div>
             </div>
         @endif
@@ -624,6 +633,7 @@
                     'pedidos-venda' => ['Pedidos', 'Pedido de Venda'],
                     'ordens-servico' => ['Pedidos', 'Ordem de Serviço'],
                     'licenca' => ['Configuração', 'Licença'],
+                    'versao' => ['Configuração', 'Versão'],
                 ];
 
                 $rotaAtual = \Illuminate\Support\Facades\Route::currentRouteName();$prefixoRota = $rotaAtual ? explode('.', $rotaAtual)[0] : null;

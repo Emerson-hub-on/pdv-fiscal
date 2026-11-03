@@ -72,6 +72,9 @@
                 </li>
             </ul>
         </div>
+
+        {{-- Versão do sistema (config/versao.php), no canto inferior esquerdo --}}
+        <p class="relative mt-auto pt-10 text-xs font-medium text-blue-100/80 tracking-wide">V.{{ config('versao.atual') }}</p>
     </aside>
 
     {{-- ===================== LADO DIREITO (formulário) ===================== --}}
@@ -84,6 +87,7 @@
                     @include('partials.logo-simbolo', ['tamanho' => 28])
                 </div>
                 <span class="font-semibold">Cyberly Sistema</span>
+                <span class="ml-auto text-xs text-gray-500">V.{{ config('versao.atual') }}</span>
             </div>
 
             <span class="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-[#163f86]">

@@ -546,6 +546,13 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
                 ->name('notasfiscais.buscar-cliente');
             Route::get('notasfiscais/buscar-operador', [NotaFiscalController::class, 'buscarOperador'])
                 ->name('notasfiscais.buscar-operador');
+            // Faturamento → Nota Fiscal → Exportar XML NF-e (antes do resource, senão "exportar-xml" seria lido como {notaFiscal})
+            Route::get('notasfiscais/exportar-xml', [\App\Http\Controllers\NfeExportacaoXmlController::class, 'tela'])->name('notasfiscais.exportar-xml');
+            Route::get('notasfiscais/exportar-xml/pastas', [\App\Http\Controllers\NfeExportacaoXmlController::class, 'pastas'])->name('notasfiscais.exportar-xml.pastas');
+            Route::get('notasfiscais/exportar-xml/resumo', [\App\Http\Controllers\NfeExportacaoXmlController::class, 'resumo'])->name('notasfiscais.exportar-xml.resumo');
+            Route::post('notasfiscais/exportar-xml', [\App\Http\Controllers\NfeExportacaoXmlController::class, 'exportar'])->name('notasfiscais.exportar-xml.gravar');
+            Route::get('notasfiscais/exportar-xml/baixar', [\App\Http\Controllers\NfeExportacaoXmlController::class, 'baixar'])->name('notasfiscais.exportar-xml.baixar');
+
             Route::post('notasfiscais/autorizar-operador', [NotaFiscalController::class, 'autorizarOperador'])
                 ->middleware('throttle:10,1')
                 ->name('notasfiscais.autorizar-operador');
@@ -634,6 +641,8 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
 
         // Configuração → Licença (o registro usa a mesma rota pública licenca.registrar)
         Route::get('configuracao/licenca', [LicencaController::class, 'painel'])->name('licenca.painel');
+        // Configuração → Versão (número e histórico em config/versao.php)
+        Route::view('configuracao/versao', 'configuracao.versao')->name('versao.painel');
     });
 
     // =====================================================================
