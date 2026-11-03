@@ -13,6 +13,7 @@
                 </span>
             @endunless
         </div>
+        @include('caixa.partials.perfil-operador')
     </div>
 
     <div class="flex flex-wrap gap-2 px-6 py-3 bg-black/20">
@@ -135,6 +136,7 @@
 
         MENUS_CAIXA.forEach(fecharMenuCaixa);
         if (typeof fecharDropdownCancelamento === 'function') fecharDropdownCancelamento();
+        if (typeof fecharMenuOperador === 'function') fecharMenuOperador();
         if (!abrir) return;
 
         menu.classList.remove('hidden');
