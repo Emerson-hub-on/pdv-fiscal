@@ -4,7 +4,7 @@
         <div class="flex items-start justify-between gap-4 px-6 pt-5 pb-3 border-b border-gray-100">
             <div>
                 <h2 class="text-lg font-bold">Exportar XMLs</h2>
-                <p class="text-xs text-gray-500">NFC-e autorizadas e inutilizações emitidas neste computador.</p>
+                <p class="text-xs text-gray-500">NFC-e autorizadas, cancelamentos e inutilizações deste computador.</p>
             </div>
             <button type="button" onclick="fecharModalExportarXml()" aria-label="Fechar" class="text-gray-400 hover:text-gray-600 text-2xl leading-none cursor-pointer">&times;</button>
         </div>
@@ -178,11 +178,13 @@
             try {
                 const r = await xmlJson(await fetch(`${XML_URLS.resumo}?de=${de}&ate=${ate}`, { headers: { Accept: 'application/json' } }));
                 const partes = [`${r.autorizadas} NFC-e autorizada${r.autorizadas === 1 ? '' : 's'}`];
+                if (r.cancelamentos) partes.push(`${r.cancelamentos} cancelamento${r.cancelamentos === 1 ? '' : 's'}`);
                 if (r.inutilizadas) partes.push(`${r.inutilizadas} inutilizaç${r.inutilizadas === 1 ? 'ão' : 'ões'}`);
                 let texto = partes.join(' · ');
                 if (r.contingencia) texto += ` (${r.contingencia} em contingência, ainda sem autorização, ficam de fora)`;
-                resumo.className = 'mt-2 text-sm min-h-5 ' + (r.autorizadas + r.inutilizadas ? 'text-gray-700' : 'text-amber-700');
-                resumo.textContent = r.autorizadas + r.inutilizadas ? texto : 'Nenhum XML neste período.';
+                const total = r.autorizadas + r.cancelamentos + r.inutilizadas;
+                resumo.className = 'mt-2 text-sm min-h-5 ' + (total ? 'text-gray-700' : 'text-amber-700');
+                resumo.textContent = total ? texto : 'Nenhum XML neste período.';
             } catch (e) {
                 resumo.className = 'mt-2 text-sm text-red-600 min-h-5';
                 resumo.textContent = e.message;

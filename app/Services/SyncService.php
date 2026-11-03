@@ -853,6 +853,12 @@ class SyncService
                     $arquivo = $this->guardarXmlDoCentral($c);
                     if ($arquivo) {
                         $campos['ultimo_arquivo_xml'] = $arquivo;
+
+                        // Contingência autorizada pelo servidor: o -contingencia.xml do caixa dá lugar ao -nfe.xml
+                        $anterior = $local->table('vendas_pendentes')->where('uuid', $c->uuid)->value('ultimo_arquivo_xml');
+                        if ($anterior && $anterior !== $arquivo && str_contains(basename($anterior), '-contingencia') && is_file($anterior)) {
+                            @unlink($anterior);
+                        }
                     }
 
                     $local->table('vendas_pendentes')->where('uuid', $c->uuid)->update($campos);

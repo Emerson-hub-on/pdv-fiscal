@@ -14,6 +14,7 @@ use App\Models\Inutilizacao;
 use App\Models\Pdv;
 use App\Models\Empresa;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use NFePHP\NFe\Complements;
 
 
@@ -1055,7 +1056,7 @@ protected function montarTotais(Make $nfe, Venda $venda): void
             throw new Exception('Falha na inutilização: ' . $xMotivo);
         }
 
-        $this->salvarXmlInutilizacaoEmDisco($resposta, $idEvento);
+        $this->salvarXmlInutilizacaoEmDisco($resposta, $idEvento, $tools->lastRequest);
 
         // Cancela qualquer venda em contingencia/pendente que estava presa nessa faixa de numero,
         // e estorna o estoque de cada item vendido nela
@@ -1111,11 +1112,25 @@ protected function montarTotais(Make $nfe, Venda $venda): void
     /**
      * Salva o XML da inutilizacao em disco, na mesma estrutura de pastas por data usada pras NFC-e.
      */
-    protected function salvarXmlInutilizacaoEmDisco(string $resposta, ?string $idEvento): void
+    protected function salvarXmlInutilizacaoEmDisco(string $resposta, ?string $idEvento, ?string $pedido = null): void
     {
-        if (!$idEvento) {
-            $idEvento = 'inutilizacao_' . now()->format('YmdHis'); // fallback, caso a SEFAZ nao retorne o Id
+        // procInutNFe (pedido assinado + retorno da SEFAZ); sem o pedido, guarda o retorno como veio
+        $xml = $resposta;
+        if ($pedido) {
+            try {
+                $xml = Complements::toAuthorize($pedido, $resposta);
+            } catch (\Throwable $e) {
+                Log::warning('Não foi possível montar o procInutNFe; gravando o retorno da SEFAZ', ['erro' => $e->getMessage()]);
+            }
+
+            // O retorno da SEFAZ costuma vir sem Id: usa o do pedido (ID + UF + ano + CNPJ + modelo + série + faixa)
+            if (!$idEvento && preg_match('/<infInut[^>]*\bId="ID(\d+)"/', $pedido, $m)) {
+                $idEvento = $m[1];
+            }
         }
+
+        $idEvento = $idEvento ? preg_replace('/^ID/', '', $idEvento) : 'inutilizacao_' . now()->format('YmdHis');
+        $resposta = $xml;
 
         $agora = new \DateTime('now', new \DateTimeZone('America/Sao_Paulo'));
         $ano = $agora->format('y');
@@ -1128,7 +1143,7 @@ protected function montarTotais(Make $nfe, Venda $venda): void
             mkdir($pasta, 0755, true);
         }
 
-        $arquivo = "{$pasta}/{$idEvento}-inutilizado.xml";
+        $arquivo = "{$pasta}/{$idEvento}-inutilizada.xml";
 
         file_put_contents($arquivo, $resposta);
     }
@@ -1161,10 +1176,40 @@ protected function montarTotais(Make $nfe, Venda $venda): void
             throw new Exception('Falha no cancelamento: ' . $xMotivo);
         }
 
+        // XML do evento de cancelamento (pedido + retorno da SEFAZ), junto dos XMLs das NFC-e
+        $this->salvarXmlCancelamentoEmDisco($tools->lastRequest, $resposta, $venda->chave_nfe);
+
         // Substituído o bloco DB::transaction direto pelo método protegido
         $this->registrarCancelamento($venda, $nProt, $justificativa);
 
         return ['protocolo' => $nProt, 'motivo' => $xMotivo];
+    }
+
+    /**
+     * Grava o procEventoNFe do cancelamento em storage/app/XML_nfce/aa/mm/dd/{chave}-cancelamento.xml
+     * (dia do cancelamento). Nunca derruba o cancelamento, que já foi homologado na SEFAZ: se falhar, só registra no log.
+     */
+    protected function salvarXmlCancelamentoEmDisco(?string $pedido, string $resposta, ?string $chave): void
+    {
+        try {
+            try {
+                $xml = Complements::toAuthorize((string) $pedido, $resposta);
+            } catch (\Throwable $e) {
+                $xml = $resposta; // sem o pedido não monta o procEvento: guarda ao menos o retorno da SEFAZ
+            }
+
+            $agora = new \DateTime('now', new \DateTimeZone('America/Sao_Paulo'));
+            $pasta = storage_path('app/XML_nfce/' . $agora->format('y/m/d'));
+
+            if (!is_dir($pasta)) {
+                mkdir($pasta, 0755, true);
+            }
+
+            $nome = preg_replace('/\D/', '', (string) $chave) ?: 'cancelamento_' . $agora->format('YmdHis');
+            file_put_contents("{$pasta}/{$nome}-cancelamento.xml", $xml);
+        } catch (\Throwable $e) {
+            Log::warning('Não foi possível gravar o XML do cancelamento', ['chave' => $chave, 'erro' => $e->getMessage()]);
+        }
     }
 
     protected function registrarCancelamento(Venda $venda, ?string $nProt, string $justificativa): void

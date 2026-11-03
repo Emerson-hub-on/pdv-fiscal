@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Log;
  * para uma pasta escolhida pelo operador (pen drive, área de trabalho, pasta da contabilidade...).
  *
  * Os XMLs ficam em storage/app/XML_nfce/aa/mm/dd (dia em que foram gravados). Vão na exportação:
- * NFC-e autorizadas (*-nfe.xml) e inutilizações (*-inutilizado.xml). As que ainda estão em
+ * NFC-e autorizadas (*-nfe.xml), eventos de cancelamento (*-cancelamento.xml, gravados no dia do
+ * cancelamento) e inutilizações (*-inutilizado.xml). As que ainda estão em
  * contingência (sem autorização da SEFAZ) ficam de fora e só são contadas.
  *
  * O caixa roda neste mesmo computador, então o PHP enxerga as pastas do operador: a escolha da
@@ -78,6 +79,7 @@ class ExportacaoXmlController extends Controller
 
         return response()->json([
             'autorizadas' => count($arquivos['autorizadas']),
+            'cancelamentos' => count($arquivos['cancelamentos']),
             'inutilizadas' => count($arquivos['inutilizadas']),
             'contingencia' => $arquivos['contingencia'],
         ]);
@@ -95,7 +97,7 @@ class ExportacaoXmlController extends Controller
         }
 
         $arquivos = $this->arquivosDoPeriodo($de, $ate);
-        $lista = array_merge($arquivos['autorizadas'], $arquivos['inutilizadas']);
+        $lista = array_merge($arquivos['autorizadas'], $arquivos['cancelamentos'], $arquivos['inutilizadas']);
 
         if (!$lista) {
             return response()->json(['erro' => 'Nenhum XML encontrado neste período.'], 422);
@@ -131,6 +133,7 @@ class ExportacaoXmlController extends Controller
             'pasta' => $pasta,
             'copiados' => $copiados,
             'autorizadas' => count($arquivos['autorizadas']),
+            'cancelamentos' => count($arquivos['cancelamentos']),
             'inutilizadas' => count($arquivos['inutilizadas']),
             'contingencia' => $arquivos['contingencia'],
             'falhas' => array_slice($falhas, 0, 10),
@@ -167,7 +170,7 @@ class ExportacaoXmlController extends Controller
     private function arquivosDoPeriodo(Carbon $de, Carbon $ate): array
     {
         $base = storage_path('app/XML_nfce');
-        $resultado = ['autorizadas' => [], 'inutilizadas' => [], 'contingencia' => 0];
+        $resultado = ['autorizadas' => [], 'cancelamentos' => [], 'inutilizadas' => [], 'contingencia' => 0];
 
         for ($dia = $de->copy(); $dia->lte($ate); $dia->addDay()) {
             $pasta = $base . DIRECTORY_SEPARATOR . $dia->format('y') . DIRECTORY_SEPARATOR . $dia->format('m') . DIRECTORY_SEPARATOR . $dia->format('d');
@@ -177,7 +180,9 @@ class ExportacaoXmlController extends Controller
 
                 if (str_ends_with($nome, '-nfe.xml')) {
                     $resultado['autorizadas'][] = $arquivo;
-                } elseif (str_ends_with($nome, '-inutilizado.xml')) {
+                } elseif (str_ends_with($nome, '-cancelamento.xml')) {
+                    $resultado['cancelamentos'][] = $arquivo;
+                } elseif (str_ends_with($nome, '-inutilizada.xml') || str_ends_with($nome, '-inutilizado.xml')) { // -inutilizado: nome antigo
                     $resultado['inutilizadas'][] = $arquivo;
                 } elseif (str_contains($nome, '-contingencia')) {
                     $resultado['contingencia']++;
