@@ -85,6 +85,10 @@
                         class="opcao-menu-caixa w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-700 hover:text-white transition">
                     Atualizar Caixa
                 </button>
+                <button type="button" onclick="fecharDropdownOpcoes(); abrirModalExportarXml();"
+                        class="opcao-menu-caixa w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-700 hover:text-white transition border-t border-white/10">
+                    Exportar XMLs
+                </button>
                 <a href="{{ route('caixa.fechar-form') }}" onclick="fecharDropdownOpcoes()"
                    class="opcao-menu-caixa block w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-700 hover:text-white transition border-t border-white/10">
                     Fechar Caixa
@@ -93,6 +97,8 @@
         </div>
     </div>
 </div>
+
+@include('caixa.partials.modal-exportar-xml')
 
 {{-- Relatório de abertura: a página de impressão carrega num iframe fora da tela e chama a impressão sozinha.
      (display:none faz alguns navegadores imprimirem em branco, por isso w-0/h-0 em vez de hidden) --}}

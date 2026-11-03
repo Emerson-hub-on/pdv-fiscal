@@ -118,6 +118,11 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
         Route::get('caixa/fechado/{uuid}', [CaixaController::class, 'fechado'])->name('caixa.fechado');
         Route::get('caixa/fechado/{uuid}/relatorio', [CaixaController::class, 'relatorioFechamento'])->name('caixa.relatorio-fechamento');
 
+        // Opções (F8) → Exportar XMLs das NFC-e deste computador para uma pasta
+        Route::get('caixa/xmls/pastas', [\App\Http\Controllers\ExportacaoXmlController::class, 'pastas'])->name('caixa.xmls.pastas');
+        Route::get('caixa/xmls/resumo', [\App\Http\Controllers\ExportacaoXmlController::class, 'resumo'])->name('caixa.xmls.resumo');
+        Route::post('caixa/xmls/exportar', [\App\Http\Controllers\ExportacaoXmlController::class, 'exportar'])->name('caixa.xmls.exportar');
+
         Route::get('pdv', [VendaController::class, 'pdv'])->name('vendas.pdv');
         Route::get('pdv/buscar-produto', [VendaController::class, 'buscarProduto'])->name('vendas.buscar-produto');
         Route::post('pdv/finalizar', [VendaController::class, 'finalizar'])->name('vendas.finalizar');
