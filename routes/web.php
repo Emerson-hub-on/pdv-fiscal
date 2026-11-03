@@ -49,6 +49,7 @@ use App\Http\Controllers\PedidoCompraController;
 use App\Http\Controllers\PedidoVendaController;
 use App\Http\Controllers\OrdemServicoController;
 use App\Http\Controllers\InventarioController;
+use App\Http\Controllers\InventarioProdutoController;
 use App\Http\Controllers\ContagemEstoqueController;
 use App\Http\Controllers\EstoqueBaixoController;
 use App\Http\Controllers\EntradaProdutosController;
@@ -225,9 +226,9 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
             Route::post('/ipi/criar', [ClassificacaoIpiController::class, 'criar'])->name('ipi.criar');
             Route::post('/ipi/editar', [ClassificacaoIpiController::class, 'editar'])->name('ipi.editar');
             Route::post('/ipi/excluir', [ClassificacaoIpiController::class, 'excluir'])->name('ipi.excluir');
-            Route::get('produtos/inventario', [InventarioController::class, 'index'])->name('produtos.inventario.index');
-            Route::get('produtos/inventario/exportar/excel', [InventarioController::class, 'exportarExcel'])->name('produtos.inventario.exportar-excel');
-            Route::get('produtos/inventario/exportar/pdf', [InventarioController::class, 'exportarPdf'])->name('produtos.inventario.exportar-pdf');
+            Route::get('produtos/inventario', [InventarioProdutoController::class, 'index'])->name('produtos.inventario.index');
+            Route::get('produtos/inventario/exportar/excel', [InventarioProdutoController::class, 'exportarExcel'])->name('produtos.inventario.exportar-excel');
+            Route::get('produtos/inventario/exportar/pdf', [InventarioProdutoController::class, 'exportarPdf'])->name('produtos.inventario.exportar-pdf');
         
             });
 
