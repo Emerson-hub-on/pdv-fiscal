@@ -639,9 +639,26 @@
             @endif
 
             @if (session('sucesso'))
-                <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-                    {{ session('sucesso') }}
+                {{-- Aviso flutuante: some em 5 s, ao clicar em qualquer lugar ou ao trocar de tela --}}
+                <div id="toast-sucesso" role="status"
+                     class="fixed top-4 right-4 z-50 flex items-start gap-3 max-w-sm bg-white border border-green-200 shadow-lg rounded-lg px-4 py-3 text-sm text-gray-800 transition-all duration-300">
+                    <svg class="w-5 h-5 text-green-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    <span class="flex-1">{{ session('sucesso') }}</span>
+                    <button type="button" aria-label="Fechar" class="text-gray-400 hover:text-gray-600 leading-none">&times;</button>
                 </div>
+                <script>
+                    (function () {
+                        const toast = document.getElementById('toast-sucesso');
+                        const fechar = () => {
+                            if (!toast.isConnected) return;
+                            toast.classList.add('opacity-0', 'translate-x-4');
+                            setTimeout(() => toast.remove(), 300);
+                        };
+                        setTimeout(fechar, 5000);
+                        document.addEventListener('click', fechar, { once: true, capture: true });
+                        window.addEventListener('pagehide', () => toast.remove(), { once: true });
+                    })();
+                </script>
             @endif
 
             @yield('conteudo')
