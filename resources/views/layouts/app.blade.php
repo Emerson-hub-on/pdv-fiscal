@@ -639,7 +639,7 @@
             @endif
 
             @if (session('sucesso'))
-                <div class="bg-green-100 text-green-800 border border-green-300 rounded px-4 py-3 mb-6">
+                <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
                     {{ session('sucesso') }}
                 </div>
             @endif

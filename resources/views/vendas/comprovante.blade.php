@@ -30,12 +30,6 @@
             </div>
         @endif
 
-        @if (session('sucesso'))
-            <div class="bg-green-100 text-green-800 border border-green-300 rounded px-4 py-3 mb-4 text-sm">
-                {{ session('sucesso') }}
-            </div>
-        @endif
-
         @if (session('erro_fiscal'))
             <div class="bg-red-100 text-red-700 border border-red-300 rounded px-4 py-3 mb-4 text-sm">
                 <strong>Erro na emissão:</strong> {{ session('erro_fiscal') }}
