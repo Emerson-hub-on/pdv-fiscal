@@ -628,17 +628,21 @@
                 $breadcrumbAuto = $breadcrumbMapa[$prefixoRota] ?? null;
             @endphp
 
-            @hasSection('breadcrumb')
-                <div class="flex items-center gap-2 mb-5 text-sm text-gray-500">
-                    @yield('breadcrumb')
+            {{-- Linha do topo: caminho da tela à esquerda, perfil do usuário à direita --}}
+            <div class="flex items-start justify-between gap-4 mb-5">
+                <div class="flex items-center gap-2 pt-1 text-sm text-gray-500">
+                    @hasSection('breadcrumb')
+                        @yield('breadcrumb')
+                    @elseif ($breadcrumbAuto)
+                        <span>{{ $breadcrumbAuto[0] }}</span>
+                        <span class="text-gray-300">›</span>
+                        <span class="text-gray-700 font-medium">{{ $breadcrumbAuto[1] }}</span>
+                    @endif
                 </div>
-            @elseif ($breadcrumbAuto)
-                <div class="flex items-center gap-2 mb-5 text-sm text-gray-500">
-                    <span>{{ $breadcrumbAuto[0] }}</span>
-                    <span class="text-gray-300">›</span>
-                    <span class="text-gray-700 font-medium">{{ $breadcrumbAuto[1] }}</span>
+                <div class="[.sem-sidebar_&]:hidden">
+                    @include('partials.perfil-usuario')
                 </div>
-            @endif
+            </div>
 
             @if (session('sucesso'))
                 {{-- Aviso flutuante: some em 5 s, ao clicar em qualquer lugar ou ao trocar de tela --}}

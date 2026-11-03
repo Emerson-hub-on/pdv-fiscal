@@ -18,10 +18,6 @@
                     class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-sm font-medium px-4 py-2 cursor-pointer transition flex items-center gap-1.5">
                 Atualizar Caixa
             </button>
-            <button type="button" onclick="imprimirRelatorioAbertura(true)"
-                    class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-sm font-medium px-4 py-2 cursor-pointer transition flex items-center gap-1.5">
-                Relatório de Abertura
-            </button>
             <a href="{{ route('caixa.fechar-form') }}"
                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
                 Fechar Caixa
@@ -69,10 +65,22 @@
                 class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
             Puxar Pedido <span class="opacity-60">F6</span>
         </button>
-        <button onclick="abrirModalReimpressao()"
-                class="bg-sky-500/20 hover:bg-sky-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
-            Reimprimir Cupom <span class="opacity-60">F7</span>
-        </button>
+        <div class="relative">
+            <button onclick="toggleDropdownImpressao()" id="btn-impressao-main"
+                    class="bg-sky-500/20 hover:bg-sky-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
+                Impressão <span class="opacity-60">F7</span> ▾
+            </button>
+            <div id="dropdown-impressao" class="absolute hidden bg-slate-200 rounded-lg shadow-xl mt-2 w-56 overflow-hidden z-50 border border-white/10">
+                <button onclick="fecharDropdownImpressao(); abrirModalReimpressao();"
+                        class="opcao-dropdown-impressao w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-700 hover:text-white transition">
+                    Reimprimir Cupom
+                </button>
+                <button onclick="fecharDropdownImpressao(); imprimirRelatorioAbertura(true);"
+                        class="opcao-dropdown-impressao w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-700 hover:text-white transition border-t border-white/10">
+                    Relatório de Abertura
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -91,6 +99,58 @@
 
         document.getElementById('frame-relatorio-abertura').src = url.toString();
     }
+
+    // Menu "Impressão" (F7): mesmo comportamento do menu de Cancelamento (↑ ↓ Enter, Esc ou clique fora fecha)
+    let indiceDropdownImpressao = -1;
+
+    function toggleDropdownImpressao() {
+        const dropdown = document.getElementById('dropdown-impressao');
+        const abrir = dropdown.classList.contains('hidden');
+        if (abrir && typeof fecharDropdownCancelamento === 'function') fecharDropdownCancelamento();
+        dropdown.classList.toggle('hidden', !abrir);
+        indiceDropdownImpressao = abrir ? 0 : -1;
+        if (abrir) atualizarFocoDropdownImpressao();
+    }
+
+    function fecharDropdownImpressao() {
+        document.getElementById('dropdown-impressao')?.classList.add('hidden');
+        indiceDropdownImpressao = -1;
+    }
+
+    function atualizarFocoDropdownImpressao() {
+        document.querySelectorAll('#dropdown-impressao .opcao-dropdown-impressao').forEach((opcao, i) => {
+            const ativa = i === indiceDropdownImpressao;
+            opcao.classList.toggle('bg-slate-800', ativa);
+            opcao.classList.toggle('text-white', ativa);
+            if (ativa) opcao.focus();
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        const dropdown = document.getElementById('dropdown-impressao');
+        if (!dropdown || dropdown.classList.contains('hidden')) return;
+
+        const opcoes = dropdown.querySelectorAll('.opcao-dropdown-impressao');
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            const passo = e.key === 'ArrowDown' ? 1 : -1;
+            indiceDropdownImpressao = (indiceDropdownImpressao + passo + opcoes.length) % opcoes.length;
+            atualizarFocoDropdownImpressao();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            opcoes[indiceDropdownImpressao]?.click();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            fecharDropdownImpressao();
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        const dropdown = document.getElementById('dropdown-impressao');
+        if (dropdown && !dropdown.classList.contains('hidden') && !dropdown.closest('.relative').contains(e.target)) {
+            fecharDropdownImpressao();
+        }
+    });
 
     @if (session('imprimir_abertura'))
         window.addEventListener('load', () => imprimirRelatorioAbertura(false));

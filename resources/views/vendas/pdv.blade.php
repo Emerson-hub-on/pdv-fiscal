@@ -663,6 +663,7 @@ function toggleDropdownCancelamento() {
     
     if (!dropdown.classList.contains('hidden')) {
         indiceDropdownCancelamento = -1; // Reseta ao abrir
+        if (typeof fecharDropdownImpressao === 'function') fecharDropdownImpressao();
     }
 }
 
@@ -680,7 +681,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'F3') { e.preventDefault(); toggleDropdownCancelamento(); }
     if (e.key === 'F4') { e.preventDefault(); abrirModalDescontoItem(); }
     if (e.key === 'F6') { e.preventDefault(); abrirModalPedidos(); }
-    if (e.key === 'F7') { e.preventDefault(); abrirModalReimpressao(); }
+    if (e.key === 'F7') { e.preventDefault(); toggleDropdownImpressao(); }
     if (e.key === 'Escape') { fecharTodosModais(); }
 });
 
@@ -876,6 +877,7 @@ function fecharTodosModais() {
     }
 
     fecharDropdownCancelamento();
+    if (typeof fecharDropdownImpressao === 'function') fecharDropdownImpressao();
     tipoDescontoPendente = null;
 }
 
