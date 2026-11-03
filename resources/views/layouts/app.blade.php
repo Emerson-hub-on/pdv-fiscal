@@ -594,6 +594,8 @@
 
     <!-- Conteúdo principal -->
     <div id="conteudo-principal" class="ml-56 min-h-screen transition-[margin] duration-200 [.sidebar-oculta_&]:ml-16 [.sem-sidebar_&]:ml-0">
+        @include('partials.aviso-licenca', ['faixa' => true, 'rotaLicenca' => auth()->user()?->isAdmin() ? 'licenca.painel' : 'licenca.tela'])
+
         <main class="max-w-5xl mx-auto p-8 [.conteudo-largo_&]:max-w-none [.conteudo-largo_&]:mx-0 [.conteudo-largo_&]:px-6 [.conteudo-largo_&]:pt-4">
 
             @php
@@ -665,7 +667,6 @@
         </main>
     </div>
 
-    @include('partials.aviso-licenca', ['rotaLicenca' => auth()->user()?->isAdmin() ? 'licenca.painel' : 'licenca.tela'])
 
     @yield('scripts')
 
