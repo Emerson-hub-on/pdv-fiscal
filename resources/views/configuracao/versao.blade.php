@@ -19,21 +19,15 @@
         </div>
     </div>
 
-    <h2 class="text-sm font-semibold text-gray-700 mt-8 mb-3">Histórico de versões</h2>
-    <ol class="space-y-3">
-        @foreach ($historico as $entrada)
-            <li class="bg-white rounded-xl border border-gray-200 px-5 py-4">
-                <div class="flex items-baseline justify-between gap-3">
-                    <span class="font-semibold text-gray-800">V.{{ $entrada['versao'] }}</span>
-                    <span class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($entrada['data'])->format('d/m/Y') }}</span>
-                </div>
-                <ul class="mt-2 list-disc pl-5 space-y-0.5 text-sm text-gray-600">
-                    @foreach ($entrada['itens'] as $item)
-                        <li>{{ $item }}</li>
-                    @endforeach
-                </ul>
-            </li>
-        @endforeach
-    </ol>
+    @if (!empty($historico[0]['itens']))
+        <h2 class="text-sm font-semibold text-gray-700 mt-8 mb-3">O que mudou nesta versão</h2>
+        <div class="bg-white rounded-xl border border-gray-200 px-5 py-4">
+            <ul class="list-disc pl-5 space-y-0.5 text-sm text-gray-600">
+                @foreach ($historico[0]['itens'] as $item)
+                    <li>{{ $item }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
 </div>
 @endsection

@@ -11,6 +11,13 @@
 
 $historico = [
     [
+        'versao' => '1.1.1',
+        'data' => '2026-11-04',
+        'itens' => [
+            'Configuração > Versão: mostra só o que mudou na última atualização.',
+        ],
+    ],
+    [
         'versao' => '1.1.0',
         'data' => '2026-11-04',
         'itens' => [

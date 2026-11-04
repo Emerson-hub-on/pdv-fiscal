@@ -1,0 +1,133 @@
+CYBERLY SISTEMA - COMANDOS ESSENCIAIS
+=====================================
+
+Todos os comandos rodam dentro da pasta do sistema (ex.: C:\pdv-fiscal),
+de preferência no Terminal do Laragon (ele já tem php, mysql e mysqldump no PATH).
+
+
+1. LICENÇA
+----------
+
+Gerar licença para um cliente (só na máquina do desenvolvedor, que tem a chave privada):
+
+    php artisan licenca:gerar <CNPJ> <VALIDA_ATE>
+
+    Exemplo:
+    php artisan licenca:gerar 24057254000104 2027-12-31
+
+    - CNPJ: com ou sem pontuação (14 dígitos).
+    - VALIDA_ATE: último dia de uso liberado, no formato AAAA-MM-DD.
+    - Depois do vencimento o sistema ainda funciona por 5 dias de tolerância e então bloqueia.
+    - O comando mostra um código: o cliente cola esse código no painel administrativo,
+      em Configuração > Licença (no servidor). O caixa só mostra o aviso.
+    - Outra chave privada: --chave="C:\caminho\licenca-privada.key"
+
+Criar o par de chaves (UMA VEZ SÓ - já foi feito):
+
+    php artisan licenca:chaves
+
+    - Grava a chave privada em C:\Users\<usuário>\.cyberly\licenca-privada.key
+      e mostra a chave pública, que vai em LicencaService::CHAVE_PUBLICA.
+    - Criar uma chave nova invalida todas as licenças já emitidas.
+    - ATENÇÃO: a chave privada nunca vai para o git nem para o ZIP de instalação.
+      Faça backup dela em lugar seguro.
+
+
+2. INSTALAÇÃO E ATUALIZAÇÃO
+---------------------------
+
+Gerar o banco base do servidor (estrutura + dados de referência) -> database/cyberly-base.sql:
+
+    php artisan servidor:gerar-base
+    (fora do Terminal do Laragon: --bin="C:\laragon\bin\mysql\mysql-8.4.3-winx64\bin")
+
+Gerar o banco base vazio do caixa -> database/local-base.sqlite:
+
+    php artisan caixa:gerar-base
+
+Criar o banco do caixa (database/local.sqlite) a partir do banco base:
+
+    php artisan caixa:instalar-banco
+
+Atualizar a estrutura dos bancos depois de uma atualização do sistema:
+
+    Servidor:  php artisan migrate --force
+    Caixa:     php artisan migrate --database=sqlite_local --path=database/migrations/local --force
+
+    Rode primeiro no servidor e depois em cada caixa.
+
+Limpar / refazer o cache de configuração e telas (depois de mudar o .env ou atualizar arquivos):
+
+    php artisan optimize:clear
+    php artisan config:cache        (só se o cliente usa cache de configuração)
+
+Gerar a chave da aplicação (instalação nova, .env sem APP_KEY):
+
+    php artisan key:generate
+
+Compilar o CSS/JS (máquina do desenvolvedor, antes de montar o ZIP de atualização):
+
+    npm run build
+    (levar a pasta public\build e o public\favicon.svg no ZIP)
+
+
+3. SINCRONIZAÇÃO (CAIXA <-> SERVIDOR)
+-------------------------------------
+
+Rodar o agendador que sincroniza a cada minuto (deixar rodando no caixa):
+
+    php artisan schedule:work
+
+Ver as tarefas agendadas:
+
+    php artisan schedule:list
+
+Conferir se o caixa tem tudo para emitir NFC-e sem o servidor (empresa, certificado, CSC, produtos...):
+
+    php artisan nfce:conferir-dados
+
+Emitir manualmente uma venda que ficou presa no caixa (uuid da tabela vendas_pendentes):
+
+    php artisan nfce:emitir-local <uuid>
+    php artisan nfce:emitir-local <uuid> --forcar     (emite mesmo que o servidor já tenha a venda)
+
+
+4. DADOS FISCAIS
+----------------
+
+Importar / atualizar a tabela de municípios (código IBGE) pela internet:
+
+    php artisan municipios:importar
+    php artisan municipios:importar --arquivo="C:\caminho\municipios.json"   (sem internet)
+
+Completar CFOP, CST, NCM, ICMS e PIS/COFINS de itens antigos de NF-e e NFC-e a partir do XML:
+
+    php artisan fiscal:completar-itens --de=2026-01-01 --ate=2026-12-31 --simular
+    (tire o --simular para gravar)
+
+Calcular o PIS/COFINS de entrada (crédito) das notas de entrada já lançadas (empresa CRT 3):
+
+    php artisan fiscal:pis-cofins-entradas --de=2026-01-01 --ate=2026-12-31 --simular
+    (tire o --simular para gravar)
+
+
+5. DIAGNÓSTICO
+--------------
+
+Ver a versão do Laravel e a lista de comandos:
+
+    php artisan --version
+    php artisan list
+
+Ver as migrations rodadas / pendentes:
+
+    php artisan migrate:status
+    php artisan migrate:status --database=sqlite_local --path=database/migrations/local
+
+Ver o resumo do banco (tabelas e quantidade de registros):
+
+    php artisan db:show --counts
+
+Log de erros do sistema:
+
+    storage\logs\laravel.log
