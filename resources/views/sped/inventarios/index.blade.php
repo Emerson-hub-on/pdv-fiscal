@@ -154,7 +154,7 @@
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <table class="w-full text-sm">
-            <thead class="bg-gray-700 font-medium text-xs uppercase tracking-wide">
+            <thead class="bg-[#10284A] font-medium text-xs uppercase tracking-wide">
                 <tr>
                     <th class="px-4 py-3 text-left font-medium text-amber-50">Data</th>
                     <th class="px-4 py-3 text-left font-medium text-amber-50">Motivo</th>

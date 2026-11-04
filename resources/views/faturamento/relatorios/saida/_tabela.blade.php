@@ -41,7 +41,7 @@
     {{-- Só esta área rola: ajuste o 19rem se o topo da página mudar de altura --}}
     <div id="rolagem-tabela" class="overflow-auto max-h-[calc(100vh-19rem)]">
         <table id="tabela-notas" class="w-full text-sm whitespace-nowrap">
-            <thead class="sticky top-0 z-10 bg-gray-700 rounded-lg font-medium text-xs uppercase tracking-wide">
+            <thead class="sticky top-0 z-10 bg-[#10284A] rounded-lg font-medium text-xs uppercase tracking-wide">
                 <tr>
                     <th class="px-4 py-3 text-left font-medium text-amber-50">Nota</th>
                     <th class="px-4 py-3 text-left font-medium text-amber-50">Emissão</th>

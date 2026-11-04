@@ -72,7 +72,7 @@
         <table class="w-full text-sm whitespace-nowrap">
             @unless ($detalhada)
                 {{-- Visão resumida: uma linha por regime + CST/CSOSN + CFOP + alíquota de ICMS --}}
-                <thead class="bg-gray-700 rounded-lg font-medium text-xs uppercase tracking-wide">
+                <thead class="bg-[#10284A] rounded-lg font-medium text-xs uppercase tracking-wide">
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-amber-50">Regime</th>
                         <th class="px-4 py-3 text-left font-medium text-amber-50">CST/CSOSN</th>
@@ -141,7 +141,7 @@
                 @endif
             @else
                 {{-- Visão detalhada: uma linha por item vendido, no lugar do resumo --}}
-                <thead class="bg-gray-700 rounded-lg font-medium text-xs uppercase tracking-wide">
+                <thead class="bg-[#10284A] rounded-lg font-medium text-xs uppercase tracking-wide">
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-amber-50">Data</th>
                         <th class="px-4 py-3 text-left font-medium text-amber-50">Tipo</th>

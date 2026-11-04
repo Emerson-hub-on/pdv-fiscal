@@ -14,7 +14,7 @@
     </div>
 
     <table class="w-full bg-white rounded shadow overflow-visible">
-        <thead class="bg-gray-700 text-amber-50 text-left h-10 rounded-lg font-medium text-xs uppercase tracking-wide">
+        <thead class="bg-[#10284A] text-amber-50 text-left h-10 rounded-lg font-medium text-xs uppercase tracking-wide">
             <tr>  
                 <th class="px-2 py-3 text-left font-medium text-amber-50">Nome</th>
                 <th class="px-2 py-3 text-left font-medium text-amber-50">Série</th>

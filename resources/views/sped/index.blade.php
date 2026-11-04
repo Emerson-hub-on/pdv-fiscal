@@ -295,7 +295,7 @@
                 @else
                     <div class="border border-gray-200 rounded-lg overflow-hidden">
                         <table class="w-full text-sm">
-                            <thead class="bg-gray-700 font-medium text-xs uppercase tracking-wide">
+                            <thead class="bg-[#10284A] font-medium text-xs uppercase tracking-wide">
                                 <tr>
                                     <th class="px-4 py-3 text-left font-medium text-amber-50">Escrituração</th>
                                     <th class="px-4 py-3 text-left font-medium text-amber-50">Competência</th>

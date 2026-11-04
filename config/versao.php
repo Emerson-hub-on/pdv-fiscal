@@ -11,6 +11,13 @@
 
 $historico = [
     [
+        'versao' => '1.1.6',
+        'data' => '2026-11-04',
+        'itens' => [
+            'Painel administrativo: cabeçalho das tabelas das telas (listagens, relatórios, permissões, SPED etc.) em azul-marinho.',
+        ],
+    ],
+    [
         'versao' => '1.1.5',
         'data' => '2026-11-04',
         'itens' => [

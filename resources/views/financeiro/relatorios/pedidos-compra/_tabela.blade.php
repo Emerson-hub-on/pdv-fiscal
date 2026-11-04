@@ -43,7 +43,7 @@
 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
         <table class="w-full text-sm whitespace-nowrap">
-            <thead class="bg-gray-700 rounded-lg font-medium text-xs uppercase tracking-wide">
+            <thead class="bg-[#10284A] rounded-lg font-medium text-xs uppercase tracking-wide">
                 <tr>
                     <th class="px-4 py-3 text-left font-medium text-amber-50">Pedido</th>
                     <th class="px-4 py-3 text-left font-medium text-amber-50">Data</th>
@@ -135,7 +135,7 @@
                                 <div class="border border-gray-200 rounded-lg overflow-hidden">
                                     <div class="overflow-x-auto">
                                         <table class="w-full text-sm whitespace-nowrap">
-                                            <thead class="bg-gray-700 text-xs uppercase tracking-wide">
+                                            <thead class="bg-[#10284A] text-xs uppercase tracking-wide">
                                                 <tr>
                                                     <th class="px-3 py-2.5 text-left font-medium text-amber-50">#</th>
                                                     <th class="px-3 py-2.5 text-left font-medium text-amber-50">Código</th>

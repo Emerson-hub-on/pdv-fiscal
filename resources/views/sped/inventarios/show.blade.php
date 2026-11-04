@@ -94,7 +94,7 @@
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div class="max-h-[60vh] overflow-y-auto">
             <table class="w-full text-sm">
-                <thead class="bg-gray-700 font-medium text-xs uppercase tracking-wide sticky top-0 z-10">
+                <thead class="bg-[#10284A] font-medium text-xs uppercase tracking-wide sticky top-0 z-10">
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-amber-50">Código</th>
                         <th class="px-4 py-3 text-left font-medium text-amber-50">Produto</th>

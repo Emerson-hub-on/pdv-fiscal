@@ -18,7 +18,7 @@
         <col class="w-[14%]">
         <col class="w-[8%]">
     </colgroup>
-    <thead class="bg-gray-700 text-amber-50 text-xs uppercase">
+    <thead class="bg-[#10284A] text-amber-50 text-xs uppercase">
         <tr>
             <th class="text-left px-2 py-2">Nº</th>
             <th class="text-left px-2 py-2">Data</th>

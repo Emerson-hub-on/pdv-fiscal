@@ -78,7 +78,7 @@
     @if ($statusFiltro === 'inutilizada')
         <div id="rolagem-tabela" class="overflow-auto max-h-[calc(100vh-15rem)] rounded-b-lg">
             <table id="tabela-rolagem" class="w-full text-sm">
-                <thead class="sticky top-0 z-10 bg-gray-700 text-amber-50 text-xs uppercase">
+                <thead class="sticky top-0 z-10 bg-[#10284A] text-amber-50 text-xs uppercase">
                     <tr>
                         <th class="text-left px-4 py-2">Número</th>
                         <th class="text-left px-4 py-2">Motivo</th>
@@ -120,7 +120,7 @@
         @else
         <div id="rolagem-tabela" class="overflow-auto max-h-[calc(100vh-15rem)] rounded-b-lg">
             <table id="tabela-rolagem" class="w-full text-sm">
-        <thead class="sticky top-0 z-10 bg-gray-700 text-amber-50 text-xs uppercase">
+        <thead class="sticky top-0 z-10 bg-[#10284A] text-amber-50 text-xs uppercase">
             <tr>
                 <th class="text-left px-4 py-2">Número</th>
                 <th class="text-left px-4 py-2">Série</th>

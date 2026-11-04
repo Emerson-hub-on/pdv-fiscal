@@ -24,7 +24,7 @@
 
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden max-w-4xl">
             <table class="w-full text-sm">
-                <thead class="bg-gray-700 text-xs uppercase tracking-wide">
+                <thead class="bg-[#10284A] text-xs uppercase tracking-wide">
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-amber-50">Ação</th>
                         @foreach ($niveis as $nome)

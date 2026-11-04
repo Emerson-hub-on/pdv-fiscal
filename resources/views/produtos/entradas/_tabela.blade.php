@@ -43,7 +43,7 @@
         <table class="w-full text-sm whitespace-nowrap">
             @if ($porProduto)
                 {{-- ===== Visão consolidada: uma linha por produto/variação ===== --}}
-                <thead class="bg-gray-700 rounded-lg font-medium text-xs uppercase tracking-wide">
+                <thead class="bg-[#10284A] rounded-lg font-medium text-xs uppercase tracking-wide">
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-amber-50">Código</th>
                         <th class="px-4 py-3 text-left font-medium text-amber-50">Cód. Barras</th>
@@ -91,7 +91,7 @@
                 </tbody>
             @else
                 {{-- ===== Visão detalhada: uma linha por item de nota ===== --}}
-                <thead class="bg-gray-700 rounded-lg font-medium text-xs uppercase tracking-wide">
+                <thead class="bg-[#10284A] rounded-lg font-medium text-xs uppercase tracking-wide">
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-amber-50">Código</th>
                         <th class="px-4 py-3 text-left font-medium text-amber-50">Cód. Barras</th>
