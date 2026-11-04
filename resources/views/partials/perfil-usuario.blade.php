@@ -7,9 +7,9 @@
     @endphp
     <div class="relative shrink-0" id="perfil-usuario">
         <button type="button" onclick="alternarMenuPerfil(event)" aria-haspopup="true" aria-expanded="false" id="perfil-botao"
-                class="flex flex-col items-center gap-0.5 rounded-lg px-1.5 py-0.5 hover:bg-gray-200/70 transition cursor-pointer">
-            <span class="w-7 h-7 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-semibold">{{ $iniciais }}</span>
-            <span class="text-[11px] leading-tight font-medium text-gray-600 max-w-32 truncate">{{ $usuarioLogado->name }}</span>
+                class="flex flex-col items-center gap-0.5 rounded-lg px-1.5 py-0.5 hover:bg-white/10 transition cursor-pointer">
+            <span class="w-7 h-7 rounded-full bg-white text-[#10284A] flex items-center justify-center text-xs font-semibold">{{ $iniciais }}</span>
+            <span class="text-[11px] leading-tight font-medium text-slate-200 max-w-32 truncate">{{ $usuarioLogado->name }}</span>
         </button>
 
         <div id="perfil-menu" class="hidden absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">

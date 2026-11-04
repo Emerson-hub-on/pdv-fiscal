@@ -25,7 +25,7 @@
      ícones) através da classe 'sidebar-oculta' no <body> — a mesma classe que
      já é definida via @section('body-class', 'sidebar-oculta') nas telas de
      criar/editar nota, e que também pode ser alternada pelo botão do topo. -->
-<aside id="nav-principal" class="bg-gray-900 fixed top-0 left-0 h-screen w-50 flex flex-col z-40 overflow-y-auto transition-[width] duration-200 [.sidebar-oculta_&]:w-16 [.sem-sidebar_&]:hidden">
+<aside id="nav-principal" class="bg-[#10284A] fixed top-0 left-0 h-screen w-50 flex flex-col z-40 overflow-y-auto transition-[width] duration-200 [.sidebar-oculta_&]:w-16 [.sem-sidebar_&]:hidden">
     <div class="px-3 py-4 border-b border-white/10 shrink-0 flex items-center justify-between [.sidebar-oculta_&]:justify-center">
         <div class="overflow-hidden flex items-center gap-1.5 [.sidebar-oculta_&]:hidden">
             @include('partials.logo-simbolo', ['tamanho' => 26, 'rotulo' => 'Cyberly Sistema'])
@@ -73,7 +73,7 @@
                         </button>
 
                         <div id="sub-produtos" data-flyout data-botao="btn-produtos"
-                            class="hidden fixed bg-gray-900 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                            class="hidden fixed bg-[#10284A] border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
                             <a href="{{ route('produtos.index') }}"
                             class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                                 Cadastros
@@ -141,7 +141,7 @@
                         </button>
 
                         <div id="sub-usuarios" data-flyout data-botao="btn-usuarios"
-                            class="hidden fixed bg-gray-900 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                            class="hidden fixed bg-[#10284A] border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
                             <a href="{{ route('usuarios.index', 'caixa') }}"
                             class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                                 Operador de Caixa
@@ -175,7 +175,7 @@
                     </button>
 
                     <div id="sub-transportadoras" data-flyout data-botao="btn-transportadoras"
-                        class="hidden fixed bg-gray-900 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                        class="hidden fixed bg-[#10284A] border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
                         <a href="{{ route('transportadores.index') }}"
                         class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                             Transportadoras
@@ -219,7 +219,7 @@
                     </button>
 
                     <!-- Flyout lateral: 'fixed' + posição calculada via JS, para escapar do overflow-y-auto do menu -->
-                    <div id="sub-notafiscal" data-flyout data-botao="btn-notafiscal" class="hidden fixed bg-gray-900 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                    <div id="sub-notafiscal" data-flyout data-botao="btn-notafiscal" class="hidden fixed bg-[#10284A] border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
                         <a href="{{ route('notasfiscais.index') }}"
                         class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                             Saída
@@ -254,7 +254,7 @@
                     </button>
 
                     <div id="sub-mdfe" data-flyout data-botao="btn-mdfe"
-                        class="hidden fixed bg-gray-900 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                        class="hidden fixed bg-[#10284A] border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
                         <a href="{{ route('mdfes.index') }}"
                         class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                             Manifestos
@@ -277,7 +277,7 @@
                     </button>
 
                     <div id="sub-relatorio-faturamento" data-flyout data-botao="btn-relatorio-faturamento"
-                         class="hidden fixed bg-gray-900 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                         class="hidden fixed bg-[#10284A] border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
                         <a href="{{ route('faturamento.relatorios.saida.index') }}"
                         class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                             Saída
@@ -332,7 +332,7 @@
                         </button>
 
                         <div id="sub-relatorio-financeiro" data-flyout data-botao="btn-relatorio-financeiro"
-                             class="hidden fixed bg-gray-900 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                             class="hidden fixed bg-[#10284A] border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
                             <a href="{{ route('financeiro.relatorios.contas-pagar.index') }}"
                                class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                                 Contas a pagar
@@ -388,7 +388,7 @@
                         </button>
 
                         <div id="sub-relatorio-pedidos" data-flyout data-botao="btn-relatorio-pedidos"
-                             class="hidden fixed bg-gray-900 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                             class="hidden fixed bg-[#10284A] border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
                             <a href="{{ route('pedidos.relatorios.venda.index') }}"
                                class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                                 Pedido de venda
@@ -431,7 +431,7 @@
                         </button>
 
                         <div id="sub-relatorio-vendas" data-flyout data-botao="btn-relatorio-vendas"
-                             class="hidden fixed bg-gray-900 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                             class="hidden fixed bg-[#10284A] border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
                             <a href="{{ route('relatorios.vendas.detalhada.index') }}"
                                class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                                 Detalhada
@@ -470,7 +470,7 @@
                         </button>
 
                         <div id="sub-relatorio-graficos" data-flyout data-botao="btn-relatorio-graficos"
-                             class="hidden fixed bg-gray-900 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                             class="hidden fixed bg-[#10284A] border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
                             <a href="{{ route('relatorios.graficos.comparativo-mensal.index') }}"
                                class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                                 Comparativo mensal de vendas
@@ -497,7 +497,7 @@
                         </button>
 
                         <div id="sub-relatorio-caixa" data-flyout data-botao="btn-relatorio-caixa"
-                             class="hidden fixed bg-gray-900 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                             class="hidden fixed bg-[#10284A] border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
                             <a href="{{ route('relatorios.caixa.abertura') }}"
                                class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                                 Abertura
@@ -540,7 +540,7 @@
                         </button>
 
                         <div id="sub-sped" data-flyout data-botao="btn-sped"
-                             class="hidden fixed bg-gray-900 border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                             class="hidden fixed bg-[#10284A] border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
                             <a href="{{ route('sped.index') }}"
                                class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                                 Gerar SPED
@@ -642,14 +642,16 @@
             @endphp
 
         {{-- Cabeçalho do topo (do menu até a borda direita): caminho da tela à esquerda, perfil do usuário à direita --}}
-        <header class="h-14 px-6 bg-white border-b border-gray-200 shadow-sm flex items-center justify-between gap-4">
-            <div class="flex items-center gap-2 min-w-0 text-sm text-gray-500">
+        {{-- Azul-marinho com textos claros; as telas que montam o próprio caminho (@section breadcrumb) usam
+             text-gray-300/700, que aqui dentro viram tons claros --}}
+        <header class="h-14 px-6 bg-[#10284A] border-b border-white/10 shadow-sm flex items-center justify-between gap-4">
+            <div class="flex items-center gap-2 min-w-0 text-sm text-slate-300 [&_.text-gray-300]:text-slate-400 [&_.text-gray-700]:text-white">
                 @hasSection('breadcrumb')
                     @yield('breadcrumb')
                 @elseif ($breadcrumbAuto)
                     <span>{{ $breadcrumbAuto[0] }}</span>
-                    <span class="text-gray-300">›</span>
-                    <span class="text-gray-700 font-medium truncate">{{ $breadcrumbAuto[1] }}</span>
+                    <span class="text-slate-400">›</span>
+                    <span class="text-white font-medium truncate">{{ $breadcrumbAuto[1] }}</span>
                 @endif
             </div>
             <div class="[.sem-sidebar_&]:hidden">

@@ -11,6 +11,20 @@
 
 $historico = [
     [
+        'versao' => '1.1.3',
+        'data' => '2026-11-04',
+        'itens' => [
+            'Painel administrativo: menu lateral e submenus em azul-marinho, iguais à barra do topo.',
+        ],
+    ],
+    [
+        'versao' => '1.1.2',
+        'data' => '2026-11-04',
+        'itens' => [
+            'Painel administrativo: barra do topo em azul-marinho, com o caminho da tela e o perfil em tons claros.',
+        ],
+    ],
+    [
         'versao' => '1.1.1',
         'data' => '2026-11-04',
         'itens' => [
