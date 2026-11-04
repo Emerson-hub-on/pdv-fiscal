@@ -11,6 +11,20 @@
 
 $historico = [
     [
+        'versao' => '1.1.5',
+        'data' => '2026-11-04',
+        'itens' => [
+            'Caixa: cabeçalho da tabela de itens da venda em azul-marinho, com os títulos das colunas em tom claro.',
+        ],
+    ],
+    [
+        'versao' => '1.1.4',
+        'data' => '2026-11-04',
+        'itens' => [
+            'Caixa: cabeçalho da tela de vendas e da tela de pagamento em azul-marinho, com botões e perfil do operador em tons claros.',
+        ],
+    ],
+    [
         'versao' => '1.1.3',
         'data' => '2026-11-04',
         'itens' => [

@@ -416,8 +416,8 @@
                 <col class="w-28">
                 <col class="w-32">
             </colgroup>
-            <thead class="bg-slate-800 sticky top-0 z-10">
-                <tr class="text-left text-xs text-slate-300 uppercase tracking-wide">
+            <thead class="bg-[#10284A] sticky top-0 z-10">
+                <tr class="text-left text-xs text-slate-100 uppercase tracking-wide">
                     <th class="py-3 pl-4">Item</th>
                     <th class="py-3 px-2">Produto</th>
                     <th class="py-3 px-2">Qtd</th>

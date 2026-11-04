@@ -1,12 +1,12 @@
 {{-- Cabeçalho exclusivo da tela do PDV. Usa $caixa, herdado da view que o inclui. --}}
-<div class="bg-linear-to-r from-slate-800 via-slate-900 to-slate-900
+<div class="bg-[#10284A]
             shadow-lg shrink-0">
     <div class="flex justify-between items-center px-6 py-4 border-b border-white/10">
         <div class="flex items-center gap-4">
         @include('partials.logo-simbolo', ['tamanho' => 40, 'rotulo' => 'Cyberly Sistema'])
         <div>
             <h1 class="text-xl font-bold text-white tracking-tight">{{ $caixa->pdv->nome }}</h1>
-            <p class="text-xs text-slate-400 mt-0.5">
+            <p class="text-xs text-slate-300 mt-0.5">
                 Série {{ $caixa->pdv->serie_nfce }} · Próxima NFC-e nº {{ $caixa->pdv->proximoNumeroNfce() }}
             </p>
             @unless ($caixa->pdv->emissao_local)
@@ -21,16 +21,16 @@
 
     <div class="flex flex-wrap gap-2 px-6 py-3 bg-black/20">
         <button onclick="abrirModalContingencias()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
+                class="bg-white/10 hover:bg-white/20 text-white cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
             ⚠️ Contingências <span class="opacity-60">F1</span>
         </button>
         <button onclick="abrirModalInutilizacao()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
+                class="bg-white/10 hover:bg-white/20 text-white cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
             Inutilizar <span class="opacity-60">F2</span>
         </button>
         <div class="relative">
             <button onclick="toggleDropdownCancelamento()" id="btn-cancelamento-main"
-                    class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
+                    class="bg-white/10 hover:bg-white/20 text-white cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
                 Cancelamento <span class="opacity-60">F3</span> ▾
             </button>
             <!-- Adicionado id no container do menu -->
@@ -51,16 +51,16 @@
         </div>
 
         <button onclick="abrirModalDescontoItem()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
+                class="bg-white/10 hover:bg-white/20 text-white cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
             Desconto Item <span class="opacity-60">F4</span>
         </button>
         <button onclick="abrirModalPedidos()"
-                class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
+                class="bg-white/10 hover:bg-white/20 text-white cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
             Puxar Pedido <span class="opacity-60">F6</span>
         </button>
         <div class="relative">
             <button onclick="toggleDropdownImpressao()" id="btn-impressao-main"
-                    class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
+                    class="bg-white/10 hover:bg-white/20 text-white cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
                 Impressão <span class="opacity-60">F7</span> ▾
             </button>
             <div id="dropdown-impressao" class="absolute hidden bg-slate-200 rounded-lg shadow-xl mt-2 w-56 overflow-hidden z-50 border border-white/10">
@@ -76,7 +76,7 @@
         </div>
         <div class="relative">
             <button type="button" onclick="toggleDropdownOpcoes()"
-                    class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
+                    class="bg-white/10 hover:bg-white/20 text-white cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
                 Opções <span class="opacity-60">F8</span> ▾
             </button>
             <div id="dropdown-opcoes" class="absolute hidden bg-slate-200 rounded-lg shadow-xl mt-2 w-52 overflow-hidden z-50 border border-white/10">

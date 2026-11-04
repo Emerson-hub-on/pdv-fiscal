@@ -10,8 +10,8 @@
     <div class="relative shrink-0" id="perfil-operador">
         <button type="button" onclick="alternarMenuOperador(event)" aria-haspopup="true" aria-expanded="false" id="perfil-operador-botao"
                 class="flex flex-col items-center gap-0.5 rounded-lg px-2 py-1 hover:bg-white/10 transition cursor-pointer">
-            <span class="w-8 h-8 rounded-full bg-purple-500/30 text-white flex items-center justify-center text-xs font-semibold ring-1 ring-white/20">{{ $iniciaisOperador }}</span>
-            <span class="text-[11px] leading-tight font-medium text-slate-300 max-w-36 truncate">{{ $operador->name }}</span>
+            <span class="w-8 h-8 rounded-full bg-white text-[#10284A] flex items-center justify-center text-xs font-semibold ring-1 ring-white/20">{{ $iniciaisOperador }}</span>
+            <span class="text-[11px] leading-tight font-medium text-slate-200 max-w-36 truncate">{{ $operador->name }}</span>
         </button>
 
         <div id="perfil-operador-menu" class="hidden absolute right-0 mt-1 w-56 bg-slate-200 rounded-lg shadow-xl z-50 overflow-hidden border border-white/10">

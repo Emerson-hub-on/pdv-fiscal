@@ -5,24 +5,24 @@
 @section('conteudo')
 <div class="max-w-4xl mx-auto pt-32">
     <div class="fixed top-0 left-0 right-0 z-50
-            bg-linear-to-r from-slate-800 via-slate-900 to-slate-900
+            bg-[#10284A]
             shadow-lg">
         <div class="flex justify-between items-center px-6 py-4">
             <div>
                 <h1 class="text-xl font-bold text-white tracking-tight">Pagamento</h1>
-                <p class="text-xs text-slate-400 mt-0.5">Finalize a venda ou volte para ajustar os itens</p>
+                <p class="text-xs text-slate-300 mt-0.5">Finalize a venda ou volte para ajustar os itens</p>
             </div>
             <div class="flex gap-2">
                 <button onclick="abrirModalCliente()"
-                        class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
+                        class="bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
                     <span id="btn-cliente-label">Adicionar consumidor</span> <span class="opacity-60 text-xs">F4</span>
                 </button>
                 <button onclick="abrirModalDescontoGlobal()"
-                        class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
+                        class="bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
                     Desconto Geral <span class="opacity-60 text-xs">F5</span>
                 </button>
                 <button onclick="abrirModalConfirmarVoltar()"
-                        class="bg-purple-500/20 hover:bg-purple-500/30 text-slate-300 text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
+                        class="bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
                     ← Voltar aos itens
                 </button>
             </div>
