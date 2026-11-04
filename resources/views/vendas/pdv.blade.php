@@ -1013,8 +1013,8 @@ linhasBuscaDiv.innerHTML = resultadosAtuais.map((op, index) => {
         <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
             data-index="${index}"
             onclick="selecionarResultado(${index})">
-            <td class="py-3 px-2 font-mono text-sm truncate ${destacado ? 'text-slate-300' : 'text-gray-500'}">${codigo}</td>
-            <td class="py-3 px-2 font-medium truncate" title="${nome}">${nome}</td>
+            <td class="py-3 px-2 font-mono text-sm truncate ${destacado ? 'text-slate-300' : 'text-gray-500'}">${escHtml(codigo)}</td>
+            <td class="py-3 px-2 font-medium truncate" title="${escHtml(nome)}">${escHtml(nome)}</td>
             <td class="py-3 px-2 whitespace-nowrap ${destacado ? 'text-emerald-300' : 'text-emerald-600'} font-semibold">R$ ${preco}</td>
             <td class="py-3 px-2 ${destacado ? 'text-slate-300' : 'text-gray-500'}">${estoque}</td>
         </tr>
@@ -1086,7 +1086,7 @@ tbody.innerHTML = itensCalculados.map((item, index) => `
         <td class="py-3 pl-4 text-gray-400 font-mono text-sm">${index + 1}</td>
         <td class="py-3 px-2 font-medium">
             <div class="flex items-center gap-2 min-w-0">
-                <span class="truncate ${item.cancelado ? 'text-red-500 line-through' : 'text-gray-800'}" title="${item.nome}">${item.nome}</span>
+                <span class="truncate ${item.cancelado ? 'text-red-500 line-through' : 'text-gray-800'}" title="${escHtml(item.nome)}">${escHtml(item.nome)}</span>
                 ${item.cancelado ? '<span class="shrink-0 text-red-600 text-xs font-bold">✕ Cancelado</span>' : ''}
             </div>
         </td>
@@ -1182,12 +1182,12 @@ async function carregarContingencias() {
         <tr id="detalhe-${v.id}" class="hidden bg-gray-50">
             <td></td>
             <td colspan="6" class="px-4 py-3 text-sm">
-                <p class="text-red-600 mb-2"><strong>Motivo:</strong> ${v.motivo ?? 'Não informado'}</p>
+                <p class="text-red-600 mb-2"><strong>Motivo:</strong> ${escHtml(v.motivo ?? 'Não informado')}</p>
                 ${v.situacao === 'rejeitada'
                     ? '<p class="text-xs text-gray-500 mb-2">Sem validade fiscal: corrija o problema (cadastro do produto, CFOP...) e reenvie, ou inutilize o número.</p>'
                     : '<p class="text-xs text-gray-500 mb-2">Documento válido emitido sem a SEFAZ: será transmitido no reenvio.</p>'}
-                <p class="text-gray-600"><strong>Itens:</strong> ${v.itens.join(', ')}</p>
-                ${v.chave_nfe ? `<p class="text-xs text-gray-400 break-all mt-2">Chave: ${v.chave_nfe}</p>` : ''}
+                <p class="text-gray-600"><strong>Itens:</strong> ${escHtml(v.itens.join(', '))}</p>
+                ${v.chave_nfe ? `<p class="text-xs text-gray-400 break-all mt-2">Chave: ${escHtml(v.chave_nfe)}</p>` : ''}
             </td>
         </tr>
     `).join('');
@@ -1292,7 +1292,7 @@ function marcarLinhaEmitida(id) {
 function atualizarMotivoLinha(id, motivo) {
     const detalhe = document.getElementById(`detalhe-${id}`);
     if (detalhe) {
-        detalhe.querySelector('p').innerHTML = `<strong>Motivo:</strong> ${motivo}`;
+        detalhe.querySelector('p').innerHTML = `<strong>Motivo:</strong> ${escHtml(motivo)}`;
         detalhe.classList.remove('hidden'); // expande automaticamente pra mostrar o novo motivo
     }
 }
@@ -1413,8 +1413,8 @@ async function carregarVendasCancelamento() {
         </tr>
         <tr id="cancel-detalhe-${v.id}" class="hidden bg-gray-50">
             <td colspan="4" class="px-4 py-3 text-sm">
-                <p class="text-gray-600 mb-1"><strong>Itens:</strong> ${v.itens.join(', ')}</p>
-                <p class="text-xs text-gray-400 break-all mb-3">Chave: ${v.chave_nfe ?? '—'}</p>
+                <p class="text-gray-600 mb-1"><strong>Itens:</strong> ${escHtml(v.itens.join(', '))}</p>
+                <p class="text-xs text-gray-400 break-all mb-3">Chave: ${escHtml(v.chave_nfe ?? '—')}</p>
 
                 <label class="block text-xs font-medium mb-1">Justificativa (mín. 15 caracteres)</label>
                 <textarea id="just-${v.id}" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-2 text-sm"></textarea>

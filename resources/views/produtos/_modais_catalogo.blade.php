@@ -379,13 +379,13 @@ function buscarCatalogo() {
         vazio.classList.add('hidden');
         lista.innerHTML = items.map(i => `
             <li class="py-2 px-1 hover:bg-blue-50 rounded text-sm flex justify-between items-center gap-2 group">
-                <span class="flex-1 cursor-pointer" onclick="selecionarCatalogo(${i.id}, '${i.nome.replace(/'/g, "\\'")}')">
-                    ${i.nome}
+                <span class="flex-1 cursor-pointer" onclick="selecionarCatalogo(${i.id}, ${jsArg(i.nome)})">
+                    ${escHtml(i.nome)}
                 </span>
                 <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                    <button type="button" onclick="editarCatalogo(${i.id}, '${i.nome.replace(/'/g, "\\'")}')"
+                    <button type="button" onclick="editarCatalogo(${i.id}, ${jsArg(i.nome)})"
                             class="text-xs text-blue-500 hover:underline px-1">Editar</button>
-                    <button type="button" onclick="excluirCatalogo(${i.id}, '${i.nome.replace(/'/g, "\\'")}')"
+                    <button type="button" onclick="excluirCatalogo(${i.id}, ${jsArg(i.nome)})"
                             class="text-xs text-red-500 hover:underline px-1">Excluir</button>
                 </div>
             </li>
@@ -478,13 +478,13 @@ function buscarTributacao() {
         vazio.classList.add('hidden');
         lista.innerHTML = items.map(i => `
             <tr class="border-b hover:bg-blue-50 cursor-pointer"
-                onclick="selecionarTributacao(${i.id}, '${i.descricao.replace(/'/g, "\\'")}', '${i.cfop}', '${i.csosn ?? i.cst_icms}', ${i.aliquota_icms})">
+                onclick="selecionarTributacao(${i.id}, ${jsArg(i.descricao)}, ${jsArg(i.cfop)}, ${jsArg(i.csosn ?? i.cst_icms)}, ${i.aliquota_icms})">
                 <td class="py-2 pr-4">
-                    <p class="font-medium">${i.descricao}</p>
-                    ${i.observacao ? `<p class="text-xs text-gray-400">${i.observacao}</p>` : ''}
+                    <p class="font-medium">${escHtml(i.descricao)}</p>
+                    ${i.observacao ? `<p class="text-xs text-gray-400">${escHtml(i.observacao)}</p>` : ''}
                 </td>
-                <td class="py-2 pr-4 font-mono">${i.cfop}</td>
-                <td class="py-2 pr-4 font-mono">${i.csosn ?? i.cst_icms ?? '-'}</td>
+                <td class="py-2 pr-4 font-mono">${escHtml(i.cfop)}</td>
+                <td class="py-2 pr-4 font-mono">${escHtml(i.csosn ?? i.cst_icms ?? '-')}</td>
                 <td class="py-2">${i.aliquota_icms > 0 ? i.aliquota_icms + '%' : '-'}</td>
             </tr>
         `).join('');
@@ -570,24 +570,25 @@ function buscarNcm() {
         vazio.classList.add('hidden');
 
         const highlight = (texto, termo) => {
-            if (!termo) return texto;
-            const regex = new RegExp(`(${termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-            return texto.replace(regex, '<mark class="bg-yellow-200 rounded-sm">$1</mark>');
+            const textoSeguro = escHtml(texto);
+            if (!termo) return textoSeguro;
+            const regex = new RegExp(`(${escHtml(termo).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return textoSeguro.replace(regex, '<mark class="bg-yellow-200 rounded-sm">$1</mark>');
         };
 
         lista.innerHTML = items.map(i => `
             <tr class="border-b hover:bg-blue-50 group">
                 <td class="py-2 font-mono text-xs cursor-pointer"
-                    onclick="selecionarNcm(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
+                    onclick="selecionarNcm(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)})">
                     ${highlight(i.codigo, termo)}
                 </td>
                 <td class="py-2 text-sm cursor-pointer"
-                    onclick="selecionarNcm(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
+                    onclick="selecionarNcm(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)})">
                     ${highlight(i.descricao, termo)}
                 </td>
                 <td class="py-2 w-28">
                     <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition justify-end">
-                        <button type="button" onclick="editarNcm(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')"
+                        <button type="button" onclick="editarNcm(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)})"
                                 class="text-xs text-blue-500 hover:underline">Editar</button>
                         <button type="button" onclick="excluirNcm(${i.id})"
                                 class="text-xs text-red-500 hover:underline">Excluir</button>
@@ -720,24 +721,25 @@ function buscarCest() {
         vazio.classList.add('hidden');
 
         const highlight = (texto, termo) => {
-            if (!termo) return texto;
-            const regex = new RegExp(`(${termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-            return texto.replace(regex, '<mark class="bg-yellow-200 rounded-sm">$1</mark>');
+            const textoSeguro = escHtml(texto);
+            if (!termo) return textoSeguro;
+            const regex = new RegExp(`(${escHtml(termo).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return textoSeguro.replace(regex, '<mark class="bg-yellow-200 rounded-sm">$1</mark>');
         };
 
         lista.innerHTML = items.map(i => `
             <tr class="border-b hover:bg-blue-50 group">
                 <td class="py-2 font-mono text-xs cursor-pointer"
-                    onclick="selecionarCest(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
+                    onclick="selecionarCest(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)})">
                     ${highlight(i.codigo, termo)}
                 </td>
                 <td class="py-2 text-sm cursor-pointer"
-                    onclick="selecionarCest(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
+                    onclick="selecionarCest(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)})">
                     ${highlight(i.descricao, termo)}
                 </td>
                 <td class="py-2 w-28">
                     <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition justify-end">
-                        <button type="button" onclick="editarCest(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')"
+                        <button type="button" onclick="editarCest(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)})"
                                 class="text-xs text-blue-500 hover:underline">Editar</button>
                         <button type="button" onclick="excluirCest(${i.id})"
                                 class="text-xs text-red-500 hover:underline">Excluir</button>
@@ -882,29 +884,30 @@ function buscarClassTrib() {
         vazio.classList.add('hidden');
 
         const highlight = (texto, termo) => {
-            if (!termo || !texto) return texto ?? '';
-            const regex = new RegExp(`(${termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-            return texto.replace(regex, '<mark class="bg-yellow-200 rounded-sm">$1</mark>');
+            const textoSeguro = escHtml(texto);
+            if (!termo || !texto) return textoSeguro;
+            const regex = new RegExp(`(${escHtml(termo).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return textoSeguro.replace(regex, '<mark class="bg-yellow-200 rounded-sm">$1</mark>');
         };
 
         lista.innerHTML = items.map(i => `
             <tr class="border-b hover:bg-blue-50 group">
                 <td class="py-2 font-mono text-xs cursor-pointer"
-                    onclick="selecionarClassTrib(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
+                    onclick="selecionarClassTrib(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)})">
                     ${highlight(i.codigo, termo)}
                 </td>
                 <td class="py-2 font-mono text-xs text-gray-500 cursor-pointer"
-                    onclick="selecionarClassTrib(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
+                    onclick="selecionarClassTrib(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)})">
                     ${highlight(i.cst_codigo, termo)}
                 </td>
                 <td class="py-2 text-sm cursor-pointer"
-                    onclick="selecionarClassTrib(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
+                    onclick="selecionarClassTrib(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)})">
                     ${highlight(i.descricao, termo)}
-                    ${i.cst_descricao ? `<p class="text-xs text-gray-400">${i.cst_descricao}</p>` : ''}
+                    ${i.cst_descricao ? `<p class="text-xs text-gray-400">${escHtml(i.cst_descricao)}</p>` : ''}
                 </td>
                 <td class="py-2 w-28">
                     <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition justify-end">
-                        <button type="button" onclick="editarClassTrib(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}', '${i.cst_codigo}', '${(i.cst_descricao ?? '').replace(/'/g, "\\'")}')"
+                        <button type="button" onclick="editarClassTrib(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)}, ${jsArg(i.cst_codigo)}, ${jsArg((i.cst_descricao ?? ''))})"
                                 class="text-xs text-blue-500 hover:underline">Editar</button>
                         <button type="button" onclick="excluirClassTrib(${i.id})"
                                 class="text-xs text-red-500 hover:underline">Excluir</button>
@@ -1063,18 +1066,18 @@ function buscarPisCofins() {
         lista.innerHTML = items.map(i => `
             <tr class="border-b hover:bg-blue-50 group">
                 <td class="py-2 font-mono text-xs cursor-pointer"
-                    onclick="selecionarPisCofins(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
-                    ${i.codigo}
+                    onclick="selecionarPisCofins(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)})">
+                    ${escHtml(i.codigo)}
                 </td>
                 <td class="py-2 text-sm cursor-pointer"
-                    onclick="selecionarPisCofins(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
-                    ${i.descricao}
+                    onclick="selecionarPisCofins(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)})">
+                    ${escHtml(i.descricao)}
                 </td>
                 <td class="py-2 text-sm text-gray-500">${fmtAliquota(i.aliquota_pis)}</td>
                 <td class="py-2 text-sm text-gray-500">${fmtAliquota(i.aliquota_cofins)}</td>
                 <td class="py-2 w-28">
                     <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition justify-end">
-                        <button type="button" onclick="editarPisCofins(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}', ${i.aliquota_pis ?? 'null'}, ${i.aliquota_cofins ?? 'null'})"
+                        <button type="button" onclick="editarPisCofins(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)}, ${i.aliquota_pis ?? 'null'}, ${i.aliquota_cofins ?? 'null'})"
                                 class="text-xs text-blue-500 hover:underline">Editar</button>
                         <button type="button" onclick="excluirPisCofins(${i.id})"
                                 class="text-xs text-red-500 hover:underline">Excluir</button>
@@ -1232,21 +1235,21 @@ function buscarIpi() {
         lista.innerHTML = items.map(i => `
             <tr class="border-b hover:bg-blue-50 group">
                 <td class="py-2 font-mono text-xs cursor-pointer"
-                    onclick="selecionarIpi(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
-                    ${i.codigo}
+                    onclick="selecionarIpi(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)})">
+                    ${escHtml(i.codigo)}
                 </td>
                 <td class="py-2 font-mono text-xs text-gray-500 cursor-pointer"
-                    onclick="selecionarIpi(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
-                    ${i.cenq}
+                    onclick="selecionarIpi(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)})">
+                    ${escHtml(i.cenq)}
                 </td>
                 <td class="py-2 text-sm cursor-pointer"
-                    onclick="selecionarIpi(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}')">
-                    ${i.descricao}
+                    onclick="selecionarIpi(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)})">
+                    ${escHtml(i.descricao)}
                 </td>
                 <td class="py-2 text-sm text-gray-500">${fmtAliquota(i.aliquota)}</td>
                 <td class="py-2 w-28">
                     <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition justify-end">
-                        <button type="button" onclick="editarIpi(${i.id}, '${i.codigo}', '${i.descricao.replace(/'/g, "\\'")}', '${i.cenq}', ${i.aliquota ?? 'null'})"
+                        <button type="button" onclick="editarIpi(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)}, ${jsArg(i.cenq)}, ${i.aliquota ?? 'null'})"
                                 class="text-xs text-blue-500 hover:underline">Editar</button>
                         <button type="button" onclick="excluirIpi(${i.id})"
                                 class="text-xs text-red-500 hover:underline">Excluir</button>

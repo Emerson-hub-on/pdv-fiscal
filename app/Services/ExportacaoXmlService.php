@@ -102,8 +102,20 @@ class ExportacaoXmlService
             'caminho' => $real,
             'pai' => $pai !== $real ? $pai : '',   // '' = voltar para "Este computador"
             'pastas' => $pastas,
-            'gravavel' => is_writable($real),
+            // A pasta do sistema aparece na navegação, mas não pode ser escolhida (ver gravarNaPasta).
+            // No Windows o is_writable() erra: Área de trabalho, Documentos e Downloads têm o atributo "somente leitura"
+            // (usado só para o ícone da pasta) e dão false, embora aceitem gravação. Lá, uma falha real aparece ao exportar.
+            'gravavel' => !$this->dentroDoSistema($real) && (DIRECTORY_SEPARATOR === '\\' || is_writable($real)),
         ];
+    }
+
+    /** A pasta é a do próprio sistema (ou fica dentro dela)? */
+    public function dentroDoSistema(string $pasta): bool
+    {
+        $sistema = realpath(base_path());
+        $normalizar = fn (string $c) => rtrim(strtolower(str_replace('\\', '/', $c)), '/') . '/';
+
+        return $sistema !== false && str_starts_with($normalizar($pasta), $normalizar($sistema));
     }
 
     /**
@@ -164,6 +176,12 @@ class ExportacaoXmlService
         if ($pasta === false || !is_dir($pasta)) {
             @unlink($temporario);
             abort(response()->json(['erro' => 'A pasta de destino não existe mais. Escolha outra.'], 422));
+        }
+
+        // Nunca dentro da pasta do sistema: em public/ o zip (com CPF/CNPJ de clientes) ficaria baixável sem login
+        if ($this->dentroDoSistema($pasta)) {
+            @unlink($temporario);
+            abort(response()->json(['erro' => 'Escolha uma pasta fora da pasta do sistema (ex.: Área de trabalho, Documentos ou um pen drive).'], 422));
         }
 
         $arquivoZip = $this->juntar($pasta, $nome . '.zip');

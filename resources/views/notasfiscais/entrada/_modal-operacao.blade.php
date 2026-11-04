@@ -145,7 +145,7 @@ const OP_URL_ATUALIZAR = @json(route('entradas-nota.operacoes.update', '__ID__')
 document.querySelectorAll('[data-rotulo-cst]').forEach(el => el.textContent = OP_ROTULO_CST);
 document.querySelectorAll('.op-col-credito').forEach(el => el.classList.toggle('hidden', OP_DADOS.regime !== 'normal'));
 document.getElementById('op-cfops-entrada').innerHTML = OP_DADOS.cfopsEntrada
-    .map(c => `<option value="${c.codigo}">${c.codigo} — ${String(c.descricao).replace(/[<>"&]/g, '')}</option>`).join('');
+    .map(c => `<option value="${escHtml(c.codigo)}">${escHtml(c.codigo)} — ${escHtml(c.descricao)}</option>`).join('');
 
 function opEsc(v) {
     return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

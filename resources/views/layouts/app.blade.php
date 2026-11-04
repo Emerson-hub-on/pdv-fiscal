@@ -10,6 +10,7 @@
         <title>Cyberly Sistema</title>
     @endif
     @include('partials.favicon')
+    @include('partials.escape-html')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-100 text-gray-800 min-h-screen relative @yield('body-class')">

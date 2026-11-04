@@ -31,8 +31,10 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">CNPJ <span class="text-red-500">*</span></label>
-                    <input type="text" name="cnpj" maxlength="14" value="{{ old('cnpj', $empresa->cnpj) }}" required
+                    <input type="text" name="cnpj" id="campo-cnpj-empresa" maxlength="18" value="{{ old('cnpj', $empresa->cnpj) }}" required
+                           placeholder="00.000.000/0000-00"
                            class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                    <p id="cnpj-empresa-status" class="mt-1 text-xs text-gray-500">Ao sair do campo (ou com Enter), os dados da empresa são buscados pelo CNPJ.</p>
                 </div>
 
                 <div>
@@ -99,7 +101,7 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">CEP <span class="text-red-500">*</span></label>
-                    <input type="text" name="cep" maxlength="8" value="{{ old('cep', $empresa->cep) }}" required
+                    <input type="text" name="cep" maxlength="9" value="{{ old('cep', $empresa->cep) }}" required placeholder="00000-000"
                            class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
                 </div>
 
@@ -183,7 +185,104 @@
         </div>
     </form>
 
+    {{-- Consulta de CNPJ (mesma do cadastro de clientes) --}}
+    <div id="modal-consulta-cnpj-empresa" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl shadow-lg px-8 py-6 flex flex-col items-center gap-3">
+            <svg class="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            <p class="text-sm font-medium text-gray-700">Buscando informações do CNPJ...</p>
+        </div>
+    </div>
+
+    {{-- Município ↔ código IBGE pela tabela de municípios, e endereço pelo CEP (mesmas peças do cadastro de clientes) --}}
+    @include('partials.municipio-autocomplete', [
+        'municipio' => '[name="municipio"]',
+        'codigo'    => '[name="cod_municipio"]',
+        'uf'        => '[name="uf"]',
+    ])
+
+    @include('partials.cep-autocomplete', [
+        'cep'        => '[name="cep"]',
+        'logradouro' => '[name="logradouro"]',
+        'numero'     => '[name="numero"]',
+        'bairro'     => '[name="bairro"]',
+        'municipio'  => '[name="municipio"]',
+        'codigo'     => '[name="cod_municipio"]',
+        'uf'         => '[name="uf"]',
+    ])
+
     <script>
+        // CNPJ: ao sair do campo (ou com Enter) busca razão social, nome fantasia e endereço.
+        // Só preenche campos vazios, como no cadastro de clientes: editar a empresa não sobrescreve nada.
+        (() => {
+            const campoCnpj = document.getElementById('campo-cnpj-empresa');
+            const status = document.getElementById('cnpj-empresa-status');
+            const modal = document.getElementById('modal-consulta-cnpj-empresa');
+            let ultimoConsultado = ''; // evita repetir a consulta do mesmo CNPJ seguidamente
+
+            const preencherSeVazio = (nome, valor) => {
+                const campo = document.querySelector(`#tab-emp-geral [name="${nome}"], #tab-emp-endereco [name="${nome}"]`);
+                if (campo && !campo.value.trim() && valor) {
+                    campo.value = valor;
+                    return true;
+                }
+                return false;
+            };
+
+            const mensagem = (texto, cor) => {
+                status.textContent = texto;
+                status.className = 'mt-1 text-xs ' + cor;
+            };
+
+            async function consultar() {
+                const cnpj = campoCnpj.value.replace(/\D/g, '');
+                if (cnpj.length !== 14 || cnpj === ultimoConsultado) return;
+                ultimoConsultado = cnpj;
+
+                modal.classList.remove('hidden');
+                try {
+                    const resp = await fetch(`/api/consulta-cnpj/${cnpj}`, { headers: { Accept: 'application/json' } });
+                    const dados = await resp.json().catch(() => ({}));
+
+                    if (!resp.ok) {
+                        mensagem(dados.erro || 'Não foi possível consultar o CNPJ. Preencha os dados manualmente.', 'text-amber-700');
+                        return;
+                    }
+
+                    const preenchidos = [
+                        preencherSeVazio('razao_social', dados.nome),
+                        preencherSeVazio('nome_fantasia', dados.nome_fantasia),
+                        preencherSeVazio('cep', dados.cep),
+                        preencherSeVazio('logradouro', dados.logradouro),
+                        preencherSeVazio('numero', dados.numero),
+                        preencherSeVazio('complemento', dados.complemento),
+                        preencherSeVazio('bairro', dados.bairro),
+                        preencherSeVazio('municipio', dados.municipio),
+                        preencherSeVazio('cod_municipio', dados.cod_municipio),
+                        preencherSeVazio('uf', (dados.uf || '').toUpperCase()),
+                    ].filter(Boolean).length;
+
+                    mensagem(preenchidos
+                        ? `Dados encontrados: ${preenchidos} campo(s) preenchido(s). Confira também a aba Endereço e informe a Inscrição Estadual.`
+                        : 'CNPJ encontrado. Os campos já estavam preenchidos e não foram alterados.', 'text-green-700');
+                } catch (e) {
+                    mensagem('Erro ao consultar o CNPJ. Verifique a conexão com a internet.', 'text-red-600');
+                } finally {
+                    modal.classList.add('hidden');
+                }
+            }
+
+            campoCnpj.addEventListener('blur', consultar);
+            campoCnpj.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault(); // não envia o formulário
+                    consultar();
+                }
+            });
+        })();
+
         function trocarTabEmpresa(tab) {
             document.querySelectorAll('.tab-painel-emp').forEach(p => p.classList.add('hidden'));
             document.querySelectorAll('.tab-btn-emp').forEach(b => {

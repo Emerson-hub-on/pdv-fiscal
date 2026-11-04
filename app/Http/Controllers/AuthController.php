@@ -47,6 +47,7 @@ class AuthController extends Controller
             ])->withInput($request->only('modo'));
         }
 
+        // Sem limite de tentativas: o operador pode errar a senha quantas vezes precisar
         if (!$usuario || !Hash::check($credenciais['password'], $usuario->password)) {
             return back()->withErrors(['codigo' => 'Código ou senha inválidos.'])->withInput($request->only('modo'));
         }
@@ -70,6 +71,7 @@ class AuthController extends Controller
             ? redirect()->route('produtos.index')
             : redirect()->route('caixa.abrir-form');
     }
+
 
         // Mostra o nome do usuário na tela de login assim que o código é digitado
     public function nomePorCodigo(Request $request)

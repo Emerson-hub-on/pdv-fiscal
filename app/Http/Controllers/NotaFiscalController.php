@@ -712,6 +712,13 @@ class NotaFiscalController extends Controller
         abort_if(!$notaFiscal->cliente_id, 422, 'Selecione o cliente antes de emitir.');
         abort_if($notaFiscal->itens->count() === 0, 422, 'Adicione ao menos um item antes de emitir.');
 
+        // Confere o CFOP com o destino antes de ir à SEFAZ (evita a rejeição "CFOP de operação interna e idDest <> 1")
+        if ($erroCfop = $this->erroCfopDestino($notaFiscal)) {
+            $notaFiscal->update(['motivo_rejeicao' => $erroCfop]);
+
+            return back()->withErrors(['emissao' => $erroCfop]);
+        }
+
         try {
             DB::transaction(function () use ($notaFiscal) {
                 $serie = SerieNfe::ativas()->lockForUpdate()->firstOrFail();
@@ -770,7 +777,47 @@ class NotaFiscalController extends Controller
             ->with('sucesso', 'Nota fiscal emitida com sucesso!');
     }
 
-    
+    /**
+     * O 1º dígito do CFOP precisa bater com o destino da operação, que o NotaFiscalService define pela UF:
+     * cliente da mesma UF da empresa = interna (saída 5 / entrada 1); de outra UF = interestadual (saída 6 / entrada 2).
+     * A NF-e do painel sai como não presencial (indPres=9), então cliente de outra UF é sempre interestadual.
+     * Devolve a mensagem de erro, ou null se está tudo certo. CFOPs de exterior (3/7) não são conferidos aqui.
+     */
+    private function erroCfopDestino(NotaFiscal $notaFiscal): ?string
+    {
+        $notaFiscal->loadMissing('cliente', 'cfopSaida', 'itens.tributacao');
+
+        $ufEmpresa = strtoupper((string) \App\Models\Empresa::atual()->uf);
+        $ufCliente = strtoupper((string) $notaFiscal->cliente?->uf);
+        if ($ufEmpresa === '' || $ufCliente === '' || !$notaFiscal->cfopSaida) {
+            return null;
+        }
+
+        $interna = $ufCliente === $ufEmpresa;
+        $entrada = $notaFiscal->cfopSaida->tipo_operacao === 'entrada';
+        $esperado = $entrada ? ($interna ? '1' : '2') : ($interna ? '5' : '6');
+        $errado = $entrada ? ($interna ? '2' : '1') : ($interna ? '6' : '5');
+
+        $cfops = $notaFiscal->itens->map(fn ($item) => $item->cfopEfetivo($notaFiscal))
+            ->push($notaFiscal->cfopSaida->codigo)
+            ->unique()
+            ->filter(fn ($cfop) => str_starts_with((string) $cfop, $errado))
+            ->values();
+
+        if ($cfops->isEmpty()) {
+            return null;
+        }
+
+        $destino = $interna
+            ? "dentro do estado (cliente e empresa em {$ufEmpresa})"
+            : "para outro estado (cliente em {$ufCliente}, empresa em {$ufEmpresa})";
+        $sugestao = $esperado . substr((string) $cfops->first(), 1);
+
+        return "CFOP incompatível com o destino: a operação é {$destino}, então o CFOP deve começar com {$esperado} "
+            . "(ex.: {$sugestao}). Está como " . $cfops->implode(', ') . '. '
+            . ($interna ? 'Confira também a UF do cliente.' : 'Troque o CFOP da nota ou confira a UF do cliente.');
+    }
+
     public function formCancelar(NotaFiscal $notaFiscal)
     {
         abort_if($notaFiscal->status !== 'emitida', 403, 'Só é possível cancelar notas emitidas.');

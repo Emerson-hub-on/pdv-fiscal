@@ -1623,7 +1623,7 @@ function renderizarListaPagamento() {
 
     tbody.innerHTML = formasPagamentoCache.map(f => `
         <tr class="border-b border-gray-100 hover:bg-gray-50">
-            <td class="py-2 px-2 cursor-pointer" onclick="selecionarFormaPagamento(${f.id})">${f.descricao}</td>
+            <td class="py-2 px-2 cursor-pointer" onclick="selecionarFormaPagamento(${Number(f.id)})">${escHtml(f.descricao)}</td>
             <td class="py-2 px-2 text-right">
                 <button type="button" onclick="abrirFormEdicaoPagamento(${f.id})" class="text-blue-600 text-xs hover:underline">editar</button>
             </td>
@@ -1740,8 +1740,8 @@ function renderizarListaCfop() {
 
     tbody.innerHTML = cfopsCache.map(c => `
         <tr class="border-b border-gray-100 hover:bg-gray-50">
-            <td class="py-2 font-mono cursor-pointer" onclick="selecionarCfop(${c.id})">${c.codigo}</td>
-            <td class="py-2 cursor-pointer" onclick="selecionarCfop(${c.id})">${c.descricao}</td>
+            <td class="py-2 font-mono cursor-pointer" onclick="selecionarCfop(${c.id})">${escHtml(c.codigo)}</td>
+            <td class="py-2 cursor-pointer" onclick="selecionarCfop(${c.id})">${escHtml(c.descricao)}</td>
             <td class="py-2 text-center cursor-pointer text-xs" onclick="selecionarCfop(${c.id})">${c.tipo_operacao === 'entrada' ? 'Entrada' : 'Saída'}</td>
             <td class="py-2 text-center cursor-pointer" onclick="selecionarCfop(${c.id})">${c.movimenta_estoque ? 'Sim' : 'Não'}</td>
             <td class="py-2 text-right">
@@ -1956,8 +1956,8 @@ function renderizarResultadosNf() {
         return `
             <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
                 onclick="selecionarResultadoNf(${index})">
-                <td class="py-3 font-mono text-sm ${destacado ? 'text-slate-300' : 'text-gray-500'}">${codigo}</td>
-                <td class="py-3 font-medium">${p.nome}</td>
+                <td class="py-3 font-mono text-sm ${destacado ? 'text-slate-300' : 'text-gray-500'}">${escHtml(codigo)}</td>
+                <td class="py-3 font-medium">${escHtml(p.nome)}</td>
                 <td class="py-3 ${destacado ? 'text-emerald-300' : 'text-emerald-600'} font-semibold">R$ ${Number(p.preco_venda).toFixed(2)}</td>
                 <td class="py-3 font-medium">${p.estoque}</td>
             </tr>
@@ -2370,9 +2370,9 @@ function renderizarGridItens() {
             <tr class="cursor-pointer transition ${emEdicao ? 'bg-slate-100' : 'hover:bg-gray-50'}"
                 onclick="editarItemDaGrid(${index})" title="Clique para editar">
                 <td class="px-3 py-2 font-medium text-gray-500">${index + 1}</td>
-                <td class="px-3 py-2">${item.codigo ?? '—'}</td>
-                <td class="px-3 py-2">${item.codigo_barras ?? '—'}</td>
-                <td class="px-3 py-2"><div class="max-w-[16rem] truncate">${item.descricao}</div></td>
+                <td class="px-3 py-2">${escHtml(item.codigo ?? '—')}</td>
+                <td class="px-3 py-2">${escHtml(item.codigo_barras ?? '—')}</td>
+                <td class="px-3 py-2"><div class="max-w-[16rem] truncate">${escHtml(item.descricao)}</div></td>
                 <td class="px-3 py-2 font-mono">${cfopEfetivoItem(item)}</td>
                 <td class="px-3 py-2 font-mono">${item.cst_csosn ?? '—'}</td>
                 <td class="px-3 py-2 text-right">${item.quantidade}</td>
@@ -2387,7 +2387,7 @@ function renderizarGridItens() {
                 <td class="px-3 py-2 text-right">${item.aliquota_icms.toFixed(2)}%</td>
                 <td class="px-3 py-2 text-right">R$ ${item.valor_ipi.toFixed(2)}</td>
                 <td class="px-3 py-2 text-right">${item.aliquota_ipi.toFixed(2)}%</td>
-                <td class="px-3 py-2 text-xs font-mono">${refOrigem}</td>
+                <td class="px-3 py-2 text-xs font-mono">${escHtml(refOrigem)}</td>
             </tr>
         `;
     }).join('');

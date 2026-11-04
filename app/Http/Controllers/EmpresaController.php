@@ -15,6 +15,13 @@ class EmpresaController extends Controller
 
     public function salvar(Request $request)
     {
+        // A tela aceita CNPJ e CEP com máscara (00.000.000/0000-00, 00000-000); grava só os números
+        $request->merge([
+            'cnpj' => preg_replace('/\D/', '', (string) $request->input('cnpj')),
+            'cep' => preg_replace('/\D/', '', (string) $request->input('cep')),
+            'uf' => strtoupper(trim((string) $request->input('uf'))),
+        ]);
+
         $validado = $request->validate([
             'cnpj' => 'required|string|size:14',
             'razao_social' => 'required|string|max:255',

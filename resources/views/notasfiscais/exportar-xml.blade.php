@@ -203,7 +203,7 @@
             xmlEl('xml-voltar').disabled = !r.caminho;
             xmlEl('xml-usar-pasta').disabled = !r.caminho || r.gravavel === false;
             xmlEl('xml-aviso-pasta').textContent = r.caminho
-                ? (r.gravavel === false ? 'Esta pasta não permite gravação.' : '')
+                ? (r.gravavel === false ? 'Não é possível salvar nesta pasta (sem permissão ou é a pasta do sistema).' : '')
                 : 'Escolha um local para abrir.';
 
             lista.innerHTML = '';
