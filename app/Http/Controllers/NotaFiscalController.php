@@ -105,7 +105,22 @@ class NotaFiscalController extends Controller
             }
         }
 
-        $notaFiscal = DB::transaction(function () use ($dados, $vendaOrigemId) {
+        // Montagem a partir de pedido de venda: mesma ideia (uma NF-e por pedido, só pedido em aberto)
+        $pedidoOrigemId = (!$vendaOrigemId && $request->filled('pedido_venda_id')) ? (int) $request->input('pedido_venda_id') : null;
+        if ($pedidoOrigemId) {
+            $erro = \App\Services\MontagemNfePedidoService::erroPedidoParaMontagem(\App\Models\PedidoVenda::find($pedidoOrigemId));
+            if ($erro) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['pedido_venda_id' => $erro]);
+            }
+        }
+
+        // Montagem de devolução: guarda a nota de entrada e não deixa devolver mais do que foi comprado
+        $entradaOrigemId = (!$vendaOrigemId && !$pedidoOrigemId && $request->filled('entrada_nota_id')) ? (int) $request->input('entrada_nota_id') : null;
+        if ($entradaOrigemId) {
+            $this->validarDevolucao(\App\Models\EntradaNota::find($entradaOrigemId), $dados['itens']);
+        }
+
+        $notaFiscal = DB::transaction(function () use ($dados, $vendaOrigemId, $pedidoOrigemId, $entradaOrigemId) {
             $notaFiscal = NotaFiscal::create([
                 'cliente_id'                 => $dados['cliente_id'],
                 'natureza_operacao'          => $dados['natureza_operacao'],
@@ -119,8 +134,15 @@ class NotaFiscalController extends Controller
                 'motivo_ajuste'              => $dados['motivo_ajuste'],
                 'frete_por_item'             => $dados['frete_por_item'],
                 'mod_frete'                  => (int) $dados['mod_frete'], 
-                'origem_tipo'                => $vendaOrigemId ? 'venda' : 'manual',
+                'origem_tipo'                => match (true) {
+                    (bool) $vendaOrigemId   => 'venda',
+                    (bool) $pedidoOrigemId  => 'pedido',
+                    (bool) $entradaOrigemId => 'devolucao',
+                    default                 => 'manual',
+                },
                 'venda_id'                   => $vendaOrigemId,
+                'pedido_venda_id'            => $pedidoOrigemId,
+                'entrada_nota_id'            => $entradaOrigemId,
                 'status'                     => 'rascunho',
 
             ] + $this->camposTransporte($dados));
@@ -152,6 +174,11 @@ class NotaFiscalController extends Controller
 
         $dados = $this->validarCabecalhoEItens($request);
 
+        // Rascunho de devolução: as quantidades editadas continuam limitadas ao saldo da nota de compra
+        if ($notaFiscal->entrada_nota_id) {
+            $this->validarDevolucao($notaFiscal->entradaNota, $dados['itens'], $notaFiscal->id);
+        }
+
         DB::transaction(function () use ($notaFiscal, $dados) {
             $notaFiscal->cliente_id = $dados['cliente_id'];
             $notaFiscal->natureza_operacao = $dados['natureza_operacao'];
@@ -177,6 +204,17 @@ class NotaFiscalController extends Controller
         return redirect()
             ->route('notasfiscais.show', $notaFiscal)
             ->with('sucesso', 'Nota fiscal atualizada com sucesso.');
+    }
+
+    /** NF-e de devolução: a entrada precisa poder ser devolvida e as quantidades não podem passar do saldo. */
+    private function validarDevolucao(?\App\Models\EntradaNota $entrada, array $itens, ?int $ignorarNotaId = null): void
+    {
+        $erro = \App\Services\MontagemNfeDevolucaoService::erroEntradaParaDevolucao($entrada)
+            ?? app(\App\Services\MontagemNfeDevolucaoService::class)->erroQuantidades($entrada, $itens, $ignorarNotaId);
+
+        if ($erro) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['entrada_nota_id' => $erro]);
+        }
     }
 
     /** Confere a senha do operador escolhido e devolve um token que o servidor valida ao salvar a nota. */
@@ -724,9 +762,29 @@ class NotaFiscalController extends Controller
 
         // Confere o CFOP com o destino antes de ir à SEFAZ (evita a rejeição "CFOP de operação interna e idDest <> 1")
         if ($erroCfop = $this->erroCfopDestino($notaFiscal)) {
-            $notaFiscal->update(['motivo_rejeicao' => $erroCfop]);
+            $notaFiscal->forceFill(['motivo_rejeicao' => $erroCfop])->save();
 
             return back()->withErrors(['emissao' => $erroCfop]);
+        }
+
+        // Nota montada de pedido: o pedido não pode ter sido vendido no caixa nem cancelado desde a montagem
+        if ($notaFiscal->pedido_venda_id) {
+            $pedido = \App\Models\PedidoVenda::find($notaFiscal->pedido_venda_id);
+            $venda = $pedido ? \App\Services\MontagemNfePedidoService::vendaDoPedido($pedido) : null;
+
+            $erroPedido = match (true) {
+                !$pedido => 'O pedido de venda de origem desta nota não existe mais.',
+                (bool) $venda => "O pedido nº {$pedido->numeroExibicao()} já foi vendido no caixa (NFC-e nº {$venda->numero_nfce}). Emitir esta NF-e faturaria o pedido duas vezes.",
+                $pedido->status !== 'finalizado' => "O pedido nº {$pedido->numeroExibicao()} não está mais em aberto (situação: {$pedido->status}).",
+                \App\Services\MontagemNfePedidoService::pedidoEmUsoNoCaixa($pedido) => "O pedido nº {$pedido->numeroExibicao()} está numa venda do caixa ainda não sincronizada. Use \"Atualizar Caixa\" antes de emitir.",
+                default => null,
+            };
+
+            if ($erroPedido) {
+                $notaFiscal->forceFill(['motivo_rejeicao' => $erroPedido])->save();
+
+                return back()->withErrors(['emissao' => $erroPedido]);
+            }
         }
 
         try {
@@ -749,6 +807,13 @@ class NotaFiscalController extends Controller
                 $notaFiscal->xml = $resultado['xml'];
                 $notaFiscal->emitida_em = now();
                 $notaFiscal->save();
+
+                // Pedido faturado pela NF-e: sai da lista do caixa (que só baixa pedidos "finalizado")
+                if ($notaFiscal->pedido_venda_id) {
+                    \App\Models\PedidoVenda::whereKey($notaFiscal->pedido_venda_id)
+                        ->where('status', 'finalizado')
+                        ->update(['status' => 'emitido', 'updated_at' => now()]);
+                }
 
                 // Estoque só é mexido depois da autorização da SEFAZ.
                 // Saída debita; entrada credita.
@@ -880,6 +945,18 @@ class NotaFiscalController extends Controller
             $notaFiscal->protocolo_cancelamento = $resultado['protocolo'];
             $notaFiscal->cancelado_em = now();
             $notaFiscal->save();
+
+            // NF-e de pedido cancelada: o pedido volta a ficar em aberto (se não foi vendido no caixa)
+            if ($notaFiscal->pedido_venda_id) {
+                $vendidoNoCaixa = \App\Models\Venda::where('pedido_venda_id', $notaFiscal->pedido_venda_id)
+                    ->where('status', '!=', 'cancelada')->exists();
+
+                if (!$vendidoNoCaixa) {
+                    \App\Models\PedidoVenda::whereKey($notaFiscal->pedido_venda_id)
+                        ->where('status', 'emitido')
+                        ->update(['status' => 'finalizado', 'updated_at' => now()]);
+                }
+            }
         });
 
         return redirect()->route('notasfiscais.index')->with('sucesso', 'Nota fiscal cancelada com sucesso. Protocolo: ' . $resultado['protocolo']);

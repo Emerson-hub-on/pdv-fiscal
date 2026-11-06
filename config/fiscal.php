@@ -31,6 +31,16 @@ return [
     // 5929 = lançamento de operação também registrada em NFC-e/ECF. Cliente de outra UF: o 5 vira 6.
     'montagem_nfce_cfops' => ['5929', '5102'],
 
+    // Montagem NF-e a partir de pedido de venda: venda normal (cliente de outra UF: o 5 vira 6)
+    'montagem_pedido_cfops' => ['5102'],
+
+    // Montagem NF-e de devolução de compra: o 1º dígito vira 5 (fornecedor do mesmo estado) ou 6 (outro estado).
+    // "st" = mercadoria comprada com substituição tributária (CST 10/30/60/70 ou CSOSN 201/202/203/500 na nota de compra).
+    'devolucao_cfops' => [
+        'normal' => '5202', // devolução de compra para comercialização
+        'st'     => '5411', // devolução de compra para comercialização com mercadoria sujeita a ST
+    ],
+
     // Equivalente interestadual quando não basta trocar o 5 por 6
     'cfop_interestadual' => [
         '5405' => '6404',

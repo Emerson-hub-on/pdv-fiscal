@@ -92,6 +92,8 @@ class NfeXmlParser
             $num = fn (string $expr, int $casas = 2) => round((float) $this->v($expr, $det), $casas);
 
             $itens[] = [
+                // nº do item na nota (atributo nItem do <det>): usado na referência por item da NF-e de devolução
+                'n_item' => (int) $det->getAttribute('nItem') ?: count($itens) + 1,
                 'cfop'   => $this->v('n:prod/n:CFOP', $det),
                 'cst'    => $cst,
                 'csosn'  => $csosn,

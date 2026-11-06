@@ -18,6 +18,8 @@ class NotaFiscal extends Model
         'tipo_operacao',
         'origem_tipo',
         'venda_id',
+        'pedido_venda_id',
+        'entrada_nota_id',
         'valor_desconto',
         'valor_frete',
         'cfop_saida_id',
@@ -91,6 +93,16 @@ class NotaFiscal extends Model
     public function venda(): BelongsTo
     {
         return $this->belongsTo(Venda::class);
+    }
+
+    public function entradaNota(): BelongsTo
+    {
+        return $this->belongsTo(EntradaNota::class);
+    }
+
+    public function pedidoVenda(): BelongsTo
+    {
+        return $this->belongsTo(PedidoVenda::class);
     }
 
     public function itens(): HasMany

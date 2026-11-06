@@ -10,6 +10,7 @@ class EntradaNotaItem extends Model
 
     protected $fillable = [
         'entrada_nota_id', 
+        'n_item_origem',
         'produto_id', 
         'produto_variante_id',
         'codigo_fornecedor', 

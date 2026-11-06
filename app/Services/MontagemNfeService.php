@@ -263,11 +263,12 @@ class MontagemNfeService
         return null;
     }
 
-    private function cfopPadrao(?Cliente $cliente, array &$avisos): ?CfopSaida
+    /** Primeiro CFOP ativo da lista do config (cliente de outra UF: tenta antes o 6xxx). */
+    protected function cfopPadrao(?Cliente $cliente, array &$avisos, string $chaveConfig = 'fiscal.montagem_nfce_cfops'): ?CfopSaida
     {
         $interestadual = $cliente?->uf && $cliente->uf !== Empresa::first()?->uf;
 
-        foreach (config('fiscal.montagem_nfce_cfops', []) as $codigo) {
+        foreach (config($chaveConfig, []) as $codigo) {
             $codigo = (string) $codigo;
             $candidatos = $interestadual ? ['6' . substr($codigo, 1), $codigo] : [$codigo];
 

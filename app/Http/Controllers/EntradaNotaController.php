@@ -478,6 +478,7 @@ class EntradaNotaController extends Controller
                         $fator  = $qtdTotal > 0 ? $qtd / $qtdTotal : 1;
 
                         $entrada->itens()->create([
+                            'n_item_origem'         => $item['n_item'] ?? ($indice + 1),
                             'produto_id'            => $produto->id,
                             'produto_variante_id'   => $variante?->id,
                             'codigo_fornecedor'     => $item['codigo'] ?: null,
@@ -1340,10 +1341,15 @@ class EntradaNotaController extends Controller
             $entrada->atualizar_custo = $request->boolean('atualizar_custo');
             $entrada->save();
 
+            // Nota do XML: os itens não mudam e voltam na mesma ordem, então o nItem de cada um é mantido
+            $nItensOrigem = $entrada->tipo_entrada === 'xml'
+                ? $entrada->itens()->orderBy('id')->pluck('n_item_origem')->all()
+                : [];
+
             // Rascunho: recria os itens a cada gravação
             $entrada->itens()->delete();
 
-            foreach ($dados['itens'] as $item) {
+            foreach (array_values($dados['itens']) as $posicao => $item) {
                 $produto  = $produtos[$item['produto_id']];
                 $qtd      = (float) $item['quantidade'];
                 $unit     = (float) $item['valor_unitario'];
@@ -1352,6 +1358,7 @@ class EntradaNotaController extends Controller
                 $pisManual = filter_var($item['pis_cofins_manual'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
                 $criado = $entrada->itens()->create([
+                    'n_item_origem'     => count($nItensOrigem) === count($dados['itens']) ? ($nItensOrigem[$posicao] ?? null) : null,
                     'produto_id'        => $produto->id,
                     'produto_variante_id' => ! empty($item['produto_variante_id']) ? $variantes[$item['produto_variante_id']]->id : null,
                     'codigo_fornecedor' => $item['codigo_fornecedor'] ?? null,

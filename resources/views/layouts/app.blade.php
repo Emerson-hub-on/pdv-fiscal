@@ -259,6 +259,14 @@
                         class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                             A partir de NFC-e
                         </a>
+                        <a href="{{ route('montagem-nfe.pedido.index') }}"
+                        class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition border-t border-white/10">
+                            A partir de pedido
+                        </a>
+                        <a href="{{ route('montagem-nfe.devolucao.index') }}"
+                        class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition border-t border-white/10">
+                            NF-e Devolução
+                        </a>
                     </div>
                 </div>
 

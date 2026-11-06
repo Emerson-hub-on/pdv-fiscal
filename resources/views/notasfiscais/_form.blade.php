@@ -120,6 +120,10 @@
         value="{{ old('informacoes_complementares', $temBase ? $notaBase->informacoes_complementares : '') }}">
     @if (!$ehEdicao && $temBase && $notaBase->venda_id)
         <input type="hidden" name="venda_id" value="{{ old('venda_id', $notaBase->venda_id) }}">
+    @elseif (!$ehEdicao && $temBase && $notaBase->pedido_venda_id)
+        <input type="hidden" name="pedido_venda_id" value="{{ old('pedido_venda_id', $notaBase->pedido_venda_id) }}">
+    @elseif (!$ehEdicao && $temBase && $notaBase->entrada_nota_id)
+        <input type="hidden" name="entrada_nota_id" value="{{ old('entrada_nota_id', $notaBase->entrada_nota_id) }}">
     @endif
 
     @php
@@ -130,21 +134,50 @@
         $erroCls    = 'text-red-600 text-xs mt-1';
     @endphp
 
-    @if (!$ehEdicao && $temBase && $notaBase->venda_id)
-        @php $vendaOrigem = $notaBase->venda; @endphp
+    @php
+        // Nota montada de um documento (NFC-e ou pedido): o aviso do topo mostra de onde veio
+        $origemMontagem = null;
+        if (!$ehEdicao && $temBase && $notaBase->venda_id && $notaBase->venda) {
+            $v = $notaBase->venda;
+            $origemMontagem = [
+                'titulo' => 'Montada a partir da NFC-e',
+                'chip'   => "nº {$v->numero_nfce} · série {$v->serie_nfce}",
+                'detalhe'=> $v->created_at?->format('d/m/Y H:i') . ' · R$ ' . number_format((float) $v->total, 2, ',', '.'),
+                'voltar' => route('montagem-nfe.nfce.index'),
+            ];
+        } elseif (!$ehEdicao && $temBase && $notaBase->pedido_venda_id && $notaBase->pedidoVenda) {
+            $p = $notaBase->pedidoVenda;
+            $origemMontagem = [
+                'titulo' => 'Montada a partir do pedido de venda',
+                'chip'   => 'nº ' . $p->numeroExibicao(),
+                'detalhe'=> $p->data_pedido?->format('d/m/Y') . ' · R$ ' . number_format((float) $p->valor_total, 2, ',', '.')
+                            . ($p->descricao ? ' · ' . \Illuminate\Support\Str::limit($p->descricao, 120) : ''),
+                'voltar' => route('montagem-nfe.pedido.index'),
+            ];
+        } elseif (!$ehEdicao && $temBase && $notaBase->entrada_nota_id && $notaBase->entradaNota) {
+            $e = $notaBase->entradaNota;
+            $origemMontagem = [
+                'titulo' => 'Devolução da nota de compra',
+                'chip'   => "NF-e nº {$e->numero} · série {$e->serie}",
+                'detalhe'=> ($e->fornecedor?->nome ?? '') . ' · entrada em ' . $e->data_entrada?->format('d/m/Y')
+                            . ' · ' . $notaBase->itens->count() . ' ' . ($notaBase->itens->count() === 1 ? 'item' : 'itens') . ' com a chave e o nº do item referenciados',
+                'voltar' => route('montagem-nfe.devolucao.index'),
+            ];
+        }
+    @endphp
+
+    @if ($origemMontagem)
         <div class="bg-white rounded-xl shadow-sm ring-1 ring-slate-200 border-l-4 border-l-amber-400 px-5 py-4 flex gap-4">
             <span class="shrink-0 w-10 h-10 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
             </span>
             <div class="flex-1 min-w-0 text-sm">
                 <div class="flex flex-wrap items-center gap-2">
-                    <p class="font-semibold text-slate-800">Montada a partir da NFC-e</p>
+                    <p class="font-semibold text-slate-800">{{ $origemMontagem['titulo'] }}</p>
                     <span class="rounded-full bg-[#10284A] text-amber-50 px-2.5 py-0.5 text-xs font-semibold">
-                        nº {{ $vendaOrigem->numero_nfce }} · série {{ $vendaOrigem->serie_nfce }}
+                        {{ $origemMontagem['chip'] }}
                     </span>
-                    <span class="text-slate-500">
-                        {{ $vendaOrigem->created_at?->format('d/m/Y H:i') }} · R$ {{ number_format((float) $vendaOrigem->total, 2, ',', '.') }}
-                    </span>
+                    <span class="text-slate-500">{{ $origemMontagem['detalhe'] }}</span>
                 </div>
                 <p class="text-slate-500 mt-0.5">Confira os dados abaixo antes de salvar o rascunho.</p>
                 @if (!empty($avisosMontagem))
@@ -165,8 +198,8 @@
         <div class="flex items-center justify-between gap-4 bg-[#10284A] rounded-t-xl px-6 py-4">
             <div class="flex items-center gap-3 min-w-0">
                 @if ($ehEdicao || $temBase)
-                    <a href="{{ $ehEdicao ? route('notasfiscais.index') : route('montagem-nfe.nfce.index') }}"
-                       title="{{ $ehEdicao ? 'Voltar para Notas Fiscais' : 'Voltar para a busca de NFC-e' }}"
+                    <a href="{{ $ehEdicao || !$origemMontagem ? route('notasfiscais.index') : $origemMontagem['voltar'] }}"
+                       title="{{ $ehEdicao || !$origemMontagem ? 'Voltar para Notas Fiscais' : 'Voltar para a busca' }}"
                        class="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>

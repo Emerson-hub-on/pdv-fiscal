@@ -11,6 +11,28 @@
 
 $historico = [
     [
+        'versao' => '1.4.0',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Faturamento → Montagem NF-e → NF-e Devolução: lista as notas de entrada do dia (ou por data ou número), abre uma janela com os itens da nota para escolher todos ou só alguns, com a quantidade a devolver, e monta o rascunho da NF-e de devolução (finalidade 4).',
+            'CFOP automático: 5 para fornecedor do mesmo estado e 6 para outro estado; 5202/6202 na devolução comum e 5411/6411 quando a mercadoria foi comprada com substituição tributária. O CFOP que faltar no cadastro é incluído.',
+            'Cada item da devolução referencia a chave da nota de compra e o nº do item (nItem) correspondente. O fornecedor vira o destinatário (cadastrado como cliente, se ainda não for).',
+            'Controle de saldo: não é possível devolver mais do que foi comprado, somando as devoluções já feitas (inclusive rascunhos).',
+            'Importação de XML na entrada passa a guardar o nº de cada item da nota (nItem).',
+        ],
+    ],
+    [
+        'versao' => '1.3.0',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Faturamento → Montagem NF-e → A partir de pedido: busca o pedido de venda pelo número ou pela data (padrão: hoje) e abre a NF-e já preenchida com itens, cliente, forma de pagamento e tipo de nota; ao salvar vira rascunho.',
+            'Cada pedido gera uma única NF-e. Pedido já vendido no caixa mostra a NFC-e e leva para a montagem a partir de NFC-e; pedido usado numa venda ainda não sincronizada aparece como "Venda não sincronizada".',
+            'Ao emitir a NF-e do pedido, o pedido passa a "Emitido" e sai da lista do caixa; se a NF-e for cancelada, o pedido volta a ficar em aberto. A emissão é recusada se o pedido foi vendido no caixa ou cancelado depois da montagem.',
+            'Tela "A partir de NFC-e" no novo visual.',
+            'Correção: o motivo de recusa da emissão (ex.: CFOP incompatível com o destino) não ficava gravado na nota.',
+        ],
+    ],
+    [
         'versao' => '1.2.3',
         'data' => '2026-11-06',
         'itens' => [
