@@ -11,6 +11,24 @@
 
 $historico = [
     [
+        'versao' => '1.6.1',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Cadastro de cliente: corrigido o erro "The cep field must be 8 characters" ao salvar com o CEP digitado no formato 00000-000.',
+        ],
+    ],
+    [
+        'versao' => '1.6.0',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Faturamento → Montagem NF-e → NF-e de Troca: busca a venda original (cupom NFC-e por série e número ou data, ou NF-e de venda por número ou data), abre uma janela com os itens para escolher o que o cliente está devolvendo e monta a NF-e de entrada de devolução (finalidade 4).',
+            'CFOP da entrada: 1202/2202 para mercadoria normal e 1411/2411 quando foi vendida com substituição tributária (1 = mesmo estado, 2 = outro estado). O CFOP que faltar no cadastro é incluído.',
+            'Cada item da entrada referencia a chave da venda original e o nº do item. Cliente identificado na venda: a NF-e sai em nome dele; sem cliente, sai contra a própria empresa.',
+            'Saída do item novo: venda normal no caixa (NFC-e) ou o botão "Montar NF-e de venda do item novo" (CFOP 5102; itens com ST saem com o CFOP da tributação, ex.: 5405), ligada à entrada da troca.',
+            'Controle de saldo: não é possível devolver mais do que foi vendido, somando as trocas já feitas.',
+        ],
+    ],
+    [
         'versao' => '1.5.0',
         'data' => '2026-11-06',
         'itens' => [

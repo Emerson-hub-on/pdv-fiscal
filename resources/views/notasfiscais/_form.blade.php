@@ -124,6 +124,12 @@
         <input type="hidden" name="pedido_venda_id" value="{{ old('pedido_venda_id', $notaBase->pedido_venda_id) }}">
     @elseif (!$ehEdicao && $temBase && $notaBase->entrada_nota_id)
         <input type="hidden" name="entrada_nota_id" value="{{ old('entrada_nota_id', $notaBase->entrada_nota_id) }}">
+    @elseif (!$ehEdicao && $temBase && ($notaBase->troca_venda_id || $notaBase->troca_nota_fiscal_id || $notaBase->troca_entrada_id))
+        @foreach (['troca_venda_id', 'troca_nota_fiscal_id', 'troca_entrada_id'] as $campoTroca)
+            @if ($notaBase->{$campoTroca})
+                <input type="hidden" name="{{ $campoTroca }}" value="{{ old($campoTroca, $notaBase->{$campoTroca}) }}">
+            @endif
+        @endforeach
     @endif
 
     @php
@@ -162,6 +168,23 @@
                 'detalhe'=> ($e->fornecedor?->nome ?? '') . ' · entrada em ' . $e->data_entrada?->format('d/m/Y')
                             . ' · ' . $notaBase->itens->count() . ' ' . ($notaBase->itens->count() === 1 ? 'item' : 'itens') . ' com a chave e o nº do item referenciados',
                 'voltar' => route('montagem-nfe.devolucao.index'),
+            ];
+        } elseif (!$ehEdicao && $temBase && ($notaBase->troca_venda_id || $notaBase->troca_nota_fiscal_id)) {
+            $docTroca = ['tipo' => $notaBase->troca_nota_fiscal_id ? 'nfe' : 'nfce', 'modelo' => $notaBase->troca_nota_fiscal_id ? $notaBase->trocaNotaFiscal : $notaBase->trocaVenda];
+            $origemMontagem = [
+                'titulo' => 'Troca · entrada do item devolvido pelo cliente',
+                'chip'   => \App\Services\MontagemNfeTrocaService::rotulo($docTroca),
+                'detalhe'=> 'venda de ' . \App\Services\MontagemNfeTrocaService::dataEmissao($docTroca)
+                            . ' · NF-e de entrada · ' . $notaBase->itens->count() . ' ' . ($notaBase->itens->count() === 1 ? 'item' : 'itens') . ' com a chave e o nº do item referenciados',
+                'voltar' => route('montagem-nfe.troca.index', ['doc' => $docTroca['tipo']]),
+            ];
+        } elseif (!$ehEdicao && $temBase && $notaBase->troca_entrada_id && $notaBase->trocaEntrada) {
+            $entradaTroca = $notaBase->trocaEntrada;
+            $origemMontagem = [
+                'titulo' => 'Troca · venda do item novo',
+                'chip'   => $entradaTroca->numero ? "entrada NF-e nº {$entradaTroca->numero}" : "entrada rascunho #{$entradaTroca->id}",
+                'detalhe'=> 'devolução de R$ ' . number_format((float) $entradaTroca->valor_total, 2, ',', '.') . ($entradaTroca->cliente ? ' · ' . $entradaTroca->cliente->nome : ''),
+                'voltar' => route('montagem-nfe.troca.index'),
             ];
         }
     @endphp

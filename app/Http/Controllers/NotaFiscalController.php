@@ -10,6 +10,7 @@ use App\Models\Produto;
 use App\Models\SerieNfe;
 use App\Models\InutilizacaoNfe;
 use App\Services\NotaFiscalService;
+use App\Services\MontagemNfeTrocaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -120,7 +121,10 @@ class NotaFiscalController extends Controller
             $this->validarDevolucao(\App\Models\EntradaNota::find($entradaOrigemId), $dados['itens']);
         }
 
-        $notaFiscal = DB::transaction(function () use ($dados, $vendaOrigemId, $pedidoOrigemId, $entradaOrigemId) {
+        // Troca: entrada (devolução do cliente) ligada à venda original, ou venda do item novo ligada à entrada
+        $troca = $this->origemTroca($request, $dados['itens'], (bool) ($vendaOrigemId || $pedidoOrigemId || $entradaOrigemId));
+
+        $notaFiscal = DB::transaction(function () use ($dados, $vendaOrigemId, $pedidoOrigemId, $entradaOrigemId, $troca) {
             $notaFiscal = NotaFiscal::create([
                 'cliente_id'                 => $dados['cliente_id'],
                 'natureza_operacao'          => $dados['natureza_operacao'],
@@ -138,11 +142,15 @@ class NotaFiscalController extends Controller
                     (bool) $vendaOrigemId   => 'venda',
                     (bool) $pedidoOrigemId  => 'pedido',
                     (bool) $entradaOrigemId => 'devolucao',
+                    (bool) $troca           => 'troca',
                     default                 => 'manual',
                 },
                 'venda_id'                   => $vendaOrigemId,
                 'pedido_venda_id'            => $pedidoOrigemId,
                 'entrada_nota_id'            => $entradaOrigemId,
+                'troca_venda_id'             => $troca['troca_venda_id'] ?? null,
+                'troca_nota_fiscal_id'       => $troca['troca_nota_fiscal_id'] ?? null,
+                'troca_entrada_id'           => $troca['troca_entrada_id'] ?? null,
                 'status'                     => 'rascunho',
 
             ] + $this->camposTransporte($dados));
@@ -177,6 +185,15 @@ class NotaFiscalController extends Controller
         // Rascunho de devolução: as quantidades editadas continuam limitadas ao saldo da nota de compra
         if ($notaFiscal->entrada_nota_id) {
             $this->validarDevolucao($notaFiscal->entradaNota, $dados['itens'], $notaFiscal->id);
+        }
+
+        // Rascunho da entrada de troca: idem, contra o saldo da venda original
+        if ($notaFiscal->troca_venda_id || $notaFiscal->troca_nota_fiscal_id) {
+            $this->validarTrocaEntrada(
+                MontagemNfeTrocaService::carregar($notaFiscal->troca_nota_fiscal_id ? 'nfe' : 'nfce', (int) ($notaFiscal->troca_nota_fiscal_id ?: $notaFiscal->troca_venda_id)),
+                $dados['itens'],
+                $notaFiscal->id
+            );
         }
 
         DB::transaction(function () use ($notaFiscal, $dados) {
@@ -214,6 +231,50 @@ class NotaFiscalController extends Controller
 
         if ($erro) {
             throw \Illuminate\Validation\ValidationException::withMessages(['entrada_nota_id' => $erro]);
+        }
+    }
+
+    /**
+     * Campos de vínculo da troca vindos da montagem (null quando a nota não é de troca).
+     * Entrada: confere o documento de venda e o saldo. Venda do item novo: confere a NF-e de entrada da troca.
+     */
+    private function origemTroca(Request $request, array $itens, bool $outraOrigem): ?array
+    {
+        if ($outraOrigem) {
+            return null;
+        }
+
+        if ($request->filled('troca_venda_id') || $request->filled('troca_nota_fiscal_id')) {
+            $tipo = $request->filled('troca_nota_fiscal_id') ? 'nfe' : 'nfce';
+            $id = (int) $request->input($tipo === 'nfe' ? 'troca_nota_fiscal_id' : 'troca_venda_id');
+            $this->validarTrocaEntrada(MontagemNfeTrocaService::carregar($tipo, $id), $itens);
+
+            return [$tipo === 'nfe' ? 'troca_nota_fiscal_id' : 'troca_venda_id' => $id];
+        }
+
+        if ($request->filled('troca_entrada_id')) {
+            $entrada = NotaFiscal::find((int) $request->input('troca_entrada_id'));
+
+            if (!$entrada || $entrada->origem_tipo !== 'troca' || $entrada->status === 'cancelada'
+                || !($entrada->troca_venda_id || $entrada->troca_nota_fiscal_id)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'troca_entrada_id' => 'A NF-e de entrada desta troca não existe ou foi cancelada.',
+                ]);
+            }
+
+            return ['troca_entrada_id' => $entrada->id];
+        }
+
+        return null;
+    }
+
+    private function validarTrocaEntrada(?array $doc, array $itens, ?int $ignorarNotaId = null): void
+    {
+        $erro = MontagemNfeTrocaService::erroDocumento($doc)
+            ?? app(MontagemNfeTrocaService::class)->erroQuantidades($doc, $itens, $ignorarNotaId);
+
+        if ($erro) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['troca' => $erro]);
         }
     }
 

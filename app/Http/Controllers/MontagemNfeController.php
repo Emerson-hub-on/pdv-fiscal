@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Cliente;
 use App\Models\Empresa;
 use App\Models\EntradaNota;
+use App\Models\NotaFiscal;
 use App\Models\PedidoVenda;
 use App\Models\Venda;
 use App\Services\MontagemNfeDevolucaoService;
 use App\Services\MontagemNfePedidoService;
 use App\Services\MontagemNfeService;
+use App\Services\MontagemNfeTrocaService;
 use Illuminate\Http\Request;
 
 /** Faturamento → Montagem NF-e → A partir de NFC-e / A partir de pedido */
@@ -209,6 +211,144 @@ class MontagemNfeController extends Controller
         if ($nota->itens->isEmpty()) {
             return $voltar('Os itens escolhidos não têm saldo para devolver (já foram devolvidos em outra NF-e).');
         }
+
+        return $this->telaNota($nota, $avisos);
+    }
+
+    // ---------------- Faturamento → Montagem NF-e → NF-e de Troca ----------------
+
+    public function indexTroca(Request $request, MontagemNfeTrocaService $troca)
+    {
+        $documento = $request->get('doc') === 'nfe' ? 'nfe' : 'nfce';
+        $modo = $request->get('modo') === 'data' ? 'data' : 'numero';
+        $data = $request->filled('data') && strtotime($request->get('data'))
+            ? date('Y-m-d', strtotime($request->get('data')))
+            : now()->toDateString();
+
+        $docs = collect();
+        $pendentes = collect();
+        $mensagem = null;
+        $mensagemSincronizacao = false;
+
+        if ($documento === 'nfce') {
+            if ($modo === 'numero') {
+                if ($request->filled('serie') || $request->filled('numero')) {
+                    $dados = $request->validate([
+                        'serie'  => ['required', 'integer', 'min:0', 'max:999'],
+                        'numero' => ['required', 'integer', 'min:1'],
+                    ], [], ['serie' => 'série', 'numero' => 'número do cupom']);
+
+                    $resultado = $this->montagem->buscarPorCupom((int) $dados['serie'], (int) $dados['numero']);
+                    $docs = $resultado['venda'] ? collect([$resultado['venda']]) : collect();
+                    $mensagem = $resultado['mensagem'];
+                    $mensagemSincronizacao = $resultado['situacao'] === 'nao_sincronizada';
+                }
+            } else {
+                $docs = $this->montagem->buscarPorData($data);
+                $pendentes = $this->montagem->pendentesPorData($data);
+            }
+        } elseif ($modo === 'numero') {
+            if ($request->filled('numero')) {
+                $dados = $request->validate(['numero' => ['required', 'integer', 'min:1']], [], ['numero' => 'número da NF-e']);
+                $docs = $troca->buscarNfePorNumero((int) $dados['numero']);
+                $mensagem = $docs->isEmpty() ? "Nenhuma NF-e de venda encontrada com o número {$dados['numero']}." : null;
+            }
+        } else {
+            $docs = $troca->buscarNfePorData($data);
+        }
+
+        $linhas = $docs->map(function ($m) use ($documento) {
+            $doc = ['tipo' => $documento, 'modelo' => $m];
+            $trocas = MontagemNfeTrocaService::trocasDoDocumento($doc);
+
+            return [
+                'doc'      => $doc,
+                'bloqueio' => MontagemNfeTrocaService::erroDocumento($doc),
+                'trocas'   => $trocas,
+                // NF-e de venda do item novo já montadas para cada entrada desta troca
+                'vendas'   => NotaFiscal::whereIn('troca_entrada_id', $trocas->pluck('id'))->where('status', '!=', 'cancelada')->get()->groupBy('troca_entrada_id'),
+            ];
+        });
+
+        $seriesPdv = \App\Models\Pdv::where('ativo', true)->distinct()->pluck('serie_nfce');
+        $seriePadrao = $seriesPdv->count() === 1 ? $seriesPdv->first() : null;
+
+        return view('faturamento.montagem-nfe.troca', compact(
+            'documento', 'modo', 'data', 'linhas', 'pendentes', 'mensagem', 'mensagemSincronizacao', 'seriePadrao'
+        ));
+    }
+
+    /** Itens do documento de venda para a janela de seleção (JSON). */
+    public function itensTroca(string $tipo, int $id, MontagemNfeTrocaService $troca)
+    {
+        $doc = MontagemNfeTrocaService::carregar($tipo, $id);
+
+        if ($erro = MontagemNfeTrocaService::erroDocumento($doc)) {
+            return response()->json(['message' => $erro], 422);
+        }
+
+        return response()->json([
+            'documento' => [
+                'tipo'    => $doc['tipo'],
+                'id'      => $doc['modelo']->id,
+                'rotulo'  => MontagemNfeTrocaService::rotulo($doc),
+                'cliente' => $doc['modelo']->cliente?->nome,
+            ],
+            'itens' => $troca->itensComSaldo($doc)->map(fn ($l) => [
+                'id'         => $l['id'],
+                'n_item'     => $l['n_item'],
+                'descricao'  => $l['descricao'],
+                'unidade'    => $l['produto']?->unidade_comercial,
+                'quantidade' => $l['quantidade'],
+                'devolvido'  => $l['devolvido'],
+                'saldo'      => $l['saldo'],
+                'valor'      => $l['quantidade'] > 0 ? round(($l['quantidade'] * $l['valor_unitario'] - $l['desconto']) / $l['quantidade'], 4) : 0,
+                'com_st'     => $l['com_st'],
+            ])->values(),
+        ]);
+    }
+
+    /** Abre a NF-e de entrada (devolução do cliente) já montada com os itens escolhidos (?q[item_id]=quantidade). */
+    public function montarTroca(Request $request, string $tipo, int $id, MontagemNfeTrocaService $troca)
+    {
+        $doc = MontagemNfeTrocaService::carregar($tipo, $id);
+        $voltar = fn ($erro) => redirect()->route('montagem-nfe.troca.index', ['doc' => $tipo])->withErrors(['troca' => $erro]);
+
+        if ($erro = MontagemNfeTrocaService::erroDocumento($doc)) {
+            return $voltar($erro);
+        }
+
+        $quantidades = collect((array) $request->input('q', []))
+            ->mapWithKeys(fn ($qtd, $item) => [(int) $item => (float) str_replace(',', '.', (string) $qtd)])
+            ->filter(fn ($qtd) => $qtd > 0)
+            ->all();
+
+        if (!$quantidades) {
+            return $voltar('Selecione ao menos um item que o cliente está devolvendo.');
+        }
+
+        [$nota, $avisos] = $troca->montarEntrada($doc, $quantidades);
+
+        if ($nota->itens->isEmpty()) {
+            return $voltar('Os itens escolhidos não têm saldo para devolver (já foram devolvidos em outra troca).');
+        }
+
+        return $this->telaNota($nota, $avisos);
+    }
+
+    /** Saída do item novo por NF-e: abre a NF-e de venda ligada à NF-e de entrada da troca. */
+    public function montarVendaTroca(NotaFiscal $entrada, MontagemNfeTrocaService $troca)
+    {
+        $ehEntradaDeTroca = $entrada->origem_tipo === 'troca' && ($entrada->troca_venda_id || $entrada->troca_nota_fiscal_id);
+        abort_unless($ehEntradaDeTroca && $entrada->status !== 'cancelada', 404);
+
+        $existente = NotaFiscal::where('troca_entrada_id', $entrada->id)->where('status', '!=', 'cancelada')->first();
+        if ($existente) {
+            return redirect()->route($existente->status === 'rascunho' ? 'notasfiscais.edit' : 'notasfiscais.show', $existente)
+                ->with('sucesso', 'Esta troca já tem a NF-e de venda do item novo.');
+        }
+
+        [$nota, $avisos] = $troca->montarVendaNova($entrada);
 
         return $this->telaNota($nota, $avisos);
     }

@@ -146,6 +146,33 @@
         });
     @endphp
 
+    {{-- Troca: depois da entrada do item devolvido, a saída do item novo --}}
+    @if ($notaFiscal->origem_tipo === 'troca' && ($notaFiscal->troca_venda_id || $notaFiscal->troca_nota_fiscal_id) && $notaFiscal->status !== 'cancelada')
+        @php
+            $vendaDaTroca = \App\Models\NotaFiscal::where('troca_entrada_id', $notaFiscal->id)->where('status', '!=', 'cancelada')->first();
+        @endphp
+        <div class="bg-white rounded-xl shadow-sm ring-1 ring-slate-200 border-l-4 border-l-[#10284A] px-5 py-4 flex flex-wrap items-center justify-between gap-4">
+            <div class="text-sm">
+                <p class="font-semibold text-slate-800">Troca · saída do item novo</p>
+                <p class="text-slate-500 mt-0.5">
+                    Venda no caixa: o operador registra o item novo numa NFC-e normalmente.
+                    Ou fature por NF-e de venda (CFOP 5102; itens com ST saem com o CFOP da tributação, ex.: 5405).
+                </p>
+            </div>
+            @if ($vendaDaTroca)
+                <a href="{{ $vendaDaTroca->status === 'rascunho' ? route('notasfiscais.edit', $vendaDaTroca) : route('notasfiscais.show', $vendaDaTroca) }}"
+                   class="inline-flex items-center gap-1.5 bg-white border border-slate-200 text-slate-700 rounded-xl px-4 py-2 text-sm font-medium hover:border-[#10284A]/40 hover:text-[#10284A] transition">
+                    Ver NF-e de venda {{ $vendaDaTroca->numero ? 'nº ' . $vendaDaTroca->numero : '(rascunho)' }}
+                </a>
+            @else
+                <a href="{{ route('montagem-nfe.troca.venda', $notaFiscal) }}"
+                   class="inline-flex items-center gap-1.5 bg-[#10284A] text-amber-50 rounded-xl px-4 py-2 text-sm font-medium shadow-sm hover:bg-[#163a68] transition">
+                    Montar NF-e de venda do item novo
+                </a>
+            @endif
+        </div>
+    @endif
+
     <div class="bg-white rounded-lg shadow overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-auto text-sm whitespace-nowrap">

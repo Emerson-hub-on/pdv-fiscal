@@ -121,6 +121,11 @@ class ClienteController extends Controller
     {
         $tipoPessoa = $request->input('tipo_pessoa');
 
+        // O campo tem máscara (00000-000): valida e grava só os dígitos, como em fornecedores
+        if ($request->filled('cep')) {
+            $request->merge(['cep' => preg_replace('/\D/', '', (string) $request->input('cep'))]);
+        }
+
         $validado = $request->validate([
             'tipo_pessoa' => 'required|in:fisica,juridica',
             'nome' => 'required|string|max:255',

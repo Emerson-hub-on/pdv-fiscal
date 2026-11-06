@@ -267,6 +267,10 @@
                         class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition border-t border-white/10">
                             NF-e Devolução
                         </a>
+                        <a href="{{ route('montagem-nfe.troca.index') }}"
+                        class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition border-t border-white/10">
+                            NF-e de Troca
+                        </a>
                     </div>
                 </div>
 

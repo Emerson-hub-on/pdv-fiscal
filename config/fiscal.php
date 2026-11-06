@@ -36,6 +36,14 @@ return [
 
     // Montagem NF-e de devolução de compra: o 1º dígito vira 5 (fornecedor do mesmo estado) ou 6 (outro estado).
     // "st" = mercadoria comprada com substituição tributária (CST 10/30/60/70 ou CSOSN 201/202/203/500 na nota de compra).
+    'troca_cfops' => [
+        // Troca — entrada do item devolvido pelo cliente (NF-e de entrada, finalidade 4): 1 = mesmo estado, 2 = outro estado
+        'normal' => '1202', // devolução de venda de mercadoria adquirida de terceiros
+        'st'     => '1411', // devolução de venda em operação com mercadoria sujeita a ST
+        // Troca — venda do item novo por NF-e (os itens com ST usam o CFOP da tributação, ex.: 5405)
+        'venda'  => '5102',
+    ],
+
     'devolucao_cfops' => [
         'normal' => '5202', // devolução de compra para comercialização
         'st'     => '5411', // devolução de compra para comercialização com mercadoria sujeita a ST

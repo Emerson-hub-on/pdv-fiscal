@@ -20,6 +20,9 @@ class NotaFiscal extends Model
         'venda_id',
         'pedido_venda_id',
         'entrada_nota_id',
+        'troca_venda_id',
+        'troca_nota_fiscal_id',
+        'troca_entrada_id',
         'valor_desconto',
         'valor_frete',
         'cfop_saida_id',
@@ -93,6 +96,24 @@ class NotaFiscal extends Model
     public function venda(): BelongsTo
     {
         return $this->belongsTo(Venda::class);
+    }
+
+    /** Troca: NFC-e de venda devolvida pelo cliente (na NF-e de entrada). */
+    public function trocaVenda(): BelongsTo
+    {
+        return $this->belongsTo(Venda::class, 'troca_venda_id');
+    }
+
+    /** Troca: NF-e de venda devolvida pelo cliente (na NF-e de entrada). */
+    public function trocaNotaFiscal(): BelongsTo
+    {
+        return $this->belongsTo(NotaFiscal::class, 'troca_nota_fiscal_id');
+    }
+
+    /** Troca: na NF-e de venda do item novo, a NF-e de entrada (devolução) da mesma troca. */
+    public function trocaEntrada(): BelongsTo
+    {
+        return $this->belongsTo(NotaFiscal::class, 'troca_entrada_id');
     }
 
     public function entradaNota(): BelongsTo

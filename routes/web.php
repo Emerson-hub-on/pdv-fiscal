@@ -555,6 +555,14 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
                 ->name('montagem-nfe.devolucao.itens');
             Route::get('faturamento/montagem-nfe/devolucao/{entrada}/montar', [\App\Http\Controllers\MontagemNfeController::class, 'montarDevolucao'])
                 ->name('montagem-nfe.devolucao.montar');
+            Route::get('faturamento/montagem-nfe/troca', [\App\Http\Controllers\MontagemNfeController::class, 'indexTroca'])
+                ->name('montagem-nfe.troca.index');
+            Route::get('faturamento/montagem-nfe/troca/{tipo}/{id}/itens', [\App\Http\Controllers\MontagemNfeController::class, 'itensTroca'])
+                ->whereIn('tipo', ['nfce', 'nfe'])->whereNumber('id')->name('montagem-nfe.troca.itens');
+            Route::get('faturamento/montagem-nfe/troca/{tipo}/{id}/montar', [\App\Http\Controllers\MontagemNfeController::class, 'montarTroca'])
+                ->whereIn('tipo', ['nfce', 'nfe'])->whereNumber('id')->name('montagem-nfe.troca.montar');
+            Route::get('faturamento/montagem-nfe/troca/venda/{entrada}', [\App\Http\Controllers\MontagemNfeController::class, 'montarVendaTroca'])
+                ->name('montagem-nfe.troca.venda');
 
             Route::get('notasfiscais/buscar-produto', [NotaFiscalController::class, 'buscarProduto'])
                 ->name('notasfiscais.buscar-produto');
