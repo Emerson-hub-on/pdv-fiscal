@@ -10,7 +10,9 @@
 @endsection
 
 @section('conteudo')
-    <h1 class="text-2xl font-bold mb-6">Editar {{ $cfg['singular'] }}</h1>
+@php extract(config('estilo.formulario')); @endphp
+    <x-form.cabecalho solto rotulo="Cadastros · Usuários" titulo="Editar {{ $cfg['singular'] }}"
+                      :voltar="route('usuarios.index', $perfil)" voltar-titulo="Voltar para a lista" />
     <form action="{{ route('usuarios.update', [$perfil, $usuario]) }}" method="POST">
         @csrf
         @method('PUT')

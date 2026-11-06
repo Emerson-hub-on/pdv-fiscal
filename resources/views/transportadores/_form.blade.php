@@ -1,14 +1,15 @@
+@php extract(config('estilo.formulario')); @endphp
 @php
     $transportador = $transportador ?? null;
     $tipoInicial = old('tipo_pessoa_ui', $transportador && strlen($transportador->documento) === 11 ? 'fisica' : 'juridica');
 @endphp
 
-<div class="bg-white rounded-xl shadow-sm border border-gray-200">
+<div class="{{ $cartaoCls }}">
 
-    <div class="border-b border-gray-200 px-6 pt-4">
+    <div class="border-b border-slate-200 px-6 pt-4">
         <nav class="flex gap-6">
             <button type="button" data-tab="geral" onclick="mudarAba('geral')"
-                    class="tab-btn pb-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600 transition">
+                    class="tab-btn pb-3 text-sm font-medium border-b-2 border-[#10284A] text-[#10284A] transition">
                 Dados Gerais
             </button>
             <button type="button" data-tab="endereco" onclick="mudarAba('endereco')"
@@ -24,7 +25,7 @@
         <div id="aba-geral" class="tab-conteudo grid grid-cols-2 gap-5">
 
             <div class="col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de pessoa <span class="text-red-500">*</span></label>
+                <label class="{{ $labelCls }}">Tipo de pessoa <span class="text-red-500">*</span></label>
                 <div class="flex gap-4">
                     <label class="flex items-center gap-2 text-sm">
                         <input type="radio" name="tipo_pessoa_ui" value="juridica" onchange="alternarTipoPessoa()"
@@ -40,26 +41,26 @@
             </div>
 
             <div class="col-span-2">
-                <label id="label-nome" class="block text-sm font-medium text-gray-700 mb-1">Razão social <span class="text-red-500">*</span></label>
+                <label id="label-nome" class="{{ $labelCls }}">Razão social <span class="text-red-500">*</span></label>
                 <input type="text" name="nome" maxlength="60" value="{{ old('nome', $transportador->nome ?? '') }}" required
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
 
             <div>
-                <label id="label-documento" class="block text-sm font-medium text-gray-700 mb-1">CNPJ <span class="text-red-500">*</span></label>
+                <label id="label-documento" class="{{ $labelCls }}">CNPJ <span class="text-red-500">*</span></label>
                 <input type="text" name="documento" id="campo-documento" maxlength="18" required
                        oninput="this.value = this.value.toUpperCase()"
                        value="{{ old('documento', $transportador->documento_formatado ?? '') }}"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }} font-mono">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Inscrição Estadual <span class="text-xs text-gray-400 font-normal">(números ou ISENTO)</span>
+                <label class="{{ $labelCls }}">
+                    Inscrição Estadual <span class="{{ $opcionalCls }}">(números ou ISENTO)</span>
                 </label>
                 <input type="text" name="ie" maxlength="14" value="{{ old('ie', $transportador->ie ?? '') }}"
                        oninput="this.value = this.value.toUpperCase()"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
 
         </div>
@@ -74,33 +75,33 @@
             </div>
 
             <div class="col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Logradouro <span class="text-red-500">*</span></label>
+                <label class="{{ $labelCls }}">Logradouro <span class="text-red-500">*</span></label>
                 <input type="text" name="logradouro" maxlength="60" required value="{{ old('logradouro', $transportador->logradouro ?? '') }}"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Número</label>
+                <label class="{{ $labelCls }}">Número</label>
                 <input type="text" name="numero" maxlength="10" placeholder="S/N" value="{{ old('numero', $transportador->numero ?? '') }}"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Bairro <span class="text-red-500">*</span></label>
+                <label class="{{ $labelCls }}">Bairro <span class="text-red-500">*</span></label>
                 <input type="text" name="bairro" maxlength="40" required value="{{ old('bairro', $transportador->bairro ?? '') }}"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Município <span class="text-red-500">*</span></label>
+                <label class="{{ $labelCls }}">Município <span class="text-red-500">*</span></label>
                 <input type="text" name="municipio" maxlength="60" required value="{{ old('municipio', $transportador->municipio ?? '') }}"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">UF <span class="text-red-500">*</span></label>
+                <label class="{{ $labelCls }}">UF <span class="text-red-500">*</span></label>
                 <select name="uf" required
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white">
+                        class="{{ $inputCls }}">
                     <option value="">Selecione...</option>
                     @foreach (\App\Models\Transportador::UFS as $uf)
                         <option value="{{ $uf }}" {{ old('uf', $transportador->uf ?? '') === $uf ? 'selected' : '' }}>{{ $uf }}</option>
@@ -113,11 +114,11 @@
     </div>
 </div>
 
-<div class="mt-6 flex gap-3">
-    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-semibold text-sm transition">
+<div class="mt-6 flex flex-row-reverse justify-start gap-3">
+    <button type="submit" class="{{ $botaoPrimarioCls }}">
         Salvar transportadora
     </button>
-    <a href="{{ route('transportadores.index') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2.5 rounded-lg text-sm font-medium transition">
+    <a href="{{ route('transportadores.index') }}" class="{{ $botaoCancelarCls }}">
         Cancelar
     </a>
 </div>
@@ -125,7 +126,7 @@
 {{-- Modal de consulta de CNPJ --}}
 <div id="modal-consulta-cnpj" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl shadow-lg px-8 py-6 flex flex-col items-center gap-3">
-        <svg class="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <svg class="animate-spin h-8 w-8 text-[#10284A]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
         </svg>
@@ -140,8 +141,8 @@ function mudarAba(aba) {
 
     document.querySelectorAll('.tab-btn').forEach(btn => {
         const ativa = btn.dataset.tab === aba;
-        btn.classList.toggle('border-blue-600', ativa);
-        btn.classList.toggle('text-blue-600', ativa);
+        btn.classList.toggle('border-[#10284A]', ativa);
+        btn.classList.toggle('text-[#10284A]', ativa);
         btn.classList.toggle('border-transparent', !ativa);
         btn.classList.toggle('text-gray-500', !ativa);
     });

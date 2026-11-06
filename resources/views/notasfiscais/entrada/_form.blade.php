@@ -1,8 +1,6 @@
 @php
     $ehEdicao = $entrada->exists;
-    $inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed';
-    $labelCls = 'block text-sm font-medium text-gray-700 mb-1';
-    $erroCls  = 'text-red-600 text-xs mt-1';
+    extract(config('estilo.formulario')); // $inputCls, $labelCls, $botaoPrimarioCls...
     $pisCofins ??= ['regime' => null, 'csts' => [], 'naturezas' => [], 'comCredito' => []];   // PIS/COFINS de entrada (só CRT 3)
     $travadoXml = $ehEdicao && ! $somenteLeitura && $entrada->tipo_entrada === 'xml';
     $travarCab  = $somenteLeitura || $travadoXml;   // campos do documento da nota
@@ -29,28 +27,14 @@
     <div id="campos-itens"></div>
 
     {{-- ===================== Dados da nota ===================== --}}
-    <div class="bg-white rounded-lg shadow p-6">
-        <div class="flex items-center gap-3 mb-4">
-            @if ($ehEdicao)
-                <a href="{{ route('entradas-nota.index') }}" title="Voltar para Notas de Entrada"
-                   class="text-gray-500 hover:text-gray-800 transition">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                    </svg>
-                </a>
-            @endif
-            <h1 class="text-lg font-semibold">
-                @if (! $ehEdicao)
-                    Nova Nota Fiscal (Entrada)
-                @elseif ($somenteLeitura)
-                    Nota Fiscal de Entrada nº {{ $entrada->numero }} (finalizada em {{ $entrada->finalizada_em?->format('d/m/Y H:i') }})
-                @else
-                    Editar Nota Fiscal de Entrada (rascunho)
-                @endif
-            </h1>
-        </div>
+    <div class="{{ $cartaoCls }}">
+        <x-form.cabecalho rotulo="Faturamento · NF-e de entrada"
+            :titulo="! $ehEdicao ? 'Nova Nota Fiscal (Entrada)' : ($somenteLeitura ? 'Nota Fiscal de Entrada nº ' . $entrada->numero : 'Editar Nota Fiscal de Entrada')"
+            :selo="$somenteLeitura ? 'Finalizada em ' . $entrada->finalizada_em?->format('d/m/Y H:i') : 'Rascunho'"
+            :voltar="route('entradas-nota.index')" voltar-titulo="Voltar para Notas de Entrada" />
+        <div class="p-6">
         @if ($travadoXml)
-            <div class="mb-4 flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+            <div class="mb-4 flex items-start gap-2 p-3 bg-slate-50 ring-1 ring-slate-200 rounded-xl text-sm text-slate-700">
                 <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
                 </svg>
@@ -75,7 +59,7 @@
                         </select>
                         @unless ($travarCab)
                             <button type="button" onclick="abrirModalFornecedor()"
-                                    class="shrink-0 border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
+                                    class="shrink-0 {{ $botaoSecundarioCls }}">
                                 + Novo
                             </button>
                         @endunless
@@ -143,7 +127,7 @@
                         <input type="hidden" name="operacao_entrada_id" id="operacao_entrada_id"
                             value="{{ old('operacao_entrada_id', $entrada->operacao_entrada_id) }}">
                         <button type="button" onclick="abrirModalOperacao()" @disabled($somenteLeitura ?? false)
-                                class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition disabled:bg-gray-50 disabled:cursor-not-allowed">
+                                class="{{ $inputCls }} text-left hover:bg-white">
                             <span id="operacao_entrada_label" class="{{ $opSelecionada ? 'text-gray-800' : 'text-gray-500' }}">
                                 {{ $opSelecionada ? (($opSelecionada['cfops'] ?: '—') . ' — ' . $opSelecionada['descricao']) : 'Clique para selecionar...' }}
                             </span>
@@ -153,7 +137,7 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Forma de pagamento</label>
                         <select name="forma_pagamento_id" @disabled($somenteLeitura)
-                                class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed">
+                                class="{{ $inputCls }}">
                             <option value="">Não informada</option>
                             @foreach ($formasPagamento as $forma)
                                 <option value="{{ $forma->id }}" @selected(old('forma_pagamento_id', $entrada->forma_pagamento_id) == $forma->id)>
@@ -164,25 +148,26 @@
                     </div>
                 </div>
             </div>
+        </div>
     </div>
 
     {{-- ===================== Itens ===================== --}}
-    <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-sm font-semibold mb-3">Itens da nota</h2>
+    <div class="{{ $cartaoCls }} p-6">
+        <x-form.secao titulo="Itens da nota" icone="caixa">Produtos recebidos nesta nota.</x-form.secao>
 
         @error('itens') <p class="text-red-600 text-sm mb-3">{{ $message }}</p> @enderror
 
         @unless ($somenteLeitura)
             <input type="text" id="input-busca-item" placeholder="Nome, código interno ou código de barras..."
                    autocomplete="off" oninput="abrirModalProdutoComTexto(this)"
-                   class="w-full max-w-2xl border border-gray-300 rounded-lg px-3 py-2 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
+                   class="{{ $inputCls }} max-w-2xl mb-4">
 
         @endunless
 
         {{-- Cresce até ~10 itens (30rem inclui cabeçalho e totais); acima disso rola por dentro --}}
         <div id="area-itens" class="overflow-auto max-h-[30rem]">
             <table class="w-full text-sm whitespace-nowrap">
-                <thead class="bg-gray-50 text-gray-500 text-xs uppercase sticky top-0 z-10">
+                <thead class="{{ $theadCls }} sticky top-0 z-10">
                     <tr>
                         <th class="text-left px-3 py-2">Itens</th>
                         <th class="text-left px-3 py-2">Cód. forn.</th>
@@ -252,7 +237,7 @@
     </div>
 
     {{-- ===================== Totais e observação ===================== --}}
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="{{ $cartaoCls }} p-6">
         <div class="grid grid-cols-3 gap-4 max-w-5xl">
             <div>
                 <label class="{{ $labelCls }}">Frete (R$)</label>
@@ -280,26 +265,26 @@
             </div>
 
             <label class="col-span-3 flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                <input type="checkbox" name="atualizar_custo" value="1"
+                <input type="checkbox" name="atualizar_custo" value="1" class="accent-[#10284A]"
                        @checked(old('atualizar_custo', $entrada->atualizar_custo)) @disabled($somenteLeitura)>
                 Atualizar o preço de custo dos produtos ao finalizar
             </label>
         </div>
 
-        <div class="flex flex-wrap gap-3 mt-6">
+        <div class="flex flex-wrap justify-end gap-3 mt-6 pt-5 border-t border-slate-100">
             @unless ($somenteLeitura)
                 <button type="submit" name="acao" value="salvar"
-                        class="bg-green-700 text-white rounded-lg px-6 py-2.5 text-sm font-medium hover:bg-green-800">
+                        class="{{ $botaoPrimarioCls }}">
                     {{ $ehEdicao ? 'Salvar Alterações' : 'Salvar Rascunho' }}
                 </button>
                 <button type="submit" id="btn-finalizar" name="acao" value="finalizar"
                         onclick="return abrirModalContasPagar(event)"
-                        class="bg-gray-800 text-white rounded-lg px-6 py-2.5 text-sm font-medium hover:bg-gray-700">
+                        class="{{ $botaoAcaoCls }} px-6! py-2.5!">
                     Finalizar Entrada
                 </button>
             @endunless
             <a href="{{ route('entradas-nota.index') }}"
-               class="border border-gray-300 rounded-lg px-6 py-2.5 text-sm hover:bg-gray-50">
+               class="{{ $botaoCancelarCls }}">
                 {{ $somenteLeitura ? 'Voltar' : 'Cancelar' }}
             </a>
         </div>
@@ -312,14 +297,14 @@
 <!-- Modal de busca de produto -->
 <div id="modal-busca-produto" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
-        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
             <h2 class="text-lg font-bold text-white">Selecionar Produto</h2>
             <button type="button" onclick="fecharModalProduto()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
         <div class="p-6">
             <input type="text" id="busca-produto-modal" placeholder="Buscar por nome, código ou código de barras..."
                    autocomplete="off"
-                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
+                   class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm mb-4 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
@@ -339,7 +324,7 @@
 <!-- Modal de edição do item -->
 <div id="modal-editor-item" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900 rounded-t-xl">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A] rounded-t-xl">
             <h2 id="editor-modal-titulo" class="text-lg font-bold text-white">Adicionar item à nota</h2>
             <button type="button" onclick="cancelarEditor()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
@@ -350,7 +335,7 @@
 
         <div class="flex border-b border-gray-200 px-6 mt-3">
             <button type="button" onclick="editorTab('dados')" id="ed-tab-btn-dados"
-                    class="px-5 py-3 text-sm font-medium border-b-2 transition border-blue-600 text-blue-600">
+                    class="px-5 py-3 text-sm font-medium border-b-2 transition border-[#10284A] text-[#10284A]">
                 Dados do item
             </button>
             <button type="button" onclick="editorTab('impostos')" id="ed-tab-btn-impostos"
@@ -435,7 +420,7 @@
                     <div>
                         <div class="flex items-center justify-between mb-3">
                             <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Classificação fiscal</span>
-                            <button type="button" onclick="restaurarFiscalAutomatico()" class="text-xs text-blue-600 hover:underline">Restaurar automático</button>
+                            <button type="button" onclick="restaurarFiscalAutomatico()" class="text-xs text-[#10284A] hover:underline">Restaurar automático</button>
                         </div>
 
                         <div class="grid grid-cols-3 gap-4">
@@ -563,7 +548,7 @@
             <button type="button" onclick="cancelarEditor()"
                     class="ml-auto bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition">Cancelar</button>
             <button type="button" id="btn-salvar-item" onclick="adicionarLinhaNaGrid()"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition">
+                    class="bg-[#10284A] hover:bg-[#163a68] text-white px-4 py-2 rounded-lg text-sm font-semibold transition">
                 Adicionar à nota
             </button>
         </div>
@@ -573,7 +558,7 @@
 <!-- Modal de cadastro rápido de fornecedor -->
 <div id="modal-fornecedor" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-y-auto">
-        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
             <h2 class="text-lg font-bold text-white">Cadastrar Fornecedor</h2>
             <button type="button" onclick="fecharModalFornecedor()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
@@ -600,7 +585,7 @@
             <p id="forn-erro" class="text-red-600 text-sm hidden"></p>
 
             <button type="button" onclick="salvarFornecedor()"
-                    class="w-full bg-green-700 hover:bg-green-800 text-white py-2.5 rounded-lg text-sm font-medium">
+                    class="w-full {{ $botaoPrimarioCls }}">
                 Cadastrar fornecedor
             </button>
         </div>
@@ -1197,8 +1182,8 @@ function editorTab(nome) {
         const btn = document.getElementById('ed-tab-btn-' + n);
 
         document.getElementById('ed-painel-' + n).classList.toggle('hidden', !ativo);
-        btn.classList.toggle('border-blue-600', ativo);
-        btn.classList.toggle('text-blue-600', ativo);
+        btn.classList.toggle('border-[#10284A]', ativo);
+        btn.classList.toggle('text-[#10284A]', ativo);
         btn.classList.toggle('border-transparent', !ativo);
         btn.classList.toggle('text-gray-500', !ativo);
         btn.classList.toggle('hover:text-gray-700', !ativo);

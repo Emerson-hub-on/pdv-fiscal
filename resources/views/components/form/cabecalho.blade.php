@@ -4,9 +4,10 @@
     'voltar' => null,        // URL do botão voltar
     'voltarTitulo' => 'Voltar',
     'selo' => null,          // ex.: "Rascunho", "Pedido nº 12"
+    'solto' => false,        // true: faixa independente acima do conteúdo (telas cujo formulário tem vários cartões)
 ])
 {{-- Faixa azul-marinho no topo do cartão principal do formulário. O slot recebe ações à direita. --}}
-<div class="flex items-center justify-between gap-4 bg-[#10284A] rounded-t-xl px-6 py-4">
+<div class="flex items-center justify-between gap-4 bg-[#10284A] px-6 py-4 {{ $solto ? 'rounded-xl shadow-sm mb-6' : 'rounded-t-xl' }}">
     <div class="flex items-center gap-3 min-w-0">
         @if ($voltar)
             <a href="{{ $voltar }}" title="{{ $voltarTitulo }}"

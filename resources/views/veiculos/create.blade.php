@@ -1,7 +1,9 @@
 @extends('layouts.app')
 @section('titulo', 'Novo Veículo')
 @section('conteudo')
-    <h1 class="text-2xl font-bold mb-6">Novo Veículo</h1>
+@php extract(config('estilo.formulario')); @endphp
+    <x-form.cabecalho solto rotulo="Cadastros · Veículos" titulo="Novo Veículo"
+                      :voltar="route('veiculos.index')" voltar-titulo="Voltar para a lista" />
     <form action="{{ route('veiculos.store') }}" method="POST">
         @csrf
         @include('veiculos._form')

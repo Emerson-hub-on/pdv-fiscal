@@ -1,3 +1,4 @@
+@php extract(config('estilo.formulario')); @endphp
 <!-- Modal Categoria / Marca / Grupo -->
 <div id="modal-catalogo" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6 max-h-[80vh] overflow-y-auto">
@@ -8,20 +9,20 @@
 
         <div class="flex gap-2 mb-4">
             <input type="text" id="catalogo-busca" placeholder="Buscar..."
-                   class="flex-1 border rounded px-3 py-2 text-sm" oninput="buscarCatalogo()">
+                   class="flex-1 {{ $inputCls }}" oninput="buscarCatalogo()">
             <button type="button" onclick="abrirFormNovoCatalogo()"
-                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-2 rounded whitespace-nowrap">
+                    class="{{ $botaoAcaoCls }}">
                 + Novo
             </button>
         </div>
 
         <div id="form-novo-catalogo" class="hidden bg-gray-50 rounded-lg p-3 mb-3">
             <input type="text" id="novo-catalogo-nome" placeholder="Nome..."
-                   class="w-full border rounded px-3 py-2 text-sm mb-2">
+                   class="{{ $inputCls }} mb-2">
             <div class="flex gap-2 justify-end">
                 <button type="button" onclick="fecharFormNovoCatalogo()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
                 <button type="button" onclick="salvarNovoCatalogo()"
-                        class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded">Salvar</button>
+                        class="{{ $botaoAcaoCls }} py-1.5!">Salvar</button>
             </div>
         </div>
 
@@ -40,9 +41,9 @@
 
         <div class="flex gap-2 mb-4">
             <input type="text" id="ncm-busca" placeholder="Buscar por código ou descrição..."
-                   class="flex-1 border rounded px-3 py-2 text-sm" oninput="buscarNcm()">
+                   class="flex-1 {{ $inputCls }}" oninput="buscarNcm()">
             <button type="button" onclick="abrirFormNovoNcm()"
-                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-2 rounded whitespace-nowrap">
+                    class="{{ $botaoAcaoCls }}">
                 + Novo NCM
             </button>
         </div>
@@ -50,14 +51,14 @@
         <div id="form-novo-ncm" class="hidden bg-gray-50 rounded-lg p-3 mb-3">
             <div class="grid grid-cols-2 gap-2 mb-2">
                 <input type="text" id="novo-ncm-codigo" placeholder="Código (8 dígitos)"
-                       maxlength="8" class="border rounded px-3 py-2 text-sm">
+                       maxlength="8" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
                 <input type="text" id="novo-ncm-descricao" placeholder="Descrição"
-                       class="border rounded px-3 py-2 text-sm">
+                       class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
             </div>
             <div class="flex gap-2 justify-end">
                 <button type="button" onclick="fecharFormNovoNcm()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
                 <button type="button" onclick="salvarNovoNcm()"
-                        class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded">Salvar</button>
+                        class="{{ $botaoAcaoCls }} py-1.5!">Salvar</button>
             </div>
         </div>
 
@@ -84,9 +85,9 @@
 
         <div class="flex gap-2 mb-2">
             <input type="text" id="cest-busca" placeholder="Buscar por código ou descrição..."
-                   class="flex-1 border rounded px-3 py-2 text-sm" oninput="buscarCest()">
+                   class="flex-1 {{ $inputCls }}" oninput="buscarCest()">
             <button type="button" onclick="abrirFormNovoCest()"
-                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-2 rounded whitespace-nowrap">
+                    class="{{ $botaoAcaoCls }}">
                 + Novo CEST
             </button>
         </div>
@@ -100,14 +101,14 @@
         <div id="form-novo-cest" class="hidden bg-gray-50 rounded-lg p-3 mb-3">
             <div class="grid grid-cols-2 gap-2 mb-2">
                 <input type="text" id="novo-cest-codigo" placeholder="Código (7 dígitos)"
-                       maxlength="7" class="border rounded px-3 py-2 text-sm">
+                       maxlength="7" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
                 <input type="text" id="novo-cest-descricao" placeholder="Descrição"
-                       class="border rounded px-3 py-2 text-sm">
+                       class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
             </div>
             <div class="flex gap-2 justify-end">
                 <button type="button" onclick="fecharFormNovoCest()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
                 <button type="button" onclick="salvarNovoCest()"
-                        class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded">Salvar</button>
+                        class="{{ $botaoAcaoCls }} py-1.5!">Salvar</button>
             </div>
         </div>
 
@@ -135,9 +136,9 @@
 
         <div class="flex gap-2 mb-2">
             <input type="text" id="classtrib-busca" placeholder="Buscar por código, CST ou descrição..."
-                   class="flex-1 border rounded px-3 py-2 text-sm" oninput="buscarClassTrib()">
+                   class="flex-1 {{ $inputCls }}" oninput="buscarClassTrib()">
             <button type="button" onclick="abrirFormNovoClassTrib()"
-                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-2 rounded whitespace-nowrap">
+                    class="{{ $botaoAcaoCls }}">
                 + Nova
             </button>
         </div>
@@ -151,18 +152,18 @@
         <div id="form-novo-classtrib" class="hidden bg-gray-50 rounded-lg p-3 mb-3">
             <div class="grid grid-cols-2 gap-2 mb-2">
                 <input type="text" id="novo-classtrib-codigo" placeholder="cClassTrib (6 dígitos)"
-                       maxlength="6" class="border rounded px-3 py-2 text-sm">
+                       maxlength="6" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
                 <input type="text" id="novo-classtrib-cst" placeholder="CST (3 dígitos)"
-                       maxlength="3" class="border rounded px-3 py-2 text-sm">
+                       maxlength="3" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
             </div>
             <input type="text" id="novo-classtrib-descricao" placeholder="Descrição do cClassTrib"
-                   class="w-full border rounded px-3 py-2 text-sm mb-2">
+                   class="{{ $inputCls }} mb-2">
             <input type="text" id="novo-classtrib-cst-descricao" placeholder="Descrição do CST (opcional)"
-                   class="w-full border rounded px-3 py-2 text-sm mb-2">
+                   class="{{ $inputCls }} mb-2">
             <div class="flex gap-2 justify-end">
                 <button type="button" onclick="fecharFormNovoClassTrib()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
                 <button type="button" onclick="salvarNovoClassTrib()"
-                        class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded">Salvar</button>
+                        class="{{ $botaoAcaoCls }} py-1.5!">Salvar</button>
             </div>
         </div>
 
@@ -191,9 +192,9 @@
 
         <div class="flex gap-2 mb-4">
             <input type="text" id="piscofins-busca" placeholder="Buscar por CST ou descrição..."
-                   class="flex-1 border rounded px-3 py-2 text-sm" oninput="buscarPisCofins()">
+                   class="flex-1 {{ $inputCls }}" oninput="buscarPisCofins()">
             <button type="button" onclick="abrirFormNovoPisCofins()"
-                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-2 rounded whitespace-nowrap">
+                    class="{{ $botaoAcaoCls }}">
                 + Nova
             </button>
         </div>
@@ -201,18 +202,18 @@
         <div id="form-novo-piscofins" class="hidden bg-gray-50 rounded-lg p-3 mb-3">
             <div class="grid grid-cols-3 gap-2 mb-2">
                 <input type="text" id="novo-piscofins-codigo" placeholder="CST (2 dígitos)"
-                       maxlength="2" class="border rounded px-3 py-2 text-sm">
+                       maxlength="2" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
                 <input type="text" id="novo-piscofins-aliquota-pis" placeholder="Alíquota PIS (%)"
-                       class="border rounded px-3 py-2 text-sm">
+                       class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
                 <input type="text" id="novo-piscofins-aliquota-cofins" placeholder="Alíquota COFINS (%)"
-                       class="border rounded px-3 py-2 text-sm">
+                       class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
             </div>
             <input type="text" id="novo-piscofins-descricao" placeholder="Descrição"
-                   class="w-full border rounded px-3 py-2 text-sm mb-2">
+                   class="{{ $inputCls }} mb-2">
             <div class="flex gap-2 justify-end">
                 <button type="button" onclick="fecharFormNovoPisCofins()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
                 <button type="button" onclick="salvarNovoPisCofins()"
-                        class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded">Salvar</button>
+                        class="{{ $botaoAcaoCls }} py-1.5!">Salvar</button>
             </div>
         </div>
 
@@ -242,9 +243,9 @@
 
         <div class="flex gap-2 mb-2">
             <input type="text" id="ipi-busca" placeholder="Buscar por CST, enquadramento ou descrição..."
-                   class="flex-1 border rounded px-3 py-2 text-sm" oninput="buscarIpi()">
+                   class="flex-1 {{ $inputCls }}" oninput="buscarIpi()">
             <button type="button" onclick="abrirFormNovoIpi()"
-                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-2 rounded whitespace-nowrap">
+                    class="{{ $botaoAcaoCls }}">
                 + Novo
             </button>
         </div>
@@ -258,18 +259,18 @@
         <div id="form-novo-ipi" class="hidden bg-gray-50 rounded-lg p-3 mb-3">
             <div class="grid grid-cols-3 gap-2 mb-2">
                 <input type="text" id="novo-ipi-codigo" placeholder="CST (2 dígitos)"
-                       maxlength="2" class="border rounded px-3 py-2 text-sm">
+                       maxlength="2" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
                 <input type="text" id="novo-ipi-cenq" placeholder="cEnq (3 dígitos)" value="999"
-                       maxlength="3" class="border rounded px-3 py-2 text-sm">
+                       maxlength="3" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
                 <input type="text" id="novo-ipi-aliquota" placeholder="Alíquota (%)"
-                       class="border rounded px-3 py-2 text-sm">
+                       class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
             </div>
             <input type="text" id="novo-ipi-descricao" placeholder="Descrição"
-                   class="w-full border rounded px-3 py-2 text-sm mb-2">
+                   class="{{ $inputCls }} mb-2">
             <div class="flex gap-2 justify-end">
                 <button type="button" onclick="fecharFormNovoIpi()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
                 <button type="button" onclick="salvarNovoIpi()"
-                        class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded">Salvar</button>
+                        class="{{ $botaoAcaoCls }} py-1.5!">Salvar</button>
             </div>
         </div>
 
@@ -378,13 +379,13 @@ function buscarCatalogo() {
 
         vazio.classList.add('hidden');
         lista.innerHTML = items.map(i => `
-            <li class="py-2 px-1 hover:bg-blue-50 rounded text-sm flex justify-between items-center gap-2 group">
+            <li class="py-2 px-1 hover:bg-slate-50 rounded text-sm flex justify-between items-center gap-2 group">
                 <span class="flex-1 cursor-pointer" onclick="selecionarCatalogo(${i.id}, ${jsArg(i.nome)})">
                     ${escHtml(i.nome)}
                 </span>
                 <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition">
                     <button type="button" onclick="editarCatalogo(${i.id}, ${jsArg(i.nome)})"
-                            class="text-xs text-blue-500 hover:underline px-1">Editar</button>
+                            class="text-xs text-[#10284A] hover:underline px-1">Editar</button>
                     <button type="button" onclick="excluirCatalogo(${i.id}, ${jsArg(i.nome)})"
                             class="text-xs text-red-500 hover:underline px-1">Excluir</button>
                 </div>
@@ -477,7 +478,7 @@ function buscarTributacao() {
 
         vazio.classList.add('hidden');
         lista.innerHTML = items.map(i => `
-            <tr class="border-b hover:bg-blue-50 cursor-pointer"
+            <tr class="border-b hover:bg-slate-50 cursor-pointer"
                 onclick="selecionarTributacao(${i.id}, ${jsArg(i.descricao)}, ${jsArg(i.cfop)}, ${jsArg(i.csosn ?? i.cst_icms)}, ${i.aliquota_icms})">
                 <td class="py-2 pr-4">
                     <p class="font-medium">${escHtml(i.descricao)}</p>
@@ -577,7 +578,7 @@ function buscarNcm() {
         };
 
         lista.innerHTML = items.map(i => `
-            <tr class="border-b hover:bg-blue-50 group">
+            <tr class="border-b hover:bg-slate-50 group">
                 <td class="py-2 font-mono text-xs cursor-pointer"
                     onclick="selecionarNcm(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)})">
                     ${highlight(i.codigo, termo)}
@@ -589,7 +590,7 @@ function buscarNcm() {
                 <td class="py-2 w-28">
                     <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition justify-end">
                         <button type="button" onclick="editarNcm(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)})"
-                                class="text-xs text-blue-500 hover:underline">Editar</button>
+                                class="text-xs text-[#10284A] hover:underline">Editar</button>
                         <button type="button" onclick="excluirNcm(${i.id})"
                                 class="text-xs text-red-500 hover:underline">Excluir</button>
                     </div>
@@ -728,7 +729,7 @@ function buscarCest() {
         };
 
         lista.innerHTML = items.map(i => `
-            <tr class="border-b hover:bg-blue-50 group">
+            <tr class="border-b hover:bg-slate-50 group">
                 <td class="py-2 font-mono text-xs cursor-pointer"
                     onclick="selecionarCest(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)})">
                     ${highlight(i.codigo, termo)}
@@ -740,7 +741,7 @@ function buscarCest() {
                 <td class="py-2 w-28">
                     <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition justify-end">
                         <button type="button" onclick="editarCest(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)})"
-                                class="text-xs text-blue-500 hover:underline">Editar</button>
+                                class="text-xs text-[#10284A] hover:underline">Editar</button>
                         <button type="button" onclick="excluirCest(${i.id})"
                                 class="text-xs text-red-500 hover:underline">Excluir</button>
                     </div>
@@ -891,7 +892,7 @@ function buscarClassTrib() {
         };
 
         lista.innerHTML = items.map(i => `
-            <tr class="border-b hover:bg-blue-50 group">
+            <tr class="border-b hover:bg-slate-50 group">
                 <td class="py-2 font-mono text-xs cursor-pointer"
                     onclick="selecionarClassTrib(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)})">
                     ${highlight(i.codigo, termo)}
@@ -908,7 +909,7 @@ function buscarClassTrib() {
                 <td class="py-2 w-28">
                     <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition justify-end">
                         <button type="button" onclick="editarClassTrib(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)}, ${jsArg(i.cst_codigo)}, ${jsArg((i.cst_descricao ?? ''))})"
-                                class="text-xs text-blue-500 hover:underline">Editar</button>
+                                class="text-xs text-[#10284A] hover:underline">Editar</button>
                         <button type="button" onclick="excluirClassTrib(${i.id})"
                                 class="text-xs text-red-500 hover:underline">Excluir</button>
                     </div>
@@ -1064,7 +1065,7 @@ function buscarPisCofins() {
         const fmtAliquota = (v) => v === null || v === undefined ? '—' : `${v}%`;
 
         lista.innerHTML = items.map(i => `
-            <tr class="border-b hover:bg-blue-50 group">
+            <tr class="border-b hover:bg-slate-50 group">
                 <td class="py-2 font-mono text-xs cursor-pointer"
                     onclick="selecionarPisCofins(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)})">
                     ${escHtml(i.codigo)}
@@ -1078,7 +1079,7 @@ function buscarPisCofins() {
                 <td class="py-2 w-28">
                     <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition justify-end">
                         <button type="button" onclick="editarPisCofins(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)}, ${i.aliquota_pis ?? 'null'}, ${i.aliquota_cofins ?? 'null'})"
-                                class="text-xs text-blue-500 hover:underline">Editar</button>
+                                class="text-xs text-[#10284A] hover:underline">Editar</button>
                         <button type="button" onclick="excluirPisCofins(${i.id})"
                                 class="text-xs text-red-500 hover:underline">Excluir</button>
                     </div>
@@ -1233,7 +1234,7 @@ function buscarIpi() {
         const fmtAliquota = (v) => v === null || v === undefined ? '—' : `${v}%`;
 
         lista.innerHTML = items.map(i => `
-            <tr class="border-b hover:bg-blue-50 group">
+            <tr class="border-b hover:bg-slate-50 group">
                 <td class="py-2 font-mono text-xs cursor-pointer"
                     onclick="selecionarIpi(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)})">
                     ${escHtml(i.codigo)}
@@ -1250,7 +1251,7 @@ function buscarIpi() {
                 <td class="py-2 w-28">
                     <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition justify-end">
                         <button type="button" onclick="editarIpi(${i.id}, ${jsArg(i.codigo)}, ${jsArg(i.descricao)}, ${jsArg(i.cenq)}, ${i.aliquota ?? 'null'})"
-                                class="text-xs text-blue-500 hover:underline">Editar</button>
+                                class="text-xs text-[#10284A] hover:underline">Editar</button>
                         <button type="button" onclick="excluirIpi(${i.id})"
                                 class="text-xs text-red-500 hover:underline">Excluir</button>
                     </div>

@@ -1,34 +1,35 @@
+@php extract(config('estilo.formulario')); @endphp
 @php
     $credenciadora = $credenciadora ?? null;
-    $campo = 'w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition';
+    $campo = $inputCls;
     $meiosMarcados = old('meios', $credenciadora?->meios->pluck('meio_pagamento')->all() ?? []);
 @endphp
 
 <div class="space-y-6">
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div class="{{ $cartaoCls }} p-6">
         <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-4">Instituição</h2>
 
         <div class="grid grid-cols-2 gap-5">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">CNPJ <span class="text-red-500">*</span></label>
+                <label class="{{ $labelCls }}">CNPJ <span class="text-red-500">*</span></label>
                 <input type="text" name="cnpj" id="campo-cnpj" maxlength="18" required inputmode="numeric" placeholder="00.000.000/0000-00"
                        value="{{ old('cnpj', $credenciadora->cnpj_formatado ?? '') }}" class="{{ $campo }} font-mono">
                 <p id="aviso-cnpj" class="hidden text-xs mt-1"></p>
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Nome <span class="text-red-500">*</span></label>
+                <label class="{{ $labelCls }}">Nome <span class="text-red-500">*</span></label>
                 <input type="text" name="nome" maxlength="100" required placeholder="Ex.: Itaú Unibanco, Cielo, Stone..."
                        value="{{ old('nome', $credenciadora->nome ?? '') }}" class="{{ $campo }}">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">CEP <span class="text-red-500">*</span></label>
+                <label class="{{ $labelCls }}">CEP <span class="text-red-500">*</span></label>
                 <input type="text" name="cep" maxlength="9" required value="{{ old('cep', $credenciadora->cep ?? '') }}" class="{{ $campo }} font-mono">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">UF <span class="text-red-500">*</span></label>
+                <label class="{{ $labelCls }}">UF <span class="text-red-500">*</span></label>
                 <select name="uf" required class="{{ $campo }} bg-white">
                     <option value="">Selecione...</option>
                     @foreach (\App\Models\Transportador::UFS as $uf)
@@ -38,38 +39,38 @@
             </div>
 
             <div class="col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Logradouro <span class="text-red-500">*</span></label>
+                <label class="{{ $labelCls }}">Logradouro <span class="text-red-500">*</span></label>
                 <input type="text" name="logradouro" maxlength="60" required value="{{ old('logradouro', $credenciadora->logradouro ?? '') }}" class="{{ $campo }}">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Número</label>
+                <label class="{{ $labelCls }}">Número</label>
                 <input type="text" name="numero" maxlength="10" value="{{ old('numero', $credenciadora->numero ?? '') }}" class="{{ $campo }}">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Complemento</label>
+                <label class="{{ $labelCls }}">Complemento</label>
                 <input type="text" name="complemento" maxlength="60" value="{{ old('complemento', $credenciadora->complemento ?? '') }}" class="{{ $campo }}">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Bairro <span class="text-red-500">*</span></label>
+                <label class="{{ $labelCls }}">Bairro <span class="text-red-500">*</span></label>
                 <input type="text" name="bairro" maxlength="60" required value="{{ old('bairro', $credenciadora->bairro ?? '') }}" class="{{ $campo }}">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Município <span class="text-red-500">*</span></label>
+                <label class="{{ $labelCls }}">Município <span class="text-red-500">*</span></label>
                 <input type="text" name="municipio" maxlength="100" required value="{{ old('municipio', $credenciadora->municipio ?? '') }}" class="{{ $campo }}">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Código IBGE do município <span class="text-xs text-gray-400 font-normal">(7 dígitos)</span></label>
+                <label class="{{ $labelCls }}">Código IBGE do município <span class="{{ $opcionalCls }}">(7 dígitos)</span></label>
                 <input type="text" name="cod_municipio" maxlength="7" inputmode="numeric" value="{{ old('cod_municipio', $credenciadora->cod_municipio ?? '') }}" class="{{ $campo }} font-mono">
             </div>
         </div>
     </div>
 
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div class="{{ $cartaoCls }} p-6">
         <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Pagamentos recebidos por esta instituição</h2>
         <p class="text-xs text-gray-400 mb-4">
             Marque os meios que caem na conta desta instituição. Uma instituição pode receber vários meios, mas cada meio só pode ter uma instituição.
@@ -82,7 +83,7 @@
                 <label class="flex items-start gap-3 border border-gray-200 rounded-lg px-3 py-2.5 {{ $ocupadoPor ? 'bg-gray-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50' }}">
                     <input type="checkbox" name="meios[]" value="{{ $codigo }}"
                            {{ in_array($codigo, $meiosMarcados, true) ? 'checked' : '' }} {{ $ocupadoPor ? 'disabled' : '' }}
-                           class="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500">
+                           class="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#10284A] focus:ring-2 focus:ring-[#10284A]/30">
                     <span>
                         <span class="block text-sm text-gray-700">{{ $codigo }} - {{ $rotulo }}</span>
                         @if ($ocupadoPor)
@@ -95,11 +96,11 @@
     </div>
 </div>
 
-<div class="mt-6 flex gap-3">
-    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-semibold text-sm transition">
+<div class="mt-6 flex flex-row-reverse justify-start gap-3">
+    <button type="submit" class="{{ $botaoPrimarioCls }}">
         Salvar credenciadora
     </button>
-    <a href="{{ route('credenciadoras.index') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2.5 rounded-lg text-sm font-medium transition">
+    <a href="{{ route('credenciadoras.index') }}" class="{{ $botaoCancelarCls }}">
         Cancelar
     </a>
 </div>

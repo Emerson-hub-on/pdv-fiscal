@@ -1,3 +1,4 @@
+@php extract(config('estilo.formulario')); @endphp
 @php $produto = $produto ?? null; @endphp
 
 @php
@@ -70,19 +71,19 @@
         </div>
         <div class="flex justify-end">
             <button id="modal-aviso-ok"
-                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2 rounded-lg transition">
+                    class="bg-[#10284A] hover:bg-[#163a68] text-white text-sm font-medium px-5 py-2 rounded-lg transition">
                 OK
             </button>
         </div>
     </div>
 </div>
 
-<div class="bg-white rounded-xl shadow-sm border border-gray-200">
+<div class="{{ $cartaoCls }}">
 
     {{-- Tabs --}}
     <div class="flex border-b border-gray-200">
         <button type="button" onclick="trocarTab('geral')" id="tab-btn-geral"
-                class="tab-btn px-6 py-4 text-sm font-medium border-b-2 border-blue-600 text-blue-600 transition">
+                class="tab-btn px-6 py-4 text-sm font-medium border-b-2 border-[#10284A] text-[#10284A] transition">
             Dados Gerais
         </button>
         <button type="button" onclick="trocarTab('fiscal')" id="tab-btn-fiscal"
@@ -117,24 +118,24 @@
     <div id="tab-geral" class="tab-painel p-6 grid grid-cols-2 gap-5">
 
         <div class="col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Nome <span class="text-red-500">*</span></label>
+            <label class="{{ $labelCls }}">Nome <span class="text-red-500">*</span></label>
             <input type="text" name="nome" value="{{ old('nome', $produto->nome ?? '') }}" required
-                   class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                   class="{{ $inputCls }}">
         </div>
 
         <div class="col-span-2 grid grid-cols-3 gap-5 items-end">
 
             <div class="relative">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Código de barras (EAN)</label>
+                <label class="{{ $labelCls }}">Código de barras (EAN)</label>
                 <input type="text" name="codigo_barras" value="{{ old('codigo_barras', $produto->codigo_barras ?? '') }}"
                        placeholder="Deixe em branco se não tiver"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
 
             <div>
                 <label class="block text-sm font-medium mb-1">
                     Código interno *
-                    <span class="text-xs text-gray-400 font-normal">(gerado automaticamente)</span>
+                    <span class="{{ $opcionalCls }}">(gerado automaticamente)</span>
                 </label>
                 <input type="text" name="codigo_interno"
                     value="{{ old('codigo_interno', $produto->codigo_interno ?? $proximoCodigo ?? '') }}"
@@ -143,9 +144,9 @@
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Referência</label>
+                <label class="{{ $labelCls }}">Referência</label>
                 <input type="text" name="referencia" maxlength="100" value="{{ old('referencia', $produto->referencia ?? '') }}"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
 
         </div>
@@ -153,7 +154,7 @@
         <div class="col-span-2">
             <label class="block text-sm font-medium text-gray-700 mt-4">Descrição</label>
             <textarea name="descricao" rows="3"
-                      class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-none">{{ old('descricao', $produto->descricao ?? '') }}</textarea>
+                      class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#10284A]/30 focus:bg-white focus:border-[#10284A]/40 outline-none transition resize-none">{{ old('descricao', $produto->descricao ?? '') }}</textarea>
         </div>
 
         <input type="hidden" name="categoria_id" id="categoria_id" value="{{ old('categoria_id', $produto->categoria_id ?? '') }}">
@@ -166,31 +167,31 @@
         <input type="hidden" name="ipi_id" id="ipi_id" value="{{ old('ipi_id', $produto->ipi_id ?? '') }}">
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+            <label class="{{ $labelCls }}">Categoria</label>
             <button type="button" onclick="abrirModalCatalogo('categoria')"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                    class="{{ $inputCls }} text-left hover:bg-white">
                 <span id="categoria_label" class="text-gray-600">{{ old('categoria_id') ? '' : ($produto?->categoria->nome ?? 'Clique para selecionar...') }}</span>
             </button>
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Marca</label>
+            <label class="{{ $labelCls }}">Marca</label>
             <button type="button" onclick="abrirModalCatalogo('marca')"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                    class="{{ $inputCls }} text-left hover:bg-white">
                 <span id="marca_label" class="text-gray-600">{{ old('marca_id') ? '' : ($produto?->marca->nome ?? 'Clique para selecionar...') }}</span>
             </button>
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Grupo</label>
+            <label class="{{ $labelCls }}">Grupo</label>
             <button type="button" onclick="abrirModalCatalogo('grupo')"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                    class="{{ $inputCls }} text-left hover:bg-white">
                 <span id="grupo_label" class="text-gray-600">{{ old('grupo_id') ? '' : ($produto?->grupo->nome ?? 'Clique para selecionar...') }}</span>
             </button>
         </div>
 
         <div class="flex flex-col justify-center">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Produto de balança</label>
+            <label class="{{ $labelCls }}">Produto de balança</label>
             <div class="flex items-center gap-3">
                 <label class="relative inline-flex items-center cursor-pointer">
                     <input type="hidden" name="produto_balanca" value="0">
@@ -198,7 +199,7 @@
                            {{ old('produto_balanca', $produto->produto_balanca ?? false) ? 'checked' : '' }}
                            class="sr-only peer"
                            onchange="validarProdutoBalanca(this)">
-                    <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#10284A]"></div>
                 </label>
                 <span class="text-sm text-gray-600">Pesado em KG</span>
                 <span id="aviso-balanca" class="text-xs text-orange-500 hidden">
@@ -212,9 +213,9 @@
     <div id="tab-fiscal" class="tab-painel p-6 grid grid-cols-2 gap-5 hidden">
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">NCM <span class="text-red-500">*</span></label>
+            <label class="{{ $labelCls }}">NCM <span class="text-red-500">*</span></label>
             <button type="button" onclick="abrirModalNcm()"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                    class="{{ $inputCls }} text-left hover:bg-white">
                 <span id="ncm_label" class="text-gray-600">
                     {{ $ncmSelecionado ? $ncmSelecionado->codigo . ' — ' . $ncmSelecionado->descricao : 'Clique para selecionar...' }}
                 </span>
@@ -222,9 +223,9 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">CEST</label>
+            <label class="{{ $labelCls }}">CEST</label>
             <button type="button" onclick="abrirModalCest()"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                    class="{{ $inputCls }} text-left hover:bg-white">
                 <span id="cest_label" class="text-gray-600">
                     {{ $cestSelecionado ? $cestSelecionado->codigo . ' — ' . $cestSelecionado->descricao : 'Clique para selecionar (opcional)...' }}
                 </span>
@@ -232,16 +233,16 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
+            <label class="{{ $labelCls }}">
                 PIS/COFINS
                 @if ($pisCofinsObrigatorio)
                     <span class="text-red-500">*</span>
                 @else
-                    <span class="text-xs text-gray-400 font-normal">(obrigatório apenas no Lucro Presumido/Real)</span>
+                    <span class="{{ $opcionalCls }}">(obrigatório apenas no Lucro Presumido/Real)</span>
                 @endif
             </label>
             <button type="button" onclick="abrirModalPisCofins()"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                    class="{{ $inputCls }} text-left hover:bg-white">
                 <span id="pis_cofins_label" class="text-gray-600">
                     {{ $pisCofinsSelecionado ? 'CST ' . $pisCofinsSelecionado->codigo . ' — ' . $pisCofinsSelecionado->descricao : 'Clique para selecionar...' }}
                 </span>
@@ -249,12 +250,12 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
+            <label class="{{ $labelCls }}">
                 IPI
-                <span class="text-xs text-gray-400 font-normal">(opcional — só pra estabelecimento industrial/equiparado)</span>
+                <span class="{{ $opcionalCls }}">(opcional — só pra estabelecimento industrial/equiparado)</span>
             </label>
             <button type="button" onclick="abrirModalIpi()"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                    class="{{ $inputCls }} text-left hover:bg-white">
                 <span id="ipi_label" class="text-gray-600">
                     {{ $ipiSelecionado ? 'CST ' . $ipiSelecionado->codigo . ' — ' . $ipiSelecionado->descricao : 'Clique para selecionar (opcional)...' }}
                 </span>
@@ -272,27 +273,27 @@
 </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Unidade comercial <span class="text-red-500">*</span></label>
+            <label class="{{ $labelCls }}">Unidade comercial <span class="text-red-500">*</span></label>
             <input type="hidden" name="unidade_comercial" id="unidade_comercial" value="{{ $siglaComercial }}" data-fracionado="{{ $permiteFracionado ? 1 : 0 }}">
             <button type="button" onclick="abrirModalUnidade('unidade_comercial')"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                    class="{{ $inputCls }} text-left hover:bg-white">
                 <span id="unidade_comercial_label" class="text-gray-600">{{ $rotuloUnidade($siglaComercial) }}</span>
             </button>
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Unidade tributável <span class="text-red-500">*</span></label>
+            <label class="{{ $labelCls }}">Unidade tributável <span class="text-red-500">*</span></label>
             <input type="hidden" name="unidade_tributavel" id="unidade_tributavel" value="{{ $siglaTributavel }}" data-fracionado="{{ $fracTributavel ? 1 : 0 }}">
             <button type="button" onclick="abrirModalUnidade('unidade_tributavel')"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                    class="{{ $inputCls }} text-left hover:bg-white">
                 <span id="unidade_tributavel_label" class="text-gray-600">{{ $rotuloUnidade($siglaTributavel) }}</span>
             </button>
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Origem da mercadoria <span class="text-red-500">*</span></label>
+            <label class="{{ $labelCls }}">Origem da mercadoria <span class="text-red-500">*</span></label>
             <select name="origem_mercadoria"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white">
+                    class="{{ $inputCls }}">
                 @foreach ([0 => '0 - Nacional', 1 => '1 - Importado (importação direta)', 2 => '2 - Importado (mercado interno)'] as $valor => $texto)
                     <option value="{{ $valor }}" {{ old('origem_mercadoria', $produto->origem_mercadoria ?? 0) == $valor ? 'selected' : '' }}>
                         {{ $texto }}
@@ -302,9 +303,9 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Classificação IBS/CBS</label>
+            <label class="{{ $labelCls }}">Classificação IBS/CBS</label>
             <button type="button" onclick="abrirModalClassTrib()"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-left text-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                    class="{{ $inputCls }} text-left hover:bg-white">
                 <span id="class_trib_ibs_cbs_label" class="text-gray-600">
                     {{ $classTribSelecionado ? $classTribSelecionado->codigo . ' — ' . $classTribSelecionado->descricao : 'Clique para selecionar (opcional)...' }}
                 </span>
@@ -312,12 +313,12 @@
         </div>
 
         <div class="col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1">
+            <label class="{{ $labelCls }}">
                 Tipo do item <span class="text-red-500">*</span>
-                <span class="text-xs text-gray-400 font-normal">(usado no SPED Fiscal)</span>
+                <span class="{{ $opcionalCls }}">(usado no SPED Fiscal)</span>
             </label>
             <select name="tipo_item"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white">
+                    class="{{ $inputCls }}">
                 @foreach (\App\Models\Produto::TIPOS_ITEM as $codigo => $texto)
                     <option value="{{ $codigo }}" {{ (string) old('tipo_item', $produto->tipo_item ?? '00') === (string) $codigo ? 'selected' : '' }}>
                         {{ $codigo }} - {{ $texto }}
@@ -329,14 +330,14 @@
 
         @if ($pisCofinsObrigatorio)
             <div class="col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">
+                <label class="{{ $labelCls }}">
                     Natureza da receita do PIS/COFINS
-                    <span class="text-xs text-gray-400 font-normal">(NAT_REC — só para CST 04 a 09)</span>
+                    <span class="{{ $opcionalCls }}">(NAT_REC — só para CST 04 a 09)</span>
                 </label>
                 <input type="text" name="nat_rec_pis_cofins" maxlength="3" inputmode="numeric" placeholder="Ex.: 101"
                        value="{{ old('nat_rec_pis_cofins', $produto->nat_rec_pis_cofins ?? '') }}"
                        oninput="this.value = this.value.replace(/\D/g, '').slice(0, 3)"
-                       class="w-48 border border-gray-300 rounded-lg px-3 py-2.5 text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="w-48 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-mono focus:ring-2 focus:ring-[#10284A]/30 focus:bg-white focus:border-[#10284A]/40 outline-none transition">
                 @error('nat_rec_pis_cofins') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
                 <p class="text-xs text-gray-400 mt-1">
                     Obrigatória na EFD-Contribuições (registros M410/M810) quando o produto é vendido com CST 04 (monofásico), 05, 06 (alíquota zero), 07, 08 ou 09.
@@ -350,35 +351,35 @@
     <div id="tab-preco" class="tab-painel p-6 grid grid-cols-2 gap-5 hidden">
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Preço de venda <span class="text-red-500">*</span></label>
+            <label class="{{ $labelCls }}">Preço de venda <span class="text-red-500">*</span></label>
             <div class="relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">R$</span>
                 <input type="number" step="0.01" name="preco_venda" value="{{ old('preco_venda', $produto->preco_venda ?? '') }}" required
-                       class="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }} pl-9!">
             </div>
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Preço de custo</label>
+            <label class="{{ $labelCls }}">Preço de custo</label>
             <div class="relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">R$</span>
                 <input type="number" step="0.01" name="preco_custo" value="{{ old('preco_custo', $produto->preco_custo ?? '') }}"
-                       class="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }} pl-9!">
             </div>
         </div>
 
         <div id="bloco-estoque-simples" class="col-span-2 grid grid-cols-2 gap-5 {{ old('tem_variacao', $produto->tem_variacao ?? false) ? 'hidden' : '' }}">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Estoque</label>
+                <label class="{{ $labelCls }}">Estoque</label>
                 <input type="number" name="estoque" min="0" step="{{ $passoQtd }}" data-qtd-fracionada
                        value="{{ old('estoque', $fmtQtd($produto->estoque ?? 0)) }}"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Estoque mínimo</label>
+                <label class="{{ $labelCls }}">Estoque mínimo</label>
                 <input type="number" name="estoque_minimo" min="0" step="{{ $passoQtd }}" data-qtd-fracionada
                        value="{{ old('estoque_minimo', $fmtQtd($produto->estoque_minimo ?? 0)) }}"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
         </div>
 
@@ -387,7 +388,7 @@
             <input type="checkbox" id="tem_variacao" name="tem_variacao" value="1"
                    {{ old('tem_variacao', $produto->tem_variacao ?? false) ? 'checked' : '' }}
                    onchange="toggleVariacao(this.checked)"
-                   class="w-4 h-4 text-blue-600 rounded">
+                   class="w-4 h-4 rounded accent-[#10284A]">
             <label for="tem_variacao" class="text-sm font-medium text-gray-700">Produto tem variação (cor/tamanho)</label>
         </div>
 
@@ -410,7 +411,7 @@
                 </table>
             </div>
             <button type="button" onclick="adicionarLinhaVariante()"
-                    class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                    class="text-sm text-[#10284A] hover:text-[#10284A] font-medium">
                 + Adicionar variação
             </button>
         </div>
@@ -425,14 +426,14 @@
         <input type="checkbox" id="tem_preco_atacado" name="tem_preco_atacado" value="1"
                {{ old('tem_preco_atacado', $produto->preco_atacado ?? false) ? 'checked' : '' }}
                onchange="toggleAtacado(this.checked)"
-               class="w-4 h-4 text-blue-600 rounded">
+               class="w-4 h-4 rounded accent-[#10284A]">
         <label for="tem_preco_atacado" class="text-sm font-medium text-gray-700">Este produto tem preço de atacado</label>
     </div>
  
     <div id="bloco-atacado" class="grid grid-cols-2 gap-5 {{ old('tem_preco_atacado', $produto->preco_atacado ?? false) ? '' : 'hidden' }}">
  
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Valor original</label>
+            <label class="{{ $labelCls }}">Valor original</label>
             <div class="relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">R$</span>
                 <input type="text" readonly
@@ -443,24 +444,24 @@
         </div>
  
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Valor de atacado</label>
+            <label class="{{ $labelCls }}">Valor de atacado</label>
             <div class="relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">R$</span>
                 <input type="number" step="0.01" name="preco_atacado"
                        value="{{ old('preco_atacado', $produto->preco_atacado ?? '') }}"
-                       class="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }} pl-9!">
             </div>
         </div>
  
         <div class="col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1">
+            <label class="{{ $labelCls }}">
                 A partir de
                 <span id="unidade-atacado-label" class="text-gray-400 font-normal">({{ $produto->unidade_comercial ?? 'UN' }})</span>
             </label>
             <input type="number" step="{{ $passoQtd }}" min="0" data-qtd-fracionada name="quantidade_minima_atacado"
                    value="{{ old('quantidade_minima_atacado', $produto->quantidade_minima_atacado ?? '') }}"
                    placeholder="Ex: 10"
-                   class="w-full max-w-xs border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                   class="w-full max-w-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#10284A]/30 focus:bg-white focus:border-[#10284A]/40 outline-none transition">
         </div>
  
         <div class="col-span-2 border-t pt-4 mt-1 flex items-center gap-3">
@@ -468,7 +469,7 @@
             <input type="checkbox" id="atacado_tem_prazo" name="atacado_tem_prazo" value="1"
                    {{ old('atacado_tem_prazo', $produto->atacado_tem_prazo ?? false) ? 'checked' : '' }}
                    onchange="toggleAtacadoPrazo(this.checked)"
-                   class="w-4 h-4 text-blue-600 rounded">
+                   class="w-4 h-4 rounded accent-[#10284A]">
             <label for="atacado_tem_prazo" class="text-sm font-medium text-gray-700">Ativar prazo do atacado</label>
         </div>
         <p class="col-span-2 text-xs text-gray-400 -mt-3">
@@ -477,28 +478,28 @@
  
         <div id="bloco-atacado-prazo" class="col-span-2 grid grid-cols-2 gap-5 {{ old('atacado_tem_prazo', $produto->atacado_tem_prazo ?? false) ? '' : 'hidden' }}">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Data inicial</label>
+                <label class="{{ $labelCls }}">Data inicial</label>
                 <input type="date" name="atacado_data_inicio"
                        value="{{ old('atacado_data_inicio', optional($produto?->atacado_data_inicio)->format('Y-m-d')) }}"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Data final</label>
+                <label class="{{ $labelCls }}">Data final</label>
                 <input type="date" name="atacado_data_fim"
                        value="{{ old('atacado_data_fim', optional($produto?->atacado_data_fim)->format('Y-m-d')) }}"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
         </div>
     </div>
 </div>
 
 {{-- Botões de ação --}}
-<div class="mt-6 flex gap-3">
+<div class="mt-6 flex flex-row-reverse justify-start gap-3">
     <button type="button" onclick="salvarProduto()"
-            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-semibold text-sm transition">
+            class="{{ $botaoPrimarioCls }}">
         Salvar produto
     </button>
-    <a href="{{ route('produtos.index') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2.5 rounded-lg text-sm font-medium transition">
+    <a href="{{ route('produtos.index') }}" class="{{ $botaoCancelarCls }}">
         Cancelar
     </a>
 </div>
@@ -673,12 +674,12 @@ document.addEventListener('DOMContentLoaded', () => {
 function trocarTab(tab) {
     document.querySelectorAll('.tab-painel').forEach(p => p.classList.add('hidden'));
     document.querySelectorAll('.tab-btn').forEach(b => {
-        b.classList.remove('border-blue-600', 'text-blue-600');
+        b.classList.remove('border-[#10284A]', 'text-[#10284A]');
         b.classList.add('border-transparent', 'text-gray-500');
     });
     document.getElementById('tab-' + tab).classList.remove('hidden');
     const btn = document.getElementById('tab-btn-' + tab);
-    btn.classList.add('border-blue-600', 'text-blue-600');
+    btn.classList.add('border-[#10284A]', 'text-[#10284A]');
     btn.classList.remove('border-transparent', 'text-gray-500');
 }
 
@@ -932,16 +933,16 @@ document.addEventListener('DOMContentLoaded', () => {
 {{-- ===================== Modal de unidades ===================== --}}
 <div id="modal-unidade" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
-        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
             <h2 id="modal-unidade-titulo" class="text-lg font-bold text-white">Selecionar Unidade</h2>
             <button type="button" onclick="fecharModalUnidade()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
         <div class="p-6">
             <input type="text" id="busca-unidade-modal" placeholder="Buscar por sigla ou descrição..." autocomplete="off"
-                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-3 focus:ring-2 focus:ring-slate-800 outline-none transition">
+                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-3 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
             <div class="flex justify-end mb-3">
                 <button type="button" id="btn-nova-unidade" onclick="alternarNovaUnidade()"
-                        class="text-sm font-medium text-gray-700 border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50">
+                        class="text-sm font-medium text-gray-700 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 hover:bg-gray-50">
                     + Nova unidade
                 </button>
             </div>
@@ -949,17 +950,17 @@ document.addEventListener('DOMContentLoaded', () => {
             <div id="painel-nova-unidade" class="hidden border border-amber-200 bg-amber-50 rounded-lg p-4 mb-3">
                 <div class="grid grid-cols-4 gap-3 items-end">
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Sigla *</label>
+                        <label class="{{ $labelCls }}">Sigla *</label>
                         <input type="text" id="nova-unidade-sigla" maxlength="6" autocomplete="off" style="text-transform: uppercase"
-                               class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm uppercase focus:ring-2 focus:ring-slate-800 outline-none">
+                               class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5 text-sm uppercase focus:ring-2 focus:ring-[#10284A]/30 outline-none">
                     </div>
                     <div class="col-span-2">
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Descrição *</label>
+                        <label class="{{ $labelCls }}">Descrição *</label>
                         <input type="text" id="nova-unidade-descricao" maxlength="60" autocomplete="off"
-                               class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-slate-800 outline-none">
+                               class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5 text-sm focus:ring-2 focus:ring-[#10284A]/30 outline-none">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Fracionada</label>
+                        <label class="{{ $labelCls }}">Fracionada</label>
                         <label class="inline-flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" id="toggle-nova-fracionada" class="sr-only peer"
                                    onchange="document.getElementById('texto-nova-fracionada').textContent = this.checked ? 'Sim' : 'Não'">

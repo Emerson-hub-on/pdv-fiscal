@@ -11,6 +11,14 @@
 
 $historico = [
     [
+        'versao' => '1.2.3',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Cadastros (produtos, clientes, fornecedores, PDVs, transportadoras, veículos, condutores, credenciadoras, usuários), Dados da empresa e Série de NF-e no mesmo visual dos demais formulários: faixa azul-marinho com título e botão voltar, campos arredondados, títulos dos campos em destaque, abas e botões em azul-marinho.',
+            'Ordem de serviço e NF-e de entrada também passaram para o novo visual.',
+        ],
+    ],
+    [
         'versao' => '1.2.2',
         'data' => '2026-11-06',
         'itens' => [

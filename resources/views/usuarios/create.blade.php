@@ -10,7 +10,9 @@
 @endsection
 
 @section('conteudo')
-    <h1 class="text-2xl font-bold mb-6">Novo {{ $cfg['singular'] }}</h1>
+@php extract(config('estilo.formulario')); @endphp
+    <x-form.cabecalho solto rotulo="Cadastros · Usuários" titulo="Novo {{ $cfg['singular'] }}"
+                      :voltar="route('usuarios.index', $perfil)" voltar-titulo="Voltar para a lista" />
     <form action="{{ route('usuarios.store', $perfil) }}" method="POST">
         @csrf
         @include('usuarios._form', ['usuario' => null])
@@ -27,9 +29,9 @@
               class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex gap-3 items-end">
             @csrf
             <div class="flex-1">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Código da pessoa</label>
+                <label class="{{ $labelCls }}">Código da pessoa</label>
                 <input type="text" name="codigo" inputmode="numeric" pattern="[0-9]*" autocomplete="off"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
             <button type="submit" class="bg-gray-800 hover:bg-gray-700 text-white px-5 py-2.5 rounded-lg font-semibold text-sm transition">
                 Adicionar como {{ $cfg['singular'] }}

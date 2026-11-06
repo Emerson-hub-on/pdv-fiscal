@@ -1,12 +1,13 @@
+@php extract(config('estilo.formulario')); @endphp
 @php $cliente = $cliente ?? null; @endphp
 
-<div class="bg-white rounded-xl shadow-sm border border-gray-200">
+<div class="{{ $cartaoCls }}">
 
     {{-- Navegação das abas --}}
-    <div class="border-b border-gray-200 px-6 pt-4">
+    <div class="border-b border-slate-200 px-6 pt-4">
         <nav class="flex gap-6">
             <button type="button" data-tab="geral" onclick="mudarAba('geral')"
-                    class="tab-btn pb-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600 transition">
+                    class="tab-btn pb-3 text-sm font-medium border-b-2 border-[#10284A] text-[#10284A] transition">
                 Dados Gerais
             </button>
             <button type="button" data-tab="endereco" onclick="mudarAba('endereco')"
@@ -26,7 +27,7 @@
         <div id="aba-geral" class="tab-conteudo grid grid-cols-2 gap-5">
 
             <div class="col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de pessoa <span class="text-red-500">*</span></label>
+                <label class="{{ $labelCls }}">Tipo de pessoa <span class="text-red-500">*</span></label>
                 <div class="flex gap-4">
                     <label class="flex items-center gap-2 text-sm">
                         <input type="radio" name="tipo_pessoa" value="fisica" onchange="alternarTipoPessoa()"
@@ -42,34 +43,34 @@
             </div>
 
             <div class="col-span-2">
-                <label id="label-nome" class="block text-sm font-medium text-gray-700 mb-1">Nome completo <span class="text-red-500">*</span></label>
+                <label id="label-nome" class="{{ $labelCls }}">Nome completo <span class="text-red-500">*</span></label>
                 <input type="text" name="nome" value="{{ old('nome', $cliente->nome ?? '') }}" required
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
 
             <div id="campo-nome-fantasia" class="col-span-2 hidden">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Nome fantasia</label>
+                <label class="{{ $labelCls }}">Nome fantasia</label>
                 <input type="text" name="nome_fantasia" value="{{ old('nome_fantasia', $cliente->nome_fantasia ?? '') }}"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
 
             <div>
-                <label id="label-documento" class="block text-sm font-medium text-gray-700 mb-1">CPF <span class="text-red-500">*</span></label>
+                <label id="label-documento" class="{{ $labelCls }}">CPF <span class="text-red-500">*</span></label>
                 <input type="text" name="cpf_cnpj" id="campo-cpf-cnpj" value="{{ old('cpf_cnpj', $cliente->cpf_cnpj ?? '') }}" required
                        maxlength="18"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+                <label class="{{ $labelCls }}">Telefone</label>
                 <input type="text" name="telefone" value="{{ old('telefone', $cliente->telefone ?? '') }}"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
 
             <div class="col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                <label class="{{ $labelCls }}">E-mail</label>
                 <input type="email" name="email" value="{{ old('email', $cliente->email ?? '') }}"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
 
         </div>
@@ -82,15 +83,15 @@
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">CEP</label>
+                <label class="{{ $labelCls }}">CEP</label>
                 <input type="text" name="cep" value="{{ old('cep', $cliente->cep ?? '') }}" maxlength="9"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">UF</label>
+                <label class="{{ $labelCls }}">UF</label>
                 <select name="uf"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white">
+                        class="{{ $inputCls }}">
                     <option value="">Selecione...</option>
                     @foreach (['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'] as $uf)
                         <option value="{{ $uf }}" {{ old('uf', $cliente->uf ?? '') === $uf ? 'selected' : '' }}>{{ $uf }}</option>
@@ -99,42 +100,42 @@
             </div>
 
             <div class="col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Logradouro</label>
+                <label class="{{ $labelCls }}">Logradouro</label>
                 <input type="text" name="logradouro" value="{{ old('logradouro', $cliente->logradouro ?? '') }}"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Número</label>
+                <label class="{{ $labelCls }}">Número</label>
                 <input type="text" name="numero" value="{{ old('numero', $cliente->numero ?? '') }}"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Complemento</label>
+                <label class="{{ $labelCls }}">Complemento</label>
                 <input type="text" name="complemento" value="{{ old('complemento', $cliente->complemento ?? '') }}"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Bairro</label>
+                <label class="{{ $labelCls }}">Bairro</label>
                 <input type="text" name="bairro" value="{{ old('bairro', $cliente->bairro ?? '') }}"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Município</label>
+                <label class="{{ $labelCls }}">Município</label>
                 <input type="text" name="municipio" value="{{ old('municipio', $cliente->municipio ?? '') }}"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
+                <label class="{{ $labelCls }}">
                     Código IBGE do município
-                    <span class="text-xs text-gray-400 font-normal">(7 dígitos)</span>
+                    <span class="{{ $opcionalCls }}">(7 dígitos)</span>
                 </label>
                 <input type="text" name="cod_municipio" value="{{ old('cod_municipio', $cliente->cod_municipio ?? '') }}" maxlength="7"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
 
         </div>
@@ -143,9 +144,9 @@
         <div id="aba-fiscal" class="tab-conteudo grid grid-cols-2 gap-5 hidden">
 
             <div class="col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Indicador de IE <span class="text-red-500">*</span></label>
+                <label class="{{ $labelCls }}">Indicador de IE <span class="text-red-500">*</span></label>
                 <select name="indicador_ie" id="campo-indicador-ie"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white">
+                        class="{{ $inputCls }}">
                     <option value="nao_contribuinte" {{ old('indicador_ie', $cliente->indicador_ie ?? 'nao_contribuinte') === 'nao_contribuinte' ? 'selected' : '' }}>
                         Não Contribuinte (consumidor final, órgão público, hospital...)
                     </option>
@@ -159,9 +160,9 @@
             </div>
 
             <div id="campo-ie" class="col-span-2 hidden">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Inscrição Estadual <span class="text-red-500">*</span></label>
+                <label class="{{ $labelCls }}">Inscrição Estadual <span class="text-red-500">*</span></label>
                 <input type="text" name="ie" value="{{ old('ie', $cliente->ie ?? '') }}"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                       class="{{ $inputCls }}">
             </div>
 
         </div>
@@ -169,11 +170,11 @@
     </div>
 </div>
 
-<div class="mt-6 flex gap-3">
-    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-semibold text-sm transition">
+<div class="mt-6 flex flex-row-reverse justify-start gap-3">
+    <button type="submit" class="{{ $botaoPrimarioCls }}">
         Salvar cliente
     </button>
-    <a href="{{ route('clientes.index') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2.5 rounded-lg text-sm font-medium transition">
+    <a href="{{ route('clientes.index') }}" class="{{ $botaoCancelarCls }}">
         Cancelar
     </a>
 </div>
@@ -181,7 +182,7 @@
 {{-- Modal de consulta de CNPJ --}}
 <div id="modal-consulta-cnpj" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl shadow-lg px-8 py-6 flex flex-col items-center gap-3">
-        <svg class="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <svg class="animate-spin h-8 w-8 text-[#10284A]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
         </svg>
@@ -213,8 +214,8 @@ function mudarAba(aba) {
 
     document.querySelectorAll('.tab-btn').forEach(btn => {
         const ativa = btn.dataset.tab === aba;
-        btn.classList.toggle('border-blue-600', ativa);
-        btn.classList.toggle('text-blue-600', ativa);
+        btn.classList.toggle('border-[#10284A]', ativa);
+        btn.classList.toggle('text-[#10284A]', ativa);
         btn.classList.toggle('border-transparent', !ativa);
         btn.classList.toggle('text-gray-500', !ativa);
     });

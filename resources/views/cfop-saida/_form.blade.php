@@ -1,43 +1,49 @@
-@php $ehEdicao = isset($cfopSaida) && $cfopSaida !== null; @endphp
+@php
+    $ehEdicao = isset($cfopSaida) && $cfopSaida !== null;
+    extract(config('estilo.formulario'));
+@endphp
 
 <form method="POST" action="{{ $ehEdicao ? route('cfop-saida.update', $cfopSaida) : route('cfop-saida.store') }}"
-      class="bg-white rounded-lg shadow p-6 max-w-xl flex flex-col gap-4">
+      class="{{ $cartaoCls }} max-w-xl">
     @csrf
     @if ($ehEdicao) @method('PUT') @endif
 
-    <h1 class="text-lg font-semibold">{{ $ehEdicao ? 'Editar CFOP' : 'Novo CFOP de Saída' }}</h1>
+    <x-form.cabecalho rotulo="Cadastros · CFOP de saída" :titulo="$ehEdicao ? 'Editar CFOP' : 'Novo CFOP de Saída'" />
 
+    <div class="p-6 flex flex-col gap-4">
     <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Código CFOP</label>
+        <label class="{{ $labelCls }}">Código CFOP</label>
         <input type="text" name="codigo" maxlength="4" placeholder="5102" required
                value="{{ old('codigo', $ehEdicao ? $cfopSaida->codigo : '') }}"
-               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-        @error('codigo') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+               class="{{ $inputCls }}">
+        @error('codigo') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
     </div>
 
     <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+        <label class="{{ $labelCls }}">Descrição</label>
         <input type="text" name="descricao" required placeholder="Ex: Venda de mercadoria adquirida ou recebida de terceiros"
                value="{{ old('descricao', $ehEdicao ? $cfopSaida->descricao : '') }}"
-               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-        @error('descricao') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+               class="{{ $inputCls }}">
+        @error('descricao') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
     </div>
 
     <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Finalidade</label>
+        <label class="{{ $labelCls }}">Finalidade</label>
         <input type="text" name="finalidade" placeholder="Ex: Venda, Devolução, Remessa, Transferência, Bonificação"
                value="{{ old('finalidade', $ehEdicao ? $cfopSaida->finalidade : '') }}"
-               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+               class="{{ $inputCls }}">
     </div>
 
-    <label class="flex items-center gap-2 text-sm text-gray-700">
-        <input type="checkbox" name="movimenta_estoque" value="1"
+    <label class="flex items-center gap-2 text-sm text-slate-700">
+        <input type="checkbox" name="movimenta_estoque" value="1" class="accent-[#10284A]"
                @checked(old('movimenta_estoque', $ehEdicao ? $cfopSaida->movimenta_estoque : true))>
         Movimenta estoque
     </label>
 
 
-    <button type="submit" class="bg-gray-800 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-gray-700 w-fit">
+    <button type="submit" class="{{ $botaoPrimarioCls }} self-end">
+        <x-form.icone nome="check" />
         {{ $ehEdicao ? 'Salvar Alterações' : 'Cadastrar' }}
     </button>
+    </div>
 </form>

@@ -1,9 +1,7 @@
 @php
     $ehEdicao = $ordem->exists;
-    $inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed';
-    $labelCls = 'block text-sm font-medium text-gray-700 mb-1';
-    $erroCls  = 'text-red-600 text-xs mt-1';
-    $opcional = '<span class="text-gray-400 font-normal">(opcional)</span>';
+    extract(config('estilo.formulario')); // $inputCls, $labelCls, $botaoPrimarioCls...
+    $opcional = '<span class="{{ $opcionalCls }}">(opcional)</span>';
 
     // Peças: o que o operador digitou (se a validação falhou) ou o que está no banco
     if (is_array(old('itens'))) {
@@ -77,45 +75,36 @@
     @csrf
     @if ($ehEdicao) @method('PUT') @endif
 
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+    <div class="{{ $cartaoCls }}">
 
         {{-- Título --}}
-        <div class="flex items-center gap-3 px-6 pt-6 pb-4">
-            <a href="{{ route('ordens-servico.index') }}" title="Voltar para Ordens de Serviço"
-               class="text-gray-500 hover:text-gray-800 transition">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                </svg>
-            </a>
-            <h1 class="text-lg font-semibold">
-                {{ $ehEdicao ? 'Editar Ordem de Serviço nº ' . $ordem->numeroExibicao() : 'Nova Ordem de Serviço' }}
-            </h1>
-        </div>
+        <x-form.cabecalho rotulo="Pedidos · Ordem de serviço" :titulo="$ehEdicao ? 'Editar Ordem de Serviço nº ' . $ordem->numeroExibicao() : 'Nova Ordem de Serviço'"
+                          :voltar="route('ordens-servico.index')" voltar-titulo="Voltar para Ordens de Serviço" />
 
         {{-- Tabs --}}
-        <div class="flex border-b border-gray-200 overflow-x-auto">
+        <div class="flex border-b border-slate-200 overflow-x-auto px-2">
             <button type="button" onclick="trocarTab('cabecalho')" id="tab-btn-cabecalho"
-                    class="tab-btn px-6 py-4 text-sm font-medium border-b-2 border-blue-600 text-blue-600 transition whitespace-nowrap">
+                    class="tab-btn px-5 py-3.5 -mb-px text-sm font-semibold border-b-2 border-[#10284A] text-[#10284A] transition whitespace-nowrap">
                 Cabeçalho
             </button>
             <button type="button" onclick="trocarTab('equipamento')" id="tab-btn-equipamento"
-                    class="tab-btn px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition whitespace-nowrap">
+                    class="tab-btn px-5 py-3.5 -mb-px text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition whitespace-nowrap">
                 Equipamento
             </button>
             <button type="button" onclick="trocarTab('laudo')" id="tab-btn-laudo"
-                    class="tab-btn px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition whitespace-nowrap">
+                    class="tab-btn px-5 py-3.5 -mb-px text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition whitespace-nowrap">
                 Laudo técnico
             </button>
             <button type="button" onclick="trocarTab('pecas')" id="tab-btn-pecas"
-                    class="tab-btn px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition whitespace-nowrap">
+                    class="tab-btn px-5 py-3.5 -mb-px text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition whitespace-nowrap">
                 Peças
             </button>
             <button type="button" onclick="trocarTab('valores')" id="tab-btn-valores"
-                    class="tab-btn px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition whitespace-nowrap">
+                    class="tab-btn px-5 py-3.5 -mb-px text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition whitespace-nowrap">
                 Valores
             </button>
             <button type="button" onclick="trocarTab('termo')" id="tab-btn-termo"
-                    class="tab-btn px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition whitespace-nowrap">
+                    class="tab-btn px-5 py-3.5 -mb-px text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition whitespace-nowrap">
                 Termo
             </button>
         </div>
@@ -180,7 +169,7 @@
                     <div id="bloco-cliente-cadastrado">
                     <div class="flex gap-2">
                         <button type="button" onclick="abrirModalCliente()"
-                                class="w-full min-w-0 text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
+                                class="{{ $inputCls }} min-w-0 text-left hover:bg-white">
                             <span id="texto-cliente-selecionado" class="block truncate">
                                 @if ($clienteAtual)
                                     {{ $clienteAtual->nome_exibicao ?? $clienteAtual->nome }} — {{ $clienteAtual->documento_formatado ?? $clienteAtual->cpf_cnpj }}
@@ -190,7 +179,7 @@
                             </span>
                         </button>
                         <button type="button" id="limpar-cliente" onclick="limparCliente()" title="Remover cliente"
-                                class="shrink-0 border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50 {{ $clienteAtual ? '' : 'hidden' }}">
+                                class="{{ $limparCls }} {{ $clienteAtual ? '' : 'hidden' }}">
                             &times;
                         </button>
                     </div>
@@ -384,11 +373,11 @@
             </div>
             <div class="col-span-1">
                 <button type="button" onclick="adicionarItem()" title="Adicionar peça"
-                        class="w-full bg-gray-700 text-amber-50 rounded-lg px-3 py-2 text-sm hover:bg-gray-500">+</button>
+                        class="w-full {{ $botaoAcaoCls }}">+</button>
             </div>
         </div>
 
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
+        <div class="{{ $tabelaCaixaCls }}">
             <table class="w-full text-sm table-fixed">
                 <colgroup>
                     <col class="w-[15%]">
@@ -399,7 +388,7 @@
                     <col class="w-[14%]">
                     <col class="w-[6%]">
                 </colgroup>
-                <thead class="bg-[#10284A] text-amber-50 text-xs uppercase">
+                <thead class="{{ $theadCls }}">
                     <tr>
                         <th class="text-left px-2 py-2">Cód. barras</th>
                         <th class="text-left px-2 py-2">Descrição</th>
@@ -482,11 +471,11 @@
 
     <div class="flex items-center gap-3">
         <button type="button" onclick="abrirModalFinalizar()"
-                class="bg-green-700 hover:bg-green-800 text-white rounded-lg px-6 py-2.5 text-sm font-medium">
+                class="{{ $botaoPrimarioCls }}">
             {{ $ehEdicao ? 'Salvar alterações' : 'Abrir ordem de serviço' }}
         </button>
         <a href="{{ route('ordens-servico.index') }}"
-           class="border border-gray-300 rounded-lg px-6 py-2.5 text-sm hover:bg-gray-50">Cancelar</a>
+           class="{{ $botaoCancelarCls }}">Cancelar</a>
 
         <p class="ml-auto text-sm text-gray-600">Total da OS:
             <span id="total-os-rodape" class="text-lg font-semibold text-gray-900">R$ 0,00</span>
@@ -497,7 +486,7 @@
 <!-- Modal de confirmação (observações internas) -->
 <div id="modal-finalizar" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg">
-        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900 rounded-t-xl">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A] rounded-t-xl">
             <h2 class="text-lg font-bold text-white">{{ $ehEdicao ? 'Salvar ordem de serviço' : 'Abrir ordem de serviço' }}</h2>
             <button type="button" onclick="fecharModalFinalizar()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
@@ -513,9 +502,9 @@
 
             <div class="flex justify-end gap-3 mt-5">
                 <button type="button" onclick="fecharModalFinalizar()"
-                        class="border border-gray-300 rounded-lg px-5 py-2 text-sm hover:bg-gray-50">Voltar</button>
+                        class="{{ $botaoSecundarioCls }}">Voltar</button>
                 <button type="submit" form="form-os" id="btn-confirmar-finalizar"
-                        class="bg-green-700 hover:bg-green-800 text-white rounded-lg px-5 py-2 text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed">
+                        class="{{ $botaoPrimarioCls }}">
                     {{ $ehEdicao ? 'Confirmar e salvar' : 'Confirmar e abrir OS' }}
                 </button>
             </div>
@@ -526,14 +515,14 @@
 <!-- Modal de busca de cliente -->
 <div id="modal-busca-cliente" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
-        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
             <h2 class="text-lg font-bold text-white">Selecionar Cliente</h2>
             <button type="button" onclick="fecharModalCliente()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
         <div class="p-6">
             <input type="text" id="busca-cliente-modal" placeholder="Buscar por nome ou CPF/CNPJ..."
                    autocomplete="off"
-                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
+                   class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm mb-4 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
@@ -553,14 +542,14 @@
 <!-- Modal de busca de produto -->
 <div id="modal-busca-produto" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
-        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
             <h2 class="text-lg font-bold text-white">Selecionar Produto</h2>
             <button type="button" onclick="fecharModalProduto()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
         <div class="p-6">
             <input type="text" id="busca-produto-modal" placeholder="Buscar por nome, código ou código de barras..."
                    autocomplete="off"
-                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
+                   class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm mb-4 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
             {{-- Largura fixa: descrição longa é cortada com "…" --}}
             <table class="w-full text-sm table-fixed">
                 <colgroup>
@@ -596,7 +585,7 @@ const urlBuscaProduto   = {{ Illuminate\Support\Js::from(route('ordens-servico.b
 const urlBuscaCliente   = {{ Illuminate\Support\Js::from(route('contas-receber.buscar-cliente')) }};
 
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-const clsCelula = 'w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-slate-800 outline-none transition';
+const clsCelula = 'w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition';
 const brl = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const numero = id => parseFloat(document.getElementById(id)?.value) || 0;
 const totalOS = () => Math.max(0, Math.round((totalPedido() + numero('campo-valor-servico') - numero('campo-desconto')) * 100) / 100);
@@ -631,13 +620,13 @@ function mostrarAviso(mensagem, tipo = 'erro') {
 function trocarTab(tab) {
     document.querySelectorAll('.tab-painel').forEach(p => p.classList.add('hidden'));
     document.querySelectorAll('.tab-btn').forEach(b => {
-        b.classList.remove('border-blue-600', 'text-blue-600');
-        b.classList.add('border-transparent', 'text-gray-500');
+        b.classList.remove('border-[#10284A]', 'text-[#10284A]');
+        b.classList.add('border-transparent', 'text-slate-500');
     });
     document.getElementById('tab-' + tab).classList.remove('hidden');
     const btn = document.getElementById('tab-btn-' + tab);
-    btn.classList.add('border-blue-600', 'text-blue-600');
-    btn.classList.remove('border-transparent', 'text-gray-500');
+    btn.classList.add('border-[#10284A]', 'text-[#10284A]');
+    btn.classList.remove('border-transparent', 'text-slate-500');
 }
 
 // Cliente cadastrado (busca no modal) ou avulso (nome digitado). Os dois guardam seus valores ao alternar.
@@ -822,9 +811,9 @@ function renderizarProdutos() {
         const destacado = index === indiceProduto;
         const estoque = r.estoque === null || r.estoque === undefined ? '—' : Number(r.estoque).toLocaleString('pt-BR');
         return `
-            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
+            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-[#10284A] text-amber-50' : 'hover:bg-gray-50'}"
                 onclick="selecionarProduto(${index})">
-                <td class="py-3 px-2 font-mono text-sm truncate ${destacado ? 'text-slate-300' : 'text-gray-500'}">${esc(r.codigo_barras || r.codigo_interno)}</td>
+                <td class="py-3 px-2 font-mono text-sm truncate ${destacado ? 'text-slate-300' : 'text-slate-500'}">${esc(r.codigo_barras || r.codigo_interno)}</td>
                 <td class="py-3 px-2 font-medium truncate" title="${esc(r.descricao)}">${esc(r.descricao)}</td>
                 <td class="py-3 px-2">${esc(r.unidade)}</td>
                 <td class="py-3 px-2 text-right">${estoque}</td>
@@ -1054,10 +1043,10 @@ function renderizarClientes() {
     linhasBuscaCliente.innerHTML = clientesAtuais.map((c, index) => {
         const destacado = index === indiceCliente;
         return `
-            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
+            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-[#10284A] text-amber-50' : 'hover:bg-gray-50'}"
                 onclick="selecionarCliente(${index})">
                 <td class="py-3 font-medium">${esc(c.nome)}</td>
-                <td class="py-3 font-mono text-sm ${destacado ? 'text-slate-300' : 'text-gray-500'}">${esc(c.cpf_cnpj)}</td>
+                <td class="py-3 font-mono text-sm ${destacado ? 'text-slate-300' : 'text-slate-500'}">${esc(c.cpf_cnpj)}</td>
                 <td class="py-3">${esc(c.uf)}</td>
                 <td class="py-3">${esc(c.telefone)}</td>
             </tr>
