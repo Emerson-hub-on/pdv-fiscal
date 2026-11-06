@@ -155,7 +155,7 @@
         <div class="p-6 overflow-y-auto">
 
         <div class="flex gap-2 mb-3">
-            <input type="text" id="cliente-busca" placeholder="Buscar por nome ou CPF/CNPJ..."
+            <input type="text" id="cliente-busca" autocomplete="off" placeholder="Buscar por nome ou CPF/CNPJ..."
                    class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition" oninput="buscarCliente()">
             <button type="button" onclick="abrirFormNovoCliente()"
                     class="bg-[#10284A] hover:bg-[#163a68] text-amber-50 rounded-xl font-semibold transition text-sm px-3 py-2 whitespace-nowrap">
@@ -202,8 +202,25 @@
             </div>
         </div>
 
-        <ul id="cliente-lista" class="divide-y divide-slate-100 rounded-xl ring-1 ring-slate-200 overflow-hidden"></ul>
+        <div class="rounded-xl ring-1 ring-slate-200 overflow-hidden">
+            <table class="w-full text-sm table-fixed">
+                <colgroup>
+                    <col>
+                    <col class="w-44">
+                    <col class="w-14">
+                </colgroup>
+                <thead class="bg-[#10284A] text-amber-50 text-[11px] uppercase tracking-wider">
+                    <tr>
+                        <th class="text-left px-3 py-2">Nome</th>
+                        <th class="text-left px-3 py-2">CPF/CNPJ</th>
+                        <th class="text-left px-3 py-2">UF</th>
+                    </tr>
+                </thead>
+                <tbody id="cliente-lista" class="divide-y divide-slate-100"></tbody>
+            </table>
+        </div>
         <p id="cliente-vazio" class="text-sm text-slate-400 text-center py-4 hidden">Nenhum cliente encontrado.</p>
+        <p class="text-xs text-slate-400 mt-3">Use ↑ ↓ para navegar e Enter para selecionar.</p>
         </div>
     </div>
 </div>
@@ -351,18 +368,36 @@
                 <input type="text" id="convenio-cliente-busca" placeholder="Buscar por nome ou CPF/CNPJ..." autocomplete="off"
                        class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition mb-3"
                        oninput="buscarClienteConvenio()">
-                <ul id="convenio-cliente-lista" class="divide-y divide-gray-100 border border-gray-200 rounded-lg max-h-64 overflow-y-auto"></ul>
+                <div class="max-h-64 overflow-y-auto rounded-xl">
+                <div class="rounded-xl ring-1 ring-slate-200">
+            <table class="w-full text-sm table-fixed">
+                <colgroup>
+                    <col>
+                    <col class="w-44">
+                    <col class="w-14">
+                </colgroup>
+                <thead class="sticky top-0 bg-[#10284A] text-amber-50 text-[11px] uppercase tracking-wider">
+                    <tr>
+                        <th class="text-left px-3 py-2">Nome</th>
+                        <th class="text-left px-3 py-2">CPF/CNPJ</th>
+                        <th class="text-left px-3 py-2">UF</th>
+                    </tr>
+                </thead>
+                <tbody id="convenio-cliente-lista" class="divide-y divide-slate-100"></tbody>
+            </table>
+        </div>
+                </div>
                 <p id="convenio-cliente-vazio" class="hidden text-sm text-gray-500 text-center py-4">Nenhum cliente encontrado.</p>
             </div>
 
             {{-- Passo 2: limite do cliente e quanto usar --}}
             <div id="convenio-passo-limite" class="hidden">
-                <div class="flex justify-between items-start mb-4">
-                    <div>
-                        <p class="text-xs text-gray-400 uppercase tracking-wide">Cliente</p>
-                        <p id="convenio-cliente-nome" class="font-semibold text-slate-800"></p>
+                <div class="flex justify-between items-start gap-3 mb-4">
+                    <div class="min-w-0">
+                        <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Cliente</p>
+                        <p id="convenio-cliente-nome" class="font-semibold text-slate-800 truncate"></p>
                     </div>
-                    <button type="button" onclick="trocarClienteConvenio()" class="text-xs text-blue-600 hover:underline">Trocar consumidor</button>
+                    <button type="button" onclick="trocarClienteConvenio()" class="shrink-0 text-xs font-medium text-[#10284A] hover:underline">Trocar consumidor</button>
                 </div>
 
                 <div id="convenio-sem-limite" class="hidden rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700"></div>
@@ -479,6 +514,89 @@ const formasPagamento = [
     { valor: 'convenio', label: 'Convênio (fiado)' },
 ];
 
+// ===================== LINHA DE CLIENTE NAS LISTAS (Nome | CPF/CNPJ | UF) =====================
+// Nome comprido (comum em CNPJ) termina em "..." na própria coluna: o nome completo fica no cadastro do cliente
+function linhaCliente(c, aoClicar) {
+    const tr = document.createElement('tr');
+    tr.className = 'hover:bg-amber-50 text-slate-700 cursor-pointer';
+
+    // Nome cortado com "..." (truncate); o selo de cadastrado no caixa fica sempre visível ao lado
+    const nome = document.createElement('td');
+    nome.className = 'px-3 py-2.5';
+    const caixaNome = document.createElement('div');
+    caixaNome.className = 'flex items-center gap-1.5 min-w-0';
+    const texto = document.createElement('span');
+    texto.className = 'truncate font-medium';
+    texto.textContent = c.nome ?? c.label;
+    caixaNome.append(texto);
+    if (c.pendente) {
+        const selo = document.createElement('span');
+        selo.className = 'shrink-0 text-[10px] font-semibold rounded bg-amber-100 text-amber-800 px-1.5 py-0.5';
+        selo.textContent = 'cadastrado no caixa';
+        caixaNome.append(selo);
+    }
+    nome.append(caixaNome);
+
+    const doc = document.createElement('td');
+    doc.className = 'px-3 py-2.5 whitespace-nowrap font-mono text-xs';
+    doc.textContent = c.cpf_cnpj_formatado || c.cpf_cnpj || '—';
+
+    const uf = document.createElement('td');
+    uf.className = 'px-3 py-2.5';
+    uf.textContent = c.uf || '—';
+
+    tr.append(nome, doc, uf);
+    tr.addEventListener('click', aoClicar);
+    return tr;
+}
+
+// ===================== LISTAS NAVEGÁVEIS PELO TECLADO =====================
+// No campo de busca: ↑ ↓ trocam o item marcado, Enter escolhe. O mouse sobre um item também o marca.
+function listaNavegavel(campoId, listaId) {
+    const estado = { itens: [], indice: -1, escolher: null };
+    const lista = () => document.getElementById(listaId);
+
+    function marcar() {
+        [...lista().children].forEach((li, i) => {
+            const ativo = i === estado.indice;
+            li.classList.toggle('bg-[#10284A]', ativo);
+            li.classList.toggle('text-amber-50', ativo);
+            li.classList.toggle('text-slate-700', !ativo);
+            li.classList.toggle('hover:bg-amber-50', !ativo);
+            if (ativo) li.scrollIntoView({ block: 'nearest' });
+        });
+    }
+
+    document.getElementById(campoId).addEventListener('keydown', (e) => {
+        const total = estado.itens.length;
+        if (!total) return;
+
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            const passo = e.key === 'ArrowDown' ? 1 : -1;
+            estado.indice = (estado.indice + passo + total) % total;
+            marcar();
+        } else if (e.key === 'Enter' && estado.indice >= 0) {
+            e.preventDefault();
+            estado.escolher(estado.itens[estado.indice]);
+        }
+    });
+
+    return {
+        // Chamado depois de montar a lista: o 1º item já vem marcado
+        definir(itens, escolher) {
+            estado.itens = itens;
+            estado.escolher = escolher;
+            estado.indice = itens.length ? 0 : -1;
+            [...lista().children].forEach((li, i) => li.addEventListener('mouseenter', () => {
+                estado.indice = i;
+                marcar();
+            }));
+            marcar();
+        },
+    };
+}
+
 // ===================== CLIENTE (Adicionar Consumidor) =====================
 
 function abrirModalCliente() {
@@ -497,6 +615,8 @@ function fecharModalCliente() {
     document.getElementById('modal-cliente').classList.remove('flex');
 }
 
+const navegacaoClientes = listaNavegavel('cliente-busca', 'cliente-lista');
+
 function buscarCliente() {
     clearTimeout(timeoutCliente);
     timeoutCliente = setTimeout(async () => {
@@ -511,19 +631,15 @@ function buscarCliente() {
         lista.replaceChildren();
 
         if (items.length === 0) {
+            navegacaoClientes.definir([], null);
             vazio.classList.remove('hidden');
             return;
         }
 
         vazio.classList.add('hidden');
         // Nome digitado no caixa: vai como texto, nunca como HTML
-        items.forEach(c => {
-            const li = document.createElement('li');
-            li.className = 'px-3 py-2.5 hover:bg-amber-50 text-sm text-slate-700 cursor-pointer';
-            li.textContent = c.label;
-            li.addEventListener('click', () => selecionarCliente(c.id, c.label));
-            lista.appendChild(li);
-        });
+        items.forEach(c => lista.appendChild(linhaCliente(c, () => selecionarCliente(c.id, c.label))));
+        navegacaoClientes.definir(items, c => selecionarCliente(c.id, c.label));
     }, 200);
 }
 
@@ -1116,6 +1232,8 @@ function trocarClienteConvenio() {
     mostrarPassoClienteConvenio();
 }
 
+const navegacaoClientesConvenio = listaNavegavel('convenio-cliente-busca', 'convenio-cliente-lista');
+
 function buscarClienteConvenio() {
     clearTimeout(timeoutClienteConvenio);
     timeoutClienteConvenio = setTimeout(async () => {
@@ -1132,15 +1250,13 @@ function buscarClienteConvenio() {
         lista.replaceChildren();
         document.getElementById('convenio-cliente-vazio').classList.toggle('hidden', itens.length > 0);
 
-        itens.forEach(c => {
-            const li = document.createElement('li');
-            li.className = 'px-3 py-2.5 hover:bg-blue-50 cursor-pointer text-sm';
-            li.textContent = c.label;
-            li.addEventListener('click', () => {
-                clienteConvenioPendente = { id: c.id, label: c.label };
-                carregarConvenio(c.id, c.label);
-            });
-            lista.appendChild(li);
+        itens.forEach(c => lista.appendChild(linhaCliente(c, () => {
+            clienteConvenioPendente = { id: c.id, label: c.label };
+            carregarConvenio(c.id, c.label);
+        })));
+        navegacaoClientesConvenio.definir(itens, c => {
+            clienteConvenioPendente = { id: c.id, label: c.label };
+            carregarConvenio(c.id, c.label);
         });
     }, 200);
 }

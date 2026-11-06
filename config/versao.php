@@ -11,6 +11,20 @@
 
 $historico = [
     [
+        'versao' => '1.11.5',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Caixa → Pagamento: a lista de clientes do "Adicionar consumidor" (e da busca do Convênio) virou tabela Nome | CPF/CNPJ | UF; nome grande (comum em CNPJ) termina em "..." numa única linha, e o cliente cadastrado no próprio caixa aparece com o selo "cadastrado no caixa". A busca do caixa passou a devolver a UF do cliente.',
+        ],
+    ],
+    [
+        'versao' => '1.11.4',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Caixa → Pagamento → Adicionar consumidor (F4): a lista de clientes navega pelas setas ↑ ↓ a partir do campo de busca (o 1º já vem marcado, a lista rola junto) e Enter seleciona; o mouse sobre um cliente também o marca. O mesmo vale para a busca de consumidor do modal Convênio.',
+        ],
+    ],
+    [
         'versao' => '1.11.3',
         'data' => '2026-11-06',
         'itens' => [

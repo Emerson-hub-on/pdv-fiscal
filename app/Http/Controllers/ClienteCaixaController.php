@@ -45,8 +45,8 @@ class ClienteCaixaController extends Controller
             ->where('ativo', true)
             ->where($filtro)
             ->orderBy('nome')->limit(20)
-            ->get(['id', 'nome', 'cpf_cnpj'])
-            ->map(fn ($c) => $this->item($c->id, $c->nome, $c->cpf_cnpj));
+            ->get(['id', 'nome', 'cpf_cnpj', 'uf'])
+            ->map(fn ($c) => $this->item($c->id, $c->nome, $c->cpf_cnpj, false, $c->uf));
 
         // Os que já subiram estão no clientes_cache com o id do servidor
         $pendentes = $db->table('clientes_pendentes')
@@ -103,7 +103,7 @@ class ClienteCaixaController extends Controller
         return response()->json($this->item(-$id, $data['nome'], $data['cpf_cnpj'], true));
     }
 
-    private function item(int $id, string $nome, string $cpfCnpj, bool $pendente = false): array
+    private function item(int $id, string $nome, string $cpfCnpj, bool $pendente = false, ?string $uf = null): array
     {
         $formatado = (new Cliente(['cpf_cnpj' => $cpfCnpj]))->cpf_cnpj_formatado;
 
@@ -112,6 +112,8 @@ class ClienteCaixaController extends Controller
             'nome' => $nome,
             'cpf_cnpj' => $cpfCnpj,
             'cpf_cnpj_formatado' => $formatado,
+            'uf' => $uf,
+            'pendente' => $pendente,
             'label' => "{$nome} — {$formatado}" . ($pendente ? ' (cadastrado no caixa)' : ''),
         ];
     }
