@@ -143,8 +143,8 @@
 </div>
 
 <!-- Modal Adicionar Consumidor -->
-<div id="modal-cliente" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+<div id="modal-cliente" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 px-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
         <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
             <div>
                 <h2 class="text-lg font-bold text-amber-50">Adicionar consumidor</h2>
@@ -206,8 +206,8 @@
             <table class="w-full text-sm table-fixed">
                 <colgroup>
                     <col>
-                    <col class="w-44">
-                    <col class="w-14">
+                    <col class="w-48">
+                    <col class="w-16">
                 </colgroup>
                 <thead class="bg-[#10284A] text-amber-50 text-[11px] uppercase tracking-wider">
                     <tr>
@@ -352,8 +352,8 @@
 </div>
 
 <!-- Modal: convênio (venda fiado no limite de crédito do cliente) -->
-<div id="modal-convenio" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+<div id="modal-convenio" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 px-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
         <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
             <div>
                 <h2 class="text-lg font-bold text-amber-50">Convênio</h2>
@@ -373,8 +373,8 @@
             <table class="w-full text-sm table-fixed">
                 <colgroup>
                     <col>
-                    <col class="w-44">
-                    <col class="w-14">
+                    <col class="w-48">
+                    <col class="w-16">
                 </colgroup>
                 <thead class="sticky top-0 bg-[#10284A] text-amber-50 text-[11px] uppercase tracking-wider">
                     <tr>

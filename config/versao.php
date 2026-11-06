@@ -11,6 +11,13 @@
 
 $historico = [
     [
+        'versao' => '1.11.6',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Caixa → Pagamento: modal "Adicionar consumidor" mais largo (cabe mais do nome na tabela Nome | CPF/CNPJ | UF) e modal do Convênio um pouco mais largo também.',
+        ],
+    ],
+    [
         'versao' => '1.11.5',
         'data' => '2026-11-06',
         'itens' => [
