@@ -448,6 +448,7 @@ class SyncService
         try {
             $this->enviarCaixas();
             $this->enviarVendasPendentes();
+            $this->enviarRecebimentosConvenio();
             $this->enviarInutilizacoes();
             $this->enviarNumeracao();
             $this->enviarOcorrencias();
@@ -685,6 +686,7 @@ class SyncService
 
             $servico = app(\App\Services\ConvenioService::class);
             $usoPendente = self::convenioUsadoEmVendasPendentes();
+            [$baixaPorCliente, $baixaPorVenda] = self::convenioRecebidoPendente();
             $agora = now();
 
             $limites = Cliente::where('limite_credito_ativo', true)->where('limite_credito', '>', 0)
@@ -694,12 +696,13 @@ class SyncService
                     'cliente_nome' => $c->nome,
                     'cpf_cnpj'     => $c->cpf_cnpj,
                     'limite'       => (float) $c->limite_credito,
-                    'usado'        => round($servico->usado($c->id) + ($usoPendente[$c->id] ?? 0), 2),
+                    'usado'        => max(0, round($servico->usado($c->id) + ($usoPendente[$c->id] ?? 0) - ($baixaPorCliente[$c->id] ?? 0), 2)),
                     'dias'         => (int) ($c->limite_credito_dias ?: 30),
                     'updated_at'   => $agora,
                 ])->all();
 
             $abertos = $servico->abertos()->map(fn ($conta) => [
+                'saldo'        => max(0, round($conta->saldoAberto() - ($baixaPorVenda[$conta->venda?->uuid] ?? 0), 2)),
                 'id'           => $conta->id,
                 'cliente_id'   => $conta->cliente_id,
                 'cliente_nome' => $conta->cliente?->nome,
@@ -709,9 +712,8 @@ class SyncService
                 'data_venda'   => $conta->data_conta?->toDateString(),
                 'vencimento'   => $conta->proximaParcela()?->vencimento?->toDateString(),
                 'valor'        => (float) $conta->valor_total,
-                'saldo'        => $conta->saldoAberto(),
                 'updated_at'   => $agora,
-            ])->all();
+            ])->filter(fn ($l) => $l['saldo'] > 0)->values()->all();
 
             $local->transaction(function () use ($local, $limites, $abertos) {
                 $local->table('convenios_cache')->delete();
@@ -728,6 +730,74 @@ class SyncService
         } catch (\Throwable $e) {
             return $this->registrarFalha($e);
         }
+    }
+
+    /** Baixas de convênio feitas neste caixa que ainda não subiram: [[cliente_id => valor], [venda_uuid => valor]]. */
+    public static function convenioRecebidoPendente(): array
+    {
+        $db = DB::connection('sqlite_local');
+        if (!$db->getSchemaBuilder()->hasTable('convenio_recebimentos')) {
+            return [[], []];
+        }
+
+        $pendentes = $db->table('convenio_recebimentos')->where('status', '!=', 'sincronizada')->get();
+
+        return [
+            $pendentes->groupBy('cliente_id')->map(fn ($g) => round((float) $g->sum('valor'), 2))->all(),
+            $pendentes->groupBy('venda_uuid')->map(fn ($g) => round((float) $g->sum('valor'), 2))->all(),
+        ];
+    }
+
+    /**
+     * Direção 2: sobe as baixas de convênio recebidas no caixa (depois das vendas: a dívida nasce com a venda).
+     * Idempotente pelo uuid do recebimento.
+     */
+    public function enviarRecebimentosConvenio(): array
+    {
+        $db = DB::connection('sqlite_local');
+        if (CentralStatus::fora() || !$db->getSchemaBuilder()->hasTable('convenio_recebimentos')) {
+            return ['sucesso' => true, 'enviados' => 0, 'falhas' => 0];
+        }
+
+        $servico = app(\App\Services\ConvenioService::class);
+        $enviados = 0;
+        $falhas = 0;
+
+        foreach ($db->table('convenio_recebimentos')->where('status', '!=', 'sincronizada')->orderBy('id')->get() as $r) {
+            // Venda deste caixa ainda não subiu: a baixa espera (continua pendente, sem erro)
+            if (!DB::table('vendas')->where('uuid', $r->venda_uuid)->exists()) {
+                continue;
+            }
+
+            try {
+                $servico->receberDoCaixa([
+                    'uuid'            => $r->uuid,
+                    'venda_uuid'      => $r->venda_uuid,
+                    'valor'           => (float) $r->valor,
+                    'forma_pagamento' => $r->forma_pagamento,
+                    'recebido_em'     => $r->recebido_em,
+                    'caixa_uuid'      => $r->caixa_uuid,
+                    'operador_id'     => $r->operador_id_central,
+                ]);
+
+                $db->table('convenio_recebimentos')->where('id', $r->id)->update([
+                    'status' => 'sincronizada', 'sincronizado_em' => now(), 'erro_sync_mensagem' => null, 'updated_at' => now(),
+                ]);
+                $enviados++;
+            } catch (\Throwable $e) {
+                if (CentralStatus::erroDeConexao($e)) {
+                    CentralStatus::marcarFora();
+                    break;
+                }
+
+                $db->table('convenio_recebimentos')->where('id', $r->id)->update([
+                    'status' => 'erro_sync', 'erro_sync_mensagem' => mb_substr($e->getMessage(), 0, 500), 'updated_at' => now(),
+                ]);
+                $falhas++;
+            }
+        }
+
+        return ['sucesso' => true, 'enviados' => $enviados, 'falhas' => $falhas];
     }
 
     /** Convênio usado em vendas deste caixa ainda não enviadas ao servidor: [cliente_id => valor]. */
@@ -1374,6 +1444,8 @@ class SyncService
         }
 
         $resultado['vendas'] = $this->enviarVendasPendentes();
+        // Baixas de convênio do caixa sobem depois das vendas (a dívida nasce com a venda)
+        $resultado['convenio_recebimentos'] = $this->enviarRecebimentosConvenio();
         // Depois das vendas: o limite usado e as dívidas em aberto já incluem o que acabou de subir
         $resultado['convenios'] = CentralStatus::fora()
             ? ['sucesso' => false, 'erro' => 'Servidor indisponível']

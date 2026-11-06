@@ -96,7 +96,7 @@
     <div class="mt-4">{{ $caixas->links() }}</div>
 
     <p class="text-xs text-gray-400 mt-4">
-        Esperado (dinheiro) = fundo de troco + vendas recebidas em dinheiro − troco devolvido. Vendas canceladas não entram.
+        Esperado (dinheiro) = fundo de troco + vendas recebidas em dinheiro + convênio recebido em dinheiro no caixa − troco devolvido. Vendas canceladas não entram.
         Diferença positiva é sobra; negativa é falta.
     </p>
 @endsection

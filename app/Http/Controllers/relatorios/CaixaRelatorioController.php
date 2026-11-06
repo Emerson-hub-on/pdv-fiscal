@@ -154,13 +154,18 @@ class CaixaRelatorioController extends Controller
                 ->where('vendas.status', '!=', 'cancelada')
                 ->where('venda_pagamentos.forma_pagamento', 'dinheiro')
                 ->selectRaw('coalesce(sum(venda_pagamentos.valor), 0)'),
+            // Baixa de convênio recebida em dinheiro neste caixa também está na gaveta
+            'total_convenio_dinheiro' => DB::table('contas_receber_parcelas')
+                ->whereColumn('contas_receber_parcelas.recebido_caixa_uuid', 'caixas.uuid')
+                ->where('contas_receber_parcelas.recebido_forma_caixa', 'dinheiro')
+                ->selectRaw('coalesce(sum(contas_receber_parcelas.valor_recebido), 0)'),
         ];
     }
 
     // Mesma conferência da gaveta do relatório de fechamento: fundo + dinheiro recebido - troco
     private function comConferencia(Caixa $c): Caixa
     {
-        $c->dinheiro_esperado = round((float) $c->valor_abertura + (float) $c->total_dinheiro - (float) $c->total_troco, 2);
+        $c->dinheiro_esperado = round((float) $c->valor_abertura + (float) $c->total_dinheiro + (float) $c->total_convenio_dinheiro - (float) $c->total_troco, 2);
         $c->diferenca = $c->valor_fechamento_informado !== null
             ? round((float) $c->valor_fechamento_informado - $c->dinheiro_esperado, 2)
             : 0.0;

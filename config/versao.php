@@ -11,6 +11,31 @@
 
 $historico = [
     [
+        'versao' => '1.11.1',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Contas a receber: o formulário da conta passou a ter abas — "Dados da conta", "Parcelas" (com o nº de parcelas na aba) e "Histórico" (na edição). Os botões Salvar/Cancelar ficam embaixo de todas as abas; depois de uma baixa a tela volta na aba Parcelas, depois de um estorno na aba Histórico, e erro nas parcelas abre direto a aba Parcelas.',
+        ],
+    ],
+    [
+        'versao' => '1.11.0',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Contas a receber → nova aba "Histórico" dentro da conta: lista a criação, as baixas (no painel ou no caixa), os estornos, as alterações e o cancelamento da venda do convênio, com data e hora, parcela, valor, forma de pagamento, origem (painel, caixa ou sistema) e o usuário.',
+            'Estorno de recebimento agora pede o motivo (obrigatório) num modal; o estorno aparece destacado no histórico com o valor desfeito, a data da baixa original, se ela foi feita no caixa e o motivo. Depois do estorno a tela abre direto na aba Histórico.',
+            'Contas já existentes receberam no histórico a criação e as baixas que já estavam registradas. Parcelas recebidas no caixa aparecem marcadas "(no caixa)".',
+        ],
+    ],
+    [
+        'versao' => '1.10.0',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Caixa → Convênios (F9): o operador de caixa dá baixa no convênio. Clicando na dívida abre o modal com o valor da venda e o saldo em aberto, para informar o valor pago (total ou parcial) e a forma de pagamento (dinheiro, PIX, crédito ou débito).',
+            'A baixa funciona também offline e até para venda que ainda não subiu: já tira do saldo da dívida e do limite usado do cliente, e sobe ao servidor na sincronização, virando a baixa da parcela em Contas a receber (pagamento parcial divide a parcela: a parte paga fica recebida e o restante continua em aberto).',
+            'Fechamento de caixa: nova seção "Recebimentos de convênio" (por forma e total) e o convênio recebido em dinheiro entra no esperado da gaveta — também no relatório de fechamento do painel. Estornar a baixa no painel tira o recebimento do fechamento daquele caixa.',
+        ],
+    ],
+    [
         'versao' => '1.9.2',
         'data' => '2026-11-06',
         'itens' => [

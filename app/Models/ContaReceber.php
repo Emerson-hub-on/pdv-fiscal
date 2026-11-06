@@ -52,6 +52,11 @@ class ContaReceber extends Model
         return $this->origem === 'convenio';
     }
 
+    public function historico(): HasMany
+    {
+        return $this->hasMany(ContaReceberHistorico::class, 'conta_receber_id')->orderByDesc('ocorrido_em')->orderByDesc('id');
+    }
+
     public function parcelas(): HasMany
     {
         return $this->hasMany(ContaReceberParcela::class, 'conta_receber_id');

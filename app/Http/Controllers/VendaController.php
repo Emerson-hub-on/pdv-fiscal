@@ -442,26 +442,23 @@ class VendaController extends Controller
     }
 
     /**
-     * Caixa: convênios (vendas fiado) em aberto — os do servidor (cache) e as vendas deste caixa
-     * que ainda não subiram. Filtra por período da venda, nº do cupom e cliente.
+     * Convênios (vendas fiado) em aberto vistos pelo caixa: os do servidor (cache) e as vendas deste caixa
+     * que ainda não estão nessa lista. O saldo já desconta as baixas feitas neste caixa.
      */
-    public function conveniosAbertos(Request $request)
+    private function linhasConvenio(): \Illuminate\Support\Collection
     {
         $db = DB::connection('sqlite_local');
         if (!$db->getSchemaBuilder()->hasTable('convenios_abertos_cache')) {
-            return response()->json(['linhas' => [], 'total' => 0, 'quantidade' => 0]);
+            return collect();
         }
 
-        $inicio = $request->filled('data_inicio') ? (string) $request->get('data_inicio') : null;
-        $fim = $request->filled('data_fim') ? (string) $request->get('data_fim') : null;
-        $cupom = (int) preg_replace('/\D/', '', (string) $request->get('cupom', ''));
-        $termo = mb_strtolower(trim((string) $request->get('cliente', '')));
         $hoje = today()->toDateString();
-
         $servidor = $db->table('convenios_abertos_cache')->get();
         $uuidsServidor = $servidor->pluck('venda_uuid')->filter()->flip();
 
         $linhas = $servidor->map(fn ($c) => [
+            'venda_uuid'  => $c->venda_uuid,
+            'cliente_id'  => $c->cliente_id,
             'cliente'     => $c->cliente_nome,
             'numero_nfce' => $c->numero_nfce,
             'serie_nfce'  => $c->serie_nfce,
@@ -474,8 +471,12 @@ class VendaController extends Controller
 
         // Vendas deste caixa no convênio que ainda não estão na lista do servidor: as não enviadas e as
         // enviadas depois da última atualização da lista (as mais antigas já quitadas não voltam)
-        $nomes = $db->table('convenios_cache')->pluck('cliente_nome', 'cliente_id');
-        $ultimaLista = $db->table('convenios_cache')->max('updated_at');
+        $convenios = $db->table('convenios_cache')->get()->keyBy('cliente_id');
+        $ultimaLista = $convenios->max('updated_at');
+        $recebidoLocal = $db->getSchemaBuilder()->hasTable('convenio_recebimentos')
+            ? $db->table('convenio_recebimentos')->selectRaw('venda_uuid, SUM(valor) AS total')->groupBy('venda_uuid')->pluck('total', 'venda_uuid')
+            : collect();
+
         $locais = $db->table('vendas_pendentes')
             ->where('status', '!=', 'cancelada')
             ->where(fn ($q) => $q->where('status', '!=', 'sincronizada')
@@ -484,23 +485,39 @@ class VendaController extends Controller
             ->where('pagamentos', 'like', '%convenio%')
             ->get()
             ->reject(fn ($v) => isset($uuidsServidor[$v->uuid]))
-            ->map(function ($v) use ($nomes) {
-                $valor = collect(json_decode((string) $v->pagamentos, true) ?? [])->where('forma_pagamento', 'convenio')->sum('valor');
+            ->map(function ($v) use ($convenios, $recebidoLocal, $hoje) {
+                $valor = round((float) collect(json_decode((string) $v->pagamentos, true) ?? [])->where('forma_pagamento', 'convenio')->sum('valor'), 2);
+                $data = substr((string) ($v->vendida_em ?? $v->created_at), 0, 10);
+                $convenio = $convenios[$v->cliente_id] ?? null;
+                $vencimento = $data ? \Illuminate\Support\Carbon::parse($data)->addDays((int) ($convenio->dias ?? 30))->toDateString() : null;
 
                 return [
-                    'cliente'     => $nomes[$v->cliente_id] ?? ('Cliente #' . $v->cliente_id),
+                    'venda_uuid'  => $v->uuid,
+                    'cliente_id'  => $v->cliente_id,
+                    'cliente'     => $convenio->cliente_nome ?? ('Cliente #' . $v->cliente_id),
                     'numero_nfce' => $v->numero_nfce,
                     'serie_nfce'  => $v->serie_nfce,
-                    'data'        => substr((string) ($v->vendida_em ?? $v->created_at), 0, 10),
-                    'vencimento'  => null,
-                    'valor'       => round((float) $valor, 2),
-                    'saldo'       => round((float) $valor, 2),
-                    'situacao'    => $v->status === 'sincronizada' ? 'aberto' : 'nao_sincronizado',
+                    'data'        => $data,
+                    'vencimento'  => $vencimento,
+                    'valor'       => $valor,
+                    'saldo'       => max(0, round($valor - (float) ($recebidoLocal[$v->uuid] ?? 0), 2)),
+                    'situacao'    => $v->status !== 'sincronizada' ? 'nao_sincronizado'
+                        : ($vencimento && $vencimento < $hoje ? 'vencido' : 'aberto'),
                 ];
-            })
-            ->filter(fn ($l) => $l['valor'] > 0);
+            });
 
-        $filtradas = $linhas->concat($locais)
+        return $linhas->concat($locais)->filter(fn ($l) => $l['saldo'] > 0)->values();
+    }
+
+    /** Caixa: convênios em aberto, filtrando por período da venda, nº do cupom e cliente (JSON). */
+    public function conveniosAbertos(Request $request)
+    {
+        $inicio = $request->filled('data_inicio') ? (string) $request->get('data_inicio') : null;
+        $fim = $request->filled('data_fim') ? (string) $request->get('data_fim') : null;
+        $cupom = (int) preg_replace('/\D/', '', (string) $request->get('cupom', ''));
+        $termo = mb_strtolower(trim((string) $request->get('cliente', '')));
+
+        $filtradas = $this->linhasConvenio()
             ->filter(fn ($l) => !$inicio || ($l['data'] && $l['data'] >= $inicio))
             ->filter(fn ($l) => !$fim || ($l['data'] && $l['data'] <= $fim))
             ->filter(fn ($l) => !$cupom || (int) $l['numero_nfce'] === $cupom)
@@ -512,6 +529,89 @@ class VendaController extends Controller
             'linhas'     => $filtradas->take(300)->values(),
             'total'      => round((float) $filtradas->sum('saldo'), 2),
             'quantidade' => $filtradas->count(),
+        ]);
+    }
+
+    /**
+     * Caixa: baixa (total ou parcial) de um convênio em aberto. Grava no SQLite (funciona offline), já tira
+     * do saldo da dívida e do limite usado do cliente, e sobe ao servidor pela sincronização, onde vira
+     * a baixa da parcela no Contas a receber. O valor recebido entra no fechamento do caixa.
+     */
+    public function receberConvenio(Request $request)
+    {
+        $dados = $request->validate([
+            'venda_uuid'      => 'required|string|max:36',
+            'valor'           => 'required|numeric|min:0.01',
+            'forma_pagamento' => 'required|in:' . implode(',', array_keys(\App\Services\ConvenioService::FORMAS_RECEBIMENTO)),
+        ], [
+            'valor.required' => 'Informe o valor pago.',
+            'valor.min'      => 'O valor pago deve ser maior que zero.',
+            'forma_pagamento.*' => 'Escolha a forma de pagamento.',
+        ]);
+
+        $caixa = CaixaLocal::aberto(Auth::id());
+        if (!$caixa) {
+            return response()->json(['erro' => 'Nenhum caixa aberto.'], 422);
+        }
+
+        $linha = $this->linhasConvenio()->firstWhere('venda_uuid', $dados['venda_uuid']);
+        if (!$linha) {
+            return response()->json(['erro' => 'Este convênio não está mais em aberto. Atualize a lista.'], 422);
+        }
+
+        $valor = round((float) $dados['valor'], 2);
+        if ($valor - $linha['saldo'] > 0.009) {
+            return response()->json(['erro' => sprintf('O valor pago é maior que o saldo em aberto (R$ %s).', number_format($linha['saldo'], 2, ',', '.'))], 422);
+        }
+
+        $db = DB::connection('sqlite_local');
+        $uuid = (string) Str::uuid();
+
+        $db->transaction(function () use ($db, $uuid, $linha, $valor, $dados, $caixa) {
+            $db->table('convenio_recebimentos')->insert([
+                'uuid'                => $uuid,
+                'venda_uuid'          => $linha['venda_uuid'],
+                'cliente_id'          => $linha['cliente_id'],
+                'cliente_nome'        => $linha['cliente'],
+                'numero_nfce'         => $linha['numero_nfce'],
+                'valor'               => $valor,
+                'forma_pagamento'     => $dados['forma_pagamento'],
+                'caixa_uuid'          => $caixa->uuid,
+                'operador_id_central' => Auth::id(),
+                'recebido_em'         => now(),
+                'status'              => 'pendente_sync',
+                'created_at'          => now(),
+                'updated_at'          => now(),
+            ]);
+
+            // A dívida (lista do servidor) e o limite do cliente já refletem a baixa, mesmo offline
+            $db->table('convenios_abertos_cache')->where('venda_uuid', $linha['venda_uuid'])
+                ->update(['saldo' => DB::raw('MAX(0, saldo - ' . $valor . ')'), 'updated_at' => now()]);
+            $db->table('convenios_abertos_cache')->where('venda_uuid', $linha['venda_uuid'])->where('saldo', '<=', 0)->delete();
+            $db->table('convenios_cache')->where('cliente_id', $linha['cliente_id'])
+                ->update(['usado' => DB::raw('MAX(0, usado - ' . $valor . ')'), 'updated_at' => now()]);
+        });
+
+        // Servidor no ar: a baixa já sobe agora; senão vai na próxima sincronização
+        $sincronizado = false;
+        if (!CentralStatus::fora()) {
+            try {
+                (new SyncService())->enviarRecebimentosConvenio();
+                $sincronizado = $db->table('convenio_recebimentos')->where('uuid', $uuid)->value('status') === 'sincronizada';
+            } catch (\Throwable $e) {
+                if (CentralStatus::erroDeConexao($e)) {
+                    CentralStatus::marcarFora();
+                }
+            }
+        }
+
+        $restante = max(0, round($linha['saldo'] - $valor, 2));
+
+        return response()->json([
+            'sucesso'      => true,
+            'restante'     => $restante,
+            'quitado'      => $restante <= 0,
+            'sincronizado' => $sincronizado,
         ]);
     }
 

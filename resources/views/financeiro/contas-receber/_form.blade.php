@@ -10,6 +10,7 @@
         'recebida'           => true,
         'data_recebimento' => $p->data_recebimento->format('Y-m-d'),
         'valor_recebido'     => (float) $p->valor_recebido,
+        'no_caixa'           => (bool) $p->recebido_caixa_uuid,
     ])->values();
 
     // Pendentes: o que o operador digitou (se a validação falhou) ou o que está no banco
@@ -30,6 +31,9 @@
     }
 
     $parcelasIniciais = $recebidas->concat($pendentes)->values();
+
+    $historicoConta = $ehEdicao ? $conta->historico()->with('usuario:id,name')->get() : collect();
+    $qtdEstornos = $historicoConta->where('tipo', 'estorno')->count();
 
     $vencimentoCab = old('vencimento', $conta->parcelas->reject(fn ($p) => $p->isRecebida())
         ->sortBy(fn ($p) => $p->vencimento->timestamp)->first()?->vencimento?->format('Y-m-d'));
@@ -55,9 +59,33 @@
     <div class="{{ $cartaoCls }}">
         <x-form.cabecalho rotulo="Financeiro · Contas a receber" :titulo="$ehEdicao ? 'Editar Conta a Receber' : 'Nova Conta a Receber'"
                           :voltar="route('contas-receber.index')" voltar-titulo="Voltar para Contas a Receber" />
+
+        {{-- Abas: Dados da conta | Parcelas | Histórico (só na edição) --}}
+        <div class="border-b border-slate-200 px-6 pt-4">
+            <nav class="flex gap-6">
+                <button type="button" data-aba-conta="dados" onclick="mudarAbaConta('dados')" class="aba-conta-btn pb-3 text-sm font-medium border-b-2 border-[#10284A] text-[#10284A] transition">
+                    Dados da conta
+                </button>
+                <button type="button" data-aba-conta="parcelas" onclick="mudarAbaConta('parcelas')" class="aba-conta-btn pb-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">
+                    Parcelas
+                    <span id="contador-parcelas-aba" class="ml-1 inline-block rounded-full bg-slate-100 text-slate-600 px-1.5 text-[11px] font-semibold"></span>
+                </button>
+                @if ($ehEdicao)
+                    <button type="button" data-aba-conta="historico" onclick="mudarAbaConta('historico')" class="aba-conta-btn pb-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">
+                        Histórico
+                        <span class="ml-1 inline-block rounded-full bg-slate-100 text-slate-600 px-1.5 text-[11px] font-semibold">{{ $historicoConta->count() }}</span>
+                        @if ($qtdEstornos)
+                            <span class="ml-0.5 inline-block rounded-full bg-red-100 text-red-700 px-1.5 text-[11px] font-semibold" title="Estornos">{{ $qtdEstornos }} estorno(s)</span>
+                        @endif
+                    </button>
+                @endif
+            </nav>
+        </div>
+
         <div class="p-6">
 
-        <div class="flex flex-col gap-4">
+        {{-- ===================== ABA: DADOS DA CONTA ===================== --}}
+        <div id="aba-conta-dados" class="flex flex-col gap-4">
             {{-- Linha 1: tipo e cliente --}}
             <div class="grid grid-cols-2 gap-4">
                 <div>
@@ -157,14 +185,12 @@
                 <label class="{{ $labelCls }}">Observação</label>
                 <textarea name="observacao" rows="2" maxlength="1000" class="{{ $inputCls }}">{{ old('observacao', $conta->observacao) }}</textarea>
             </div>
-        </div>
-        </div>
-    </div>
+        </div>{{-- /aba-conta-dados --}}
 
-    {{-- ===================== Parcelas ===================== --}}
-    <div class="{{ $cartaoCls }} p-6">
+        {{-- ===================== ABA: PARCELAS ===================== --}}
+        <div id="aba-conta-parcelas" class="hidden">
         <x-form.secao titulo="Parcelas" icone="calendario">
-            Conta à vista ou em parcela única? Não precisa preencher nada aqui: será criada uma parcela com o valor total e o vencimento acima.
+            Conta à vista ou em parcela única? Não precisa preencher nada aqui: será criada uma parcela com o valor total e o vencimento da aba <strong>Dados da conta</strong>.
             Se for parcelada, informe a quantidade e clique em <strong>Gerar parcelas</strong>; depois você pode ajustar cada data e valor.
         </x-form.secao>
 
@@ -218,6 +244,58 @@
             </p>
         @endif
 
+
+        </div>{{-- /aba-conta-parcelas --}}
+
+        @if ($ehEdicao)
+            {{-- Histórico: criação, baixas (painel ou caixa), estornos com o motivo, alterações e cancelamento --}}
+            <div id="aba-conta-historico" class="hidden">
+                <x-form.secao titulo="Histórico da conta" icone="relogio">
+                    Tudo o que aconteceu com esta conta: quem fez, quando e de onde (painel ou caixa). Os estornos mostram o valor desfeito e o motivo.
+                </x-form.secao>
+                <div class="{{ $tabelaCaixaCls }}">
+                    <table class="w-full text-sm text-slate-700">
+                        <thead class="{{ $theadCls }}">
+                            <tr>
+                                <th class="text-left px-3 py-2.5 whitespace-nowrap">Data / hora</th>
+                                <th class="text-left px-3 py-2.5">Operação</th>
+                                <th class="text-left px-3 py-2.5">Parcela</th>
+                                <th class="text-right px-3 py-2.5">Valor</th>
+                                <th class="text-left px-3 py-2.5">Forma</th>
+                                <th class="text-left px-3 py-2.5">Detalhes</th>
+                                <th class="text-left px-3 py-2.5">Origem / usuário</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @forelse ($historicoConta as $h)
+                                @php [$rotuloH, $corH] = \App\Models\ContaReceberHistorico::TIPOS[$h->tipo] ?? [$h->tipo, 'bg-slate-100 text-slate-700']; @endphp
+                                <tr class="{{ $h->tipo === 'estorno' ? 'bg-red-50/50' : 'hover:bg-slate-50' }}">
+                                    <td class="px-3 py-2.5 whitespace-nowrap">{{ $h->ocorrido_em?->format('d/m/Y H:i') }}</td>
+                                    <td class="px-3 py-2.5">
+                                        <span class="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium {{ $corH }}">{{ $rotuloH }}</span>
+                                    </td>
+                                    <td class="px-3 py-2.5">{{ $h->parcela_numero ? 'Nº ' . $h->parcela_numero : '—' }}</td>
+                                    <td class="px-3 py-2.5 text-right whitespace-nowrap font-semibold {{ $h->tipo === 'estorno' ? 'text-red-600' : '' }}">
+                                        @if ($h->valor !== null)
+                                            {{ $h->tipo === 'estorno' ? '−' : '' }} R$ {{ number_format((float) $h->valor, 2, ',', '.') }}
+                                        @endif
+                                    </td>
+                                    <td class="px-3 py-2.5">{{ $h->forma ?: '—' }}</td>
+                                    <td class="px-3 py-2.5 text-slate-600">{{ $h->descricao }}</td>
+                                    <td class="px-3 py-2.5 whitespace-nowrap">
+                                        <span class="block font-medium">{{ \App\Models\ContaReceberHistorico::ORIGENS[$h->origem] ?? $h->origem }}</span>
+                                        <span class="block text-xs text-slate-400">{{ $h->usuario?->name ?? '—' }}</span>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="7" class="px-3 py-6 text-center text-slate-400">Nenhuma operação registrada.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
+
         <div class="flex flex-row-reverse flex-wrap gap-3 mt-6 pt-5 border-t border-slate-100">
             <button type="submit"
                     class="{{ $botaoPrimarioCls }}">
@@ -227,11 +305,37 @@
             <a href="{{ route('contas-receber.index') }}"
                class="{{ $botaoCancelarCls }}">Cancelar</a>
         </div>
+        </div>{{-- /p-6 --}}
     </div>
 </form>
 
 {{-- Formulários auxiliares (fora do form principal: HTML não permite form dentro de form) --}}
-<form id="form-estorno" method="POST" class="hidden">@csrf</form>
+<form id="form-estorno" method="POST" class="hidden">@csrf<input type="hidden" name="motivo" id="estorno-motivo-enviado"></form>
+
+<!-- Modal: estorno de recebimento (o motivo fica no histórico da conta) -->
+<div id="modal-estorno" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
+            <div>
+                <h2 class="text-lg font-bold text-white">Estornar recebimento</h2>
+                <p id="estorno-subtitulo" class="text-xs text-slate-300"></p>
+            </div>
+            <button type="button" onclick="fecharModalEstorno()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
+        </div>
+        <div class="p-6 flex flex-col gap-3">
+            <p class="text-sm text-slate-600">A parcela volta para pendente. O estorno fica registrado na aba <strong>Histórico</strong> desta conta, com o seu usuário e o motivo.</p>
+            <div>
+                <label class="{{ $labelCls }}">Motivo do estorno <span class="text-red-500">*</span></label>
+                <textarea id="estorno-motivo" rows="3" maxlength="255" placeholder="Ex.: pagamento lançado na conta errada"
+                          class="{{ $inputCls }}"></textarea>
+                <p id="estorno-erro" class="{{ $erroCls }} hidden"></p>
+            </div>
+            <button type="button" onclick="confirmarEstorno()" class="w-full inline-flex items-center justify-center gap-2 bg-red-600 text-white rounded-xl px-6 py-2.5 text-sm font-semibold hover:bg-red-500 transition">
+                Confirmar estorno
+            </button>
+        </div>
+    </div>
+</div>
 
 <!-- Modal: baixa de parcela -->
 <div id="modal-baixa" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
@@ -411,7 +515,7 @@ function renderizar() {
                 <td class="px-3 py-2">${i + 1}</td>
                 <td class="px-3 py-2">${dataBr(p.vencimento)}</td>
                 <td class="px-3 py-2 text-right">${moeda(p.valor)}</td>
-                <td class="px-3 py-2 text-green-700">Recebida em ${dataBr(p.data_recebimento)} — ${moeda(p.valor_recebido)}</td>
+                <td class="px-3 py-2 text-green-700">Recebida em ${dataBr(p.data_recebimento)} — ${moeda(p.valor_recebido)}${p.no_caixa ? ' <span class="text-xs text-slate-500">(no caixa)</span>' : ''}</td>
                 <td class="px-3 py-2 text-right">
                     <button type="button" onclick="estornarParcela(${p.id})" class="text-xs text-red-600 hover:underline">Estornar</button>
                 </td>
@@ -446,6 +550,9 @@ function renderizar() {
 
 function atualizarSoma() {
     const el = document.getElementById('resumo-parcelas');
+    const contador = document.getElementById('contador-parcelas-aba');
+    if (contador) contador.textContent = parcelas.length || '';
+    contador?.classList.toggle('hidden', parcelas.length === 0);
 
     if (parcelas.length === 0) {
         el.textContent = '';
@@ -542,13 +649,62 @@ function fecharModalBaixa() {
     modal.classList.remove('flex');
 }
 
+let parcelaEmEstorno = null;
+
 function estornarParcela(id) {
-    if (!confirm('Estornar o recebimento desta parcela? Ela volta para pendente.')) return;
+    const p = parcelas.find(x => x.id === id);
+    parcelaEmEstorno = id;
+    document.getElementById('estorno-subtitulo').textContent = p
+        ? `Parcela recebida em ${dataBr(p.data_recebimento)} — ${moeda(p.valor_recebido)}${p.no_caixa ? ' (no caixa)' : ''}`
+        : '';
+    document.getElementById('estorno-motivo').value = '';
+    document.getElementById('estorno-erro').classList.add('hidden');
+    const modal = document.getElementById('modal-estorno');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    setTimeout(() => document.getElementById('estorno-motivo').focus(), 100);
+}
+
+function fecharModalEstorno() {
+    const modal = document.getElementById('modal-estorno');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    parcelaEmEstorno = null;
+}
+
+function confirmarEstorno() {
+    const motivo = document.getElementById('estorno-motivo').value.trim();
+    if (motivo.length < 5) {
+        const erro = document.getElementById('estorno-erro');
+        erro.textContent = 'Descreva o motivo do estorno (mínimo 5 caracteres).';
+        erro.classList.remove('hidden');
+        return;
+    }
 
     const form = document.getElementById('form-estorno');
-    form.action = urlEstornoModelo.replace('__ID__', id);
+    form.action = urlEstornoModelo.replace('__ID__', parcelaEmEstorno);
+    document.getElementById('estorno-motivo-enviado').value = motivo;
     form.submit();
 }
+
+function mudarAbaConta(aba) {
+    ['dados', 'parcelas', 'historico'].forEach(nome => {
+        document.getElementById('aba-conta-' + nome)?.classList.toggle('hidden', nome !== aba);
+    });
+    document.querySelectorAll('.aba-conta-btn').forEach(btn => {
+        const ativa = btn.dataset.abaConta === aba;
+        btn.classList.toggle('border-[#10284A]', ativa);
+        btn.classList.toggle('text-[#10284A]', ativa);
+        btn.classList.toggle('border-transparent', !ativa);
+        btn.classList.toggle('text-gray-500', !ativa);
+    });
+}
+@php
+    // Depois de estorno: Histórico; depois de baixa ou erro nas parcelas: Parcelas; senão Dados da conta
+    $abaInicialConta = session('aba') === 'historico' ? 'historico'
+        : (session('aba') === 'parcelas' || $errors->has('parcelas') || $errors->has('parcelas.*') ? 'parcelas' : 'dados');
+@endphp
+document.addEventListener('DOMContentLoaded', () => mudarAbaConta(@json($abaInicialConta)));
 
 // ---------------------------------------------------------------
 // Cadastro rápido de tipo de conta

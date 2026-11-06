@@ -115,6 +115,10 @@ class ContaReceberController extends Controller
         DB::transaction(function () use ($dados, $parcelas) {
             $conta = ContaReceber::create($this->camposConta($dados) + ['status' => 'aberta']);
             $this->gravarParcelas($conta, $parcelas);
+            \App\Models\ContaReceberHistorico::registrar($conta, 'criacao', [
+                'valor' => $conta->valor_total,
+                'descricao' => 'Conta lançada' . (count($parcelas) > 1 ? ' em ' . count($parcelas) . ' parcelas' : ''),
+            ]);
         });
 
         return redirect()->route('contas-receber.index')->with('sucesso', 'Conta cadastrada com sucesso.');
@@ -140,7 +144,14 @@ class ContaReceberController extends Controller
         $parcelas = $this->parcelasValidadas($dados, $request, $recebidoCent);
 
         DB::transaction(function () use ($conta, $dados, $parcelas) {
+            $valorAntes = (float) $conta->valor_total;
             $conta->update($this->camposConta($dados));
+            \App\Models\ContaReceberHistorico::registrar($conta, 'alteracao', [
+                'valor' => $conta->valor_total,
+                'descricao' => abs($valorAntes - (float) $conta->valor_total) > 0.009
+                    ? 'Valor total de R$ ' . number_format($valorAntes, 2, ',', '.') . ' para R$ ' . number_format((float) $conta->valor_total, 2, ',', '.')
+                    : 'Dados ou parcelas pendentes alterados',
+            ]);
             $conta->parcelas()->whereNull('data_recebimento')->delete();
             $this->gravarParcelas($conta, $parcelas);
         });
@@ -178,26 +189,55 @@ class ContaReceberController extends Controller
             'valor_recebido.min'          => 'O valor recebido deve ser maior que zero.',
         ]);
 
-        $parcela->update($dados);
+        $parcela->update($dados + ['recebido_por_id' => auth()->id()]);
         $parcela->conta->recalcularStatus();
+        \App\Models\ContaReceberHistorico::registrar($parcela->conta_receber_id, 'baixa', [
+            'valor' => $dados['valor_recebido'],
+            'forma' => FormaPagamento::find($dados['forma_pagamento_id'] ?? null)?->descricao,
+            'descricao' => 'Recebida em ' . \Illuminate\Support\Carbon::parse($dados['data_recebimento'])->format('d/m/Y')
+                . ' (parcela de R$ ' . number_format((float) $parcela->valor, 2, ',', '.') . ')',
+        ], $parcela);
 
-        return back()->with('sucesso', "Parcela {$parcela->numero} baixada.");
+        return back()->with('sucesso', "Parcela {$parcela->numero} baixada.")->with('aba', 'parcelas');
     }
 
-    public function estornar(ContaReceberParcela $parcela): RedirectResponse
+    public function estornar(Request $request, ContaReceberParcela $parcela): RedirectResponse
     {
         if (! $parcela->isRecebida()) {
             return back()->with('erro', 'Esta parcela não está recebida.');
         }
 
+        $motivo = $request->validate([
+            'motivo' => ['required', 'string', 'min:5', 'max:255'],
+        ], [
+            'motivo.required' => 'Informe o motivo do estorno.',
+            'motivo.min'      => 'Descreva o motivo do estorno (mínimo 5 caracteres).',
+        ])['motivo'];
+
+        // O que é desfeito fica no histórico: valor, forma, data e onde a baixa foi feita (painel ou caixa)
+        $baixaNoCaixa = (bool) $parcela->recebido_caixa_uuid;
+        \App\Models\ContaReceberHistorico::registrar($parcela->conta_receber_id, 'estorno', [
+            'valor' => $parcela->valor_recebido,
+            'forma' => $parcela->formaPagamento?->descricao
+                ?? (\App\Services\ConvenioService::FORMAS_RECEBIMENTO[$parcela->recebido_forma_caixa] ?? null),
+            'descricao' => 'Estorno da baixa de ' . $parcela->data_recebimento->format('d/m/Y')
+                . ($baixaNoCaixa ? ' feita no caixa' : '') . '. Motivo: ' . trim($motivo),
+        ], $parcela);
+
         $parcela->update([
             'data_recebimento'     => null,
             'valor_recebido'         => null,
             'forma_pagamento_id' => null,
+            // baixa feita no caixa (convênio): sai também do fechamento daquele caixa
+            'recebimento_uuid'     => null,
+            'recebido_caixa_uuid'  => null,
+            'recebido_forma_caixa' => null,
+            'recebido_por_id'      => null,
         ]);
         $parcela->conta->recalcularStatus();
 
-        return back()->with('sucesso', "Recebimento da parcela {$parcela->numero} estornado.");
+        // Volta já na aba Histórico, onde o estorno acabou de ser registrado
+        return back()->with('sucesso', "Recebimento da parcela {$parcela->numero} estornado.")->with('aba', 'historico');
     }
 
     // ---------------------------------------------------------------

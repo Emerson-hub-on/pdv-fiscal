@@ -52,12 +52,22 @@ class RelatorioFechamentoService
             ->orderBy('id')
             ->get();
 
+        // Baixas de convênio recebidas neste caixa
+        $recebimentos = $db->getSchemaBuilder()->hasTable('convenio_recebimentos')
+            ? $db->table('convenio_recebimentos')->where('caixa_uuid', $caixa->uuid)->orderBy('recebido_em')->orderBy('id')->get()
+                ->map(fn ($r) => (object) [
+                    'recebido_em' => $r->recebido_em, 'cliente' => $r->cliente_nome, 'numero_nfce' => $r->numero_nfce,
+                    'forma_pagamento' => $r->forma_pagamento, 'valor' => (float) $r->valor,
+                ])
+            : collect();
+
         return $this->montar(
             (float) $caixa->valor_abertura,
             $caixa->valor_fechamento_informado,
             $vendas,
             $ocorrencias,
-            fn ($id) => $db->table('usuarios_cache')->where('id', $id)->value('codigo')
+            fn ($id) => $db->table('usuarios_cache')->where('id', $id)->value('codigo'),
+            $recebimentos
         );
     }
 
@@ -106,12 +116,22 @@ class RelatorioFechamentoService
                 return $o;
             });
 
+        $recebimentos = \App\Models\ContaReceberParcela::with(['conta.cliente:id,nome', 'conta.venda:id,numero_nfce'])
+            ->where('recebido_caixa_uuid', $caixa->uuid)
+            ->orderBy('updated_at')->orderBy('id')
+            ->get()
+            ->map(fn ($p) => (object) [
+                'recebido_em' => $p->updated_at, 'cliente' => $p->conta?->cliente?->nome, 'numero_nfce' => $p->conta?->venda?->numero_nfce,
+                'forma_pagamento' => $p->recebido_forma_caixa, 'valor' => (float) $p->valor_recebido,
+            ]);
+
         return $this->montar(
             (float) $caixa->valor_abertura,
             $caixa->valor_fechamento_informado,
             $vendas,
             $ocorrencias,
-            fn ($id) => User::whereKey($id)->value('codigo')
+            fn ($id) => User::whereKey($id)->value('codigo'),
+            $recebimentos
         );
     }
 
@@ -120,8 +140,9 @@ class RelatorioFechamentoService
      * @param Collection $ocorrencias linhas no formato de ocorrencias_caixa
      * @param callable   $codigoDe    id do usuário => código (para "Liberado por")
      */
-    private function montar(float $valorAbertura, $informado, Collection $vendas, Collection $ocorrencias, callable $codigoDe): array
+    private function montar(float $valorAbertura, $informado, Collection $vendas, Collection $ocorrencias, callable $codigoDe, ?Collection $recebimentos = null): array
     {
+        $recebimentos ??= collect();
         $this->codigoDe = $codigoDe;
 
         $porUuid = $vendas->keyBy('uuid');
@@ -236,8 +257,19 @@ class RelatorioFechamentoService
                 'liberado_por' => $this->liberadoPor($o),
             ])->values()->all();
 
+        // ---------------- Recebimentos de convênio (baixa no caixa) ----------------
+        $convenioRecebido = $recebimentos->groupBy('forma_pagamento')->map(fn ($g) => round((float) $g->sum('valor'), 2))->all();
+        $linhasRecebimentos = $recebimentos->map(fn ($r) => [
+            'hora' => $r->recebido_em ? Carbon::parse($r->recebido_em)->format('H:i') : '',
+            'cliente' => $r->cliente,
+            'numero' => $r->numero_nfce ? str_pad($r->numero_nfce, 6, '0', STR_PAD_LEFT) : 's/ NFC-e',
+            'forma' => \App\Services\ConvenioService::FORMAS_RECEBIMENTO[$r->forma_pagamento] ?? $r->forma_pagamento,
+            'valor' => round((float) $r->valor, 2),
+        ])->values()->all();
+
         // ---------------- Gaveta ----------------
-        $dinheiroEsperado = $valorAbertura + $formas['dinheiro'] - $troco;
+        // Dinheiro de venda + dinheiro recebido de convênio − troco
+        $dinheiroEsperado = $valorAbertura + $formas['dinheiro'] + ($convenioRecebido['dinheiro'] ?? 0) - $troco;
         $informado = $informado !== null ? (float) $informado : null;
 
         return [
@@ -253,6 +285,9 @@ class RelatorioFechamentoService
             'cancelamentos' => $cancelamentos,
             'descontos' => $descontos,
             'liberacoes' => $liberacoes,
+            'recebimentos_convenio' => $linhasRecebimentos,
+            'convenio_recebido' => $convenioRecebido,
+            'total_convenio_recebido' => round(array_sum($convenioRecebido), 2),
             'dinheiro_esperado' => round($dinheiroEsperado, 2),
             'informado' => $informado,
             'diferenca' => $informado !== null ? round($informado - $dinheiroEsperado, 2) : null,

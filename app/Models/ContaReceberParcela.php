@@ -12,6 +12,7 @@ class ContaReceberParcela extends Model
     protected $fillable = [
         'conta_receber_id', 'numero', 'vencimento', 'valor',
         'data_recebimento', 'valor_recebido', 'forma_pagamento_id',
+        'recebimento_uuid', 'recebido_caixa_uuid', 'recebido_forma_caixa', 'recebido_por_id',
     ];
 
     protected $casts = [

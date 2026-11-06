@@ -5,7 +5,7 @@
         <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
             <div>
                 <h2 class="text-lg font-bold text-white">Convênios em aberto</h2>
-                <p class="text-xs text-slate-300">Vendas no convênio (fiado) ainda não recebidas. A baixa é feita no painel, em Contas a receber.</p>
+                <p class="text-xs text-slate-300">Vendas no convênio (fiado) ainda não recebidas. Clique na dívida para dar baixa.</p>
             </div>
             <button type="button" onclick="fecharModalConvenios()" class="text-slate-300 hover:text-white text-2xl leading-none">&times;</button>
         </div>
@@ -59,9 +59,62 @@
     </div>
 </div>
 
+
+{{-- Baixa de um convênio no caixa: valor pago (total ou parte) e forma de pagamento --}}
+<div id="modal-baixa-convenio" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[55]">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
+            <div>
+                <h2 class="text-lg font-bold text-white">Receber convênio</h2>
+                <p id="baixa-convenio-subtitulo" class="text-xs text-slate-300"></p>
+            </div>
+            <button type="button" onclick="fecharModalBaixaConvenio()" class="text-slate-300 hover:text-white text-2xl leading-none">&times;</button>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-2 gap-2 mb-4 text-center">
+                <div class="rounded-lg bg-slate-50 border border-slate-200 p-2.5">
+                    <p class="text-[11px] text-gray-500 uppercase">Valor da venda</p>
+                    <p id="baixa-convenio-valor-venda" class="font-bold text-slate-800"></p>
+                </div>
+                <div class="rounded-lg bg-[#10284A] p-2.5">
+                    <p class="text-[11px] text-slate-300 uppercase">Em aberto</p>
+                    <p id="baixa-convenio-saldo" class="font-bold text-amber-50"></p>
+                </div>
+            </div>
+
+            <label class="block text-xs font-medium text-gray-600 mb-1">Valor pago (R$)</label>
+            <input type="number" step="0.01" min="0.01" id="baixa-convenio-valor"
+                   class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-base font-semibold focus:ring-2 focus:ring-slate-800 outline-none mb-3">
+
+            <label class="block text-xs font-medium text-gray-600 mb-1">Forma de pagamento</label>
+            <div id="baixa-convenio-formas" class="grid grid-cols-2 gap-2 mb-3">
+                @foreach (\App\Services\ConvenioService::FORMAS_RECEBIMENTO as $chave => $rotulo)
+                    <button type="button" data-forma="{{ $chave }}" onclick="escolherFormaBaixaConvenio('{{ $chave }}')"
+                            class="forma-baixa-convenio border-2 border-gray-200 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:border-[#10284A] transition">
+                        <span class="opacity-50 text-xs mr-1">{{ $loop->iteration }}</span>{{ $rotulo }}
+                    </button>
+                @endforeach
+            </div>
+
+            <p id="baixa-convenio-info" class="hidden text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5 mb-3"></p>
+            <p id="baixa-convenio-erro" class="hidden text-sm text-red-600 mb-3"></p>
+
+            <button type="button" id="btn-confirmar-baixa-convenio" onclick="confirmarBaixaConvenio()"
+                    class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-lg font-semibold disabled:opacity-60">
+                Confirmar recebimento <span class="opacity-70 text-xs">Enter</span>
+            </button>
+            <p class="text-xs text-gray-400 mt-3">Teclas 1 a 4 escolhem a forma. O valor recebido entra no fechamento deste caixa.</p>
+        </div>
+    </div>
+</div>
+
 <script>
     const URL_CONVENIOS_ABERTOS = @json(route('vendas.convenios-abertos'));
     let timeoutConvenios;
+    const URL_RECEBER_CONVENIO = @json(route('vendas.convenio-receber'));
+    let linhasConveniosAtuais = [];
+    let convenioEmBaixa = null;
+    let formaBaixaConvenio = 'dinheiro';
     let contadorConvenios = 0;
 
     const SITUACAO_CONVENIO = {
@@ -142,6 +195,7 @@
             `${dados.quantidade} venda(s) · em aberto R$ ${Number(dados.total).toFixed(2).replace('.', ',')}`;
 
         corpo.replaceChildren();
+        linhasConveniosAtuais = dados.linhas;
         if (dados.linhas.length === 0) {
             const tr = corpo.insertRow();
             const td = tr.insertCell();
@@ -152,9 +206,11 @@
         }
 
         // Texto do cliente vai como texto, nunca como HTML
-        dados.linhas.forEach(l => {
+        dados.linhas.forEach((l, indice) => {
             const tr = corpo.insertRow();
-            tr.className = 'hover:bg-gray-50';
+            tr.className = 'hover:bg-blue-50 cursor-pointer';
+            tr.title = 'Clique para dar baixa';
+            tr.addEventListener('click', () => abrirModalBaixaConvenio(indice));
             const celula = (texto, cls = '') => {
                 const td = tr.insertCell();
                 td.className = 'px-3 py-2.5 ' + cls;
@@ -174,6 +230,118 @@
         });
     }
 
+
+    // ---------- Baixa do convênio no caixa ----------
+    const moedaConvenio = v => 'R$ ' + Number(v).toFixed(2).replace('.', ',');
+
+    function abrirModalBaixaConvenio(indice) {
+        const l = linhasConveniosAtuais[indice];
+        if (!l) return;
+        convenioEmBaixa = l;
+
+        document.getElementById('baixa-convenio-subtitulo').textContent =
+            `${l.cliente || '—'} · cupom ${l.numero_nfce ?? 'sem nº'} · venda de ${dataBr(l.data)}`;
+        document.getElementById('baixa-convenio-valor-venda').textContent = moedaConvenio(l.valor);
+        document.getElementById('baixa-convenio-saldo').textContent = moedaConvenio(l.saldo);
+        document.getElementById('baixa-convenio-erro').classList.add('hidden');
+        document.getElementById('btn-confirmar-baixa-convenio').disabled = false;
+        const campo = document.getElementById('baixa-convenio-valor');
+        campo.value = Number(l.saldo).toFixed(2);
+        escolherFormaBaixaConvenio('dinheiro');
+        atualizarInfoBaixaConvenio();
+
+        const modal = document.getElementById('modal-baixa-convenio');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        setTimeout(() => { campo.focus(); campo.select(); }, 100);
+    }
+
+    function fecharModalBaixaConvenio() {
+        const modal = document.getElementById('modal-baixa-convenio');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        convenioEmBaixa = null;
+    }
+
+    function escolherFormaBaixaConvenio(forma) {
+        formaBaixaConvenio = forma;
+        document.querySelectorAll('.forma-baixa-convenio').forEach(btn => {
+            const ativa = btn.dataset.forma === forma;
+            btn.classList.toggle('border-[#10284A]', ativa);
+            btn.classList.toggle('bg-[#10284A]', ativa);
+            btn.classList.toggle('text-white', ativa);
+            btn.classList.toggle('border-gray-200', !ativa);
+            btn.classList.toggle('text-gray-700', !ativa);
+        });
+    }
+
+    function atualizarInfoBaixaConvenio() {
+        if (!convenioEmBaixa) return;
+        const valor = parseFloat(document.getElementById('baixa-convenio-valor').value) || 0;
+        const info = document.getElementById('baixa-convenio-info');
+        const restante = Math.round((convenioEmBaixa.saldo - valor) * 100) / 100;
+
+        if (valor > 0 && restante > 0.009) {
+            info.textContent = `Pagamento parcial: ficam ${moedaConvenio(restante)} em aberto no convênio.`;
+            info.classList.remove('hidden');
+        } else {
+            info.classList.add('hidden');
+        }
+    }
+
+    async function confirmarBaixaConvenio() {
+        if (!convenioEmBaixa) return;
+        const erro = document.getElementById('baixa-convenio-erro');
+        const botao = document.getElementById('btn-confirmar-baixa-convenio');
+        const valor = Math.round((parseFloat(document.getElementById('baixa-convenio-valor').value) || 0) * 100) / 100;
+
+        const mensagem = valor <= 0 ? 'Informe o valor pago.'
+            : valor - convenioEmBaixa.saldo > 0.009 ? `O valor pago é maior que o saldo em aberto (${moedaConvenio(convenioEmBaixa.saldo)}).`
+            : null;
+        if (mensagem) {
+            erro.textContent = mensagem;
+            erro.classList.remove('hidden');
+            return;
+        }
+
+        botao.disabled = true;
+        let resultado;
+        try {
+            const resp = await fetch(URL_RECEBER_CONVENIO, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: JSON.stringify({ venda_uuid: convenioEmBaixa.venda_uuid, valor, forma_pagamento: formaBaixaConvenio }),
+            });
+            resultado = await resp.json().catch(() => ({}));
+            if (!resp.ok) throw new Error(resultado.erro || resultado.message || `Erro ${resp.status} ao registrar a baixa.`);
+        } catch (e) {
+            botao.disabled = false;
+            erro.textContent = e.message;
+            erro.classList.remove('hidden');
+            return;
+        }
+
+        fecharModalBaixaConvenio();
+        await carregarConvenios();
+        alert(resultado.quitado
+            ? 'Convênio quitado.'
+            : `Baixa registrada. Ficam ${moedaConvenio(resultado.restante)} em aberto.`)
+    }
+
+    document.getElementById('baixa-convenio-valor').addEventListener('input', atualizarInfoBaixaConvenio);
+    document.getElementById('modal-baixa-convenio').addEventListener('keydown', (e) => {
+        // Só este modal responde ao teclado enquanto está aberto (os atalhos do PDV ficam de fora)
+        e.stopPropagation();
+        if (e.key === 'Escape') { e.preventDefault(); fecharModalBaixaConvenio(); return; }
+        if (e.key === 'Enter') { e.preventDefault(); confirmarBaixaConvenio(); return; }
+        const formas = Object.keys(@json(\App\Services\ConvenioService::FORMAS_RECEBIMENTO));
+        const n = parseInt(e.key, 10);
+        if (n >= 1 && n <= formas.length && e.target.id !== 'baixa-convenio-valor') {
+            e.preventDefault();
+            escolherFormaBaixaConvenio(formas[n - 1]);
+        }
+    });
+
     ['convenios-inicio', 'convenios-fim'].forEach(id =>
         document.getElementById(id).addEventListener('change', carregarConvenios));
     ['convenios-cupom', 'convenios-cliente'].forEach(id =>
@@ -182,6 +350,9 @@
             timeoutConvenios = setTimeout(carregarConvenios, 300);
         }));
     document.getElementById('modal-convenios').addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') { e.preventDefault(); fecharModalConvenios(); }
+        if (e.key === 'Escape' && document.getElementById('modal-baixa-convenio').classList.contains('hidden')) {
+            e.preventDefault();
+            fecharModalConvenios();
+        }
     });
 </script>

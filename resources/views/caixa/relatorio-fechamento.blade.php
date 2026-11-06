@@ -114,6 +114,23 @@
         <div class="flex justify-between"><span>Troco devolvido</span><span>{{ $n($r['troco']) }}</span></div>
     @endif
 
+    @if (!empty($r['recebimentos_convenio']))
+        <div class="border-t border-dashed border-black my-2"></div>
+
+        {{-- Baixas de convênio recebidas no caixa (não são venda: não entram no total vendido) --}}
+        <p class="font-bold">RECEBIMENTOS DE CONVÊNIO</p>
+        @foreach ($r['recebimentos_convenio'] as $rc)
+            <div class="mt-1">
+                <div class="flex justify-between"><span>{{ $rc['numero'] }} {{ $rc['hora'] }}</span><span>{{ $n($rc['valor']) }}</span></div>
+                <p class="pl-2 truncate">{{ $rc['cliente'] }} · {{ $rc['forma'] }}</p>
+            </div>
+        @endforeach
+        @foreach ($r['convenio_recebido'] as $chave => $valor)
+            <div class="flex justify-between"><span>{{ \App\Services\ConvenioService::FORMAS_RECEBIMENTO[$chave] ?? $chave }}</span><span>{{ $n($valor) }}</span></div>
+        @endforeach
+        <div class="flex justify-between font-bold mt-1"><span>Total recebido</span><span>{{ $n($r['total_convenio_recebido']) }}</span></div>
+    @endif
+
     <div class="border-t border-dashed border-black my-2"></div>
 
     {{-- Cancelamentos --}}
@@ -166,6 +183,9 @@
     <div class="space-y-0.5 mt-1">
         <div class="flex justify-between"><span>Fundo de troco</span><span>{{ $n($caixa->valor_abertura) }}</span></div>
         <div class="flex justify-between"><span>(+) Vendas em dinheiro</span><span>{{ $n($r['formas']['dinheiro'] ?? 0) }}</span></div>
+        @if (($r['convenio_recebido']['dinheiro'] ?? 0) > 0)
+            <div class="flex justify-between"><span>(+) Convênio recebido em dinheiro</span><span>{{ $n($r['convenio_recebido']['dinheiro']) }}</span></div>
+        @endif
         <div class="flex justify-between"><span>(-) Troco devolvido</span><span>{{ $n($r['troco']) }}</span></div>
         <div class="flex justify-between font-bold"><span>Esperado na gaveta</span><span>{{ $n($r['dinheiro_esperado']) }}</span></div>
         <div class="flex justify-between"><span>Informado pelo {{ $caixa->fechado_por_id ? $caixa->fechado_por_perfil : 'operador' }}</span><span>{{ $r['informado'] !== null ? $n($r['informado']) : '-' }}</span></div>
