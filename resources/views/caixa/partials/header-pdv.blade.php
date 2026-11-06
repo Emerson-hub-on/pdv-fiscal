@@ -58,6 +58,10 @@
                 class="bg-white/10 hover:bg-white/20 text-white cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
             Puxar Pedido <span class="opacity-60">F6</span>
         </button>
+        <button onclick="abrirModalConvenios()"
+                class="bg-white/10 hover:bg-white/20 text-white cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
+            Convênios <span class="opacity-60">F9</span>
+        </button>
         <div class="relative">
             <button onclick="toggleDropdownImpressao()" id="btn-impressao-main"
                     class="bg-white/10 hover:bg-white/20 text-white cursor-pointer text-xs font-semibold px-3 py-1.5 transition">
@@ -99,6 +103,7 @@
 </div>
 
 @include('caixa.partials.modal-exportar-xml')
+@include('caixa.partials.modal-convenios')
 
 {{-- Relatório de abertura: a página de impressão carrega num iframe fora da tela e chama a impressão sozinha.
      (display:none faz alguns navegadores imprimirem em branco, por isso w-0/h-0 em vez de hidden) --}}

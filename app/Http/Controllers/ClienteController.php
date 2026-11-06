@@ -51,8 +51,10 @@ class ClienteController extends Controller
     public function store(Request $request)
     {
         $validado = $this->validarCliente($request);
+        $limite = $this->validarLimiteCredito($request);
 
-        Cliente::create($validado);
+        $cliente = Cliente::create($validado);
+        $this->gravarLimiteCredito($cliente, $limite);
 
         return redirect()->route('clientes.index')
             ->with('sucesso', 'Cliente cadastrado com sucesso.');
@@ -66,8 +68,10 @@ class ClienteController extends Controller
     public function update(Request $request, Cliente $cliente)
     {
         $validado = $this->validarCliente($request, $cliente->id);
+        $limite = $this->validarLimiteCredito($request);
 
         $cliente->update($validado);
+        $this->gravarLimiteCredito($cliente, $limite);
 
         return redirect()->route('clientes.index')
             ->with('sucesso', 'Cliente atualizado com sucesso.');
@@ -115,6 +119,58 @@ class ClienteController extends Controller
             'uf' => $dados['uf'] ?? '',
             'cod_municipio' => isset($dados['codigo_municipio_ibge']) ? (string) $dados['codigo_municipio_ibge'] : '',
         ]);
+    }
+
+    /** Aba "Limite de crédito": convênio (fiado) concedido manualmente pelo operador do painel. */
+    private function validarLimiteCredito(Request $request): ?array
+    {
+        if (!$request->has('limite_credito_form')) {
+            return null; // formulário sem a aba (ex.: cadastro por outra tela)
+        }
+
+        // Aceita "1.500,00" (digitado com vírgula) e "1500.00"
+        $valor = trim((string) $request->input('limite_credito', ''));
+        if (str_contains($valor, ',')) {
+            $valor = str_replace(',', '.', str_replace('.', '', $valor));
+        }
+        $request->merge(['limite_credito' => $valor === '' ? '0' : $valor]);
+
+        $dados = $request->validate([
+            'limite_credito_ativo'      => 'nullable|boolean',
+            'limite_credito'            => 'required_if:limite_credito_ativo,1|nullable|numeric|min:0|max:9999999',
+            'limite_credito_dias'       => 'required_if:limite_credito_ativo,1|nullable|integer|min:1|max:365',
+            'limite_credito_observacao' => 'nullable|string|max:255',
+        ], [
+            'limite_credito.required_if'      => 'Informe o valor do limite de crédito.',
+            'limite_credito.numeric'          => 'Informe um valor válido para o limite de crédito.',
+            'limite_credito_dias.required_if' => 'Informe o prazo de vencimento do convênio.',
+            'limite_credito_dias.max'         => 'O prazo de vencimento pode ser de no máximo 365 dias.',
+        ]);
+
+        $ativo = (bool) ($dados['limite_credito_ativo'] ?? false);
+        if ($ativo && (float) $dados['limite_credito'] <= 0) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'limite_credito' => 'Para conceder o convênio, o limite precisa ser maior que zero.',
+            ]);
+        }
+
+        return [
+            'ativo'      => $ativo,
+            'limite'     => (float) ($dados['limite_credito'] ?? 0),
+            'dias'       => (int) ($dados['limite_credito_dias'] ?? 30),
+            'observacao' => $dados['limite_credito_observacao'] ?? null,
+        ];
+    }
+
+    private function gravarLimiteCredito(Cliente $cliente, ?array $limite): void
+    {
+        if ($limite === null) {
+            return;
+        }
+
+        app(\App\Services\ConvenioService::class)->definirLimite(
+            $cliente, $limite['ativo'], $limite['limite'], $limite['dias'], $limite['observacao'], auth()->id()
+        );
     }
 
     private function validarCliente(Request $request, $idAtual = null): array

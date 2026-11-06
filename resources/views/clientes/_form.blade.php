@@ -18,6 +18,10 @@
                     class="tab-btn pb-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">
                 Fiscal
             </button>
+            <button type="button" data-tab="limite-credito" onclick="mudarAba('limite-credito')"
+                    class="tab-btn pb-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">
+                Limite de crédito
+            </button>
             @if ($cliente?->exists)
                 <button type="button" data-tab="credito-loja" onclick="mudarAba('credito-loja')"
                         class="tab-btn pb-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">
@@ -171,6 +175,11 @@
                        class="{{ $inputCls }}">
             </div>
 
+        </div>
+
+        {{-- ===================== ABA: LIMITE DE CRÉDITO (CONVÊNIO) ===================== --}}
+        <div id="aba-limite-credito" class="tab-conteudo hidden">
+            @include('clientes._limite-credito', ['cliente' => $cliente])
         </div>
 
         @if ($cliente?->exists)

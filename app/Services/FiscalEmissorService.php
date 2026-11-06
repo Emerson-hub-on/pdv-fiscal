@@ -967,7 +967,8 @@ protected function montarTotais(Make $nfe, Venda $venda): void
     protected function montarPagamento(Make $nfe, Venda $venda): void
     {
         // credito_loja = crédito em loja (troca/haver do cliente): tPag 21
-        $pagMap = ['dinheiro' => '01', 'credito' => '03', 'debito' => '04', 'pix' => '17', 'credito_loja' => '21'];
+        // convenio = venda fiado no limite do cliente: tPag 05 (Crédito Loja) a prazo (indPag 1)
+        $pagMap = ['dinheiro' => '01', 'credito' => '03', 'debito' => '04', 'pix' => '17', 'credito_loja' => '21', 'convenio' => '05'];
 
         $std = new \stdClass();
         $std->vTroco = number_format($venda->troco ?? 0, 2, '.', '');
@@ -975,7 +976,7 @@ protected function montarTotais(Make $nfe, Venda $venda): void
 
         foreach ($venda->pagamentos as $pagamento) {
             $det = new \stdClass();
-            $det->indPag = 0;
+            $det->indPag = $pagamento->forma_pagamento === 'convenio' ? 1 : 0;
             $det->tPag = $pagMap[$pagamento->forma_pagamento] ?? '99';
             $det->vPag = number_format($pagamento->valor, 2, '.', '');
 

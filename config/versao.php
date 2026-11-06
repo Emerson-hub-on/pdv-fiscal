@@ -11,6 +11,17 @@
 
 $historico = [
     [
+        'versao' => '1.9.0',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Convênio (venda fiado): nova aba "Limite de crédito" no cadastro do cliente para conceder, alterar ou suspender o limite, com prazo de vencimento em dias e observação. Mostra o limite total, o já usado e o disponível, as vendas no convênio (com link para dar baixa) e o histórico de alterações do limite (quem mudou e quando).',
+            'Caixa: nova forma de pagamento "Convênio (fiado)". Pede o consumidor quando ele ainda não foi identificado, mostra o limite total, o já usado e o disponível, e permite usar só parte do limite e pagar o restante em outra forma. Funciona também offline: o limite é trazido no "Atualizar Caixa".',
+            'A venda no convênio vira uma conta a receber do cliente (tipo "Convênio", parcela única com o vencimento do prazo do cliente) quando a venda sobe para o servidor; ao dar baixa em Contas a receber, o limite volta a ficar disponível. Cancelar a NFC-e devolve o limite e exclui a dívida.',
+            'Caixa: novo botão "Convênios" (F9) com os convênios em aberto, filtrando por data da venda, nº do cupom e cliente.',
+            'NFC-e: o convênio sai como meio de pagamento 05 (Crédito Loja) a prazo (indPag 1). O recebimento posterior não gera documento fiscal e o convênio fica fora do registro 1601 do SPED e do dinheiro esperado na gaveta.',
+        ],
+    ],
+    [
         'versao' => '1.8.0',
         'data' => '2026-11-06',
         'itens' => [

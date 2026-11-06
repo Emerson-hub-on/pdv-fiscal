@@ -70,6 +70,29 @@ class CancelamentoController extends Controller
         }
     }
 
+    /** Devolve ao SQLite do caixa o limite de convênio usado na venda cancelada (e tira a dívida da consulta). */
+    private function devolverConvenioNoCaixa(string $vendaUuid): void
+    {
+        try {
+            $db = DB::connection('sqlite_local');
+            if (!$db->getSchemaBuilder()->hasTable('convenios_cache')) {
+                return;
+            }
+
+            $venda = $db->table('vendas_pendentes')->where('uuid', $vendaUuid)->first(['cliente_id', 'pagamentos']);
+            $valor = collect(json_decode((string) ($venda->pagamentos ?? ''), true) ?? [])->where('forma_pagamento', 'convenio')->sum('valor');
+
+            if ($venda && $venda->cliente_id && $valor > 0) {
+                $db->table('convenios_cache')->where('cliente_id', (int) $venda->cliente_id)
+                    ->update(['usado' => DB::raw('MAX(0, usado - ' . round((float) $valor, 2) . ')'), 'updated_at' => now()]);
+            }
+
+            $db->table('convenios_abertos_cache')->where('venda_uuid', $vendaUuid)->delete();
+        } catch (\Throwable $e) {
+            Log::warning("Não foi possível devolver o convênio da venda {$vendaUuid} no caixa: {$e->getMessage()}");
+        }
+    }
+
     public function cancelar(Request $request, string $venda)
     {
         $usuario = Auth::user();
@@ -115,8 +138,10 @@ class CancelamentoController extends Controller
             // Crédito em loja usado na venda volta para o cliente: no caixa na hora; no servidor agora
             // (venda já no servidor) ou quando a venda cancelada subir (sincronização)
             $this->devolverCreditoLojaNoCaixa($vendaUuid);
+            $this->devolverConvenioNoCaixa($vendaUuid);
             if (!$local) {
                 app(\App\Services\CreditoLojaService::class)->estornarVenda($vendaUuid);
+                app(\App\Services\ConvenioService::class)->estornarVenda($vendaUuid);
             }
 
             // Relatório de fechamento: cancelamento no caixa em que a venda foi feita

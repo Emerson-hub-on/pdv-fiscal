@@ -127,6 +127,8 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
         Route::get('pdv/buscar-produto', [VendaController::class, 'buscarProduto'])->name('vendas.buscar-produto');
         Route::post('pdv/finalizar', [VendaController::class, 'finalizar'])->name('vendas.finalizar');
         Route::get('pdv/creditos-loja', [VendaController::class, 'creditosLoja'])->name('vendas.creditos-loja');
+        Route::get('pdv/convenio', [VendaController::class, 'convenioCliente'])->name('vendas.convenio');
+        Route::get('pdv/convenios-abertos', [VendaController::class, 'conveniosAbertos'])->name('vendas.convenios-abertos');
         Route::post('pdv/pagamento/preparar', [VendaController::class, 'prepararPagamento'])->name('vendas.preparar-pagamento');
         Route::get('pdv/pagamento', [VendaController::class, 'telaPagamento'])->name('vendas.pagamento');
         Route::get('pdv/cupons', [CupomFiscalController::class, 'listar'])->name('vendas.cupons');

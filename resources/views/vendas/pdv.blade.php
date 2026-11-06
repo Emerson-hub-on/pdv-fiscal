@@ -693,6 +693,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'F6') { e.preventDefault(); abrirModalPedidos(); }
     if (e.key === 'F7') { e.preventDefault(); toggleDropdownImpressao(); }
     if (e.key === 'F8') { e.preventDefault(); toggleDropdownOpcoes(); }
+    if (e.key === 'F9') { e.preventDefault(); abrirModalConvenios(); }
     if (e.key === 'Escape') { fecharTodosModais(); }
 });
 
@@ -872,6 +873,7 @@ function fecharTodosModais() {
         'modal-balanca',
         'modal-pedidos',
         'modal-reimpressao',
+        'modal-convenios',
     ];
 
     idsModais.forEach(id => {

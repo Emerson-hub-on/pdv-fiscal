@@ -28,6 +28,7 @@ class RelatorioFechamentoService
         'credito' => 'Cartão crédito',
         'debito' => 'Cartão débito',
         'credito_loja' => 'Crédito em loja', // troca/haver: não entra no dinheiro esperado da gaveta
+        'convenio' => 'Convênio', // fiado: vira conta a receber, não entra na gaveta
     ];
 
     public function dados(CaixaLocal $caixa): array

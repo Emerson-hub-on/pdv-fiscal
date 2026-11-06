@@ -25,6 +25,7 @@ class Credenciadora extends Model
         'debito'   => '04',
         'pix'      => '17',
         'credito_loja' => '21', // crédito em loja (troca/haver): não é meio eletrônico, fica fora do 1601
+        'convenio'     => '05', // convênio (fiado no limite do cliente): crédito loja a prazo, fora do 1601
     ];
 
     protected $fillable = ['nome', 'cnpj', 'cep', 'logradouro', 'numero', 'complemento', 'bairro', 'municipio', 'cod_municipio', 'uf', 'ativo'];

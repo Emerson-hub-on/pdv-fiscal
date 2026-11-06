@@ -56,6 +56,7 @@
                         <div class="p-2.5 cursor-pointer text-sm hover:bg-gray-50" data-forma="credito" data-index="2" onclick="selecionarFormaPagamento('credito')">Cartão de Crédito</div>
                         <div class="p-2.5 cursor-pointer text-sm hover:bg-gray-50" data-forma="debito" data-index="3" onclick="selecionarFormaPagamento('debito')">Cartão de Débito</div>
                         <div class="p-2.5 cursor-pointer text-sm hover:bg-gray-50 border-t border-gray-100" data-forma="credito_loja" data-index="4" onclick="selecionarFormaPagamento('credito_loja')">Crédito em loja (troca)</div>
+                        <div class="p-2.5 cursor-pointer text-sm hover:bg-gray-50" data-forma="convenio" data-index="5" onclick="selecionarFormaPagamento('convenio')">Convênio (fiado)</div>
                     </div>
                 </div>
             </div>
@@ -264,6 +265,73 @@
     </div>
 </div>
 
+<!-- Modal: convênio (venda fiado no limite de crédito do cliente) -->
+<div id="modal-convenio" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
+            <div>
+                <h2 class="text-lg font-bold text-white">Convênio</h2>
+                <p id="convenio-subtitulo" class="text-xs text-slate-300">Venda fiado no limite de crédito do cliente</p>
+            </div>
+            <button type="button" onclick="fecharModalConvenio()" class="text-slate-300 hover:text-white text-2xl leading-none">&times;</button>
+        </div>
+        <div class="p-6">
+            {{-- Passo 1: qual o consumidor (quando ainda não foi identificado) --}}
+            <div id="convenio-passo-cliente" class="hidden">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Consumidor do convênio</label>
+                <input type="text" id="convenio-cliente-busca" placeholder="Buscar por nome ou CPF/CNPJ..." autocomplete="off"
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-3 focus:ring-2 focus:ring-slate-800 outline-none"
+                       oninput="buscarClienteConvenio()">
+                <ul id="convenio-cliente-lista" class="divide-y divide-gray-100 border border-gray-200 rounded-lg max-h-64 overflow-y-auto"></ul>
+                <p id="convenio-cliente-vazio" class="hidden text-sm text-gray-500 text-center py-4">Nenhum cliente encontrado.</p>
+            </div>
+
+            {{-- Passo 2: limite do cliente e quanto usar --}}
+            <div id="convenio-passo-limite" class="hidden">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase tracking-wide">Cliente</p>
+                        <p id="convenio-cliente-nome" class="font-semibold text-slate-800"></p>
+                    </div>
+                    <button type="button" onclick="trocarClienteConvenio()" class="text-xs text-blue-600 hover:underline">Trocar consumidor</button>
+                </div>
+
+                <div id="convenio-sem-limite" class="hidden rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700"></div>
+
+                <div id="convenio-com-limite" class="hidden">
+                    <div class="grid grid-cols-3 gap-2 mb-4 text-center">
+                        <div class="rounded-lg bg-slate-50 border border-slate-200 p-2.5">
+                            <p class="text-[11px] text-gray-500 uppercase">Limite total</p>
+                            <p id="convenio-limite" class="font-bold text-slate-800"></p>
+                        </div>
+                        <div class="rounded-lg bg-slate-50 border border-slate-200 p-2.5">
+                            <p class="text-[11px] text-gray-500 uppercase">Já usado</p>
+                            <p id="convenio-usado" class="font-bold text-slate-800"></p>
+                        </div>
+                        <div class="rounded-lg bg-[#10284A] p-2.5">
+                            <p class="text-[11px] text-slate-300 uppercase">Disponível</p>
+                            <p id="convenio-disponivel" class="font-bold text-amber-50"></p>
+                        </div>
+                    </div>
+
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Valor no convênio (R$)</label>
+                    <input type="number" step="0.01" min="0.01" id="convenio-valor"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-base font-semibold focus:ring-2 focus:ring-slate-800 outline-none mb-2"
+                           onkeydown="if (event.key === 'Enter') { event.preventDefault(); confirmarConvenio(); }">
+                    <p id="convenio-aviso" class="hidden text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5 mb-2"></p>
+                    <p id="convenio-erro" class="hidden text-sm text-red-600 mb-2"></p>
+
+                    <button type="button" onclick="confirmarConvenio()"
+                            class="w-full bg-[#10284A] hover:bg-[#163a68] text-white py-2.5 rounded-lg font-semibold">
+                        Lançar no convênio <span class="opacity-70 text-xs">Enter</span>
+                    </button>
+                    <p id="convenio-prazo" class="text-xs text-gray-400 mt-3"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal de emissão (F2): carregando → venda emitida / em contingência → imprimir o comprovante? -->
 <div id="modal-emissao" class="hidden fixed inset-0 z-[60] bg-black/60 items-center justify-center px-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center">
@@ -341,6 +409,7 @@ const formasPagamento = [
     { valor: 'credito', label: 'Cartão de Crédito' },
     { valor: 'debito', label: 'Cartão de Débito' },
     { valor: 'credito_loja', label: 'Crédito em loja (troca)' },
+    { valor: 'convenio', label: 'Convênio (fiado)' },
 ];
 
 // ===================== CLIENTE (Adicionar Consumidor) =====================
@@ -392,6 +461,7 @@ function buscarCliente() {
 }
 
 function selecionarCliente(id, label) {
+    descartarConvenioDeOutroCliente(id);
     clienteSelecionadoId = id;
     cpfNaNotaValor = null; // mutuamente exclusivo
     document.getElementById('btn-cliente-label').innerText = 'Consumidor identificado';
@@ -401,6 +471,7 @@ function selecionarCliente(id, label) {
 }
 
 function removerClienteSelecionado() {
+    descartarConvenioDeOutroCliente(null);
     clienteSelecionadoId = null;
     cpfNaNotaValor = null;
     document.getElementById('btn-cliente-label').innerText = 'Adicionar consumidor';
@@ -435,6 +506,7 @@ function confirmarCpfNaNota() {
     }
 
     cpfNaNotaValor = cpfLimpo;
+    descartarConvenioDeOutroCliente(null);
     clienteSelecionadoId = null; // mutuamente exclusivo
 
     const cpfFormatado = cpfLimpo.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
@@ -573,7 +645,7 @@ document.getElementById('btn-forma-pagamento').addEventListener('keydown', (e) =
 
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        const modalAberto = ['modal-autorizacao', 'modal-desconto-global', 'modal-tipo-desconto', 'modal-confirmar-voltar', 'modal-cliente', 'modal-credito-loja']
+        const modalAberto = ['modal-autorizacao', 'modal-desconto-global', 'modal-tipo-desconto', 'modal-confirmar-voltar', 'modal-cliente', 'modal-credito-loja', 'modal-convenio']
             .some(id => !document.getElementById(id).classList.contains('hidden'));
         if (modalAberto) {
             fecharTodosModais();
@@ -588,7 +660,7 @@ document.addEventListener('keydown', (e) => {
 
 
 function fecharTodosModais() {
-    ['modal-autorizacao', 'modal-desconto-global', 'modal-tipo-desconto', 'modal-confirmar-voltar', 'modal-cliente', 'modal-credito-loja'].forEach(id => {
+    ['modal-autorizacao', 'modal-desconto-global', 'modal-tipo-desconto', 'modal-confirmar-voltar', 'modal-cliente', 'modal-credito-loja', 'modal-convenio'].forEach(id => {
         document.getElementById(id).classList.add('hidden');
         document.getElementById(id).classList.remove('flex');
     });
@@ -801,6 +873,11 @@ function adicionarPagamento() {
         return;
     }
 
+    if (forma === 'convenio') {
+        abrirModalConvenio(valor);
+        return;
+    }
+
     if (!valor || valor <= 0) {
         alert('Informe um valor válido.');
         return;
@@ -922,13 +999,191 @@ function usarCreditoLoja(indice) {
     if (atualizarRestante() >= -0.009) document.getElementById('btn-finalizar').focus();
 }
 
+// ===================== CONVÊNIO (venda fiado no limite de crédito do cliente) =====================
+const URL_CONVENIO = @json(route('vendas.convenio'));
+let valorPedidoConvenio = null;
+let convenioAtual = null;
+let clienteConvenioPendente = null; // consumidor escolhido dentro do modal: {id, label}
+let timeoutClienteConvenio;
+
+const moedaBr = v => 'R$ ' + Number(v).toFixed(2).replace('.', ',');
+
+function abrirModalConvenio(valor) {
+    if (faltaPagar() <= 0) {
+        alert('A venda já está paga.');
+        return;
+    }
+    valorPedidoConvenio = valor > 0 ? valor : null;
+    clienteConvenioPendente = null;
+
+    const modal = document.getElementById('modal-convenio');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    // Sem consumidor identificado: o modal pede o consumidor antes de mostrar o limite
+    if (clienteSelecionadoId && clienteSelecionadoId > 0) {
+        carregarConvenio(clienteSelecionadoId, document.getElementById('resumo-cliente-label').innerText);
+    } else {
+        mostrarPassoClienteConvenio();
+    }
+}
+
+function fecharModalConvenio() {
+    const modal = document.getElementById('modal-convenio');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    document.getElementById('novo-valor-pagamento').focus();
+}
+
+function mostrarPassoClienteConvenio() {
+    document.getElementById('convenio-passo-limite').classList.add('hidden');
+    document.getElementById('convenio-passo-cliente').classList.remove('hidden');
+    document.getElementById('convenio-cliente-busca').value = '';
+    buscarClienteConvenio();
+    setTimeout(() => document.getElementById('convenio-cliente-busca').focus(), 100);
+}
+
+function trocarClienteConvenio() {
+    mostrarPassoClienteConvenio();
+}
+
+function buscarClienteConvenio() {
+    clearTimeout(timeoutClienteConvenio);
+    timeoutClienteConvenio = setTimeout(async () => {
+        const termo = document.getElementById('convenio-cliente-busca').value;
+        let itens = [];
+        try {
+            const resp = await fetch(`{{ route('clientes.buscar') }}?q=${encodeURIComponent(termo)}`);
+            itens = await resp.json();
+        } catch (e) {
+            itens = [];
+        }
+
+        const lista = document.getElementById('convenio-cliente-lista');
+        lista.replaceChildren();
+        document.getElementById('convenio-cliente-vazio').classList.toggle('hidden', itens.length > 0);
+
+        itens.forEach(c => {
+            const li = document.createElement('li');
+            li.className = 'px-3 py-2.5 hover:bg-blue-50 cursor-pointer text-sm';
+            li.textContent = c.label;
+            li.addEventListener('click', () => {
+                clienteConvenioPendente = { id: c.id, label: c.label };
+                carregarConvenio(c.id, c.label);
+            });
+            lista.appendChild(li);
+        });
+    }, 200);
+}
+
+async function carregarConvenio(clienteId, rotulo) {
+    document.getElementById('convenio-passo-cliente').classList.add('hidden');
+    document.getElementById('convenio-passo-limite').classList.remove('hidden');
+    document.getElementById('convenio-cliente-nome').textContent = rotulo || ('Cliente #' + clienteId);
+    document.getElementById('convenio-erro').classList.add('hidden');
+
+    const semLimite = document.getElementById('convenio-sem-limite');
+    const comLimite = document.getElementById('convenio-com-limite');
+    semLimite.classList.add('hidden');
+    comLimite.classList.add('hidden');
+    convenioAtual = null;
+
+    if (clienteId < 0) {
+        semLimite.textContent = 'Cliente cadastrado agora neste caixa: ainda não tem limite de convênio. Conceda o limite no painel e use "Atualizar Caixa".';
+        semLimite.classList.remove('hidden');
+        return;
+    }
+
+    let dados = null;
+    try {
+        const resp = await fetch(`${URL_CONVENIO}?cliente_id=${encodeURIComponent(clienteId)}`, { headers: { 'Accept': 'application/json' } });
+        dados = await resp.json();
+    } catch (e) {
+        dados = null;
+    }
+
+    if (!dados || !dados.tem_limite) {
+        semLimite.textContent = 'Este cliente não tem limite de convênio. O limite é concedido no cadastro do cliente (aba "Limite de crédito"); se foi concedido agora, use "Atualizar Caixa".';
+        semLimite.classList.remove('hidden');
+        return;
+    }
+
+    // O que já foi lançado no convênio nesta venda sai do disponível mostrado
+    const jaLancado = pagamentos.filter(p => p.forma_pagamento === 'convenio').reduce((s, p) => s + p.valor, 0);
+    const disponivel = Math.max(0, Math.round((dados.disponivel - jaLancado) * 100) / 100);
+    convenioAtual = { ...dados, disponivel };
+
+    document.getElementById('convenio-limite').textContent = moedaBr(dados.limite);
+    document.getElementById('convenio-usado').textContent = moedaBr(dados.usado + jaLancado);
+    document.getElementById('convenio-disponivel').textContent = moedaBr(disponivel);
+    document.getElementById('convenio-prazo').textContent = `A venda vira uma conta a receber com vencimento em ${dados.dias} dias. Convênio não dá troco.`;
+    comLimite.classList.remove('hidden');
+
+    const falta = faltaPagar();
+    const sugerido = Math.min(valorPedidoConvenio ?? falta, falta, disponivel);
+    const campo = document.getElementById('convenio-valor');
+    campo.value = sugerido > 0 ? sugerido.toFixed(2) : '';
+
+    const aviso = document.getElementById('convenio-aviso');
+    if (disponivel <= 0) {
+        aviso.textContent = 'O limite do cliente está todo usado. Receba por outra forma de pagamento.';
+        aviso.classList.remove('hidden');
+    } else if (disponivel < falta) {
+        aviso.textContent = `O limite disponível (${moedaBr(disponivel)}) é menor que o que falta pagar (${moedaBr(falta)}). Use o limite e receba o restante (${moedaBr(falta - disponivel)}) em outra forma de pagamento.`;
+        aviso.classList.remove('hidden');
+    } else {
+        aviso.classList.add('hidden');
+    }
+
+    setTimeout(() => { campo.focus(); campo.select(); }, 100);
+}
+
+function confirmarConvenio() {
+    if (!convenioAtual) return;
+    const erro = document.getElementById('convenio-erro');
+    const valor = Math.round((parseFloat(document.getElementById('convenio-valor').value) || 0) * 100) / 100;
+
+    const mensagem = valor <= 0 ? 'Informe o valor a lançar no convênio.'
+        : valor - convenioAtual.disponivel > 0.009 ? `O limite disponível é ${moedaBr(convenioAtual.disponivel)}.`
+        : valor - faltaPagar() > 0.009 ? `Falta pagar só ${moedaBr(faltaPagar())} (convênio não dá troco).`
+        : null;
+
+    if (mensagem) {
+        erro.textContent = mensagem;
+        erro.classList.remove('hidden');
+        return;
+    }
+
+    // Consumidor escolhido no modal passa a ser o consumidor da venda (sai na NFC-e)
+    if (clienteConvenioPendente) {
+        selecionarCliente(clienteConvenioPendente.id, clienteConvenioPendente.label);
+        clienteConvenioPendente = null;
+    }
+
+    pagamentos.push({ forma_pagamento: 'convenio', valor, cliente_convenio_id: convenioAtual.cliente_id });
+    document.getElementById('novo-valor-pagamento').value = '';
+    fecharModalConvenio();
+    renderizarPagamentos();
+    if (atualizarRestante() >= -0.009) document.getElementById('btn-finalizar').focus();
+}
+
+// Convênio lançado é do consumidor da venda: trocar ou remover o consumidor tira o convênio lançado
+function descartarConvenioDeOutroCliente(novoClienteId) {
+    const antes = pagamentos.length;
+    pagamentos = pagamentos.filter(p => p.forma_pagamento !== 'convenio' || Number(p.cliente_convenio_id) === Number(novoClienteId));
+    if (pagamentos.length !== antes) {
+        renderizarPagamentos();
+        alert('O pagamento no convênio era do consumidor anterior e foi retirado. Lance o convênio de novo, se for o caso.');
+    }
+}
+
 function removerPagamento(index) {
     pagamentos.splice(index, 1);
     renderizarPagamentos();
 }
 
 function renderizarPagamentos() {
-    const nomes = { dinheiro: 'Dinheiro', pix: 'PIX', credito: 'Crédito', debito: 'Débito', credito_loja: 'Crédito em loja' };
+    const nomes = { dinheiro: 'Dinheiro', pix: 'PIX', credito: 'Crédito', debito: 'Débito', credito_loja: 'Crédito em loja', convenio: 'Convênio' };
 
     document.getElementById('lista-pagamentos').innerHTML = pagamentos.map((p, i) => `
         <div class="flex justify-between items-center bg-gray-50 border rounded px-2 py-1 text-sm">

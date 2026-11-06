@@ -11,7 +11,7 @@ class ContaReceber extends Model
     protected $table = 'contas_receber';
 
     protected $fillable = [
-        'tipo_conta_receber_id', 'cliente_id', 'venda_id',
+        'tipo_conta_receber_id', 'cliente_id', 'venda_id', 'origem',
         'descricao', 'numero_documento', 'data_conta', 'valor_total',
         'observacao', 'status',
     ];
@@ -40,6 +40,16 @@ class ContaReceber extends Model
     public function nomeCliente(): ?string
     {
         return self::rotuloCliente($this->cliente);
+    }
+
+    public function venda(): BelongsTo
+    {
+        return $this->belongsTo(Venda::class);
+    }
+
+    public function ehConvenio(): bool
+    {
+        return $this->origem === 'convenio';
     }
 
     public function parcelas(): HasMany

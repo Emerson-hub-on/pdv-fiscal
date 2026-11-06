@@ -25,11 +25,34 @@ class Cliente extends Model
         'cod_municipio',
         'uf',
         'ativo',
+        'limite_credito_ativo',
+        'limite_credito',
+        'limite_credito_dias',
+        'limite_credito_observacao',
     ];
 
     protected $casts = [
         'ativo' => 'boolean',
+        'limite_credito_ativo' => 'boolean',
+        'limite_credito' => 'decimal:2',
     ];
+
+    /** Contas a receber geradas por vendas no convênio (fiado). */
+    public function contasConvenio(): HasMany
+    {
+        return $this->hasMany(ContaReceber::class)->where('origem', 'convenio');
+    }
+
+    public function historicoLimiteCredito(): HasMany
+    {
+        return $this->hasMany(LimiteCreditoHistorico::class)->latest('id');
+    }
+
+    /** Tem limite de convênio concedido (ativo e maior que zero). */
+    public function temConvenio(): bool
+    {
+        return $this->limite_credito_ativo && (float) $this->limite_credito > 0;
+    }
 
     public function vendas(): HasMany
     {

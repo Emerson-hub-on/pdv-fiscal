@@ -374,6 +374,147 @@ class VendaController extends Controller
         ])->values());
     }
 
+    /**
+     * Pagamento no convênio (fiado): confere o limite do cliente no SQLite do caixa e soma no "usado"
+     * (dentro da transação da venda). A conta a receber nasce no servidor quando a venda sobe.
+     * Convênio não dá troco e exige o consumidor identificado (com cadastro já no servidor).
+     */
+    private function abaterConvenio(array $pagamentos, float $totalVenda, $clienteId): void
+    {
+        $valor = round((float) collect($pagamentos)->where('forma_pagamento', 'convenio')->sum('valor'), 2);
+
+        if ($valor <= 0) {
+            return;
+        }
+
+        if (!$clienteId || (int) $clienteId < 0) {
+            throw new \Exception($clienteId
+                ? 'Cliente do cadastro rápido ainda não tem limite de convênio. Use outra forma de pagamento.'
+                : 'Identifique o consumidor (F4) para vender no convênio.');
+        }
+
+        $semTroco = round((float) collect($pagamentos)->whereIn('forma_pagamento', ['convenio', 'credito_loja'])->sum('valor'), 2);
+        if ($semTroco - $totalVenda > 0.009) {
+            throw new \Exception('O convênio não pode ser maior que o total da venda (convênio não dá troco).');
+        }
+
+        $db = DB::connection('sqlite_local');
+        $convenio = $db->getSchemaBuilder()->hasTable('convenios_cache')
+            ? $db->table('convenios_cache')->where('cliente_id', (int) $clienteId)->lockForUpdate()->first()
+            : null;
+
+        if (!$convenio || (float) $convenio->limite <= 0) {
+            throw new \Exception('Este cliente não tem limite de convênio neste caixa. Se o limite foi concedido agora, use "Atualizar Caixa".');
+        }
+
+        $disponivel = round(max(0, (float) $convenio->limite - (float) $convenio->usado), 2);
+        if ($valor - $disponivel > 0.009) {
+            throw new \Exception(sprintf('Limite do convênio insuficiente: disponível R$ %s.', number_format($disponivel, 2, ',', '.')));
+        }
+
+        $db->table('convenios_cache')->where('cliente_id', (int) $clienteId)
+            ->update(['usado' => round((float) $convenio->usado + $valor, 2), 'updated_at' => now()]);
+    }
+
+    /** Caixa: limite do convênio do cliente (limite, usado e disponível) — JSON. */
+    public function convenioCliente(Request $request)
+    {
+        $clienteId = (int) $request->get('cliente_id', 0);
+        $db = DB::connection('sqlite_local');
+
+        $convenio = $clienteId > 0 && $db->getSchemaBuilder()->hasTable('convenios_cache')
+            ? $db->table('convenios_cache')->where('cliente_id', $clienteId)->first()
+            : null;
+
+        if (!$convenio || (float) $convenio->limite <= 0) {
+            return response()->json(['tem_limite' => false, 'cliente_id' => $clienteId]);
+        }
+
+        return response()->json([
+            'tem_limite' => true,
+            'cliente_id' => $clienteId,
+            'cliente'    => $convenio->cliente_nome,
+            'limite'     => round((float) $convenio->limite, 2),
+            'usado'      => round((float) $convenio->usado, 2),
+            'disponivel' => round(max(0, (float) $convenio->limite - (float) $convenio->usado), 2),
+            'dias'       => (int) $convenio->dias,
+        ]);
+    }
+
+    /**
+     * Caixa: convênios (vendas fiado) em aberto — os do servidor (cache) e as vendas deste caixa
+     * que ainda não subiram. Filtra por período da venda, nº do cupom e cliente.
+     */
+    public function conveniosAbertos(Request $request)
+    {
+        $db = DB::connection('sqlite_local');
+        if (!$db->getSchemaBuilder()->hasTable('convenios_abertos_cache')) {
+            return response()->json(['linhas' => [], 'total' => 0, 'quantidade' => 0]);
+        }
+
+        $inicio = $request->filled('data_inicio') ? (string) $request->get('data_inicio') : null;
+        $fim = $request->filled('data_fim') ? (string) $request->get('data_fim') : null;
+        $cupom = (int) preg_replace('/\D/', '', (string) $request->get('cupom', ''));
+        $termo = mb_strtolower(trim((string) $request->get('cliente', '')));
+        $hoje = today()->toDateString();
+
+        $servidor = $db->table('convenios_abertos_cache')->get();
+        $uuidsServidor = $servidor->pluck('venda_uuid')->filter()->flip();
+
+        $linhas = $servidor->map(fn ($c) => [
+            'cliente'     => $c->cliente_nome,
+            'numero_nfce' => $c->numero_nfce,
+            'serie_nfce'  => $c->serie_nfce,
+            'data'        => $c->data_venda,
+            'vencimento'  => $c->vencimento,
+            'valor'       => round((float) $c->valor, 2),
+            'saldo'       => round((float) $c->saldo, 2),
+            'situacao'    => $c->vencimento && $c->vencimento < $hoje ? 'vencido' : 'aberto',
+        ]);
+
+        // Vendas deste caixa no convênio que ainda não estão na lista do servidor: as não enviadas e as
+        // enviadas depois da última atualização da lista (as mais antigas já quitadas não voltam)
+        $nomes = $db->table('convenios_cache')->pluck('cliente_nome', 'cliente_id');
+        $ultimaLista = $db->table('convenios_cache')->max('updated_at');
+        $locais = $db->table('vendas_pendentes')
+            ->where('status', '!=', 'cancelada')
+            ->where(fn ($q) => $q->where('status', '!=', 'sincronizada')
+                ->when($ultimaLista, fn ($q) => $q->orWhere('sincronizada_em', '>', $ultimaLista)))
+            ->where(fn ($q) => $q->whereNull('status_fiscal')->orWhere('status_fiscal', '!=', 'cancelada'))
+            ->where('pagamentos', 'like', '%convenio%')
+            ->get()
+            ->reject(fn ($v) => isset($uuidsServidor[$v->uuid]))
+            ->map(function ($v) use ($nomes) {
+                $valor = collect(json_decode((string) $v->pagamentos, true) ?? [])->where('forma_pagamento', 'convenio')->sum('valor');
+
+                return [
+                    'cliente'     => $nomes[$v->cliente_id] ?? ('Cliente #' . $v->cliente_id),
+                    'numero_nfce' => $v->numero_nfce,
+                    'serie_nfce'  => $v->serie_nfce,
+                    'data'        => substr((string) ($v->vendida_em ?? $v->created_at), 0, 10),
+                    'vencimento'  => null,
+                    'valor'       => round((float) $valor, 2),
+                    'saldo'       => round((float) $valor, 2),
+                    'situacao'    => $v->status === 'sincronizada' ? 'aberto' : 'nao_sincronizado',
+                ];
+            })
+            ->filter(fn ($l) => $l['valor'] > 0);
+
+        $filtradas = $linhas->concat($locais)
+            ->filter(fn ($l) => !$inicio || ($l['data'] && $l['data'] >= $inicio))
+            ->filter(fn ($l) => !$fim || ($l['data'] && $l['data'] <= $fim))
+            ->filter(fn ($l) => !$cupom || (int) $l['numero_nfce'] === $cupom)
+            ->filter(fn ($l) => $termo === '' || str_contains(mb_strtolower((string) $l['cliente']), $termo))
+            ->sortByDesc(fn ($l) => ($l['data'] ?? '') . sprintf('%09d', (int) $l['numero_nfce']))
+            ->values();
+
+        return response()->json([
+            'linhas'     => $filtradas->take(300)->values(),
+            'total'      => round((float) $filtradas->sum('saldo'), 2),
+            'quantidade' => $filtradas->count(),
+        ]);
+    }
+
     public function finalizar(Request $request)
     {
         // 1. Lê o ID do pedido da sessão ANTES de ela ser limpa (previne adulteração via request)
@@ -386,7 +527,7 @@ class VendaController extends Controller
             'itens.*.quantidade' => 'required|integer|min:1',
             'itens.*.desconto' => 'nullable|numeric|min:0',
             'pagamentos' => 'required|array|min:1',
-            'pagamentos.*.forma_pagamento' => 'required|in:dinheiro,pix,credito,debito,credito_loja',
+            'pagamentos.*.forma_pagamento' => 'required|in:dinheiro,pix,credito,debito,credito_loja,convenio',
             'pagamentos.*.valor' => 'required|numeric|min:0.01',
             'pagamentos.*.credito_loja_id' => 'required_if:pagamentos.*.forma_pagamento,credito_loja|nullable|integer',
             'desconto_global' => 'nullable|numeric|min:0',
@@ -491,6 +632,7 @@ class VendaController extends Controller
                 }
 
                 $this->abaterCreditoLoja($validado['pagamentos'], $totalComDesconto, $validado['cliente_id'] ?? null);
+                $this->abaterConvenio($validado['pagamentos'], $totalComDesconto, $validado['cliente_id'] ?? null);
 
 
                 if ($pedidoVendaId) {

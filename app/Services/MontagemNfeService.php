@@ -29,6 +29,7 @@ class MontagemNfeService
         'credito'  => ['03'],
         'debito'   => ['04'],
         'pix'      => ['17', '20'],
+        'convenio' => ['05'],
     ];
 
     private const NOMES_PAGAMENTO = [
@@ -36,6 +37,7 @@ class MontagemNfeService
         'credito'  => 'Crédito',
         'debito'   => 'Débito',
         'pix'      => 'Pix',
+        'convenio' => 'Convênio',
     ];
 
     /** Motivo que impede montar NF-e desta venda (null = pode montar). */

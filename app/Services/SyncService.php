@@ -669,6 +669,89 @@ class SyncService
         }
     }
 
+    /**
+     * Direção 1: convênio (fiado). Traz os clientes com limite concedido (limite e quanto já usam) e as
+     * dívidas de convênio em aberto, para o caixa vender e consultar também offline.
+     * O "usado" soma o que vendas deste caixa ainda não enviadas já tomaram do limite.
+     */
+    public function puxarConvenios(): array
+    {
+        try {
+            $local = DB::connection('sqlite_local');
+
+            if (!$local->getSchemaBuilder()->hasTable('convenios_cache')) {
+                return ['sucesso' => true, 'convenios' => 0];
+            }
+
+            $servico = app(\App\Services\ConvenioService::class);
+            $usoPendente = self::convenioUsadoEmVendasPendentes();
+            $agora = now();
+
+            $limites = Cliente::where('limite_credito_ativo', true)->where('limite_credito', '>', 0)
+                ->get(['id', 'nome', 'cpf_cnpj', 'limite_credito', 'limite_credito_dias'])
+                ->map(fn ($c) => [
+                    'cliente_id'   => $c->id,
+                    'cliente_nome' => $c->nome,
+                    'cpf_cnpj'     => $c->cpf_cnpj,
+                    'limite'       => (float) $c->limite_credito,
+                    'usado'        => round($servico->usado($c->id) + ($usoPendente[$c->id] ?? 0), 2),
+                    'dias'         => (int) ($c->limite_credito_dias ?: 30),
+                    'updated_at'   => $agora,
+                ])->all();
+
+            $abertos = $servico->abertos()->map(fn ($conta) => [
+                'id'           => $conta->id,
+                'cliente_id'   => $conta->cliente_id,
+                'cliente_nome' => $conta->cliente?->nome,
+                'venda_uuid'   => $conta->venda?->uuid,
+                'numero_nfce'  => $conta->venda?->numero_nfce,
+                'serie_nfce'   => $conta->venda?->serie_nfce,
+                'data_venda'   => $conta->data_conta?->toDateString(),
+                'vencimento'   => $conta->proximaParcela()?->vencimento?->toDateString(),
+                'valor'        => (float) $conta->valor_total,
+                'saldo'        => $conta->saldoAberto(),
+                'updated_at'   => $agora,
+            ])->all();
+
+            $local->transaction(function () use ($local, $limites, $abertos) {
+                $local->table('convenios_cache')->delete();
+                $local->table('convenios_abertos_cache')->delete();
+                foreach (array_chunk($limites, 100) as $bloco) {
+                    $local->table('convenios_cache')->insert($bloco);
+                }
+                foreach (array_chunk($abertos, 100) as $bloco) {
+                    $local->table('convenios_abertos_cache')->insert($bloco);
+                }
+            });
+
+            return ['sucesso' => true, 'convenios' => count($limites), 'abertos' => count($abertos)];
+        } catch (\Throwable $e) {
+            return $this->registrarFalha($e);
+        }
+    }
+
+    /** Convênio usado em vendas deste caixa ainda não enviadas ao servidor: [cliente_id => valor]. */
+    public static function convenioUsadoEmVendasPendentes(): array
+    {
+        $uso = [];
+
+        DB::connection('sqlite_local')->table('vendas_pendentes')
+            ->where('status', '!=', 'sincronizada')
+            ->where('status', '!=', 'cancelada')
+            ->where(fn ($q) => $q->whereNull('status_fiscal')->orWhere('status_fiscal', '!=', 'cancelada'))
+            ->whereNotNull('cliente_id')
+            ->get(['cliente_id', 'pagamentos'])
+            ->each(function ($v) use (&$uso) {
+                foreach (json_decode((string) $v->pagamentos, true) ?? [] as $p) {
+                    if (($p['forma_pagamento'] ?? null) === 'convenio') {
+                        $uso[(int) $v->cliente_id] = round(($uso[(int) $v->cliente_id] ?? 0) + (float) $p['valor'], 2);
+                    }
+                }
+            });
+
+        return $uso;
+    }
+
     /** Crédito em loja usado em vendas deste caixa ainda não enviadas ao servidor: [credito_id => valor]. */
     public static function creditoUsadoEmVendasPendentes(): array
     {
@@ -1069,6 +1152,12 @@ class SyncService
                                 $creditoLoja->usarNaVenda($creditoId, (float) $pagamento['valor'], $vendaLocal->uuid, $vendaLocal->operador_id_central);
                             }
                         }
+
+                        // Convênio (fiado): a parte paga no convênio vira conta a receber do cliente (idempotente pela venda)
+                        $valorConvenio = collect($pagamentos)->where('forma_pagamento', 'convenio')->sum('valor');
+                        if ($valorConvenio > 0 && $vendaLocal->status_fiscal !== 'cancelada') {
+                            app(\App\Services\ConvenioService::class)->lancarDaVenda($vendaId, (float) $valorConvenio, $vendaLocal->vendida_em);
+                        }
                     });
                 } elseif ($vendaLocal->fiscal_sync_pendente) {
                     DB::transaction(function () use ($vendaLocal) {
@@ -1081,10 +1170,20 @@ class SyncService
                         // Impostos dos itens calculados depois da inclusão da venda (emissão no caixa)
                         $this->atualizarImpostosItens($vendaLocal);
 
+                        // Número da NFC-e saiu depois: a dívida do convênio passa a mostrar o cupom
+                        if ($afetadas && $vendaLocal->status_fiscal !== 'cancelada') {
+                            $idVenda = DB::table('vendas')->where('uuid', $vendaLocal->uuid)->value('id');
+                            if ($idVenda) {
+                                app(\App\Services\ConvenioService::class)->atualizarDocumento($idVenda);
+                            }
+                        }
+
                         // Cancelada no caixa: devolve o estoque que o servidor baixou. Só na transição, para nunca devolver duas vezes.
                         if ($afetadas && $vendaLocal->status_fiscal === 'cancelada') {
                             // Crédito em loja usado na venda volta para o cliente
                             app(\App\Services\CreditoLojaService::class)->estornarVenda($vendaLocal->uuid);
+                            // Dívida do convênio da venda deixa de existir
+                            app(\App\Services\ConvenioService::class)->estornarVenda($vendaLocal->uuid);
 
                             // [MOVIMENTAÇÃO] devolução pelo EstoqueService (registra no histórico e não devolve duas vezes)
                             $vendaId = DB::table('vendas')->where('uuid', $vendaLocal->uuid)->value('id');
@@ -1275,6 +1374,10 @@ class SyncService
         }
 
         $resultado['vendas'] = $this->enviarVendasPendentes();
+        // Depois das vendas: o limite usado e as dívidas em aberto já incluem o que acabou de subir
+        $resultado['convenios'] = CentralStatus::fora()
+            ? ['sucesso' => false, 'erro' => 'Servidor indisponível']
+            : $this->puxarConvenios();
         $resultado['situacao_fiscal'] = CentralStatus::fora()
             ? ['sucesso' => false, 'erro' => 'Servidor indisponível']
             : $this->puxarSituacaoFiscal();
