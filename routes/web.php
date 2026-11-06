@@ -381,6 +381,13 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
                 Route::get('exportar-pdf', [RelatorioContaReceberController::class, 'exportarPdf'])->name('exportar-pdf');
             });
 
+            // ---------------- RELATÓRIOS - TROCA ----------------
+            Route::prefix('financeiro/relatorios/troca')->name('financeiro.relatorios.troca.')->group(function () {
+                Route::get('/', [\App\Http\Controllers\RelatorioTrocaController::class, 'index'])->name('index');
+                Route::get('exportar-excel', [\App\Http\Controllers\RelatorioTrocaController::class, 'exportarExcel'])->name('exportar-excel');
+                Route::get('exportar-pdf', [\App\Http\Controllers\RelatorioTrocaController::class, 'exportarPdf'])->name('exportar-pdf');
+            });
+
             // ---------------- RELATÓRIOS - PEDIDOS DE COMPRA ----------------
             Route::prefix('financeiro/relatorios/pedidos-compra')->name('financeiro.relatorios.pedidos-compra.')->group(function () {    
                 Route::get('/', [RelatorioPedidoCompraController::class, 'index'])->name('index');    

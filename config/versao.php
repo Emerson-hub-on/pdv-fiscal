@@ -11,6 +11,15 @@
 
 $historico = [
     [
+        'versao' => '1.8.0',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Financeiro → Relatório → Troca: lista as trocas (NF-e de entrada de devolução de cliente) com a venda original, o cliente, o valor devolvido, o vale-troca gerado, o saldo do crédito e a saída do item novo; os itens devolvidos abrem em "Ver itens".',
+            'Filtros: data da troca (padrão: mês atual), venda original NFC-e, NF-e ou ambas, situação da NF-e de entrada, busca por cliente, CPF/CNPJ, nº da venda original, nº da NF-e de entrada ou vale-troca, e ordenação. Cartões com quantidade de trocas, valor devolvido e crédito gerado, usado e em aberto.',
+            'Exportar Excel e PDF de todas as trocas filtradas, com itens (detalhada) ou só as trocas (resumida).',
+        ],
+    ],
+    [
         'versao' => '1.7.2',
         'data' => '2026-11-06',
         'itens' => [
