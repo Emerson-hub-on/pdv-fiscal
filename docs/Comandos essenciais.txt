@@ -13,7 +13,7 @@ Gerar licença para um cliente (só na máquina do desenvolvedor, que tem a chav
     php artisan licenca:gerar <CNPJ> <VALIDA_ATE>
 
     Exemplo:
-    php artisan licenca:gerar 24057254000104 2027-12-31
+    php artisan licenca:gerar 24057254000104 2027-12-04
 
     - CNPJ: com ou sem pontuação (14 dígitos).
     - VALIDA_ATE: último dia de uso liberado, no formato AAAA-MM-DD.

@@ -1,0 +1,42 @@
+Estes são os comandos que mais vão fazer diferença, separados pelo momento de usar. Digite / na caixa de mensagem para ver a lista completa; ao digitar as primeiras letras ele filtra.
+
+Uma vez, no começo do projeto
+/init: analisa o projeto e cria o CLAUDE.md na raiz. É um arquivo de instruções que o Claude lê em toda conversa nova. É o mais importante de todos.
+/memory: abre o CLAUDE.md para você editar. Coloque as regras que hoje você repete em toda conversa, por exemplo:
+  - Responder em português.
+  - Laravel 13, PHP 8.3, MySQL (servidor) + SQLite local do caixa (conexão sqlite_local).
+  - Usar somente Tailwind (v4), sem CSS próprio nem style inline.
+  - Edições cirúrgicas; mostrar o arquivo completo atualizado.
+  - Migrations do SQLite do caixa ficam em database/migrations/local.
+  - Nunca rodar migrate:fresh, migrate:rollback, db:wipe ou comandos que apaguem dados.
+Durante uma tarefa
+/plan: antes de uma mudança grande (um módulo novo, uma alteração em vários arquivos). Ele investiga e mostra o plano antes de mexer em qualquer coisa; você aprova, ajusta ou recusa. Também serve para análises que não devem alterar nada.
+/model: troca o modelo. Use Opus para análises grandes e Sonnet para o dia a dia.
+/btw: uma pergunta paralela que não entra no histórico da tarefa. Exemplo: /btw qual o comando para limpar o cache de rotas?.
+Quando a conversa fica longa
+/context: mostra o quanto da memória da conversa já foi usado.
+/compact: resume a conversa e libera espaço, mantendo o essencial. Use quando o /context estiver cheio ou ele começar a “esquecer” coisas do começo. Você pode dizer o que priorizar: /compact mantenha os detalhes do relatório de fechamento de caixa.
+Entre tarefas
+/clear: começa uma conversa nova e limpa, mantendo o CLAUDE.md. Use ao mudar de assunto, por exemplo terminar o SPED e começar o MDF-e. Assunto antigo misturado atrapalha mais do que ajuda.
+/resume: volta a uma conversa anterior.
+Quando algo dá errado
+/rewind: volta o código e a conversa a um ponto anterior. É o “desfazer” quando ele alterou algo que você não queria.
+Esc: interrompe o que ele está fazendo naquele momento.
+Antes de entregar uma versão
+/review: revisa as alterações procurando bugs.
+/security-review: procura falhas de segurança nas alterações.
+
+Os dois comparam com o Git. Se o projeto ainda não usa Git, vale começar: git init e um commit antes de cada tarefa. Além de habilitar esses comandos, você ganha um histórico para voltar atrás.
+
+Outros úteis
+/usage: quanto do limite do seu plano você já usou.
+/permissions: define quais comandos ele pode rodar sem perguntar (por exemplo, php artisan migrate:status) e quais são sempre proibidos.
+/help: a lista de tudo.
+
+Rotina sugerida: faça /init e ajuste o CLAUDE.md uma vez. A cada tarefa, /clear para começar limpo, /plan se for grande, /compact se a conversa crescer, e /review antes de levar ao cliente.
+
+Fontes:
+
+Commands – Claude Code Docs
+Best practices for Claude Code
+Checkpointing
