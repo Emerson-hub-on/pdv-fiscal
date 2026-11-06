@@ -63,5 +63,8 @@ class Empresa extends Model
                 throw new \Exception('Já existe um registro de empresa. Edite o existente em vez de criar outro.');
             }
         });
+
+        // A empresa também fica no cadastro de clientes (NF-e com a própria empresa como destinatária)
+        static::saved(fn (Empresa $empresa) => \App\Support\ClienteEspelho::daEmpresa($empresa));
     }
 }

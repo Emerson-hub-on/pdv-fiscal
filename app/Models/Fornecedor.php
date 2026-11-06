@@ -8,6 +8,12 @@ class Fornecedor extends Model
 {
     protected $table = 'fornecedores';
 
+    protected static function booted(): void
+    {
+        // Todo fornecedor também fica no cadastro de clientes (NF-e de devolução, remessa... têm ele como destinatário)
+        static::saved(fn (Fornecedor $fornecedor) => \App\Support\ClienteEspelho::deFornecedor($fornecedor));
+    }
+
     protected $fillable = [
         'tipo_pessoa', 'nome', 'nome_fantasia', 'cpf_cnpj',
         'indicador_ie', 'ie',

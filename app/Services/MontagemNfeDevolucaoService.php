@@ -277,10 +277,12 @@ class MontagemNfeDevolucaoService
             return null;
         }
 
-        $cliente = Cliente::create(collect($fornecedor->only([
-            'tipo_pessoa', 'nome', 'nome_fantasia', 'indicador_ie', 'ie', 'email', 'telefone',
-            'cep', 'logradouro', 'numero', 'complemento', 'bairro', 'municipio', 'cod_municipio', 'uf',
-        ]))->all() + ['cpf_cnpj' => $documento, 'ativo' => true]);
+        $cliente = \App\Support\ClienteEspelho::deFornecedor($fornecedor);
+
+        if (!$cliente) {
+            $avisos[] = 'Não foi possível cadastrar o fornecedor como cliente: selecione o destinatário da devolução.';
+            return null;
+        }
 
         $avisos[] = "O fornecedor {$fornecedor->nome} foi cadastrado também como cliente, para ser o destinatário da NF-e de devolução.";
 

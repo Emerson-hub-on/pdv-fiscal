@@ -11,6 +11,15 @@
 
 $historico = [
     [
+        'versao' => '1.5.0',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Todo fornecedor e a própria empresa passam a ter também um cadastro de cliente (pelo CPF/CNPJ), para poderem ser destinatários de NF-e (devolução, remessa, transferência...). Vale para o cadastro na tela, para o fornecedor criado na importação de XML e para os Dados da empresa.',
+            'Ao alterar o fornecedor ou a empresa, o cliente correspondente recebe o nome, a inscrição estadual e o endereço novos; e-mail e telefone só são preenchidos se o cliente estiver sem.',
+            'Fornecedores e empresa já cadastrados foram incluídos como clientes.',
+        ],
+    ],
+    [
         'versao' => '1.4.0',
         'data' => '2026-11-06',
         'itens' => [
