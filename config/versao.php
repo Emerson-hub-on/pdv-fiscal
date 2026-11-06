@@ -11,6 +11,13 @@
 
 $historico = [
     [
+        'versao' => '1.11.7',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Caixa → Pagamento → Autorização do supervisor (desconto geral): voltou o campo "Supervisor" ao lado do código, mostrando o nome do supervisor ao digitar o código (ou o aviso de supervisor não encontrado), igual ao modal do PDV.',
+        ],
+    ],
+    [
         'versao' => '1.11.6',
         'data' => '2026-11-06',
         'itens' => [

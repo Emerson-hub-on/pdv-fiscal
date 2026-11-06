@@ -236,8 +236,18 @@
         </div>
         <div class="p-6">
         <p class="text-sm text-slate-500 mb-4" id="autorizacao-descricao"></p>
-        <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Código do supervisor</label>
-        <input type="text" inputmode="numeric" id="autorizacao-usuario" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition mb-3">
+        {{-- Código digitado → nome do supervisor aparece ao lado (mesmo modal do PDV) --}}
+        <div class="grid grid-cols-3 gap-3 mb-3">
+            <div class="col-span-1">
+                <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Código</label>
+                <input type="text" inputmode="numeric" autocomplete="off" id="autorizacao-usuario" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
+            </div>
+            <div class="col-span-2">
+                <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Supervisor</label>
+                <input type="text" id="autorizacao-nome" readonly tabindex="-1" placeholder="—"
+                       class="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 truncate">
+            </div>
+        </div>
         <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Senha</label>
         <input type="password" id="autorizacao-senha" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition mb-4">
         <p id="autorizacao-erro" class="text-red-600 text-sm mb-3 hidden"></p>
@@ -873,6 +883,7 @@ function abrirModalDescontoGlobal() {
 
     document.getElementById('autorizacao-descricao').innerText = 'Autorização necessária para aplicar desconto geral.';
     document.getElementById('autorizacao-usuario').value = '';
+    definirNomeSupervisor('');
     document.getElementById('autorizacao-senha').value = '';
     document.getElementById('autorizacao-erro').classList.add('hidden');
     document.getElementById('modal-autorizacao').classList.remove('hidden');
@@ -891,6 +902,48 @@ function abrirEscolhaTipoDesconto() {
     document.addEventListener('keydown', _handlerTipoDesconto);
 }
 
+
+// Nome do supervisor pelo código digitado (mesma consulta do PDV)
+let timeoutNomeSupervisor;
+let ultimaBuscaSupervisor = 0;
+
+function definirNomeSupervisor(texto, erro = false) {
+    const campo = document.getElementById('autorizacao-nome');
+    campo.value = texto;
+    campo.classList.toggle('text-red-600', erro);
+    campo.classList.toggle('text-slate-700', !erro);
+}
+
+async function buscarNomeSupervisor() {
+    const codigo = document.getElementById('autorizacao-usuario').value.trim();
+    const busca = ++ultimaBuscaSupervisor;
+
+    if (!/^\d+$/.test(codigo)) {
+        definirNomeSupervisor('');
+        return;
+    }
+
+    try {
+        const url = `{{ route('supervisor.usuario') }}?codigo=${encodeURIComponent(codigo)}`;
+        const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        const dados = await resp.json();
+
+        if (busca !== ultimaBuscaSupervisor) return; // chegou uma resposta mais nova
+
+        if (dados.nome) {
+            definirNomeSupervisor(dados.nome);
+        } else {
+            definirNomeSupervisor(dados.aviso || 'Supervisor não encontrado', true);
+        }
+    } catch (e) {
+        if (busca === ultimaBuscaSupervisor) definirNomeSupervisor('');
+    }
+}
+
+document.getElementById('autorizacao-usuario').addEventListener('input', () => {
+    clearTimeout(timeoutNomeSupervisor);
+    timeoutNomeSupervisor = setTimeout(buscarNomeSupervisor, 250);
+});
 
 function fecharModalAutorizacao() {
     document.getElementById('modal-autorizacao').classList.add('hidden');
