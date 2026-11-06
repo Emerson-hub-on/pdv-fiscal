@@ -1,10 +1,10 @@
 {{-- Caixa: consulta dos convênios (vendas fiado) em aberto. Filtra por período da venda, nº do cupom e cliente.
      Lê o SQLite do caixa (lista trazida do servidor no Atualizar Caixa + vendas deste caixa ainda não enviadas). --}}
 <div id="modal-convenios" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden">
         <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
             <div>
-                <h2 class="text-lg font-bold text-white">Convênios em aberto</h2>
+                <h2 class="text-lg font-bold text-amber-50">Convênios em aberto</h2>
                 <p class="text-xs text-slate-300">Vendas no convênio (fiado) ainda não recebidas. Clique na dívida para dar baixa.</p>
             </div>
             <button type="button" onclick="fecharModalConvenios()" class="text-slate-300 hover:text-white text-2xl leading-none">&times;</button>
@@ -13,29 +13,29 @@
         <div class="p-6 flex flex-col gap-4 min-h-0">
             <div class="grid grid-cols-4 gap-3">
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Venda de</label>
-                    <input type="date" id="convenios-inicio" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none">
+                    <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Venda de</label>
+                    <input type="date" id="convenios-inicio" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">até</label>
-                    <input type="date" id="convenios-fim" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none">
+                    <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">até</label>
+                    <input type="date" id="convenios-fim" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Nº do cupom</label>
+                    <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Nº do cupom</label>
                     <input type="text" id="convenios-cupom" inputmode="numeric" placeholder="Ex.: 1234"
-                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none">
+                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Cliente</label>
+                    <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Cliente</label>
                     <input type="text" id="convenios-cliente" placeholder="Nome do cliente"
-                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none">
+                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
                 </div>
             </div>
             <div class="flex justify-between items-center">
                 <div class="flex gap-2">
-                    <button type="button" onclick="filtroRapidoConvenios('hoje')" class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">Hoje</button>
-                    <button type="button" onclick="filtroRapidoConvenios('mes')" class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">Este mês</button>
-                    <button type="button" onclick="filtroRapidoConvenios('todos')" class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">Todos em aberto</button>
+                    <button type="button" onclick="filtroRapidoConvenios('hoje')" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-white ring-1 ring-slate-200 hover:ring-[#10284A]/40 hover:text-[#10284A] text-slate-700 transition">Hoje</button>
+                    <button type="button" onclick="filtroRapidoConvenios('mes')" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-white ring-1 ring-slate-200 hover:ring-[#10284A]/40 hover:text-[#10284A] text-slate-700 transition">Este mês</button>
+                    <button type="button" onclick="filtroRapidoConvenios('todos')" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-white ring-1 ring-slate-200 hover:ring-[#10284A]/40 hover:text-[#10284A] text-slate-700 transition">Todos em aberto</button>
                 </div>
                 <p id="convenios-resumo" class="text-sm text-slate-600"></p>
             </div>
@@ -62,10 +62,10 @@
 
 {{-- Baixa de um convênio no caixa: valor pago (total ou parte) e forma de pagamento --}}
 <div id="modal-baixa-convenio" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[55]">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
         <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
             <div>
-                <h2 class="text-lg font-bold text-white">Receber convênio</h2>
+                <h2 class="text-lg font-bold text-amber-50">Receber convênio</h2>
                 <p id="baixa-convenio-subtitulo" class="text-xs text-slate-300"></p>
             </div>
             <button type="button" onclick="fecharModalBaixaConvenio()" class="text-slate-300 hover:text-white text-2xl leading-none">&times;</button>
@@ -82,11 +82,11 @@
                 </div>
             </div>
 
-            <label class="block text-xs font-medium text-gray-600 mb-1">Valor pago (R$)</label>
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Valor pago (R$)</label>
             <input type="number" step="0.01" min="0.01" id="baixa-convenio-valor"
-                   class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-base font-semibold focus:ring-2 focus:ring-slate-800 outline-none mb-3">
+                   class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition text-base font-semibold mb-3">
 
-            <label class="block text-xs font-medium text-gray-600 mb-1">Forma de pagamento</label>
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Forma de pagamento</label>
             <div id="baixa-convenio-formas" class="grid grid-cols-2 gap-2 mb-3">
                 @foreach (\App\Services\ConvenioService::FORMAS_RECEBIMENTO as $chave => $rotulo)
                     <button type="button" data-forma="{{ $chave }}" onclick="escolherFormaBaixaConvenio('{{ $chave }}')"
@@ -208,7 +208,7 @@
         // Texto do cliente vai como texto, nunca como HTML
         dados.linhas.forEach((l, indice) => {
             const tr = corpo.insertRow();
-            tr.className = 'hover:bg-blue-50 cursor-pointer';
+            tr.className = 'hover:bg-amber-50 cursor-pointer';
             tr.title = 'Clique para dar baixa';
             tr.addEventListener('click', () => abrirModalBaixaConvenio(indice));
             const celula = (texto, cls = '') => {

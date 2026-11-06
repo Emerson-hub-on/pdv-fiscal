@@ -11,6 +11,23 @@
 
 $historico = [
     [
+        'versao' => '1.11.3',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Caixa → PDV com o visual do sistema: busca de produto com ícone e rótulo, carrinho em cartão arredondado com cabeçalho azul e "carrinho vazio" ilustrado, e o quadro "Total da venda" igual ao da tela de pagamento (total em destaque no topo azul, desconto por item e Prosseguir para pagamento).',
+            'Cabeçalho do PDV: botões arredondados com os atalhos (F1 a F9) em selo e menus Cancelamento, Impressão e Opções em branco com destaque azul.',
+            'Modais do PDV (reimpressão, pedido, busca de produto, balança, contingências, autorização do supervisor, tipo de desconto, desconto em item, desconto geral, cancelar item, inutilização, cancelar NFC-e, convênios e exportar XMLs) com cabeçalho azul, rótulos, campos e botões no padrão; a linha selecionada nas listas fica azul.',
+        ],
+    ],
+    [
+        'versao' => '1.11.2',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Caixa → Pagamento com o visual do sistema: cabeçalho azul com ícones e atalhos (F4, F5, Esc), os dois quadros centralizados no meio da tela — Pagamentos (lançados, valor + forma, restante a pagar e Finalizar venda F2) e Total a pagar (total em destaque, nº de itens, descontos e atalhos).',
+            'Modais da tela (consumidor, autorização do supervisor, tipo de desconto, desconto geral, voltar aos itens, crédito em loja e convênio) com cabeçalho azul e campos e botões no padrão do sistema.',
+        ],
+    ],
+    [
         'versao' => '1.11.1',
         'data' => '2026-11-06',
         'itens' => [

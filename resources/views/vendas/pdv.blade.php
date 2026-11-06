@@ -5,7 +5,7 @@
 @section('conteudo')
 
 @if (!empty($pdvInativo))
-    <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+    <div class="p-4 bg-red-50 ring-1 ring-red-200 text-sm text-red-700">
         <strong>Este PDV foi inativado no servidor.</strong>
         Novas vendas estão bloqueadas. Feche o caixa; contingências (F1) e cancelamentos continuam disponíveis.
         {{-- AJUSTE: use o nome real da rota que abre a tela de fechamento --}}
@@ -19,23 +19,23 @@
 
 <!-- Modal reimprimir cupom fiscal -->
 <div id="modal-reimpressao" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
-        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
-            <h2 class="text-lg font-bold text-white">Reimprimir Cupom Fiscal</h2>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
+            <h2 class="text-lg font-bold text-amber-50">Reimprimir Cupom Fiscal</h2>
             <button onclick="fecharModalReimpressao()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
 
         <div class="p-6">
             <div class="flex flex-wrap items-end gap-3 mb-4">
                 <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">Nº da NFC-e</label>
+                    <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Nº da NFC-e</label>
                     <input type="text" id="reimp-numero" inputmode="numeric" autocomplete="off" placeholder="Ex.: 123"
-                           class="w-40 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-slate-800 outline-none transition">
+                           class="w-40 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">Data da venda</label>
+                    <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Data da venda</label>
                     <input type="date" id="reimp-data"
-                           class="border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-slate-800 outline-none transition">
+                           class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
                 </div>
                 <p class="text-xs text-gray-400 flex-1 min-w-48">Com o número da NFC-e a busca ignora a data. Sem número, mostra as vendas da data escolhida.</p>
             </div>
@@ -48,7 +48,7 @@
                     <col class="w-[24%]">
                 </colgroup>
                 <thead>
-                    <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
+                    <tr class="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                         <th class="py-2 px-2">NFC-e / Série</th>
                         <th class="py-2 px-2">Data e hora</th>
                         <th class="py-2 px-2 text-right">Total</th>
@@ -66,15 +66,15 @@
 
 <!-- Modal puxar pedido de venda -->
 <div id="modal-pedidos" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
-        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
-            <h2 class="text-lg font-bold text-white">Puxar Pedido de Venda</h2>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
+            <h2 class="text-lg font-bold text-amber-50">Puxar Pedido de Venda</h2>
             <button onclick="fecharModalPedidos()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
 
         <div class="p-6">
             <input type="text" id="busca-pedido-modal" placeholder="Buscar por nº do pedido ou nome do cliente..." autocomplete="off"
-                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
+                   class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition py-3 mb-4">
             <table class="w-full text-sm table-fixed">
                 <colgroup>
                     <col class="w-[14%]">
@@ -84,7 +84,7 @@
                     <col class="w-[20%]">
                 </colgroup>
                 <thead>
-                    <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
+                    <tr class="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                         <th class="py-2 px-2">Nº</th>
                         <th class="py-2 px-2">Data</th>
                         <th class="py-2 px-2">Cliente</th>
@@ -102,16 +102,16 @@
 
 <!-- Modal de busca de produto -->
 <div id="modal-busca-produto" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
-        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
-            <h2 class="text-lg font-bold text-white">Selecionar Produto</h2>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
+            <h2 class="text-lg font-bold text-amber-50">Selecionar Produto</h2>
             <button onclick="fecharModalBusca()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
 
         <div class="p-6">
-            <p id="indicador-multiplicador" class="text-sm text-blue-600 font-semibold mb-2 hidden"></p>
+            <p id="indicador-multiplicador" class="text-sm text-[#10284A] font-semibold bg-amber-50 ring-1 ring-amber-200 rounded-xl px-3 py-1.5 mb-3 hidden"></p>
             <input type="text" id="busca-produto-modal" placeholder="Buscar por nome, código ou código de barras..."
-                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
+                   class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition py-3 mb-4">
             <table class="w-full text-sm table-fixed">
                 <colgroup>
                     <col class="w-40">
@@ -120,7 +120,7 @@
                     <col class="w-20">
                 </colgroup>
                 <thead>
-                    <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
+                    <tr class="text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                         <th class="py-2 px-2">Código</th>
                         <th class="py-2 px-2">Produto</th>
                         <th class="py-2 px-2">Preço</th>
@@ -138,39 +138,41 @@
 
 <!-- Modal produto de balança -->
 <div id="modal-balanca" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-bold">Produto de Balança</h2>
-            <button onclick="fecharModalBalanca()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
+            <h2 class="text-lg font-bold text-amber-50">Produto de Balança</h2>
+            <button onclick="fecharModalBalanca()" class="text-slate-300 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
+        <div class="p-6">
 
         <p id="balanca-nome-produto" class="text-sm text-gray-500 mb-1"></p>
         <p id="balanca-preco-kg" class="text-sm text-gray-600 mb-4"></p>
 
-        <label class="block text-sm font-medium mb-1">Peso (KG)</label>
+        <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Peso (KG)</label>
         <input type="number" step="0.001" min="0.001" id="balanca-peso" placeholder="Ex: 1.350"
-               class="w-full border rounded-lg px-3 py-2 mb-2 text-lg font-mono">
+               class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition text-lg font-mono mb-2">
 
-        <p id="balanca-total-calculado" class="text-right text-blue-600 font-semibold text-sm mb-4"></p>
+        <p id="balanca-total-calculado" class="text-right text-[#10284A] font-bold text-sm mb-4"></p>
         <p id="balanca-erro" class="text-red-600 text-sm mb-3 hidden"></p>
 
         <button onclick="confirmarProdutoBalanca()"
-                class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold">
+                class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold transition">
             Adicionar ao Carrinho
         </button>
+        </div>
     </div>
 </div>
 
 
 <!-- Modal de contingencias -->
 <div id="modal-contingencias" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-4xl max-h-[85vh] flex flex-col">
-        <div class="flex justify-between items-start px-6 pt-5 pb-3">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden">
+        <div class="flex justify-between items-start px-6 py-4 bg-[#10284A] mb-3">
             <div>
-                <h2 class="text-lg font-bold">Vendas em Contingência e Rejeitadas</h2>
-                <p class="text-xs text-gray-400">Clique em uma venda para ver o motivo e os itens.</p>
+                <h2 class="text-lg font-bold text-amber-50">Vendas em Contingência e Rejeitadas</h2>
+                <p class="text-xs text-slate-300">Clique em uma venda para ver o motivo e os itens.</p>
             </div>
-            <button onclick="fecharModalContingencias()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            <button onclick="fecharModalContingencias()" class="text-slate-300 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
 
         <div class="flex flex-wrap justify-between items-center gap-2 px-6 pb-3">
@@ -181,7 +183,7 @@
             <div class="flex items-center gap-3">
                 <span id="progresso-emissao" class="text-sm text-gray-500 hidden"></span>
                 <button id="btn-emitir-selecionadas" onclick="emitirSelecionadas()"
-                        class="bg-gray-800 hover:bg-gray-700 text-white rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50">
+                        class="bg-[#10284A] hover:bg-[#163a68] text-amber-50 rounded-xl font-semibold transition px-4 py-2 text-sm disabled:opacity-50">
                     Emitir selecionadas
                 </button>
             </div>
@@ -189,7 +191,7 @@
 
         <div class="overflow-y-auto border-t border-gray-100">
             <table class="w-full text-sm">
-                <thead class="bg-gray-700 text-amber-50 text-xs uppercase sticky top-0">
+                <thead class="bg-[#10284A] text-amber-50 text-[11px] uppercase tracking-wider sticky top-0">
                     <tr>
                         <th class="w-10 px-4 py-2"></th>
                         <th class="text-left px-4 py-2">Venda</th>
@@ -212,58 +214,62 @@
 
 <!-- Modal de autorização do supervisor (compartilhado entre F4 e F5) -->
 <div id="modal-autorizacao" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded shadow-lg w-full max-w-sm p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-bold">Autorização do Supervisor</h2>
-            <button onclick="fecharModalAutorizacao()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
+            <h2 class="text-lg font-bold text-amber-50">Autorização do Supervisor</h2>
+            <button onclick="fecharModalAutorizacao()" class="text-slate-300 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
+        <div class="p-6">
 
         <p class="text-sm text-gray-500 mb-4" id="autorizacao-descricao"></p>
 
         <div class="grid grid-cols-3 gap-3 mb-3">
             <div class="col-span-1">
-                <label class="block text-sm font-medium mb-1">Código</label>
+                <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Código</label>
                 <input type="text" inputmode="numeric" autocomplete="off" id="autorizacao-usuario"
-                       class="w-full border rounded px-3 py-2">
+                       class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
             </div>
             <div class="col-span-2">
-                <label class="block text-sm font-medium mb-1">Supervisor</label>
+                <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Supervisor</label>
                 <input type="text" id="autorizacao-nome" readonly tabindex="-1" placeholder="—"
-                       class="w-full border border-gray-200 bg-gray-50 rounded px-3 py-2 text-gray-800">
+                       class="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700">
             </div>
         </div>
 
-        <label class="block text-sm font-medium mb-1">Senha</label>
-        <input type="password" id="autorizacao-senha" class="w-full border rounded px-3 py-2 mb-4">
+        <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Senha</label>
+        <input type="password" id="autorizacao-senha" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition mb-4">
 
         <p id="autorizacao-erro" class="text-red-600 text-sm mb-3 hidden"></p>
 
-        <button onclick="confirmarAutorizacao()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold">
+        <button onclick="confirmarAutorizacao()" class="w-full bg-[#10284A] hover:bg-[#163a68] text-amber-50 rounded-xl font-semibold transition py-2.5">
             Autorizar
         </button>
+        </div>
     </div>
 </div>
 
 
 <!-- Modal de escolha de tipo de desconto -->
 <div id="modal-tipo-desconto" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-6">
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-lg font-bold">Tipo de Desconto</h2>
-            <button onclick="fecharModalTipoDesconto()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
+            <h2 class="text-lg font-bold text-amber-50">Tipo de Desconto</h2>
+            <button onclick="fecharModalTipoDesconto()" class="text-slate-300 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
+        <div class="p-6">
 
         <div class="grid grid-cols-2 gap-4">
             <button onclick="escolherTipoDesconto('valor')"
-                    class="flex flex-col items-center justify-center gap-2 border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 rounded-xl p-6 transition">
-                <span class="text-3xl">R$</span>
+                    class="flex flex-col items-center justify-center gap-2 border-2 border-slate-200 hover:border-[#10284A] hover:bg-amber-50 rounded-xl p-6 transition">
+                <span class="text-3xl font-bold text-[#10284A]">R$</span>
                 <span class="text-sm font-semibold text-gray-700">1 - Por Valor</span>
             </button>
             <button onclick="escolherTipoDesconto('porcentagem')"
-                    class="flex flex-col items-center justify-center gap-2 border-2 border-gray-200 hover:border-purple-500 hover:bg-purple-50 rounded-xl p-6 transition">
-                <span class="text-3xl">%</span>
+                    class="flex flex-col items-center justify-center gap-2 border-2 border-slate-200 hover:border-[#10284A] hover:bg-amber-50 rounded-xl p-6 transition">
+                <span class="text-3xl font-bold text-[#10284A]">%</span>
                 <span class="text-sm font-semibold text-gray-700">2 - Por Porcentagem</span>
             </button>
+        </div>
         </div>
     </div>
 </div>
@@ -271,111 +277,119 @@
 
 <!-- Modal desconto em item (F4) - so aparece depois de autorizado -->
 <div id="modal-desconto-item" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded shadow-lg w-full max-w-sm p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-bold">Desconto em Item</h2>
-            <button onclick="fecharModalDescontoItem()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
+            <h2 class="text-lg font-bold text-amber-50">Desconto em Item</h2>
+            <button onclick="fecharModalDescontoItem()" class="text-slate-300 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
+        <div class="p-6">
 
-        <label class="block text-sm font-medium mb-1">Número do item</label>
-        <input type="number" min="1" id="desconto-item-numero" class="w-full border rounded px-3 py-2 mb-1">
+        <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Número do item</label>
+        <input type="number" min="1" id="desconto-item-numero" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition mb-1">
         <p id="desconto-item-preview" class="text-xs text-gray-500 mb-3"></p>
 
-        <label class="block text-sm font-medium mb-1" for-valor>Valor do desconto (R$)</label>
-        <input type="number" step="0.01" min="0" id="desconto-item-valor" class="w-full border rounded px-3 py-2 mb-4">
+        <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5" for-valor>Valor do desconto (R$)</label>
+        <input type="number" step="0.01" min="0" id="desconto-item-valor" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition mb-4">
 
         <p id="desconto-item-erro" class="text-red-600 text-sm mb-3 hidden"></p>
 
-        <button onclick="confirmarDescontoItem()" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded font-semibold">
+        <button onclick="confirmarDescontoItem()" class="w-full bg-[#10284A] hover:bg-[#163a68] text-amber-50 rounded-xl font-semibold transition py-2.5">
             Aplicar desconto
         </button>
+        </div>
     </div>
 </div>
 
 <!-- Modal desconto global (F5) - so aparece depois de autorizado -->
 <div id="modal-desconto-global" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded shadow-lg w-full max-w-sm p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-bold">Desconto Geral</h2>
-            <button onclick="fecharModalDescontoGlobal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
+            <h2 class="text-lg font-bold text-amber-50">Desconto Geral</h2>
+            <button onclick="fecharModalDescontoGlobal()" class="text-slate-300 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
+        <div class="p-6">
 
-        <label class="block text-sm font-medium mb-1" for-valor>Valor do desconto (R$)</label>
-        <input type="number" step="0.01" min="0" id="desconto-global-valor" class="w-full border rounded px-3 py-2 mb-4">
+        <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5" for-valor>Valor do desconto (R$)</label>
+        <input type="number" step="0.01" min="0" id="desconto-global-valor" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition mb-4">
 
         <p id="desconto-global-erro" class="text-red-600 text-sm mb-3 hidden"></p>
 
-        <button onclick="confirmarDescontoGlobal()" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded font-semibold">
+        <button onclick="confirmarDescontoGlobal()" class="w-full bg-[#10284A] hover:bg-[#163a68] text-amber-50 rounded-xl font-semibold transition py-2.5">
             Aplicar desconto
         </button>
+        </div>
     </div>
 </div>
 
 
 <!-- Modal cancelar item (F6) - so aparece depois de autorizado -->
 <div id="modal-cancelar-item" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded shadow-lg w-full max-w-sm p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-bold">Cancelar Item</h2>
-            <button onclick="fecharModalCancelarItem()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
+            <h2 class="text-lg font-bold text-amber-50">Cancelar Item</h2>
+            <button onclick="fecharModalCancelarItem()" class="text-slate-300 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
+        <div class="p-6">
 
-        <label class="block text-sm font-medium mb-1">Número do item</label>
-        <input type="number" min="1" id="cancelar-item-numero" class="w-full border rounded px-3 py-2 mb-1">
+        <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Número do item</label>
+        <input type="number" min="1" id="cancelar-item-numero" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition mb-1">
         <p id="cancelar-item-preview" class="text-xs text-gray-500 mb-4"></p>
 
         <p id="cancelar-item-erro" class="text-red-600 text-sm mb-3 hidden"></p>
 
-        <button onclick="confirmarCancelarItem()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded font-semibold">
+        <button onclick="confirmarCancelarItem()" class="w-full bg-red-600 hover:bg-red-500 text-white rounded-xl font-semibold transition py-2.5">
             Cancelar item
         </button>
+        </div>
     </div>
 </div>
 
 
 <!-- Modal de inutilização -->
 <div id="modal-inutilizacao" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded shadow-lg w-full max-w-md p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-bold">Inutilizar Numeração NFC-e</h2>
-            <button onclick="fecharModalInutilizacao()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
+            <h2 class="text-lg font-bold text-amber-50">Inutilizar Numeração NFC-e</h2>
+            <button onclick="fecharModalInutilizacao()" class="text-slate-300 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
+        <div class="p-6">
 
-        <div class="bg-yellow-100 text-yellow-800 border border-yellow-300 rounded px-3 py-2 mb-4 text-xs">
+        <div class="bg-amber-50 text-amber-900 ring-1 ring-amber-200 rounded-xl px-3 py-2.5 mb-4 text-xs">
             Atenção: esta ação é irreversível perante a SEFAZ. Use apenas para números pulados ou com falha técnica que nunca chegaram a ser autorizados.
         </div>
 
-        <label class="block text-sm font-medium mb-1">Número inicial</label>
-        <input type="number" id="inut-numero-inicial" class="w-full border rounded px-3 py-2 mb-3">
+        <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Número inicial</label>
+        <input type="number" id="inut-numero-inicial" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition mb-3">
 
-        <label class="block text-sm font-medium mb-1">Número final</label>
-        <input type="number" id="inut-numero-final" class="w-full border rounded px-3 py-2 mb-3">
+        <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Número final</label>
+        <input type="number" id="inut-numero-final" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition mb-3">
 
-        <label class="block text-sm font-medium mb-1">Justificativa (mín. 15 caracteres)</label>
-        <textarea id="inut-justificativa" rows="3" class="w-full border rounded px-3 py-2 mb-4"></textarea>
+        <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Justificativa (mín. 15 caracteres)</label>
+        <textarea id="inut-justificativa" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition mb-4"></textarea>
 
         <p id="inut-erro" class="text-red-600 text-sm mb-3 hidden"></p>
 
-        <button id="btn-inutilizar" onclick="confirmarInutilizacao()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded font-semibold disabled:opacity-50">
+        <button id="btn-inutilizar" onclick="confirmarInutilizacao()" class="w-full bg-red-600 hover:bg-red-500 text-white rounded-xl font-semibold transition py-2.5 disabled:opacity-50">
             Inutilizar
         </button>
+        </div>
     </div>
 </div>
 
 <!-- Modal de cancelamento -->
 <div id="modal-cancelamento" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-4xl max-h-[85vh] flex flex-col">
-        <div class="flex justify-between items-start px-6 pt-5 pb-3">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden">
+        <div class="flex justify-between items-start px-6 py-4 bg-[#10284A] mb-3">
             <div>
-                <h2 class="text-lg font-bold">Cancelar NFC-e</h2>
-                <p class="text-xs text-gray-400">Últimas 20 vendas emitidas. Clique em uma para cancelar.</p>
+                <h2 class="text-lg font-bold text-amber-50">Cancelar NFC-e</h2>
+                <p class="text-xs text-slate-300">Últimas 20 vendas emitidas. Clique em uma para cancelar.</p>
             </div>
-            <button onclick="fecharModalCancelamento()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            <button onclick="fecharModalCancelamento()" class="text-slate-300 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
 
         <div class="overflow-y-auto border-t border-gray-100">
             <table class="w-full text-sm">
-                <thead class="bg-gray-700 text-amber-50 text-xs uppercase sticky top-0">
+                <thead class="bg-[#10284A] text-amber-50 text-[11px] uppercase tracking-wider sticky top-0">
                     <tr>
                         <th class="text-left px-4 py-2">NFC-e</th>
                         <th class="text-right px-4 py-2">Total</th>
@@ -392,32 +406,37 @@
 </div>
     
 
-<!-- Container do Grid ajustado para ocupar a altura restante da tela -->
-<div class="grid grid-cols-3 gap-6 shadow-md flex-1 overflow-hidden pt-4 pb-4 max-w-6xl mx-auto px-6 w-full">
-    
-    <!-- Coluna da Esquerda (Carrinho) -->
-    <div class="col-span-2 bg-white rounded-xl shadow-lg overflow-hidden flex flex-col h-full">
-        <div class="p-4 shrink-0">
+<!-- Área principal: carrinho (esquerda) e total (direita), ocupando a altura que sobra do cabeçalho -->
+<div class="flex-1 overflow-hidden w-full max-w-7xl mx-auto px-6 py-5">
+<div class="grid grid-cols-3 gap-6 h-full">
+
+    <!-- Coluna da esquerda: busca + carrinho -->
+    <div class="col-span-2 bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 overflow-hidden flex flex-col h-full">
+        <div class="px-5 pt-5 pb-4 border-b border-slate-100 shrink-0">
+            <label for="busca-produto" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Produto</label>
             <div class="relative">
-                <input type="text" id="busca-produto" placeholder="🔍 Buscar por nome, código ou código de barras..."
-                    class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition" autofocus>
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg bg-[#10284A] text-amber-50 flex items-center justify-center pointer-events-none">
+                    <x-form.icone nome="busca" tamanho="w-3.5 h-3.5" />
+                </span>
+                <input type="text" id="busca-produto" placeholder="Buscar por nome, código ou código de barras..."
+                       class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 hover:border-slate-300 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition" autofocus>
             </div>
-            <p id="badge-pedido" class="hidden mt-2 text-xs font-semibold text-blue-700 bg-blue-50 rounded-lg px-3 py-1.5"></p>
+            <p id="badge-pedido" class="hidden mt-2 text-xs font-semibold text-amber-900 bg-amber-50 ring-1 ring-amber-200 rounded-xl px-3 py-1.5"></p>
         </div>
 
-        <!-- Container da tabela com scroll interno se passar da altura -->
+        <!-- Tabela com rolagem interna quando passa da altura -->
         <div class="flex-1 overflow-y-auto">
         <table class="w-full table-fixed">
             <colgroup>
                 <col class="w-14">
                 <col>
-                <col class="w-16">
+                <col class="w-24">
                 <col class="w-28">
                 <col class="w-28">
                 <col class="w-32">
             </colgroup>
             <thead class="bg-[#10284A] sticky top-0 z-10">
-                <tr class="text-left text-xs text-slate-100 uppercase tracking-wide">
+                <tr class="text-left text-[11px] font-semibold text-amber-50 uppercase tracking-wider">
                     <th class="py-3 pl-4">Item</th>
                     <th class="py-3 px-2">Produto</th>
                     <th class="py-3 px-2">Qtd</th>
@@ -428,26 +447,42 @@
             </thead>
             <tbody id="linhas-carrinho"></tbody>
         </table>
-            <p id="carrinho-vazio" class="text-center text-gray-400 py-16">Nenhum item adicionado.</p>
+            {{-- id sem classe de display: o JS só alterna "hidden" --}}
+            <div id="carrinho-vazio">
+            <div class="flex flex-col items-center justify-center text-center text-slate-400 py-16 gap-3">
+                <span class="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">
+                    <x-form.icone nome="carrinho" tamanho="w-7 h-7" />
+                </span>
+                <p class="text-sm">Nenhum item adicionado.</p>
+                <p class="text-xs text-slate-400">Bipe o código de barras ou busque o produto acima.</p>
+            </div>
+            </div>
         </div>
     </div>
 
-    <!-- Coluna da Direita (Total e Pagamento) -->
-    <div class="bg-white rounded-xl shadow-lg p-5 h-fit">
-        <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Total</p>
-        <p id="total-venda" class="text-4xl font-bold text-slate-900 mb-5">R$ 0,00</p>
-
-        <div class="bg-gray-50 rounded-lg p-3 text-sm mb-5">
-            <p class="flex justify-between">Desconto por item <strong id="desconto-item-exibido" class="text-green-600">R$ 0,00</strong></p>
+    <!-- Coluna da direita: total e prosseguir -->
+    <div class="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 overflow-hidden h-fit">
+        <div class="bg-[#10284A] px-6 py-6">
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total da venda</p>
+            <p id="total-venda" class="text-5xl font-bold text-amber-50 mt-1 tracking-tight">R$ 0,00</p>
         </div>
 
-        <button id="btn-prosseguir" onclick="irParaPagamento()"
-                class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-lg font-bold text-lg transition shadow-md disabled:opacity-50">
-            Prosseguir para pagamento →
-        </button>
+        <div class="p-6 flex flex-col gap-4">
+            <div class="rounded-xl ring-1 ring-slate-200 text-sm">
+                <p class="flex justify-between px-4 py-3 text-slate-600">Desconto por item
+                    <strong id="desconto-item-exibido" class="text-emerald-600">R$ 0,00</strong>
+                </p>
+            </div>
 
-        <p id="erro-itens" class="text-red-600 text-sm mt-2 hidden"></p>
+            <button id="btn-prosseguir" onclick="irParaPagamento()"
+                    class="w-full inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-xl font-bold text-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition disabled:opacity-50">
+                Prosseguir para pagamento →
+            </button>
+
+            <p id="erro-itens" class="text-red-600 text-sm hidden"></p>
+        </div>
     </div>
+</div>
 </div>
 </div>
 @endsection
@@ -649,8 +684,8 @@ function atualizarFocoDropdownCancelamento(opcoes) {
     // mesmo destaque do mouse (hover) e dos menus Impressão/Opções
     opcoes.forEach((opcao, index) => {
         const ativa = index === indiceDropdownCancelamento;
-        opcao.classList.toggle('bg-slate-700', ativa);
-        opcao.classList.toggle('text-white', ativa);
+        opcao.classList.toggle('bg-[#10284A]', ativa);
+        opcao.classList.toggle('text-amber-50', ativa);
         if (ativa) opcao.focus();
     });
 }
@@ -1014,7 +1049,7 @@ linhasBuscaDiv.innerHTML = resultadosAtuais.map((op, index) => {
     const estoque = op.variante ? op.variante.estoque : op.produto.estoque;
 
     return `
-        <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
+        <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-[#10284A] text-amber-50' : 'hover:bg-slate-50'}"
             data-index="${index}"
             onclick="selecionarResultado(${index})">
             <td class="py-3 px-2 font-mono text-sm truncate ${destacado ? 'text-slate-300' : 'text-gray-500'}">${escHtml(codigo)}</td>
@@ -2021,7 +2056,7 @@ function renderizarPedidos() {
         const data = String(p.data_pedido).slice(0, 10).split('-').reverse().join('/');
         const total = 'R$ ' + Number(p.valor_total).toFixed(2).replace('.', ',');
         return `
-            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
+            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-[#10284A] text-amber-50' : 'hover:bg-slate-50'}"
                 onclick="selecionarPedido(${index})">
                 <td class="py-3 px-2 font-mono font-medium">${String(p.numero).padStart(6, '0')}</td>
                 <td class="py-3 px-2 whitespace-nowrap">${data}</td>
@@ -2162,7 +2197,7 @@ function renderizarCupons() {
             : '<span class="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-100 text-green-700">Autorizada</span>';
 
         return `
-            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
+            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-[#10284A] text-amber-50' : 'hover:bg-slate-50'}"
                 onclick="selecionarCupom(${index})">
                 <td class="py-3 px-2 font-mono font-medium">${escPedido(c.numero_nfce)} / ${escPedido(c.serie_nfce)}</td>
                 <td class="py-3 px-2 whitespace-nowrap">${dataHora}</td>

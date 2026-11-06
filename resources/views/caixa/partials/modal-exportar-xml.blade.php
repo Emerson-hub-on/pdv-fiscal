@@ -1,12 +1,12 @@
 {{-- Opções (F8) → Exportar XMLs: período + pasta de destino (escolhida num navegador de pastas deste computador) --}}
 <div id="modal-exportar-xml" class="hidden fixed inset-0 z-[60] bg-black/60 items-center justify-center px-4">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg text-gray-800">
-        <div class="flex items-start justify-between gap-4 px-6 pt-5 pb-3 border-b border-gray-100">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg text-gray-800 overflow-hidden">
+        <div class="flex items-start justify-between gap-4 px-6 py-4 bg-[#10284A]">
             <div>
-                <h2 class="text-lg font-bold">Exportar XMLs</h2>
-                <p class="text-xs text-gray-500">NFC-e autorizadas, cancelamentos e inutilizações deste computador.</p>
+                <h2 class="text-lg font-bold text-amber-50">Exportar XMLs</h2>
+                <p class="text-xs text-slate-300">NFC-e autorizadas, cancelamentos e inutilizações deste computador.</p>
             </div>
-            <button type="button" onclick="fecharModalExportarXml()" aria-label="Fechar" class="text-gray-400 hover:text-gray-600 text-2xl leading-none cursor-pointer">&times;</button>
+            <button type="button" onclick="fecharModalExportarXml()" aria-label="Fechar" class="text-slate-300 hover:text-white text-2xl leading-none cursor-pointer">&times;</button>
         </div>
 
         {{-- Formulário --}}
@@ -14,30 +14,30 @@
             <div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label for="xml-de" class="block text-sm font-medium mb-1">Data inicial</label>
-                        <input type="date" id="xml-de" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+                        <label for="xml-de" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Data inicial</label>
+                        <input type="date" id="xml-de" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
                     </div>
                     <div>
-                        <label for="xml-ate" class="block text-sm font-medium mb-1">Data final</label>
-                        <input type="date" id="xml-ate" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+                        <label for="xml-ate" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Data final</label>
+                        <input type="date" id="xml-ate" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
                     </div>
                 </div>
                 <div class="flex flex-wrap gap-2 mt-2">
-                    <button type="button" onclick="xmlPeriodoRapido('hoje')" class="px-2.5 py-1 text-xs rounded border border-gray-300 hover:bg-gray-100 cursor-pointer">Hoje</button>
-                    <button type="button" onclick="xmlPeriodoRapido('mes')" class="px-2.5 py-1 text-xs rounded border border-gray-300 hover:bg-gray-100 cursor-pointer">Este mês</button>
-                    <button type="button" onclick="xmlPeriodoRapido('mes_passado')" class="px-2.5 py-1 text-xs rounded border border-gray-300 hover:bg-gray-100 cursor-pointer">Mês passado</button>
+                    <button type="button" onclick="xmlPeriodoRapido('hoje')" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-white ring-1 ring-slate-200 hover:ring-[#10284A]/40 hover:text-[#10284A] cursor-pointer transition">Hoje</button>
+                    <button type="button" onclick="xmlPeriodoRapido('mes')" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-white ring-1 ring-slate-200 hover:ring-[#10284A]/40 hover:text-[#10284A] cursor-pointer transition">Este mês</button>
+                    <button type="button" onclick="xmlPeriodoRapido('mes_passado')" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-white ring-1 ring-slate-200 hover:ring-[#10284A]/40 hover:text-[#10284A] cursor-pointer transition">Mês passado</button>
                 </div>
                 <p id="xml-resumo" class="mt-2 text-sm text-gray-600 min-h-5"></p>
             </div>
 
             <div>
-                <label for="xml-destino" class="block text-sm font-medium mb-1">Salvar em</label>
+                <label for="xml-destino" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Salvar em</label>
                 <div class="flex gap-2">
                     <input type="text" id="xml-destino" readonly placeholder="Escolha a pasta de destino"
                            onclick="xmlAbrirNavegador()"
                            class="flex-1 min-w-0 border border-gray-300 rounded px-3 py-2 text-sm bg-gray-50 cursor-pointer truncate">
                     <button type="button" onclick="xmlAbrirNavegador()"
-                            class="shrink-0 px-3 py-2 text-sm font-medium rounded bg-slate-700 hover:bg-slate-800 text-white cursor-pointer">
+                            class="shrink-0 px-3 py-2 text-sm font-medium rounded-xl bg-[#10284A] hover:bg-[#163a68] text-amber-50 cursor-pointer transition">
                         Escolher pasta
                     </button>
                 </div>
@@ -46,7 +46,7 @@
                 <div id="xml-navegador" class="hidden mt-2 border border-gray-200 rounded-lg overflow-hidden">
                     <div class="flex items-center gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200">
                         <button type="button" id="xml-voltar" onclick="xmlVoltarPasta()"
-                                class="shrink-0 px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 cursor-pointer disabled:opacity-40 disabled:cursor-default">
+                                class="shrink-0 px-2 py-1 text-xs rounded-lg ring-1 ring-slate-200 bg-white hover:bg-slate-50 cursor-pointer disabled:opacity-40 disabled:cursor-default">
                             ↑ Voltar
                         </button>
                         <span id="xml-caminho-atual" class="text-xs text-gray-600 truncate">Este computador</span>
@@ -55,7 +55,7 @@
                     <div class="flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 border-t border-gray-200">
                         <span id="xml-aviso-pasta" class="text-xs text-gray-500 truncate"></span>
                         <button type="button" id="xml-usar-pasta" onclick="xmlUsarPastaAtual()"
-                                class="shrink-0 px-3 py-1.5 text-xs font-semibold rounded bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer disabled:opacity-40 disabled:cursor-default">
+                                class="shrink-0 px-3 py-1.5 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer disabled:opacity-40 disabled:cursor-default">
                             Usar esta pasta
                         </button>
                     </div>
@@ -78,11 +78,11 @@
 
         <div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">
             <button type="button" id="xml-btn-cancelar" onclick="fecharModalExportarXml()"
-                    class="px-4 py-2 text-sm font-semibold rounded bg-gray-200 hover:bg-gray-300 text-gray-800 cursor-pointer">
+                    class="px-4 py-2 text-sm font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer">
                 Cancelar
             </button>
             <button type="button" id="xml-btn-exportar" onclick="xmlExportar()"
-                    class="px-4 py-2 text-sm font-semibold rounded bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer disabled:opacity-50 disabled:cursor-default">
+                    class="px-4 py-2 text-sm font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer disabled:opacity-50 disabled:cursor-default">
                 Exportar
             </button>
         </div>

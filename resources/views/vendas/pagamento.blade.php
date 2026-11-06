@@ -3,132 +3,183 @@
 @section('titulo', 'Pagamento')
 
 @section('conteudo')
-<div class="max-w-4xl mx-auto pt-32">
-    <div class="fixed top-0 left-0 right-0 z-50
-            bg-[#10284A]
-            shadow-lg">
-        <div class="flex justify-between items-center px-6 py-4">
+@php
+    // Padrões visuais do sistema (Tailwind) usados nesta tela
+    $rotuloCx = 'block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5';
+    $campoCx = 'w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 hover:border-slate-300 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition';
+    $botaoTopoCx = 'inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 rounded-xl transition cursor-pointer';
+    $atalhoCx = 'text-[10px] font-semibold text-amber-50/70 bg-white/10 rounded px-1.5 py-0.5';
+    $qtdItens = count($itens ?? []);
+@endphp
+
+{{-- Cabeçalho fixo --}}
+<div class="fixed top-0 left-0 right-0 z-40 bg-[#10284A] shadow-lg">
+    <div class="flex justify-between items-center px-6 py-4">
+        <div class="flex items-center gap-3">
+            <span class="w-10 h-10 rounded-xl bg-white/10 text-amber-50 flex items-center justify-center">
+                <x-form.icone nome="cartao" tamanho="w-5 h-5" />
+            </span>
             <div>
-                <h1 class="text-xl font-bold text-white tracking-tight">Pagamento</h1>
-                <p class="text-xs text-slate-300 mt-0.5">Finalize a venda ou volte para ajustar os itens</p>
-            </div>
-            <div class="flex gap-2">
-                <button onclick="abrirModalCliente()"
-                        class="bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
-                    <span id="btn-cliente-label">Adicionar consumidor</span> <span class="opacity-60 text-xs">F4</span>
-                </button>
-                <button onclick="abrirModalDescontoGlobal()"
-                        class="bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
-                    Desconto Geral <span class="opacity-60 text-xs">F5</span>
-                </button>
-                <button onclick="abrirModalConfirmarVoltar()"
-                        class="bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 transition flex items-center gap-1.5">
-                    ← Voltar aos itens
-                </button>
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Caixa · Venda</p>
+                <h1 class="text-xl font-bold text-amber-50 tracking-tight">Pagamento</h1>
             </div>
         </div>
+        <div class="flex gap-2">
+            <button type="button" onclick="abrirModalCliente()" class="{{ $botaoTopoCx }}">
+                <x-form.icone nome="pessoa" />
+                <span id="btn-cliente-label">Adicionar consumidor</span> <span class="{{ $atalhoCx }}">F4</span>
+            </button>
+            <button type="button" onclick="abrirModalDescontoGlobal()" class="{{ $botaoTopoCx }}">
+                <x-form.icone nome="dinheiro" />
+                Desconto Geral <span class="{{ $atalhoCx }}">F5</span>
+            </button>
+            <button type="button" onclick="abrirModalConfirmarVoltar()" class="{{ $botaoTopoCx }}">
+                <x-form.icone nome="voltar" />
+                Voltar aos itens <span class="{{ $atalhoCx }}">Esc</span>
+            </button>
+        </div>
     </div>
+</div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+{{-- Os dois quadros centralizados no meio da tela (descontando o cabeçalho fixo) --}}
+<div class="min-h-screen flex items-center justify-center px-6 pt-24 pb-10">
+    <div class="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
 
-        <!-- Card esquerdo: pagamentos + finalizar -->
-        <div class="bg-white rounded shadow p-4">
-            <div id="resumo-cliente" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm mb-4 flex justify-between items-center">
-                <span id="resumo-cliente-label" class="text-blue-800"></span>
-                <button type="button" onclick="removerClienteSelecionado()" class="text-xs text-blue-600 hover:underline">Remover</button>
-            </div>
-
-            <label class="block text-sm font-medium mb-1">Pagamentos</label>
-            <div id="lista-pagamentos" class="space-y-2 mb-2"></div>
-
-            <div class="flex gap-2 mb-3">
-                <input type="number" step="0.01" id="novo-valor-pagamento" placeholder="R$ 0,00" autofocus
-                       class="w-28 border border-gray-300 rounded-lg px-3 py-2.5 text-base font-semibold text-slate-800 focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition">
-
-                <div class="relative flex-1">
-                    <button type="button" id="btn-forma-pagamento" onclick="toggleDropdownFormaPagamento()"
-                            class="w-full h-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-left bg-white hover:border-gray-400 transition">
-                        Dinheiro
-                    </button>
-                    <div id="dropdown-forma-pagamento" class="absolute bg-white border border-gray-200 rounded-lg shadow-lg w-full mt-1 hidden z-10 overflow-hidden">
-                        <div class="p-2.5 cursor-pointer text-sm hover:bg-gray-50" data-forma="dinheiro" data-index="0" onclick="selecionarFormaPagamento('dinheiro')">Dinheiro</div>
-                        <div class="p-2.5 cursor-pointer text-sm hover:bg-gray-50" data-forma="pix" data-index="1" onclick="selecionarFormaPagamento('pix')">PIX</div>
-                        <div class="p-2.5 cursor-pointer text-sm hover:bg-gray-50" data-forma="credito" data-index="2" onclick="selecionarFormaPagamento('credito')">Cartão de Crédito</div>
-                        <div class="p-2.5 cursor-pointer text-sm hover:bg-gray-50" data-forma="debito" data-index="3" onclick="selecionarFormaPagamento('debito')">Cartão de Débito</div>
-                        <div class="p-2.5 cursor-pointer text-sm hover:bg-gray-50 border-t border-gray-100" data-forma="credito_loja" data-index="4" onclick="selecionarFormaPagamento('credito_loja')">Crédito em loja (troca)</div>
-                        <div class="p-2.5 cursor-pointer text-sm hover:bg-gray-50" data-forma="convenio" data-index="5" onclick="selecionarFormaPagamento('convenio')">Convênio (fiado)</div>
-                    </div>
+        {{-- Quadro esquerdo: pagamentos + finalizar --}}
+        <div class="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 flex flex-col">
+            <div class="flex items-center gap-2.5 px-6 pt-5 pb-4 border-b border-slate-100">
+                <span class="w-8 h-8 rounded-lg bg-[#10284A] text-amber-50 flex items-center justify-center">
+                    <x-form.icone nome="dinheiro" />
+                </span>
+                <div>
+                    <h2 class="text-sm font-semibold text-slate-800">Pagamentos</h2>
+                    <p class="text-xs text-slate-500">Digite o valor, Enter e escolha a forma</p>
                 </div>
             </div>
 
-            <p class="text-lg mb-4">
-                Restante a pagar: <strong id="restante-pagamento">R$ 0,00</strong>
-            </p>
+            <div class="p-6 flex flex-col gap-4 flex-1">
+                <div id="resumo-cliente" class="hidden rounded-xl bg-amber-50 ring-1 ring-amber-200 px-3 py-2.5 text-sm">
+                    <div class="flex justify-between items-center gap-3">
+                        <span class="flex items-center gap-2 min-w-0 text-amber-900">
+                            <x-form.icone nome="pessoa" class="shrink-0" />
+                            <span id="resumo-cliente-label" class="truncate font-medium"></span>
+                        </span>
+                        <button type="button" onclick="removerClienteSelecionado()" class="shrink-0 text-xs font-medium text-amber-800 hover:text-red-600 hover:underline">Remover</button>
+                    </div>
+                </div>
 
-            <button id="btn-finalizar" onclick="finalizarVenda()"
-                    class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded font-bold text-lg disabled:opacity-50">
-                Aperte F2 Para Finalizar
-            </button>
-            <p id="erro-venda" class="text-red-600 text-sm mt-2 hidden"></p>
+                <div>
+                    <label class="{{ $rotuloCx }}">Lançados</label>
+                    <div id="lista-pagamentos" class="space-y-2"></div>
+                </div>
+
+                <div class="flex gap-2">
+                    <input type="number" step="0.01" id="novo-valor-pagamento" placeholder="R$ 0,00" autofocus
+                           class="w-32 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-base font-semibold text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
+
+                    <div class="relative flex-1">
+                        <button type="button" id="btn-forma-pagamento" onclick="toggleDropdownFormaPagamento()"
+                                class="w-full h-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-medium text-left text-slate-800 hover:bg-white hover:border-[#10284A]/40 focus:outline-none focus:ring-2 focus:ring-[#10284A]/30 transition">
+                            Dinheiro
+                        </button>
+                        <div id="dropdown-forma-pagamento" class="absolute bg-white ring-1 ring-slate-200 rounded-xl shadow-lg w-full mt-1 hidden z-10 overflow-hidden">
+                            <div class="px-3 py-2.5 cursor-pointer text-sm text-slate-700 hover:bg-slate-50" data-forma="dinheiro" data-index="0" onclick="selecionarFormaPagamento('dinheiro')">Dinheiro</div>
+                            <div class="px-3 py-2.5 cursor-pointer text-sm text-slate-700 hover:bg-slate-50" data-forma="pix" data-index="1" onclick="selecionarFormaPagamento('pix')">PIX</div>
+                            <div class="px-3 py-2.5 cursor-pointer text-sm text-slate-700 hover:bg-slate-50" data-forma="credito" data-index="2" onclick="selecionarFormaPagamento('credito')">Cartão de Crédito</div>
+                            <div class="px-3 py-2.5 cursor-pointer text-sm text-slate-700 hover:bg-slate-50" data-forma="debito" data-index="3" onclick="selecionarFormaPagamento('debito')">Cartão de Débito</div>
+                            <div class="px-3 py-2.5 cursor-pointer text-sm text-slate-700 hover:bg-slate-50 border-t border-slate-100" data-forma="credito_loja" data-index="4" onclick="selecionarFormaPagamento('credito_loja')">Crédito em loja (troca)</div>
+                            <div class="px-3 py-2.5 cursor-pointer text-sm text-slate-700 hover:bg-slate-50" data-forma="convenio" data-index="5" onclick="selecionarFormaPagamento('convenio')">Convênio (fiado)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-auto rounded-xl bg-slate-50 ring-1 ring-slate-200 px-4 py-3 flex justify-between items-center">
+                    <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Restante a pagar</span>
+                    <strong id="restante-pagamento" class="text-lg">R$ 0,00</strong>
+                </div>
+
+                <button id="btn-finalizar" onclick="finalizarVenda()"
+                        class="w-full inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-xl font-bold text-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition disabled:opacity-50">
+                    <x-form.icone nome="check" tamanho="w-5 h-5" />
+                    Finalizar venda <span class="text-xs font-semibold bg-white/20 rounded px-1.5 py-0.5">F2</span>
+                </button>
+                <p id="erro-venda" class="text-red-600 text-sm hidden"></p>
+            </div>
         </div>
 
-        <!-- Card direito: total e descontos -->
-        <div class="bg-white rounded shadow p-4">
-            <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Total a pagar</p>
-            <p id="total-pagamento-exibido" class="text-4xl font-bold text-slate-900 mb-5">
-                R$ {{ number_format($total, 2, ',', '.') }}
-            </p>
+        {{-- Quadro direito: total e descontos --}}
+        <div class="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 flex flex-col overflow-hidden">
+            <div class="bg-[#10284A] px-6 py-6">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total a pagar</p>
+                <p id="total-pagamento-exibido" class="text-5xl font-bold text-amber-50 mt-1 tracking-tight">
+                    R$ {{ number_format($total, 2, ',', '.') }}
+                </p>
+                <p class="text-xs text-slate-300 mt-2">{{ $qtdItens }} {{ $qtdItens === 1 ? 'item' : 'itens' }} na venda</p>
+            </div>
 
-            <div class="bg-gray-50 rounded-lg p-3 text-sm space-y-1.5">
-                <p class="flex justify-between">Desconto por item
-                    <strong class="text-green-600">R$ {{ number_format($desconto_item, 2, ',', '.') }}</strong>
-                </p>
-                <p class="flex justify-between">Desconto global
-                    <strong id="desconto-global-exibido" class="text-green-600">R$ 0,00</strong>
-                </p>
-                <p class="flex justify-between border-t border-gray-200 pt-1.5 mt-1.5">Total de desconto
-                    <strong id="desconto-total-exibido" class="text-green-700">R$ {{ number_format($desconto_item, 2, ',', '.') }}</strong>
-                </p>
+            <div class="p-6 flex flex-col gap-3 flex-1">
+                <p class="{{ $rotuloCx }}">Descontos</p>
+                <div class="rounded-xl ring-1 ring-slate-200 divide-y divide-slate-100 text-sm">
+                    <p class="flex justify-between px-4 py-3 text-slate-600">Desconto por item
+                        <strong class="text-emerald-600">R$ {{ number_format($desconto_item, 2, ',', '.') }}</strong>
+                    </p>
+                    <p class="flex justify-between px-4 py-3 text-slate-600">Desconto geral
+                        <strong id="desconto-global-exibido" class="text-emerald-600">R$ 0,00</strong>
+                    </p>
+                    <p class="flex justify-between px-4 py-3 bg-slate-50 font-medium text-slate-800">Total de desconto
+                        <strong id="desconto-total-exibido" class="text-emerald-700">R$ {{ number_format($desconto_item, 2, ',', '.') }}</strong>
+                    </p>
+                </div>
+
+                <div class="mt-auto grid grid-cols-3 gap-2 text-center text-[11px] text-slate-500">
+                    <span class="rounded-lg bg-slate-50 ring-1 ring-slate-200 py-2"><strong class="block text-slate-700 text-xs">F2</strong>Finalizar</span>
+                    <span class="rounded-lg bg-slate-50 ring-1 ring-slate-200 py-2"><strong class="block text-slate-700 text-xs">F4</strong>Consumidor</span>
+                    <span class="rounded-lg bg-slate-50 ring-1 ring-slate-200 py-2"><strong class="block text-slate-700 text-xs">F5</strong>Desconto</span>
+                </div>
             </div>
         </div>
 
     </div>
-
+</div>
 
 <!-- Modal Adicionar Consumidor -->
 <div id="modal-cliente" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-lg p-6 max-h-[80vh] overflow-y-auto">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-bold">Adicionar Consumidor</h2>
-            <button type="button" onclick="fecharModalCliente()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
+            <div>
+                <h2 class="text-lg font-bold text-amber-50">Adicionar consumidor</h2>
+                <p class="text-xs text-slate-300">Busque o cliente, cadastre um novo ou informe só o CPF na nota</p>
+            </div>
+            <button type="button" onclick="fecharModalCliente()" class="text-slate-300 hover:text-white text-2xl leading-none">&times;</button>
         </div>
+        <div class="p-6 overflow-y-auto">
 
         <div class="flex gap-2 mb-3">
             <input type="text" id="cliente-busca" placeholder="Buscar por nome ou CPF/CNPJ..."
-                   class="flex-1 border rounded px-3 py-2 text-sm" oninput="buscarCliente()">
+                   class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition" oninput="buscarCliente()">
             <button type="button" onclick="abrirFormNovoCliente()"
-                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-2 rounded whitespace-nowrap">
+                    class="bg-[#10284A] hover:bg-[#163a68] text-amber-50 rounded-xl font-semibold transition text-sm px-3 py-2 whitespace-nowrap">
                 + Novo
             </button>
             <button type="button" onclick="abrirFormCpfNaNota()"
-                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm px-3 py-2 rounded whitespace-nowrap">
+                    class="bg-white border border-slate-200 hover:border-[#10284A]/40 hover:text-[#10284A] text-slate-700 text-sm font-medium px-3 py-2 rounded-xl whitespace-nowrap transition">
                 CPF na nota
             </button>
         </div>
 
-        <div id="form-cpf-na-nota" class="hidden bg-gray-50 rounded-lg p-3 mb-3">
-            <label class="block text-xs font-medium text-gray-600 mb-1">CPF do consumidor</label>
+        <div id="form-cpf-na-nota" class="hidden bg-amber-50 ring-1 ring-amber-200 rounded-xl p-4 mb-3">
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">CPF do consumidor</label>
             <input type="text" id="cpf-na-nota-valor" placeholder="000.000.000-00" maxlength="14"
-                   class="w-full border rounded px-3 py-2 text-sm mb-2">
+                   class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition mb-2">
             <p class="text-xs text-gray-400 mb-2">Só o CPF vai na nota fiscal — não cria cadastro de cliente.</p>
             <div class="flex gap-2 justify-end">
                 <button type="button" onclick="fecharFormCpfNaNota()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
                 <button type="button" onclick="confirmarCpfNaNota()"
-                        class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded">Confirmar</button>
+                        class="bg-[#10284A] hover:bg-[#163a68] text-amber-50 rounded-xl font-semibold transition text-sm px-4 py-1.5">Confirmar</button>
             </div>
         </div>
 
-        <div id="form-novo-cliente" class="hidden bg-gray-50 rounded-lg p-3 mb-3">
+        <div id="form-novo-cliente" class="hidden bg-slate-50 ring-1 ring-slate-200 rounded-xl p-4 mb-3">
             <div class="flex gap-4 mb-2 text-sm">
                 <label class="flex items-center gap-1.5">
                     <input type="radio" name="novo-cliente-tipo" value="fisica" checked onchange="atualizarPlaceholderDoc()">
@@ -140,88 +191,105 @@
                 </label>
             </div>
             <input type="text" id="novo-cliente-nome" placeholder="Nome / Razão social"
-                   class="w-full border rounded px-3 py-2 text-sm mb-2">
+                   class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition bg-white mb-2">
             <input type="text" id="novo-cliente-documento" placeholder="CPF"
-                   class="w-full border rounded px-3 py-2 text-sm mb-2">
+                   class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition bg-white mb-2">
             <p class="text-xs text-gray-400 mb-2">Cadastro rápido — complete o endereço depois na tela de Clientes, se precisar.</p>
             <div class="flex gap-2 justify-end">
                 <button type="button" onclick="fecharFormNovoCliente()" class="text-sm text-gray-500 hover:underline">Cancelar</button>
                 <button type="button" onclick="salvarNovoCliente()"
-                        class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded">Salvar e selecionar</button>
+                        class="bg-[#10284A] hover:bg-[#163a68] text-amber-50 rounded-xl font-semibold transition text-sm px-4 py-1.5">Salvar e selecionar</button>
             </div>
         </div>
 
-        <ul id="cliente-lista" class="divide-y divide-gray-100"></ul>
-        <p id="cliente-vazio" class="text-sm text-gray-400 text-center py-4 hidden">Nenhum cliente encontrado.</p>
+        <ul id="cliente-lista" class="divide-y divide-slate-100 rounded-xl ring-1 ring-slate-200 overflow-hidden"></ul>
+        <p id="cliente-vazio" class="text-sm text-slate-400 text-center py-4 hidden">Nenhum cliente encontrado.</p>
+        </div>
     </div>
 </div>
 
 <!-- Modal de autorização do supervisor -->
 <div id="modal-autorizacao" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-bold">Autorização do Supervisor</h2>
-            <button onclick="fecharModalAutorizacao()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
+            <div>
+                <h2 class="text-lg font-bold text-amber-50">Autorização do supervisor</h2>
+            </div>
+            <button type="button" onclick="fecharModalAutorizacao()" class="text-slate-300 hover:text-white text-2xl leading-none">&times;</button>
         </div>
-        <p class="text-sm text-gray-500 mb-4" id="autorizacao-descricao"></p>
-        <label class="block text-sm font-medium mb-1">Código do supervisor</label>
-        <input type="text" inputmode="numeric" id="autorizacao-usuario" class="w-full border rounded px-3 py-2 mb-3">
-        <label class="block text-sm font-medium mb-1">Senha</label>
-        <input type="password" id="autorizacao-senha" class="w-full border rounded px-3 py-2 mb-4">
+        <div class="p-6">
+        <p class="text-sm text-slate-500 mb-4" id="autorizacao-descricao"></p>
+        <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Código do supervisor</label>
+        <input type="text" inputmode="numeric" id="autorizacao-usuario" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition mb-3">
+        <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Senha</label>
+        <input type="password" id="autorizacao-senha" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition mb-4">
         <p id="autorizacao-erro" class="text-red-600 text-sm mb-3 hidden"></p>
-        <button onclick="confirmarAutorizacao()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold">
+        <button onclick="confirmarAutorizacao()" class="w-full bg-[#10284A] hover:bg-[#163a68] text-amber-50 rounded-xl font-semibold transition py-2.5">
             Autorizar
         </button>
+        </div>
     </div>
 </div>
 
 <!-- Modal de escolha de tipo de desconto -->
 <div id="modal-tipo-desconto" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-6">
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-lg font-bold">Tipo de Desconto</h2>
-            <button onclick="fecharModalTipoDesconto()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
+            <div>
+                <h2 class="text-lg font-bold text-amber-50">Tipo de desconto</h2>
+            </div>
+            <button type="button" onclick="fecharModalTipoDesconto()" class="text-slate-300 hover:text-white text-2xl leading-none">&times;</button>
         </div>
+        <div class="p-6">
         <div class="grid grid-cols-2 gap-4">
             <button onclick="escolherTipoDesconto('valor')"
-                    class="flex flex-col items-center justify-center gap-2 border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 rounded-xl p-6 transition">
-                <span class="text-3xl">R$</span>
+                    class="flex flex-col items-center justify-center gap-2 border-2 border-slate-200 hover:border-[#10284A] hover:bg-amber-50 rounded-xl p-6 transition">
+                <span class="text-3xl font-bold text-[#10284A]">R$</span>
                 <span class="text-sm font-semibold text-gray-700">Por Valor</span>
             </button>
             <button onclick="escolherTipoDesconto('porcentagem')"
-                    class="flex flex-col items-center justify-center gap-2 border-2 border-gray-200 hover:border-purple-500 hover:bg-purple-50 rounded-xl p-6 transition">
-                <span class="text-3xl">%</span>
+                    class="flex flex-col items-center justify-center gap-2 border-2 border-slate-200 hover:border-[#10284A] hover:bg-amber-50 rounded-xl p-6 transition">
+                <span class="text-3xl font-bold text-[#10284A]">%</span>
                 <span class="text-sm font-semibold text-gray-700">Por Porcentagem</span>
             </button>
         </div>
-        <p class="text-center text-xs text-gray-400 mt-4">Ou pressione <strong>1</strong> para valor · <strong>2</strong> para porcentagem</p>
+        <p class="text-center text-xs text-slate-400 mt-4">Ou pressione <strong>1</strong> para valor · <strong>2</strong> para porcentagem</p>
+        </div>
     </div>
 </div>
 
 <!-- Modal desconto global -->
 <div id="modal-desconto-global" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-bold">Desconto Geral</h2>
-            <button onclick="fecharModalDescontoGlobal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
+            <div>
+                <h2 class="text-lg font-bold text-amber-50">Desconto geral</h2>
+            </div>
+            <button type="button" onclick="fecharModalDescontoGlobal()" class="text-slate-300 hover:text-white text-2xl leading-none">&times;</button>
         </div>
-        <label class="block text-sm font-medium mb-1" for-valor>Valor do desconto (R$)</label>
-        <input type="number" step="0.01" min="0" id="desconto-global-valor" class="w-full border rounded px-3 py-2 mb-4">
+        <div class="p-6">
+        <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5" for-valor>Valor do desconto (R$)</label>
+        <input type="number" step="0.01" min="0" id="desconto-global-valor" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition text-base font-semibold mb-4">
         <p id="desconto-global-erro" class="text-red-600 text-sm mb-3 hidden"></p>
-        <button onclick="confirmarDescontoGlobal()" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded font-semibold">
+        <button onclick="confirmarDescontoGlobal()" class="w-full bg-[#10284A] hover:bg-[#163a68] text-amber-50 rounded-xl font-semibold transition py-2.5">
             Aplicar desconto
         </button>
+        </div>
     </div>
 </div>
 
 
 <!-- Modal de confirmação de volta -->
 <div id="modal-confirmar-voltar" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-bold">Voltar aos itens?</h2>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
+            <div>
+                <h2 class="text-lg font-bold text-amber-50">Voltar aos itens?</h2>
+            </div>
+            <button type="button" onclick="fecharModalConfirmarVoltar()" class="text-slate-300 hover:text-white text-2xl leading-none">&times;</button>
         </div>
-        <p class="text-sm text-gray-500 mb-6">Os pagamentos lançados serão perdidos. Deseja realmente voltar?</p>
+        <div class="p-6">
+        <p class="text-sm text-slate-500 mb-6">Os pagamentos lançados serão perdidos. Deseja realmente voltar?</p>
         <div class="grid grid-cols-2 gap-4">
             <button onclick="confirmarVoltar()"
                     class="flex flex-col items-center justify-center gap-1 border-2 border-gray-200 hover:border-green-500 hover:bg-green-50 rounded-xl p-4 transition">
@@ -234,16 +302,17 @@
                 <span class="text-sm font-semibold text-gray-700">Não, continuar</span>
             </button>
         </div>
-        <p class="text-center text-xs text-gray-400 mt-4">Pressione <strong>1</strong> para confirmar · <strong>2</strong> para cancelar</p>
+        <p class="text-center text-xs text-slate-400 mt-4">Pressione <strong>1</strong> para confirmar · <strong>2</strong> para cancelar</p>
+        </div>
     </div>
 </div>
 
 <!-- Modal: crédito em loja (troca / haver do cliente) -->
 <div id="modal-credito-loja" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
         <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
             <div>
-                <h2 class="text-lg font-bold text-white">Crédito em loja</h2>
+                <h2 class="text-lg font-bold text-amber-50">Crédito em loja</h2>
                 <p id="credito-loja-subtitulo" class="text-xs text-slate-300"></p>
             </div>
             <button type="button" onclick="fecharModalCreditoLoja()" class="text-slate-300 hover:text-white text-2xl leading-none">&times;</button>
@@ -252,10 +321,10 @@
             <label class="block text-xs font-medium text-gray-600 mb-1">Código do vale-troca</label>
             <div class="flex gap-2 mb-4">
                 <input type="text" id="credito-loja-codigo" placeholder="VT000000" maxlength="12"
-                       class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm uppercase focus:ring-2 focus:ring-slate-800 outline-none"
+                       class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition uppercase"
                        onkeydown="if (event.key === 'Enter') { event.preventDefault(); buscarCreditosLoja(); }">
                 <button type="button" onclick="buscarCreditosLoja()"
-                        class="bg-[#10284A] hover:bg-[#163a68] text-white text-sm px-4 py-2 rounded-lg">Buscar</button>
+                        class="bg-[#10284A] hover:bg-[#163a68] text-amber-50 rounded-xl font-semibold transition text-sm px-4 py-2">Buscar</button>
             </div>
 
             <ul id="credito-loja-lista" class="divide-y divide-gray-100 border border-gray-200 rounded-lg max-h-64 overflow-y-auto"></ul>
@@ -267,10 +336,10 @@
 
 <!-- Modal: convênio (venda fiado no limite de crédito do cliente) -->
 <div id="modal-convenio" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
         <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
             <div>
-                <h2 class="text-lg font-bold text-white">Convênio</h2>
+                <h2 class="text-lg font-bold text-amber-50">Convênio</h2>
                 <p id="convenio-subtitulo" class="text-xs text-slate-300">Venda fiado no limite de crédito do cliente</p>
             </div>
             <button type="button" onclick="fecharModalConvenio()" class="text-slate-300 hover:text-white text-2xl leading-none">&times;</button>
@@ -280,7 +349,7 @@
             <div id="convenio-passo-cliente" class="hidden">
                 <label class="block text-xs font-medium text-gray-600 mb-1">Consumidor do convênio</label>
                 <input type="text" id="convenio-cliente-busca" placeholder="Buscar por nome ou CPF/CNPJ..." autocomplete="off"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-3 focus:ring-2 focus:ring-slate-800 outline-none"
+                       class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition mb-3"
                        oninput="buscarClienteConvenio()">
                 <ul id="convenio-cliente-lista" class="divide-y divide-gray-100 border border-gray-200 rounded-lg max-h-64 overflow-y-auto"></ul>
                 <p id="convenio-cliente-vazio" class="hidden text-sm text-gray-500 text-center py-4">Nenhum cliente encontrado.</p>
@@ -316,13 +385,13 @@
 
                     <label class="block text-xs font-medium text-gray-600 mb-1">Valor no convênio (R$)</label>
                     <input type="number" step="0.01" min="0.01" id="convenio-valor"
-                           class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-base font-semibold focus:ring-2 focus:ring-slate-800 outline-none mb-2"
+                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition text-base font-semibold mb-2"
                            onkeydown="if (event.key === 'Enter') { event.preventDefault(); confirmarConvenio(); }">
                     <p id="convenio-aviso" class="hidden text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5 mb-2"></p>
                     <p id="convenio-erro" class="hidden text-sm text-red-600 mb-2"></p>
 
                     <button type="button" onclick="confirmarConvenio()"
-                            class="w-full bg-[#10284A] hover:bg-[#163a68] text-white py-2.5 rounded-lg font-semibold">
+                            class="w-full bg-[#10284A] hover:bg-[#163a68] text-amber-50 rounded-xl font-semibold transition py-2.5">
                         Lançar no convênio <span class="opacity-70 text-xs">Enter</span>
                     </button>
                     <p id="convenio-prazo" class="text-xs text-gray-400 mt-3"></p>
@@ -379,8 +448,6 @@
             <p id="emissao-impressao" class="hidden mt-4 text-sm text-gray-600"></p>
         </div>
     </div>
-</div>
-
 </div>
 @endsection
 
@@ -452,7 +519,7 @@ function buscarCliente() {
         // Nome digitado no caixa: vai como texto, nunca como HTML
         items.forEach(c => {
             const li = document.createElement('li');
-            li.className = 'py-2 px-1 hover:bg-blue-50 rounded text-sm cursor-pointer';
+            li.className = 'px-3 py-2.5 hover:bg-amber-50 text-sm text-slate-700 cursor-pointer';
             li.textContent = c.label;
             li.addEventListener('click', () => selecionarCliente(c.id, c.label));
             lista.appendChild(li);
@@ -610,7 +677,9 @@ function fecharDropdownFormaPagamento() {
 
 function destacarFormaDropdown() {
     document.querySelectorAll('#dropdown-forma-pagamento > div').forEach((el, i) => {
-        el.classList.toggle('bg-blue-100', i === indiceFormaDestacada);
+        el.classList.toggle('bg-amber-50', i === indiceFormaDestacada);
+        el.classList.toggle('text-[#10284A]', i === indiceFormaDestacada);
+        el.classList.toggle('font-semibold', i === indiceFormaDestacada);
     });
 }
 
@@ -852,13 +921,13 @@ function atualizarRestante() {
 
     if (diferenca < -0.009) {
         label.innerText = 'Falta: R$ ' + Math.abs(diferenca).toFixed(2).replace('.', ',');
-        label.className = 'text-red-600';
+        label.className = 'text-lg font-bold text-red-600';
     } else if (diferenca > 0.009) {
         label.innerText = 'Troco: R$ ' + diferenca.toFixed(2).replace('.', ',');
-        label.className = 'text-blue-600 font-semibold';
+        label.className = 'text-lg font-bold text-[#10284A]';
     } else {
         label.innerText = 'R$ 0,00';
-        label.className = 'text-green-600';
+        label.className = 'text-lg font-bold text-emerald-600';
     }
 
     return diferenca;
@@ -1185,10 +1254,15 @@ function removerPagamento(index) {
 function renderizarPagamentos() {
     const nomes = { dinheiro: 'Dinheiro', pix: 'PIX', credito: 'Crédito', debito: 'Débito', credito_loja: 'Crédito em loja', convenio: 'Convênio' };
 
-    document.getElementById('lista-pagamentos').innerHTML = pagamentos.map((p, i) => `
-        <div class="flex justify-between items-center bg-gray-50 border rounded px-2 py-1 text-sm">
-            <span>${nomes[p.forma_pagamento]}${p.codigo ? ' (' + p.codigo + ')' : ''} — R$ ${p.valor.toFixed(2)}</span>
-            <button onclick="removerPagamento(${i})" class="text-red-500 text-xs hover:underline">Remover</button>
+    document.getElementById('lista-pagamentos').innerHTML = pagamentos.length === 0
+        ? '<p class="text-sm text-slate-400 rounded-xl border border-dashed border-slate-200 px-3 py-2.5 text-center">Nenhum pagamento lançado</p>'
+        : pagamentos.map((p, i) => `
+        <div class="flex justify-between items-center bg-slate-50 ring-1 ring-slate-200 rounded-xl px-3 py-2 text-sm">
+            <span class="text-slate-700"><strong class="text-slate-800">${nomes[p.forma_pagamento]}</strong>${p.codigo ? ' (' + p.codigo + ')' : ''}</span>
+            <span class="flex items-center gap-3">
+                <strong class="text-[#10284A]">R$ ${p.valor.toFixed(2).replace('.', ',')}</strong>
+                <button onclick="removerPagamento(${i})" class="text-red-500 text-xs hover:underline">Remover</button>
+            </span>
         </div>
     `).join('');
 
@@ -1386,6 +1460,6 @@ window.addEventListener('keydown', (e) => {
         else if (e.key === 'Escape') irParaNovaVenda();
     }
 }, true);
-atualizarRestante();
+renderizarPagamentos(); // já mostra "Nenhum pagamento lançado" e o restante
 </script>
 @endsection
