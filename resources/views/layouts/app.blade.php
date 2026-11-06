@@ -243,6 +243,25 @@
 
                 </div>
 
+                <!-- Montagem NF-e (nível 2, abre lateral) -->
+                <div class="relative">
+                    <button id="btn-montagem-nfe" onclick="toggleFlyout('sub-montagem-nfe', 'btn-montagem-nfe')"
+                            class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                        <span>Montagem NF-e</span>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+
+                    <div id="sub-montagem-nfe" data-flyout data-botao="btn-montagem-nfe"
+                        class="hidden fixed bg-[#10284A] border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                        <a href="{{ route('montagem-nfe.nfce.index') }}"
+                        class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                            A partir de NFC-e
+                        </a>
+                    </div>
+                </div>
+
                 <!-- MDF-e (nível 2, abre lateral) -->
                 <div class="relative">
                     <button id="btn-mdfe" onclick="toggleFlyout('sub-mdfe', 'btn-mdfe')"

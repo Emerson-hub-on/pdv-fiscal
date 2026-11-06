@@ -1,6 +1,10 @@
 @php
     $ehEdicao = isset($notaFiscal) && $notaFiscal !== null;
 
+    // Nota pré-montada (ex.: Montagem NF-e a partir de NFC-e): preenche a tela como na edição, mas salva como nota nova
+    $notaBase = $ehEdicao ? $notaFiscal : ($notaPreMontada ?? null);
+    $temBase = $notaBase !== null;
+
     $operadorAtual = old('operador_id')
         ? \App\Models\User::find(old('operador_id'))
         : ($ehEdicao
@@ -9,20 +13,20 @@
     
     $transportadorAtual = old('transportador_id')
         ? \App\Models\Transportador::find(old('transportador_id'))
-        : ($ehEdicao ? $notaFiscal->transportador : null);
+        : ($temBase ? $notaBase->transportador : null);
 
     $veiculoAtual = old('veiculo_id')
         ? \App\Models\Veiculo::with('transportador')->find(old('veiculo_id'))
-        : ($ehEdicao ? $notaFiscal->veiculo : null);
+        : ($temBase ? $notaBase->veiculo : null);
 
     $ufClienteInicial = old('cliente_id')
         ? \App\Models\Cliente::find(old('cliente_id'))?->uf
-        : ($ehEdicao ? $notaFiscal->cliente?->uf : null);
+        : ($temBase ? $notaBase->cliente?->uf : null);
 
-    $itensIniciais = $ehEdicao
-        ? $notaFiscal->itens->map(function ($i) use ($notaFiscal, $ehEdicao) {
+    $itensIniciais = $temBase
+        ? $notaBase->itens->map(function ($i) use ($notaBase, $temBase) {
             $subtotalBruto = (float) $i->valor_unitario * (float) $i->quantidade;
-            $freteItem = ($ehEdicao && $notaFiscal->frete_por_item) ? (float) $i->valor_frete : 0;
+            $freteItem = ($temBase && $notaBase->frete_por_item) ? (float) $i->valor_frete : 0;
             $baseImpostos = $subtotalBruto + (float) $i->valor_outras_despesas + $freteItem;
             $cstsComBaseCalculo = ['00', '10', '20', '70', '90'];
 
@@ -86,13 +90,13 @@
         })->values()
         : collect();
 
-    $motivoAtual = old('motivo_ajuste', $ehEdicao ? $notaFiscal->motivo_ajuste : null);
-    $freteModoInicial = old('frete_modo', ($ehEdicao && $notaFiscal->frete_por_item) ? 'item' : 'global');
-    $modFreteInicial = (string) old('mod_frete', $ehEdicao ? $notaFiscal->mod_frete : 9);
+    $motivoAtual = old('motivo_ajuste', $temBase ? $notaBase->motivo_ajuste : null);
+    $freteModoInicial = old('frete_modo', ($temBase && $notaBase->frete_por_item) ? 'item' : 'global');
+    $modFreteInicial = (string) old('mod_frete', $temBase ? $notaBase->mod_frete : 9);
     $labelsFinalidade = [1 => 'Normal', 2 => 'Complementar', 3 => 'Ajuste', 4 => 'Devolução', 5 => 'Nota de Crédito', 6 => 'Nota de Débito'];
-    $naturezaAtual = old('natureza_operacao', $ehEdicao ? $notaFiscal->natureza_operacao : null);
-    $finalidadeAtual = old('finalidade', $ehEdicao ? $notaFiscal->finalidade : null);
-    $notasReferenciadasIniciais = $ehEdicao ? ($notaFiscal->notas_referenciadas ?? []) : [];
+    $naturezaAtual = old('natureza_operacao', $temBase ? $notaBase->natureza_operacao : null);
+    $finalidadeAtual = old('finalidade', $temBase ? $notaBase->finalidade : null);
+    $notasReferenciadasIniciais = $temBase ? ($notaBase->notas_referenciadas ?? []) : [];
 @endphp
 
 {{-- Os erros aparecem na janela de aviso desta tela: sem o aviso flutuante do layout --}}
@@ -113,12 +117,30 @@
     <input type="hidden" name="itens_json" id="itens_json">
     <input type="hidden" name="notas_referenciadas_json" id="campo-notas-referenciadas">
     <input type="hidden" name="informacoes_complementares" id="campo-informacoes-complementares"
-        value="{{ old('informacoes_complementares', $ehEdicao ? $notaFiscal->informacoes_complementares : '') }}">
+        value="{{ old('informacoes_complementares', $temBase ? $notaBase->informacoes_complementares : '') }}">
+    @if (!$ehEdicao && $temBase && $notaBase->venda_id)
+        <input type="hidden" name="venda_id" value="{{ old('venda_id', $notaBase->venda_id) }}">
+    @endif
+
+    @if (!$ehEdicao && $temBase && $notaBase->venda_id)
+        @php $vendaOrigem = $notaBase->venda; @endphp
+        <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-900 flex flex-col gap-1">
+            <p class="font-medium">
+                Montada a partir da NFC-e nº {{ $vendaOrigem->numero_nfce }}, série {{ $vendaOrigem->serie_nfce }}
+                ({{ $vendaOrigem->created_at?->format('d/m/Y H:i') }} — R$ {{ number_format((float) $vendaOrigem->total, 2, ',', '.') }}).
+                Confira os dados antes de salvar.
+            </p>
+            @foreach ($avisosMontagem ?? [] as $aviso)
+                <p>• {{ $aviso }}</p>
+            @endforeach
+        </div>
+    @endif
 
     <div class="bg-white rounded-lg shadow p-6">
         <div class="flex items-center justify-between mb-4">
-            @if ($ehEdicao)
-                <a href="{{ route('notasfiscais.index') }}" title="Voltar para Notas Fiscais"
+            @if ($ehEdicao || $temBase)
+                <a href="{{ $ehEdicao ? route('notasfiscais.index') : route('montagem-nfe.nfce.index') }}"
+                   title="{{ $ehEdicao ? 'Voltar para Notas Fiscais' : 'Voltar para a busca de NFC-e' }}"
                 class="text-gray-500 hover:text-gray-800 transition">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
@@ -169,12 +191,12 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Nota</label>
                 <input type="hidden" name="cfop_saida_id" id="campo-cfop"
-                    value="{{ old('cfop_saida_id', $ehEdicao ? $notaFiscal->cfop_saida_id : '') }}">
+                    value="{{ old('cfop_saida_id', $temBase ? $notaBase->cfop_saida_id : '') }}">
                 <button type="button" onclick="abrirModalCfop()"
                         class="w-full text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
                     <span id="texto-cfop-selecionado">
-                        @if ($ehEdicao && $notaFiscal->cfopSaida)
-                            {{ $notaFiscal->cfopSaida->codigo }} - {{ $notaFiscal->cfopSaida->descricao }}
+                        @if ($temBase && $notaBase->cfopSaida)
+                            {{ $notaBase->cfopSaida->codigo }} - {{ $notaBase->cfopSaida->descricao }}
                         @else
                             Selecionar tipo de nota...
                         @endif
@@ -186,12 +208,12 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Pagamento</label>
                 <input type="hidden" name="forma_pagamento_id" id="campo-pagamento"
-                    value="{{ old('forma_pagamento_id', $ehEdicao ? $notaFiscal->forma_pagamento_id : '') }}">
+                    value="{{ old('forma_pagamento_id', $temBase ? $notaBase->forma_pagamento_id : '') }}">
                 <button type="button" onclick="abrirModalPagamento()"
                         class="w-full text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
                     <span id="texto-pagamento-selecionado">
-                        @if ($ehEdicao && $notaFiscal->formaPagamento)
-                            {{ $notaFiscal->formaPagamento->descricao }}
+                        @if ($temBase && $notaBase->formaPagamento)
+                            {{ $notaBase->formaPagamento->descricao }}
                         @else
                             Selecionar tipo de pagamento...
                         @endif
@@ -203,13 +225,13 @@
             @php
                 $clienteAtual = old('cliente_id')
                     ? \App\Models\Cliente::find(old('cliente_id'))
-                    : ($ehEdicao ? $notaFiscal->cliente : null);
+                    : ($temBase ? $notaBase->cliente : null);
             @endphp
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
                 <input type="hidden" name="cliente_id" id="campo-cliente"
-                    value="{{ old('cliente_id', $ehEdicao ? $notaFiscal->cliente_id : '') }}">
+                    value="{{ old('cliente_id', $temBase ? $notaBase->cliente_id : '') }}">
                 <button type="button" onclick="abrirModalCliente()"
                         class="w-full text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
                     <span id="texto-cliente-selecionado">
@@ -250,7 +272,7 @@
             <input type="hidden" name="veiculo_id" id="campo-veiculo" value="{{ $veiculoAtual?->id }}">
             @foreach (['quantidade', 'especie', 'marca', 'numeracao', 'peso_liquido', 'peso_bruto'] as $campo)
                 <input type="hidden" name="vol_{{ $campo }}" id="campo-vol-{{ $campo }}"
-                    value="{{ old('vol_' . $campo, $ehEdicao ? $notaFiscal->{'vol_' . $campo} : '') }}">
+                    value="{{ old('vol_' . $campo, $temBase ? $notaBase->{'vol_' . $campo} : '') }}">
             @endforeach
 
         </div>
@@ -901,8 +923,8 @@
 <script>
 window.ufEmpresa = @json(optional(\App\Models\Empresa::first())->uf);
 window.crtEmpresa = {{ (int) $crtEmpresa }};
-window.cfopDestacarBases = {{ ($ehEdicao && $notaFiscal->cfopSaida && $notaFiscal->cfopSaida->destacar_bases) ? 'true' : 'false' }};
-window.cfopCodigoNota = @json($ehEdicao && $notaFiscal->cfopSaida ? (string) $notaFiscal->cfopSaida->codigo : '');
+window.cfopDestacarBases = {{ ($temBase && $notaBase->cfopSaida && $notaBase->cfopSaida->destacar_bases) ? 'true' : 'false' }};
+window.cfopCodigoNota = @json($temBase && $notaBase->cfopSaida ? (string) $notaBase->cfopSaida->codigo : '');
 let itensNota = @json($itensIniciais);
 let chavesReferenciadas = @json($notasReferenciadasIniciais);
 let resultadosAtuaisNf = [];
@@ -933,7 +955,7 @@ const cfopsVendaPorItem = @json(array_map('strval', config('fiscal.cfops_venda_p
 const cfopInterestadual = @json(config('fiscal.cfop_interestadual', []));
 let freteModo = @json($freteModoInicial);
 let modFrete = @json($modFreteInicial);
-let freteGlobal = {{ (float) old('frete_total', ($ehEdicao && !$notaFiscal->frete_por_item) ? $notaFiscal->valor_frete : 0) }};
+let freteGlobal = {{ (float) old('frete_total', ($temBase && !$notaBase->frete_por_item) ? $notaBase->valor_frete : 0) }};
 let transportadoresAtuais = [];
 let indiceTransportador = -1;
 let timeoutBuscaTransportador;

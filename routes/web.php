@@ -540,6 +540,12 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
                     ->except(['show', 'destroy']);
             });
 
+            // Faturamento → Montagem NF-e → A partir de NFC-e
+            Route::get('faturamento/montagem-nfe/nfce', [\App\Http\Controllers\MontagemNfeController::class, 'index'])
+                ->name('montagem-nfe.nfce.index');
+            Route::get('faturamento/montagem-nfe/nfce/{venda}/montar', [\App\Http\Controllers\MontagemNfeController::class, 'montar'])
+                ->name('montagem-nfe.nfce.montar');
+
             Route::get('notasfiscais/buscar-produto', [NotaFiscalController::class, 'buscarProduto'])
                 ->name('notasfiscais.buscar-produto');
             Route::get('notasfiscais/buscar-cliente', [NotaFiscalController::class, 'buscarCliente'])

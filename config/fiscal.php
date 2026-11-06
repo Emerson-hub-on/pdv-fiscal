@@ -27,6 +27,10 @@ return [
     // Qualquer outro CFOP (devolução, remessa, bonificação...) vale para todos os itens.
     'cfops_venda_por_item' => ['5102', '6102'],
 
+    // Montagem NF-e a partir de NFC-e: CFOP pré-selecionado (o primeiro desta lista que estiver ativo no cadastro).
+    // 5929 = lançamento de operação também registrada em NFC-e/ECF. Cliente de outra UF: o 5 vira 6.
+    'montagem_nfce_cfops' => ['5929', '5102'],
+
     // Equivalente interestadual quando não basta trocar o 5 por 6
     'cfop_interestadual' => [
         '5405' => '6404',

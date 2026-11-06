@@ -11,6 +11,15 @@
 
 $historico = [
     [
+        'versao' => '1.2.0',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Faturamento → Montagem NF-e → A partir de NFC-e: busca a NFC-e pela série e número do cupom ou pela data (padrão: hoje) e abre a NF-e já preenchida com itens, cliente, forma de pagamento, tipo de nota e a chave da NFC-e referenciada; ao salvar vira rascunho.',
+            'Venda ainda não enviada pelo caixa ao servidor aparece como "Venda não sincronizada", com a orientação de usar Atualizar Caixa.',
+            'Cada NFC-e gera uma única NF-e: se já existir, a tela mostra o link para a NF-e gerada.',
+        ],
+    ],
+    [
         'versao' => '1.1.6',
         'data' => '2026-11-04',
         'itens' => [

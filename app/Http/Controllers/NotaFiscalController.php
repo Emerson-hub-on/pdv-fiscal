@@ -96,7 +96,16 @@ class NotaFiscalController extends Controller
     {
         $dados = $this->validarCabecalhoEItens($request);
 
-        $notaFiscal = DB::transaction(function () use ($dados) {
+        // Montagem a partir de NFC-e: guarda a venda de origem (e não deixa gerar duas NF-e da mesma NFC-e)
+        $vendaOrigemId = $request->filled('venda_id') ? (int) $request->input('venda_id') : null;
+        if ($vendaOrigemId) {
+            $erro = \App\Services\MontagemNfeService::erroVendaParaMontagem(\App\Models\Venda::find($vendaOrigemId));
+            if ($erro) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['venda_id' => $erro]);
+            }
+        }
+
+        $notaFiscal = DB::transaction(function () use ($dados, $vendaOrigemId) {
             $notaFiscal = NotaFiscal::create([
                 'cliente_id'                 => $dados['cliente_id'],
                 'natureza_operacao'          => $dados['natureza_operacao'],
@@ -110,7 +119,8 @@ class NotaFiscalController extends Controller
                 'motivo_ajuste'              => $dados['motivo_ajuste'],
                 'frete_por_item'             => $dados['frete_por_item'],
                 'mod_frete'                  => (int) $dados['mod_frete'], 
-                'origem_tipo'                => 'manual',
+                'origem_tipo'                => $vendaOrigemId ? 'venda' : 'manual',
+                'venda_id'                   => $vendaOrigemId,
                 'status'                     => 'rascunho',
 
             ] + $this->camposTransporte($dados));
