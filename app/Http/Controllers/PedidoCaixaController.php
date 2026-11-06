@@ -102,15 +102,15 @@ class PedidoCaixaController extends Controller
             $preco = (float) $i->valor_unitario;
             $chave = $i->produto_id . '-' . ($i->produto_variante_id ?? '0');
 
-            // Produto de balança: o PDV guarda 1 linha com o preço total e o peso à parte
+            // Produto de balança: 1 linha por pesagem, quantidade = peso (kg) e preço = preço do kg
             if ($produto->produto_balanca) {
                 $carrinho[] = [
                     'chave' => $chave . '-balanca-' . $i->id,
                     'produto_id' => $i->produto_id,
                     'produto_variante_id' => $i->produto_variante_id,
-                    'nome' => $i->descricao . ' (' . rtrim(rtrim(number_format($quantidade, 3, ',', ''), '0'), ',') . ' KG)',
-                    'preco' => round($preco * $quantidade, 2),
-                    'quantidade' => 1,
+                    'nome' => $i->descricao . ' (' . number_format($quantidade, 3, ',', '') . ' kg)',
+                    'preco' => $preco,
+                    'quantidade' => round($quantidade, 3),
                     'eh_balanca' => true,
                     'peso_kg' => $quantidade,
                     'desconto' => 0,

@@ -11,6 +11,21 @@
 
 $historico = [
     [
+        'versao' => '1.9.2',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Correção: produto de balança no caixa ia como 1 unidade com o preço total embutido, e o servidor recalculava pelo preço do kg (10 kg a R$ 2,00 virava venda de R$ 2,00, com troco errado no dinheiro e erro "convênio maior que o total"). Agora o item vai com quantidade = peso (kg, 3 casas) e preço = preço do kg, também no pedido puxado para o caixa.',
+            'A NFC-e sai com qCom/qTrib = peso (ex.: 10,0000 KG × R$ 2,00 = R$ 20,00), o estoque baixa o peso vendido e os itens de venda passam a guardar quantidade fracionada.',
+        ],
+    ],
+    [
+        'versao' => '1.9.1',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Cadastro do cliente → Limite de crédito dividido em sub-abas: "Limite" (indicadores de limite total, usado e disponível + histórico do limite), "Conceder limite" (chave liga/desliga do convênio e os campos de valor, prazo e observação) e "Vendas no convênio" (listagem das vendas fiado do cliente, com o nº de contas em aberto na aba).',
+        ],
+    ],
+    [
         'versao' => '1.9.0',
         'data' => '2026-11-06',
         'itens' => [

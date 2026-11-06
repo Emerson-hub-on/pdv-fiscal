@@ -1126,7 +1126,7 @@ class SyncService
                                 'quantidade' => $item['quantidade'],
                                 'preco_unitario' => $item['preco_unitario'],
                                 'desconto' => $item['desconto'] ?? 0,
-                                'subtotal' => ($item['preco_unitario'] * $item['quantidade']) - ($item['desconto'] ?? 0),
+                                'subtotal' => round($item['preco_unitario'] * $item['quantidade'], 2) - ($item['desconto'] ?? 0),
                                 'created_at' => now(),
                                 'updated_at' => now(),
                             ] + $this->camposImpostosItem($item));

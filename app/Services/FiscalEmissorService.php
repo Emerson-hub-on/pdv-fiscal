@@ -331,12 +331,12 @@ public function emitir(Venda $venda): array
             ])->toArray();
         }
 
-        $subtotalBrutoTotal = $itens->sum(fn($i) => $i->preco_unitario * $i->quantidade);
+        $subtotalBrutoTotal = $itens->sum(fn($i) => round($i->preco_unitario * $i->quantidade, 2));
         $somaRateios = 0;
         $resultado = [];
 
         foreach ($itens as $index => $item) {
-            $subtotalBruto = $item->preco_unitario * $item->quantidade;
+            $subtotalBruto = round($item->preco_unitario * $item->quantidade, 2);
             $descontoItem = $item->desconto ?? 0;
 
             if ($index === count($itens) - 1) {
@@ -585,7 +585,7 @@ protected function montarItens(Make $nfe, Venda $venda): void
             $trib = $produto->tributacao;
 
             // Base dos impostos: o desconto incondicional (do item + rateio do global) não integra a base
-            $baseItem = max(0.0, (float) ($item->preco_unitario * $item->quantidade) - (float) $descontoEfetivo);
+            $baseItem = max(0.0, round((float) $item->preco_unitario * (float) $item->quantidade, 2) - (float) $descontoEfetivo);
 
             // Item com variação: o EAN é o da variação (o do produto pai é só o fallback
             // interno). Variação com código interno gerado tem codigo_barras_valido = false
@@ -612,12 +612,12 @@ protected function montarItens(Make $nfe, Venda $venda): void
             }
             $prod->CFOP = $trib->cfop;
             $prod->uCom = $produto->unidade_comercial;
-            $prod->qCom = $item->quantidade;
+            $prod->qCom = number_format((float) $item->quantidade, 4, '.', ''); // balança: peso em kg
             $prod->vUnCom = number_format($item->preco_unitario, 10, '.', '');
             $prod->vProd = number_format($item->preco_unitario * $item->quantidade, 2, '.', '');
             $prod->cEANTrib = $temEanValido ? $codigoBarrasItem : 'SEM GTIN';
             $prod->uTrib = $produto->unidade_tributavel;
-            $prod->qTrib = $item->quantidade;
+            $prod->qTrib = number_format((float) $item->quantidade, 4, '.', '');
             $prod->vUnTrib = number_format($item->preco_unitario, 10, '.', '');
 
             if ($descontoEfetivo > 0) {
@@ -921,7 +921,7 @@ if ($empresa->crt <= 2) {
 protected function montarTotais(Make $nfe, Venda $venda): void
     {
         // vProd deve ser a soma dos valores BRUTOS dos itens (antes do desconto)
-        $vProdBruto = $venda->itens->sum(fn($item) => $item->preco_unitario * $item->quantidade);
+        $vProdBruto = $venda->itens->sum(fn($item) => round($item->preco_unitario * $item->quantidade, 2));
 
         $std = new \stdClass();
         $std->vBC = number_format($this->totalICMSBC, 2, '.', '');

@@ -169,7 +169,7 @@ class VendaLocal extends Venda
                 'produto_variante_id' => $item['produto_variante_id'] ?? null,
                 'produto' => $produto,
                 'variante' => $variante,
-                'quantidade' => (int) $item['quantidade'],
+                'quantidade' => (float) $item['quantidade'], // fracionada no produto de balança (kg)
                 'preco_unitario' => (float) $item['preco_unitario'],
                 'desconto' => (float) ($item['desconto'] ?? 0),
             ];

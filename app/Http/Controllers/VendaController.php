@@ -179,7 +179,7 @@ class VendaController extends Controller
             'itens.*.produto_id' => 'required|integer',
             'itens.*.produto_variante_id' => 'nullable|integer',
             'itens.*.nome' => 'required|string',
-            'itens.*.quantidade' => 'required|integer|min:1',
+            'itens.*.quantidade' => 'required|numeric|min:0.001', // fracionada no produto de balança (kg)
             'itens.*.preco' => 'required|numeric',
             'itens.*.desconto' => 'nullable|numeric',
             'itens.*.subtotal' => 'required|numeric',
@@ -524,7 +524,7 @@ class VendaController extends Controller
             'itens' => 'required|array|min:1',
             'itens.*.produto_id' => 'required|integer',
             'itens.*.produto_variante_id' => 'nullable|integer',
-            'itens.*.quantidade' => 'required|integer|min:1',
+            'itens.*.quantidade' => 'required|numeric|min:0.001', // fracionada no produto de balança (kg)
             'itens.*.desconto' => 'nullable|numeric|min:0',
             'pagamentos' => 'required|array|min:1',
             'pagamentos.*.forma_pagamento' => 'required|in:dinheiro,pix,credito,debito,credito_loja,convenio',
@@ -602,7 +602,7 @@ class VendaController extends Controller
                     $precoUnitario = $this->resolverPrecoUnitario($produto, $item['quantidade']);
 
                     $desconto = min($item['desconto'] ?? 0, $precoUnitario * $item['quantidade']);
-                    $subtotal = ($precoUnitario * $item['quantidade']) - $desconto;
+                    $subtotal = round($precoUnitario * $item['quantidade'], 2) - $desconto;
                     $total += $subtotal;
 
                     $itensParaSalvar[] = [

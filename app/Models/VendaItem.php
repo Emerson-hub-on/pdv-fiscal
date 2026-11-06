@@ -17,6 +17,7 @@ class VendaItem extends Model
     ];
 
     protected $casts = [
+        'quantidade' => 'float', // fracionada no produto de balança (kg); inteira nos demais
         'preco_unitario' => 'decimal:2',
         'subtotal' => 'decimal:2',
         'valor_bruto' => 'decimal:2',

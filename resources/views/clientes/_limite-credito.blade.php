@@ -28,7 +28,7 @@
 
 <input type="hidden" name="limite_credito_form" value="1">
 
-<div class="flex flex-col gap-6">
+<div class="flex flex-col gap-5">
     <div class="rounded-xl bg-amber-50 ring-1 ring-amber-200 px-4 py-3 text-sm text-amber-900">
         <strong>Convênio (venda fiado).</strong> Com o limite concedido, o caixa aceita a forma de pagamento
         <strong>Convênio</strong> para este cliente até o valor disponível. Cada venda vira uma conta a receber,
@@ -36,14 +36,109 @@
         É diferente do crédito em loja, que nasce de uma devolução.
     </div>
 
+
+    {{-- Sub-abas: Limite | Conceder limite | Vendas no convênio --}}
+    <nav class="flex gap-6 border-b border-slate-200">
+        @if ($existe)
+            <button type="button" data-sub="indicadores" onclick="mudarSubAbaLimite('indicadores')" class="sub-limite-btn pb-2.5 text-sm font-medium border-b-2 transition">Limite</button>
+        @endif
+        <button type="button" data-sub="conceder" onclick="mudarSubAbaLimite('conceder')" class="sub-limite-btn pb-2.5 text-sm font-medium border-b-2 transition">Conceder limite</button>
+        @if ($existe)
+            <button type="button" data-sub="vendas" onclick="mudarSubAbaLimite('vendas')" class="sub-limite-btn pb-2.5 text-sm font-medium border-b-2 transition">
+                Vendas no convênio
+                @if ($contasConvenio->where('status', 'aberta')->count())
+                    <span class="ml-1 inline-block rounded-full bg-amber-100 text-amber-800 px-1.5 text-[11px] font-semibold">{{ $contasConvenio->where('status', 'aberta')->count() }}</span>
+                @endif
+            </button>
+        @endif
+    </nav>
+
+    @if ($existe)
+        {{-- ===== Sub-aba: Limite (indicadores + histórico) ===== --}}
+        <div id="sub-limite-indicadores" class="sub-limite-conteudo hidden flex-col gap-6">
+    <div class="grid grid-cols-3 gap-4">
+        <div class="rounded-xl bg-[#10284A] px-5 py-4">
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Disponível para compras</p>
+            <p class="text-2xl font-bold text-amber-50 mt-1">{{ $moedaLc($resumoConvenio['disponivel']) }}</p>
+            <p class="text-xs text-slate-300 mt-0.5">
+                {{ $resumoConvenio['ativo'] ? 'No caixa, forma de pagamento "Convênio".' : 'Convênio não concedido.' }}
+            </p>
+        </div>
+        <div class="rounded-xl bg-slate-50 ring-1 ring-slate-200 px-5 py-4">
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Limite total</p>
+            <p class="text-xl font-bold text-slate-800 mt-1">{{ $moedaLc($resumoConvenio['limite']) }}</p>
+            <div class="mt-2 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                <div class="h-full rounded-full {{ $percentualUso >= 90 ? 'bg-red-500' : 'bg-[#10284A]' }}
+                            {{ ['w-0','w-1/12','w-1/6','w-1/4','w-1/3','w-5/12','w-1/2','w-7/12','w-2/3','w-3/4','w-5/6','w-11/12','w-full'][(int) round($percentualUso / 100 * 12)] }}"></div>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">{{ $percentualUso }}% usado</p>
+        </div>
+        <div class="rounded-xl bg-slate-50 ring-1 ring-slate-200 px-5 py-4">
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Já usado (em aberto)</p>
+            <p class="text-xl font-bold {{ $resumoConvenio['usado'] > $resumoConvenio['limite'] && $resumoConvenio['limite'] > 0 ? 'text-red-600' : 'text-slate-800' }} mt-1">
+                {{ $moedaLc($resumoConvenio['usado']) }}
+            </p>
+            <p class="text-xs text-slate-400 mt-0.5">Contas de convênio ainda não recebidas.</p>
+        </div>
+    </div>
+
+    @if ($historicoLimite->isNotEmpty())
+        <div>
+            <h3 class="text-sm font-semibold text-slate-800 mb-2">Histórico do limite</h3>
+            <div class="{{ $tabelaCaixaCls }}">
+                <table class="w-full text-sm text-slate-700">
+                    <thead class="{{ $theadCls }}">
+                        <tr>
+                            <th class="text-left px-3 py-2.5">Data</th>
+                            <th class="text-left px-3 py-2.5">Alteração</th>
+                            <th class="text-left px-3 py-2.5">Prazo</th>
+                            <th class="text-left px-3 py-2.5">Observação</th>
+                            <th class="text-left px-3 py-2.5">Usuário</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @foreach ($historicoLimite as $h)
+                            <tr>
+                                <td class="px-3 py-2.5 whitespace-nowrap">{{ $h->created_at->format('d/m/Y H:i') }}</td>
+                                <td class="px-3 py-2.5">
+                                    @if ($h->ativo)
+                                        {{ $moedaLc($h->limite_anterior) }} → <strong>{{ $moedaLc($h->limite_novo) }}</strong>
+                                    @else
+                                        <span class="text-red-600 font-medium">Convênio suspenso</span>
+                                    @endif
+                                </td>
+                                <td class="px-3 py-2.5">{{ $h->dias }} dias</td>
+                                <td class="px-3 py-2.5 text-slate-500">{{ $h->observacao ?: '—' }}</td>
+                                <td class="px-3 py-2.5">{{ $h->usuario?->name ?? '—' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+            @if ($historicoLimite->isEmpty())
+                <p class="text-sm text-slate-400">Nenhuma alteração de limite registrada ainda.</p>
+            @endif
+        </div>
+    @endif
+
+    {{-- ===== Sub-aba: Conceder limite ===== --}}
+    <div id="sub-limite-conceder" class="sub-limite-conteudo hidden flex-col gap-5">
     <div class="grid grid-cols-2 gap-5">
         <div class="col-span-2">
             <input type="hidden" name="limite_credito_ativo" value="0">
-            <label class="inline-flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" name="limite_credito_ativo" value="1" id="limite-credito-ativo"
-                       class="w-4 h-4 rounded border-slate-300 text-[#10284A] focus:ring-[#10284A]/30"
-                       onchange="alternarLimiteCredito()" @checked($ativoForm)>
-                <span class="text-sm font-semibold text-slate-800">Conceder limite de crédito (convênio) a este cliente</span>
+            <label class="inline-flex items-center gap-3 cursor-pointer select-none">
+                <span class="relative inline-flex items-center">
+                    <input type="checkbox" name="limite_credito_ativo" value="1" id="limite-credito-ativo"
+                           class="peer sr-only" onchange="alternarLimiteCredito()" @checked($ativoForm)>
+                    <span class="w-11 h-6 rounded-full bg-slate-300 transition peer-checked:bg-[#10284A] peer-focus-visible:ring-2 peer-focus-visible:ring-[#10284A]/30"></span>
+                    <span class="absolute left-0.5 top-0.5 w-5 h-5 rounded-full bg-white shadow transition peer-checked:translate-x-5"></span>
+                </span>
+                <span>
+                    <span class="block text-sm font-semibold text-slate-800">Conceder limite de crédito (convênio)</span>
+                    <span id="limite-credito-situacao" class="block text-xs text-slate-500"></span>
+                </span>
             </label>
         </div>
 
@@ -72,138 +167,98 @@
             @error('limite_credito_observacao') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
         </div>
     </div>
+    </div>
 
     @if ($existe)
-        <div class="grid grid-cols-3 gap-4">
-            <div class="rounded-xl bg-[#10284A] px-5 py-4">
-                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Disponível para compras</p>
-                <p class="text-2xl font-bold text-amber-50 mt-1">{{ $moedaLc($resumoConvenio['disponivel']) }}</p>
-                <p class="text-xs text-slate-300 mt-0.5">
-                    {{ $resumoConvenio['ativo'] ? 'No caixa, forma de pagamento "Convênio".' : 'Convênio não concedido.' }}
-                </p>
-            </div>
-            <div class="rounded-xl bg-slate-50 ring-1 ring-slate-200 px-5 py-4">
-                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Limite total</p>
-                <p class="text-xl font-bold text-slate-800 mt-1">{{ $moedaLc($resumoConvenio['limite']) }}</p>
-                <div class="mt-2 h-1.5 rounded-full bg-slate-200 overflow-hidden">
-                    <div class="h-full rounded-full {{ $percentualUso >= 90 ? 'bg-red-500' : 'bg-[#10284A]' }}
-                                {{ ['w-0','w-1/12','w-1/6','w-1/4','w-1/3','w-5/12','w-1/2','w-7/12','w-2/3','w-3/4','w-5/6','w-11/12','w-full'][(int) round($percentualUso / 100 * 12)] }}"></div>
-                </div>
-                <p class="text-xs text-slate-400 mt-1">{{ $percentualUso }}% usado</p>
-            </div>
-            <div class="rounded-xl bg-slate-50 ring-1 ring-slate-200 px-5 py-4">
-                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Já usado (em aberto)</p>
-                <p class="text-xl font-bold {{ $resumoConvenio['usado'] > $resumoConvenio['limite'] && $resumoConvenio['limite'] > 0 ? 'text-red-600' : 'text-slate-800' }} mt-1">
-                    {{ $moedaLc($resumoConvenio['usado']) }}
-                </p>
-                <p class="text-xs text-slate-400 mt-0.5">Contas de convênio ainda não recebidas.</p>
-            </div>
+        {{-- ===== Sub-aba: Vendas no convênio ===== --}}
+        <div id="sub-limite-vendas" class="sub-limite-conteudo hidden flex-col gap-4">
+    <div>
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-semibold text-slate-800">Vendas no convênio</h3>
+            <a href="{{ route('contas-receber.index', ['busca' => $cliente->nome]) }}" class="text-xs text-[#10284A] hover:underline">
+                Abrir no Contas a receber
+            </a>
         </div>
-
-        <div>
-            <div class="flex items-center justify-between mb-2">
-                <h3 class="text-sm font-semibold text-slate-800">Vendas no convênio</h3>
-                <a href="{{ route('contas-receber.index', ['busca' => $cliente->nome]) }}" class="text-xs text-[#10284A] hover:underline">
-                    Abrir no Contas a receber
-                </a>
-            </div>
-            <div class="{{ $tabelaCaixaCls }}">
-                <table class="w-full text-sm text-slate-700">
-                    <thead class="{{ $theadCls }}">
-                        <tr>
-                            <th class="text-left px-3 py-2.5">Data</th>
-                            <th class="text-left px-3 py-2.5">Venda</th>
-                            <th class="text-left px-3 py-2.5">Vencimento</th>
-                            <th class="text-right px-3 py-2.5">Valor</th>
-                            <th class="text-right px-3 py-2.5">Em aberto</th>
-                            <th class="text-left px-3 py-2.5">Situação</th>
-                            <th class="px-3 py-2.5"></th>
+        <div class="{{ $tabelaCaixaCls }}">
+            <table class="w-full text-sm text-slate-700">
+                <thead class="{{ $theadCls }}">
+                    <tr>
+                        <th class="text-left px-3 py-2.5">Data</th>
+                        <th class="text-left px-3 py-2.5">Venda</th>
+                        <th class="text-left px-3 py-2.5">Vencimento</th>
+                        <th class="text-right px-3 py-2.5">Valor</th>
+                        <th class="text-right px-3 py-2.5">Em aberto</th>
+                        <th class="text-left px-3 py-2.5">Situação</th>
+                        <th class="px-3 py-2.5"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @forelse ($contasConvenio as $conta)
+                        @php
+                            $situacao = $conta->situacao();
+                            [$rotulo, $cor] = match ($situacao) {
+                                'recebida' => ['Recebida', 'bg-green-100 text-green-800'],
+                                'vencida'  => ['Vencida', 'bg-red-100 text-red-700'],
+                                default    => ['Em aberto', 'bg-amber-100 text-amber-800'],
+                            };
+                            $proxima = $conta->proximaParcela();
+                            $recebida = $conta->parcelas->filter->isRecebida()->sortByDesc('data_recebimento')->first();
+                        @endphp
+                        <tr class="hover:bg-slate-50">
+                            <td class="px-3 py-2.5">{{ $conta->data_conta?->format('d/m/Y') }}</td>
+                            <td class="px-3 py-2.5">{{ $conta->numero_documento ?: $conta->numeroExibicao() }}</td>
+                            <td class="px-3 py-2.5">
+                                @if ($proxima)
+                                    {{ $proxima->vencimento->format('d/m/Y') }}
+                                @elseif ($recebida)
+                                    <span class="text-slate-400">recebida em {{ $recebida->data_recebimento->format('d/m/Y') }}</span>
+                                @endif
+                            </td>
+                            <td class="px-3 py-2.5 text-right">{{ $moedaLc($conta->valor_total) }}</td>
+                            <td class="px-3 py-2.5 text-right font-bold text-[#10284A]">{{ $moedaLc($conta->saldoAberto()) }}</td>
+                            <td class="px-3 py-2.5">
+                                <span class="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium {{ $cor }}">{{ $rotulo }}</span>
+                            </td>
+                            <td class="px-3 py-2.5 text-right">
+                                <a href="{{ route('contas-receber.edit', $conta) }}" class="text-xs text-[#10284A] hover:underline">
+                                    {{ $situacao === 'recebida' ? 'Ver' : 'Dar baixa' }}
+                                </a>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @forelse ($contasConvenio as $conta)
-                            @php
-                                $situacao = $conta->situacao();
-                                [$rotulo, $cor] = match ($situacao) {
-                                    'recebida' => ['Recebida', 'bg-green-100 text-green-800'],
-                                    'vencida'  => ['Vencida', 'bg-red-100 text-red-700'],
-                                    default    => ['Em aberto', 'bg-amber-100 text-amber-800'],
-                                };
-                                $proxima = $conta->proximaParcela();
-                                $recebida = $conta->parcelas->filter->isRecebida()->sortByDesc('data_recebimento')->first();
-                            @endphp
-                            <tr class="hover:bg-slate-50">
-                                <td class="px-3 py-2.5">{{ $conta->data_conta?->format('d/m/Y') }}</td>
-                                <td class="px-3 py-2.5">{{ $conta->numero_documento ?: $conta->numeroExibicao() }}</td>
-                                <td class="px-3 py-2.5">
-                                    @if ($proxima)
-                                        {{ $proxima->vencimento->format('d/m/Y') }}
-                                    @elseif ($recebida)
-                                        <span class="text-slate-400">recebida em {{ $recebida->data_recebimento->format('d/m/Y') }}</span>
-                                    @endif
-                                </td>
-                                <td class="px-3 py-2.5 text-right">{{ $moedaLc($conta->valor_total) }}</td>
-                                <td class="px-3 py-2.5 text-right font-bold text-[#10284A]">{{ $moedaLc($conta->saldoAberto()) }}</td>
-                                <td class="px-3 py-2.5">
-                                    <span class="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium {{ $cor }}">{{ $rotulo }}</span>
-                                </td>
-                                <td class="px-3 py-2.5 text-right">
-                                    <a href="{{ route('contas-receber.edit', $conta) }}" class="text-xs text-[#10284A] hover:underline">
-                                        {{ $situacao === 'recebida' ? 'Ver' : 'Dar baixa' }}
-                                    </a>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="7" class="px-3 py-6 text-center text-slate-400">Nenhuma venda no convênio ainda.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="px-3 py-6 text-center text-slate-400">Nenhuma venda no convênio ainda.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
-
-        @if ($historicoLimite->isNotEmpty())
-            <div>
-                <h3 class="text-sm font-semibold text-slate-800 mb-2">Histórico do limite</h3>
-                <div class="{{ $tabelaCaixaCls }}">
-                    <table class="w-full text-sm text-slate-700">
-                        <thead class="{{ $theadCls }}">
-                            <tr>
-                                <th class="text-left px-3 py-2.5">Data</th>
-                                <th class="text-left px-3 py-2.5">Alteração</th>
-                                <th class="text-left px-3 py-2.5">Prazo</th>
-                                <th class="text-left px-3 py-2.5">Observação</th>
-                                <th class="text-left px-3 py-2.5">Usuário</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            @foreach ($historicoLimite as $h)
-                                <tr>
-                                    <td class="px-3 py-2.5 whitespace-nowrap">{{ $h->created_at->format('d/m/Y H:i') }}</td>
-                                    <td class="px-3 py-2.5">
-                                        @if ($h->ativo)
-                                            {{ $moedaLc($h->limite_anterior) }} → <strong>{{ $moedaLc($h->limite_novo) }}</strong>
-                                        @else
-                                            <span class="text-red-600 font-medium">Convênio suspenso</span>
-                                        @endif
-                                    </td>
-                                    <td class="px-3 py-2.5">{{ $h->dias }} dias</td>
-                                    <td class="px-3 py-2.5 text-slate-500">{{ $h->observacao ?: '—' }}</td>
-                                    <td class="px-3 py-2.5">{{ $h->usuario?->name ?? '—' }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        @endif
+    </div>
+        </div>
     @endif
 </div>
 
 <script>
+function mudarSubAbaLimite(sub) {
+    document.querySelectorAll('.sub-limite-conteudo').forEach(el => {
+        const ativa = el.id === 'sub-limite-' + sub;
+        el.classList.toggle('hidden', !ativa);
+        el.classList.toggle('flex', ativa);
+    });
+    document.querySelectorAll('.sub-limite-btn').forEach(btn => {
+        const ativa = btn.dataset.sub === sub;
+        btn.classList.toggle('border-[#10284A]', ativa);
+        btn.classList.toggle('text-[#10284A]', ativa);
+        btn.classList.toggle('border-transparent', !ativa);
+        btn.classList.toggle('text-gray-500', !ativa);
+    });
+}
+
 function alternarLimiteCredito() {
     const ativo = document.getElementById('limite-credito-ativo').checked;
+    document.getElementById('limite-credito-situacao').textContent = ativo
+        ? 'Ativo: o caixa aceita "Convênio" para este cliente até o disponível.'
+        : 'Desativado: o cliente não compra no convênio (os valores ficam guardados).';
     // readOnly (e não disabled): os valores continuam indo no formulário e não se perdem ao suspender
     document.querySelectorAll('.campo-limite-credito').forEach(el => {
         el.readOnly = !ativo;
@@ -211,6 +266,8 @@ function alternarLimiteCredito() {
     });
 }
 alternarLimiteCredito();
+// Cliente novo começa em "Conceder limite"; com erro de validação, abre direto nos campos
+mudarSubAbaLimite(@json($abaComErro || !$existe ? 'conceder' : 'indicadores'));
 @if ($abaComErro)
     document.addEventListener('DOMContentLoaded', () => mudarAba('limite-credito'));
 @endif

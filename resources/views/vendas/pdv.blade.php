@@ -603,11 +603,13 @@ function adicionarAoCarrinhoBalanca(produto, variante, peso) {
         chave,
         produto_id: produto.id,
         produto_variante_id: variante ? variante.id : null,
-        nome: produto.nome + ` (R$ ${peso.toFixed(1)} por KG)`,
-        preco: parseFloat(produto.preco_venda) * peso, // preço total = preco_kg * peso
-        quantidade: 1, // sempre 1 — o "peso" já está incorporado no preço
+        nome: produto.nome + ` (${peso.toFixed(3).replace('.', ',')} kg)`,
+        // Quantidade = peso (kg) e preço = preço do kg: o servidor recalcula o valor por preço × quantidade
+        // e a NFC-e sai com qCom = peso (antes ia 1 unidade com o preço total embutido e o servidor gravava só o preço do kg)
+        preco: parseFloat(produto.preco_venda),
+        quantidade: Math.round(peso * 1000) / 1000,
         eh_balanca: true,
-        peso_kg: peso,
+        peso_kg: Math.round(peso * 1000) / 1000,
     });
 
     renderizarCarrinho();
@@ -1068,6 +1070,11 @@ function adicionarAoCarrinho(produto, variante, quantidade = quantidadeMultiplic
 }
 
 
+// Preço × quantidade em centavos: o item de balança tem quantidade fracionada (peso)
+function valorBrutoItem(item) {
+    return Math.round(item.preco * item.quantidade * 100) / 100;
+}
+
 function renderizarCarrinho() {
     const tbody = document.getElementById('linhas-carrinho');
     const vazio = document.getElementById('carrinho-vazio');
@@ -1092,7 +1099,7 @@ tbody.innerHTML = itensCalculados.map((item, index) => `
                 ${item.cancelado ? '<span class="shrink-0 text-red-600 text-xs font-bold">✕ Cancelado</span>' : ''}
             </div>
         </td>
-        <td class="py-3 px-2 ${item.cancelado ? 'text-red-500 line-through' : 'text-gray-600'}">${item.quantidade}</td>
+        <td class="py-3 px-2 ${item.cancelado ? 'text-red-500 line-through' : 'text-gray-600'}">${item.eh_balanca ? item.quantidade.toFixed(3).replace('.', ',') + ' kg' : item.quantidade}</td>
         <td class="py-3 px-2 whitespace-nowrap ${item.cancelado ? 'text-red-500 line-through' : 'text-gray-600'}">R$ ${item.preco.toFixed(2)}</td>
         <td class="py-3 px-2 whitespace-nowrap ${item.cancelado ? 'text-red-500 line-through' : (item.descontoEfetivo > 0 ? 'text-green-600 font-medium' : 'text-gray-400')}">R$ ${item.descontoEfetivo.toFixed(2)}</td>
         <td class="py-3 px-2 pr-4 whitespace-nowrap font-semibold ${item.cancelado ? 'text-red-500 line-through' : 'text-gray-900'}">R$ ${item.subtotalLiquido.toFixed(2)}</td>
@@ -1507,13 +1514,13 @@ async function confirmarCancelamento(id) {
 
 function calcularItensComDescontoRateado() {
     const itensAtivos = carrinho.filter(i => !i.cancelado);
-    const subtotalBrutoGeral = itensAtivos.reduce((soma, i) => soma + (i.preco * i.quantidade), 0);
+    const subtotalBrutoGeral = itensAtivos.reduce((soma, i) => soma + valorBrutoItem(i), 0);
 
     const rateios = {};
     let somaRateios = 0;
 
     itensAtivos.forEach((item, index) => {
-        const subtotalBruto = item.preco * item.quantidade;
+        const subtotalBruto = valorBrutoItem(item);
         let rateio;
 
         if (index === itensAtivos.length - 1) {
@@ -1529,7 +1536,7 @@ function calcularItensComDescontoRateado() {
     });
 
     return carrinho.map(item => {
-        const subtotalBruto = item.preco * item.quantidade;
+        const subtotalBruto = valorBrutoItem(item);
 
         if (item.cancelado) {
             return { ...item, descontoEfetivo: 0, subtotalBruto, subtotalLiquido: 0 };
@@ -1666,7 +1673,7 @@ function confirmarDescontoItem() {
         return;
     }
 
-    const subtotalBruto = item.preco * item.quantidade;
+    const subtotalBruto = valorBrutoItem(item);
 
     let desconto;
     if (tipoDescontoEscolhido === 'porcentagem') {
