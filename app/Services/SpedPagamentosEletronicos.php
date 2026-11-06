@@ -71,8 +71,9 @@ class SpedPagamentosEletronicos
                 continue;
             }
 
+            // A parte paga com crédito em loja (troca/haver, tPag 21) não é recebimento eletrônico
             $meio = (string) ($nota->formaPagamento?->meio_pagamento ?? '');
-            $somar($meio, (float) $nota->valor_total);
+            $somar($meio, max(0, (float) $nota->valor_total - (float) $nota->valor_credito_loja));
         }
 
         return ['porCredenciadora' => $porCredenciadora, 'semCredenciadora' => $semCredenciadora];

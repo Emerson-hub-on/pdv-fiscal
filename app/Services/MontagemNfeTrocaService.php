@@ -426,8 +426,18 @@ class MontagemNfeTrocaService
             $avisos[] = "O CFOP {$codigo} não está ativo no cadastro: selecione o tipo de nota.";
         }
 
+        // Crédito em loja gerado pela entrada da troca (existe depois que a entrada é autorizada)
+        $credito = app(CreditoLojaService::class)->saldoDisponivel($cliente?->id, $entrada->id);
+        if ($credito > 0) {
+            $avisos[] = sprintf('O crédito em loja da troca (R$ %s) já vem como pagamento. Se o item novo for mais caro, escolha a forma de pagamento da diferença.',
+                number_format($credito, 2, ',', '.'));
+        } elseif ($entrada->status !== 'emitida') {
+            $avisos[] = 'A NF-e de entrada da troca ainda não foi autorizada: o crédito em loja só é gerado depois da autorização. Emita a entrada antes, para pagar esta venda com o crédito.';
+        }
+
         $nota = new NotaFiscal([
             'cliente_id'                 => $cliente?->id,
+            'valor_credito_loja'         => $credito,
             'natureza_operacao'          => $cfop?->natureza_operacao_padrao ?: 'Venda',
             'finalidade'                 => $cfop ? ($cfop->finalidade_padrao ?? 1) : 1,
             'cfop_saida_id'              => $cfop?->id,
@@ -445,7 +455,9 @@ class MontagemNfeTrocaService
         $this->relacoesVazias($nota, $cliente, $cfop, null);
         $nota->setRelation('trocaEntrada', $entrada);
         $nota->setRelation('itens', collect());
-        $avisos[] = 'Adicione os itens que o cliente está levando e a forma de pagamento.';
+        $avisos[] = $credito > 0
+            ? 'Adicione os itens que o cliente está levando.'
+            : 'Adicione os itens que o cliente está levando e a forma de pagamento.';
 
         return [$nota, $avisos];
     }

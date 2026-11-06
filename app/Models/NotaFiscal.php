@@ -23,6 +23,7 @@ class NotaFiscal extends Model
         'troca_venda_id',
         'troca_nota_fiscal_id',
         'troca_entrada_id',
+        'valor_credito_loja',
         'valor_desconto',
         'valor_frete',
         'cfop_saida_id',

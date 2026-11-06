@@ -130,7 +130,8 @@ class NotaFiscalController extends Controller
                 'natureza_operacao'          => $dados['natureza_operacao'],
                 'finalidade'                 => $dados['finalidade'],
                 'cfop_saida_id'              => $dados['cfop_saida_id'],
-                'forma_pagamento_id'         => $dados['forma_pagamento_id'],
+                'forma_pagamento_id'         => $dados['forma_pagamento_id'] ?? null,
+                'valor_credito_loja'         => $dados['valor_credito_loja'],
                 'operador_id'                => $dados['operador_id'],
                 'informacoes_complementares' => $dados['informacoes_complementares'] ?? null,
                 'notas_referenciadas'        => $dados['notas_referenciadas'],
@@ -201,7 +202,8 @@ class NotaFiscalController extends Controller
             $notaFiscal->natureza_operacao = $dados['natureza_operacao'];
             $notaFiscal->finalidade = $dados['finalidade'];
             $notaFiscal->cfop_saida_id = $dados['cfop_saida_id'];
-            $notaFiscal->forma_pagamento_id = $dados['forma_pagamento_id'];
+            $notaFiscal->forma_pagamento_id = $dados['forma_pagamento_id'] ?? null;
+            $notaFiscal->valor_credito_loja = $dados['valor_credito_loja'];
             $notaFiscal->operador_id = $dados['operador_id'];
             $notaFiscal->informacoes_complementares = $dados['informacoes_complementares'] ?? null;
             $notaFiscal->notas_referenciadas = $dados['notas_referenciadas'];
@@ -278,6 +280,19 @@ class NotaFiscalController extends Controller
         }
     }
 
+    /** Saldo de crédito em loja do cliente (e da troca, na venda do item novo) para o formulário da NF-e (JSON). */
+    public function saldoCreditoLoja(Request $request)
+    {
+        $clienteId = $request->integer('cliente_id') ?: null;
+        $trocaEntradaId = $request->integer('troca_entrada_id') ?: null;
+        $creditos = app(\App\Services\CreditoLojaService::class)->disponiveis($clienteId, $trocaEntradaId);
+
+        return response()->json([
+            'saldo'    => round((float) $creditos->sum('saldo'), 2),
+            'creditos' => $creditos->map(fn ($c) => ['codigo' => $c->codigo, 'saldo' => (float) $c->saldo])->values(),
+        ]);
+    }
+
     /** Confere a senha do operador escolhido e devolve um token que o servidor valida ao salvar a nota. */
     public function autorizarOperador(Request $request)
     {
@@ -325,6 +340,51 @@ class NotaFiscalController extends Controller
     }
 
 
+    /**
+     * Crédito em loja numa NF-e de venda: só em venda normal (finalidade 1, saída), até o total da nota e ao saldo
+     * do cliente (ou da troca). Sem crédito cobrindo tudo, a forma de pagamento da diferença é obrigatória.
+     */
+    private function validarCreditoLoja(Request $request, array $dados, array $itens): float
+    {
+        $credito = round((float) ($dados['valor_credito_loja'] ?? 0), 2);
+        $erro = fn (string $m) => throw \Illuminate\Validation\ValidationException::withMessages(['valor_credito_loja' => $m]);
+
+        $totalItens = round(collect($itens)->sum(fn ($i) => ((float) ($i['quantidade'] ?? 0) * (float) ($i['valor_unitario'] ?? 0))
+            - (float) ($i['valor_desconto'] ?? 0) + (float) ($i['valor_outras_despesas'] ?? 0)) + (float) ($dados['frete_total'] ?? 0), 2);
+
+        if ($credito > 0) {
+            $cfop = CfopSaida::find($dados['cfop_saida_id']);
+
+            if ((int) $dados['finalidade'] !== 1 || $cfop?->tipo_operacao !== 'saida') {
+                $erro('Crédito em loja só pode pagar NF-e de venda (saída normal).');
+            }
+
+            if ($credito - $totalItens > 0.004) {
+                $erro(sprintf('O crédito em loja (R$ %s) não pode ser maior que o total da nota (R$ %s).',
+                    number_format($credito, 2, ',', '.'), number_format($totalItens, 2, ',', '.')));
+            }
+
+            $trocaEntradaId = $request->route('notaFiscal')?->troca_entrada_id ?? ($request->filled('troca_entrada_id') ? (int) $request->input('troca_entrada_id') : null);
+            $disponivel = app(\App\Services\CreditoLojaService::class)->saldoDisponivel((int) $dados['cliente_id'], $trocaEntradaId);
+
+            if ($credito - $disponivel > 0.004) {
+                $erro(sprintf('O cliente tem R$ %s de crédito em loja disponível; a nota está usando R$ %s.',
+                    number_format($disponivel, 2, ',', '.'), number_format($credito, 2, ',', '.')));
+            }
+        }
+
+        $semPagamento = in_array((int) $dados['finalidade'], [3, 4], true);
+        if (empty($dados['forma_pagamento_id']) && !$semPagamento && $totalItens - $credito > 0.004) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'forma_pagamento_id' => $credito > 0
+                    ? 'Selecione a forma de pagamento da diferença que não foi paga com crédito em loja.'
+                    : 'Selecione uma forma de pagamento válida para venda.',
+            ]);
+        }
+
+        return $credito;
+    }
+
     private function validarCabecalhoEItens(Request $request): array
     {
         $dados = $request->validate([
@@ -333,7 +393,9 @@ class NotaFiscalController extends Controller
             'finalidade'                 => ['required', 'in:1,2,3,4,5,6'],
             'motivo_ajuste'              => ['nullable', 'string', 'max:2'],
             'cfop_saida_id'              => ['required', 'exists:cfop_saida,id'],
-            'forma_pagamento_id'         => ['required', function ($atributo, $valor, $fail) {
+            // Pode ficar vazia quando o crédito em loja paga a nota inteira (conferido mais abaixo)
+            'valor_credito_loja'         => ['nullable', 'numeric', 'min:0'],
+            'forma_pagamento_id'         => ['nullable', function ($atributo, $valor, $fail) {
                 // Edição de nota antiga: manter a forma que já estava gravada não bloqueia
                 $atual = request()->route('notaFiscal')?->forma_pagamento_id;
                 if ($atual !== null && (int) $valor === (int) $atual) {
@@ -390,6 +452,8 @@ class NotaFiscalController extends Controller
                 'itens' => 'Adicione ao menos um item à nota.',
             ]);
         }
+
+        $dados['valor_credito_loja'] = $this->validarCreditoLoja($request, $dados, $itens);
 
         $notasReferenciadas = json_decode($dados['notas_referenciadas_json'] ?? '[]', true) ?: [];
         $notasReferenciadas = array_values(array_filter($notasReferenciadas, fn ($c) => preg_match('/^\d{44}$/', $c)));
@@ -848,8 +912,28 @@ class NotaFiscalController extends Controller
             }
         }
 
+        // Crédito em loja: nunca acima do total da nota; o que sobrar precisa de forma de pagamento
+        $credito = round((float) $notaFiscal->valor_credito_loja, 2);
+        if ($credito > 0) {
+            if ($credito > (float) $notaFiscal->valor_total) {
+                $notaFiscal->forceFill(['valor_credito_loja' => $notaFiscal->valor_total])->save();
+                $credito = (float) $notaFiscal->valor_total;
+            }
+
+            if ((float) $notaFiscal->valor_total - $credito > 0.004 && !$notaFiscal->forma_pagamento_id) {
+                $erro = 'O crédito em loja não cobre o total da nota (com impostos): selecione a forma de pagamento da diferença.';
+                $notaFiscal->forceFill(['motivo_rejeicao' => $erro])->save();
+
+                return back()->withErrors(['emissao' => $erro]);
+            }
+        }
+
         try {
             DB::transaction(function () use ($notaFiscal) {
+                // Crédito em loja: trava e confere o saldo ANTES de ir à SEFAZ (abate só depois da autorização)
+                $creditoLoja = app(\App\Services\CreditoLojaService::class);
+                $creditosReservados = $creditoLoja->reservarParaNota($notaFiscal);
+
                 $serie = SerieNfe::ativas()->lockForUpdate()->firstOrFail();
                 $proximoNumero = $serie->numero_atual + 1;
 
@@ -868,6 +952,10 @@ class NotaFiscalController extends Controller
                 $notaFiscal->xml = $resultado['xml'];
                 $notaFiscal->emitida_em = now();
                 $notaFiscal->save();
+
+                // Crédito em loja: a venda abate o crédito usado; a entrada da troca gera o crédito do cliente
+                $creditoLoja->usarNaNota($notaFiscal, $creditosReservados);
+                $creditoLoja->gerarDaTroca($notaFiscal);
 
                 // Pedido faturado pela NF-e: sai da lista do caixa (que só baixa pedidos "finalizado")
                 if ($notaFiscal->pedido_venda_id) {
@@ -971,6 +1059,12 @@ class NotaFiscalController extends Controller
 
         $notaFiscal->load('itens', 'cfopSaida');
 
+        // Entrada de troca: não cancela se o crédito em loja gerado por ela já foi usado
+        $creditoLoja = app(\App\Services\CreditoLojaService::class);
+        if ($erroCredito = $creditoLoja->erroCancelarTroca($notaFiscal)) {
+            return back()->withErrors(['cancelamento' => $erroCredito]);
+        }
+
         try {
             $resultado = (new NotaFiscalService())->cancelar($notaFiscal, $dados['motivo_cancelamento']);
         } catch (\Throwable $e) {
@@ -979,7 +1073,13 @@ class NotaFiscalController extends Controller
 
         // Só mexe em estoque e status local DEPOIS de confirmado pela SEFAZ —
         // se a chamada acima lançar exceção, nada abaixo é executado.
-        DB::transaction(function () use ($notaFiscal, $dados, $resultado) {
+        DB::transaction(function () use ($notaFiscal, $dados, $resultado, $creditoLoja) {
+            // Crédito em loja: venda cancelada devolve o crédito usado; entrada de troca cancelada cancela o crédito
+            $creditoLoja->estornarNota($notaFiscal);
+            if (\App\Services\CreditoLojaService::ehEntradaDeTroca($notaFiscal)) {
+                $creditoLoja->cancelarDaTroca($notaFiscal);
+            }
+
             if ($notaFiscal->cfopSaida->movimenta_estoque) {
                 // [MOVIMENTAÇÃO] estorno pelo EstoqueService (saída volta ao estoque; entrada sai dele)
                 $estoque = app(\App\Services\EstoqueService::class);

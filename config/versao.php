@@ -11,6 +11,26 @@
 
 $historico = [
     [
+        'versao' => '1.7.0',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Crédito em loja (troca / haver do cliente): a NF-e de entrada de uma troca, ao ser autorizada, gera um crédito no valor da nota — em nome do cliente ou, sem cliente identificado, como vale-troca pelo código (VT000123, impresso nas informações complementares).',
+            'NF-e de venda: novo campo "Crédito em loja" com o saldo do cliente. A nota sai com o pagamento "21 – Crédito em loja" e a forma escolhida só para a diferença. O crédito é abatido na autorização e devolvido se a NF-e for cancelada. A venda do item novo da troca já vem com o crédito.',
+            'Caixa: nova forma de pagamento "Crédito em loja (troca)", pelo consumidor identificado ou pelo código do vale-troca. Funciona offline (o caixa tem a lista de créditos e abate na hora) e o servidor confirma quando a venda sobe. Crédito não dá troco. Cancelar a NFC-e devolve o crédito.',
+            'SPED (1601) e fechamento de caixa: a parte paga com crédito em loja não conta como recebimento por cartão/Pix nem como dinheiro na gaveta.',
+            'Financeiro → Créditos em loja: consulta dos créditos com saldo, por cliente ou código, com o histórico de cada um.',
+            'A NF-e de entrada de troca não pode ser cancelada se o crédito gerado por ela já foi usado.',
+        ],
+    ],
+    [
+        'versao' => '1.6.2',
+        'data' => '2026-11-06',
+        'itens' => [
+            'NF-e: cliente com número do endereço "0" era recusado na emissão como "endereço incompleto". Agora só conta como faltando o campo em branco, e a mensagem diz quais campos faltam.',
+            'NFC-e: pelo mesmo motivo, o endereço do cliente com número "0" ficava fora do cupom; agora vai normalmente.',
+        ],
+    ],
+    [
         'versao' => '1.6.1',
         'data' => '2026-11-06',
         'itens' => [

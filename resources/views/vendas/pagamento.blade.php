@@ -55,6 +55,7 @@
                         <div class="p-2.5 cursor-pointer text-sm hover:bg-gray-50" data-forma="pix" data-index="1" onclick="selecionarFormaPagamento('pix')">PIX</div>
                         <div class="p-2.5 cursor-pointer text-sm hover:bg-gray-50" data-forma="credito" data-index="2" onclick="selecionarFormaPagamento('credito')">Cartão de Crédito</div>
                         <div class="p-2.5 cursor-pointer text-sm hover:bg-gray-50" data-forma="debito" data-index="3" onclick="selecionarFormaPagamento('debito')">Cartão de Débito</div>
+                        <div class="p-2.5 cursor-pointer text-sm hover:bg-gray-50 border-t border-gray-100" data-forma="credito_loja" data-index="4" onclick="selecionarFormaPagamento('credito_loja')">Crédito em loja (troca)</div>
                     </div>
                 </div>
             </div>
@@ -236,6 +237,33 @@
     </div>
 </div>
 
+<!-- Modal: crédito em loja (troca / haver do cliente) -->
+<div id="modal-credito-loja" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
+            <div>
+                <h2 class="text-lg font-bold text-white">Crédito em loja</h2>
+                <p id="credito-loja-subtitulo" class="text-xs text-slate-300"></p>
+            </div>
+            <button type="button" onclick="fecharModalCreditoLoja()" class="text-slate-300 hover:text-white text-2xl leading-none">&times;</button>
+        </div>
+        <div class="p-6">
+            <label class="block text-xs font-medium text-gray-600 mb-1">Código do vale-troca</label>
+            <div class="flex gap-2 mb-4">
+                <input type="text" id="credito-loja-codigo" placeholder="VT000000" maxlength="12"
+                       class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm uppercase focus:ring-2 focus:ring-slate-800 outline-none"
+                       onkeydown="if (event.key === 'Enter') { event.preventDefault(); buscarCreditosLoja(); }">
+                <button type="button" onclick="buscarCreditosLoja()"
+                        class="bg-[#10284A] hover:bg-[#163a68] text-white text-sm px-4 py-2 rounded-lg">Buscar</button>
+            </div>
+
+            <ul id="credito-loja-lista" class="divide-y divide-gray-100 border border-gray-200 rounded-lg max-h-64 overflow-y-auto"></ul>
+            <p id="credito-loja-vazio" class="hidden text-sm text-gray-500 text-center py-4"></p>
+            <p class="text-xs text-gray-400 mt-3">Crédito em loja não dá troco: usa até o valor que falta pagar.</p>
+        </div>
+    </div>
+</div>
+
 <!-- Modal de emissão (F2): carregando → venda emitida / em contingência → imprimir o comprovante? -->
 <div id="modal-emissao" class="hidden fixed inset-0 z-[60] bg-black/60 items-center justify-center px-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center">
@@ -312,6 +340,7 @@ const formasPagamento = [
     { valor: 'pix', label: 'PIX' },
     { valor: 'credito', label: 'Cartão de Crédito' },
     { valor: 'debito', label: 'Cartão de Débito' },
+    { valor: 'credito_loja', label: 'Crédito em loja (troca)' },
 ];
 
 // ===================== CLIENTE (Adicionar Consumidor) =====================
@@ -544,7 +573,7 @@ document.getElementById('btn-forma-pagamento').addEventListener('keydown', (e) =
 
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        const modalAberto = ['modal-autorizacao', 'modal-desconto-global', 'modal-tipo-desconto', 'modal-confirmar-voltar', 'modal-cliente']
+        const modalAberto = ['modal-autorizacao', 'modal-desconto-global', 'modal-tipo-desconto', 'modal-confirmar-voltar', 'modal-cliente', 'modal-credito-loja']
             .some(id => !document.getElementById(id).classList.contains('hidden'));
         if (modalAberto) {
             fecharTodosModais();
@@ -559,7 +588,7 @@ document.addEventListener('keydown', (e) => {
 
 
 function fecharTodosModais() {
-    ['modal-autorizacao', 'modal-desconto-global', 'modal-tipo-desconto', 'modal-confirmar-voltar', 'modal-cliente'].forEach(id => {
+    ['modal-autorizacao', 'modal-desconto-global', 'modal-tipo-desconto', 'modal-confirmar-voltar', 'modal-cliente', 'modal-credito-loja'].forEach(id => {
         document.getElementById(id).classList.add('hidden');
         document.getElementById(id).classList.remove('flex');
     });
@@ -767,6 +796,11 @@ function adicionarPagamento() {
     const forma = formaSelecionada;
     const valor = parseFloat(document.getElementById('novo-valor-pagamento').value);
 
+    if (forma === 'credito_loja') {
+        abrirModalCreditoLoja(valor);
+        return;
+    }
+
     if (!valor || valor <= 0) {
         alert('Informe um valor válido.');
         return;
@@ -785,17 +819,120 @@ function adicionarPagamento() {
     }
 }
 
+// ===================== CRÉDITO EM LOJA (troca / haver do cliente) =====================
+const URL_CREDITOS_LOJA = @json(route('vendas.creditos-loja'));
+let valorPedidoCreditoLoja = null;
+let creditosLojaAtuais = [];
+
+function faltaPagar() {
+    const total = Math.max(totalDaVenda - descontoGlobal, 0);
+    return Math.max(0, Math.round((total - pagamentos.reduce((s, p) => s + p.valor, 0)) * 100) / 100);
+}
+
+function abrirModalCreditoLoja(valor) {
+    if (faltaPagar() <= 0) {
+        alert('A venda já está paga.');
+        return;
+    }
+    valorPedidoCreditoLoja = valor > 0 ? valor : null;
+    document.getElementById('credito-loja-codigo').value = '';
+    document.getElementById('credito-loja-subtitulo').textContent = clienteSelecionadoId
+        ? 'Créditos do consumidor identificado — ou digite o código de um vale-troca'
+        : 'Digite o código do vale-troca (consumidor não identificado)';
+    const modal = document.getElementById('modal-credito-loja');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    buscarCreditosLoja();
+    setTimeout(() => document.getElementById('credito-loja-codigo').focus(), 100);
+}
+
+function fecharModalCreditoLoja() {
+    const modal = document.getElementById('modal-credito-loja');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    document.getElementById('novo-valor-pagamento').focus();
+}
+
+async function buscarCreditosLoja() {
+    const codigo = document.getElementById('credito-loja-codigo').value.trim().toUpperCase();
+    const lista = document.getElementById('credito-loja-lista');
+    const vazio = document.getElementById('credito-loja-vazio');
+    lista.replaceChildren();
+    vazio.classList.add('hidden');
+
+    if (!codigo && !clienteSelecionadoId) {
+        vazio.textContent = 'Identifique o consumidor (F4) ou digite o código do vale-troca.';
+        vazio.classList.remove('hidden');
+        return;
+    }
+
+    const params = new URLSearchParams(codigo ? { codigo } : { cliente_id: clienteSelecionadoId });
+    let dados = [];
+    try {
+        const resp = await fetch(`${URL_CREDITOS_LOJA}?${params}`, { headers: { 'Accept': 'application/json' } });
+        dados = await resp.json();
+    } catch (e) {
+        dados = [];
+    }
+
+    // O que já foi lançado nesta venda sai do saldo mostrado
+    creditosLojaAtuais = dados.map(c => ({
+        ...c,
+        saldo: Math.round((c.saldo - pagamentos.filter(p => p.credito_loja_id === c.id).reduce((s, p) => s + p.valor, 0)) * 100) / 100,
+    })).filter(c => c.saldo > 0);
+
+    if (creditosLojaAtuais.length === 0) {
+        vazio.textContent = codigo
+            ? 'Vale-troca não encontrado ou sem saldo neste caixa. Use "Atualizar Caixa" se ele foi gerado agora.'
+            : 'O consumidor não tem crédito em loja.';
+        vazio.classList.remove('hidden');
+        return;
+    }
+
+    creditosLojaAtuais.forEach((c, i) => {
+        const li = document.createElement('li');
+        li.className = 'flex justify-between items-center px-3 py-2.5 hover:bg-blue-50 cursor-pointer text-sm';
+        const rotulo = document.createElement('span');
+        rotulo.textContent = c.codigo + (c.cliente ? ' — ' + c.cliente : ' — vale-troca');
+        const saldo = document.createElement('strong');
+        saldo.textContent = 'R$ ' + c.saldo.toFixed(2).replace('.', ',');
+        li.append(rotulo, saldo);
+        li.addEventListener('click', () => usarCreditoLoja(i));
+        lista.appendChild(li);
+    });
+}
+
+function usarCreditoLoja(indice) {
+    const c = creditosLojaAtuais[indice];
+    if (!c) return;
+
+    if (c.cliente_id && Number(c.cliente_id) !== Number(clienteSelecionadoId)) {
+        alert('Este crédito é de ' + c.cliente + '. Identifique esse consumidor (F4) antes de usar o crédito.');
+        return;
+    }
+
+    // Usa o valor digitado, limitado ao saldo do crédito e ao que falta pagar (crédito não dá troco)
+    const valor = Math.min(valorPedidoCreditoLoja ?? Infinity, c.saldo, faltaPagar());
+    if (valor <= 0) return;
+
+    pagamentos.push({ forma_pagamento: 'credito_loja', valor: Math.round(valor * 100) / 100, credito_loja_id: c.id, codigo: c.codigo });
+    document.getElementById('novo-valor-pagamento').value = '';
+    fecharModalCreditoLoja();
+    renderizarPagamentos();
+    if (atualizarRestante() >= -0.009) document.getElementById('btn-finalizar').focus();
+}
+
 function removerPagamento(index) {
     pagamentos.splice(index, 1);
     renderizarPagamentos();
 }
 
 function renderizarPagamentos() {
-    const nomes = { dinheiro: 'Dinheiro', pix: 'PIX', credito: 'Crédito', debito: 'Débito' };
+    const nomes = { dinheiro: 'Dinheiro', pix: 'PIX', credito: 'Crédito', debito: 'Débito', credito_loja: 'Crédito em loja' };
 
     document.getElementById('lista-pagamentos').innerHTML = pagamentos.map((p, i) => `
         <div class="flex justify-between items-center bg-gray-50 border rounded px-2 py-1 text-sm">
-            <span>${nomes[p.forma_pagamento]} — R$ ${p.valor.toFixed(2)}</span>
+            <span>${nomes[p.forma_pagamento]}${p.codigo ? ' (' + p.codigo + ')' : ''} — R$ ${p.valor.toFixed(2)}</span>
             <button onclick="removerPagamento(${i})" class="text-red-500 text-xs hover:underline">Remover</button>
         </div>
     `).join('');
@@ -885,7 +1022,7 @@ async function finalizarVenda() {
             quantidade: i.quantidade,
             desconto: i.desconto,
         })),
-        pagamentos: pagamentos,
+        pagamentos: pagamentos.map(p => ({ forma_pagamento: p.forma_pagamento, valor: p.valor, credito_loja_id: p.credito_loja_id ?? null })),
         desconto_global: descontoGlobal,
         cliente_id: clienteSelecionadoId,
         cpf_na_nota: cpfNaNotaValor,

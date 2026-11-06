@@ -295,11 +295,20 @@ class NotaFiscalService
     {
         $cliente = $notaFiscal->cliente;
 
-        $enderecoCompleto = $cliente->logradouro && $cliente->numero && $cliente->bairro
-            && $cliente->municipio && $cliente->cod_municipio && $cliente->uf && $cliente->cep;
+        // Vazio é só o que está em branco: número "0" é válido (em PHP a string "0" contaria como vazia)
+        $faltando = collect([
+            'logradouro'    => 'rua',
+            'numero'        => 'número',
+            'bairro'        => 'bairro',
+            'municipio'     => 'município',
+            'cod_municipio' => 'código IBGE do município',
+            'uf'            => 'UF',
+            'cep'           => 'CEP',
+        ])->filter(fn ($rotulo, $campo) => trim((string) $cliente->{$campo}) === '');
 
-        if (!$enderecoCompleto && !$this->previa) {
-            throw new Exception("Endereço do cliente '{$cliente->nome}' está incompleto — obrigatório para NF-e modelo 55.");
+        if ($faltando->isNotEmpty() && !$this->previa) {
+            throw new Exception("Endereço do cliente '{$cliente->nome}' está incompleto — obrigatório para NF-e modelo 55. "
+                . 'Falta: ' . $faltando->implode(', ') . '.');
         }
 
         $std = new \stdClass();
@@ -944,9 +953,33 @@ if ($this->empresa->crt <= 2) {
         $forma = $notaFiscal->formaPagamento;
         $det = new \stdClass();
 
-        $semPagamento = !$forma
-            || $forma->meio_pagamento === '90'
-            || in_array((int) $notaFiscal->finalidade, [3, 4], true);
+        $semPagamento = in_array((int) $notaFiscal->finalidade, [3, 4], true)
+            || (!$forma && (float) $notaFiscal->valor_credito_loja <= 0)
+            || $forma?->meio_pagamento === '90';
+
+        // Venda paga (no todo ou em parte) com crédito em loja (troca/haver): tPag 21 + a forma da diferença
+        $credito = min(round((float) $notaFiscal->valor_credito_loja, 2), round((float) $notaFiscal->valor_total, 2));
+
+        if (!$semPagamento && $credito > 0) {
+            $detCredito = new \stdClass();
+            $detCredito->indPag = 0;
+            $detCredito->tPag = '21';
+            $detCredito->vPag = number_format($credito, 2, '.', '');
+            $nfe->tagDetPag($detCredito);
+
+            $diferenca = round((float) $notaFiscal->valor_total - $credito, 2);
+            if ($diferenca > 0 && $forma) {
+                $det->indPag = (int) $forma->ind_pag;
+                $det->tPag = $forma->meio_pagamento;
+                $det->vPag = number_format($diferenca, 2, '.', '');
+                if ($det->tPag === '99') {
+                    $det->xPag = mb_substr($forma->descricao, 0, 60);
+                }
+                $nfe->tagDetPag($det);
+            }
+
+            return;
+        }
 
         if ($semPagamento) {
             $det->indPag = 0;
@@ -989,6 +1022,15 @@ if ($this->empresa->crt <= 2) {
         $referencias = $notaFiscal->textoNotasReferenciadas();
         if ($referencias) {
             $partes[] = $referencias;
+        }
+
+        // Troca: a entrada gera crédito em loja (vale-troca) no valor da nota; a venda informa quanto foi pago com ele
+        if (\App\Services\CreditoLojaService::ehEntradaDeTroca($notaFiscal)) {
+            $partes[] = sprintf('Crédito em loja gerado: vale-troca nº %s, valor R$ %s',
+                \App\Services\CreditoLojaService::codigoDaNota($notaFiscal->id),
+                number_format((float) $notaFiscal->valor_total, 2, ',', '.'));
+        } elseif ((float) $notaFiscal->valor_credito_loja > 0) {
+            $partes[] = sprintf('Pago com crédito em loja: R$ %s', number_format((float) $notaFiscal->valor_credito_loja, 2, ',', '.'));
         }
 
         if ($notaFiscal->informacoes_complementares) {

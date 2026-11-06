@@ -48,6 +48,28 @@ class CancelamentoController extends Controller
         return response()->json($vendas);
     }
 
+    /** Devolve ao SQLite do caixa o crédito em loja usado na venda cancelada. */
+    private function devolverCreditoLojaNoCaixa(string $vendaUuid): void
+    {
+        try {
+            $db = DB::connection('sqlite_local');
+            if (!$db->getSchemaBuilder()->hasTable('creditos_loja_cache')) {
+                return;
+            }
+
+            $pagamentos = json_decode((string) $db->table('vendas_pendentes')->where('uuid', $vendaUuid)->value('pagamentos'), true) ?? [];
+
+            foreach ($pagamentos as $p) {
+                if (($p['forma_pagamento'] ?? null) === 'credito_loja' && !empty($p['credito_loja_id'])) {
+                    $db->table('creditos_loja_cache')->where('id', (int) $p['credito_loja_id'])
+                        ->update(['saldo' => DB::raw('saldo + ' . round((float) $p['valor'], 2)), 'status' => 'ativo', 'updated_at' => now()]);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning("Não foi possível devolver o crédito em loja da venda {$vendaUuid} no caixa: {$e->getMessage()}");
+        }
+    }
+
     public function cancelar(Request $request, string $venda)
     {
         $usuario = Auth::user();
@@ -89,6 +111,13 @@ class CancelamentoController extends Controller
 
             // Uso único: só gasta a autorização quando o cancelamento deu certo
             AutorizacaoSupervisor::consumir('cancelar_nfce');
+
+            // Crédito em loja usado na venda volta para o cliente: no caixa na hora; no servidor agora
+            // (venda já no servidor) ou quando a venda cancelada subir (sincronização)
+            $this->devolverCreditoLojaNoCaixa($vendaUuid);
+            if (!$local) {
+                app(\App\Services\CreditoLojaService::class)->estornarVenda($vendaUuid);
+            }
 
             // Relatório de fechamento: cancelamento no caixa em que a venda foi feita
             $vendaLocal = DB::connection('sqlite_local')->table('vendas_pendentes')

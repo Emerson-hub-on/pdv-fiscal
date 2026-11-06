@@ -629,6 +629,66 @@ class SyncService
         }
     }
 
+    /**
+     * Direção 1: créditos em loja (vale-troca) com saldo, para o caixa aceitar como pagamento (também offline).
+     * Substitui a lista inteira e desconta o que já foi usado em vendas deste caixa que ainda não subiram.
+     */
+    public function puxarCreditosLoja(): array
+    {
+        try {
+            $local = DB::connection('sqlite_local');
+
+            if (!$local->getSchemaBuilder()->hasTable('creditos_loja_cache')) {
+                return ['sucesso' => true, 'creditos_atualizados' => 0];
+            }
+
+            $creditos = \App\Models\CreditoLoja::with('cliente:id,nome')->disponiveis()->get();
+            $usoPendente = self::creditoUsadoEmVendasPendentes();
+            $agora = now();
+
+            $linhas = $creditos->map(fn ($c) => [
+                'id'           => $c->id,
+                'codigo'       => $c->codigo,
+                'cliente_id'   => $c->cliente_id,
+                'cliente_nome' => $c->cliente?->nome,
+                'saldo'        => max(0, round((float) $c->saldo - ($usoPendente[$c->id] ?? 0), 2)),
+                'status'       => $c->status,
+                'updated_at'   => $agora,
+            ])->all();
+
+            $local->transaction(function () use ($local, $linhas) {
+                $local->table('creditos_loja_cache')->delete();
+                foreach (array_chunk($linhas, 100) as $bloco) {
+                    $local->table('creditos_loja_cache')->insert($bloco);
+                }
+            });
+
+            return ['sucesso' => true, 'creditos_atualizados' => count($linhas)];
+        } catch (\Throwable $e) {
+            return $this->registrarFalha($e);
+        }
+    }
+
+    /** Crédito em loja usado em vendas deste caixa ainda não enviadas ao servidor: [credito_id => valor]. */
+    public static function creditoUsadoEmVendasPendentes(): array
+    {
+        $uso = [];
+
+        DB::connection('sqlite_local')->table('vendas_pendentes')
+            ->where('status', '!=', 'sincronizada')
+            ->where(fn ($q) => $q->whereNull('status_fiscal')->orWhere('status_fiscal', '!=', 'cancelada'))
+            ->pluck('pagamentos')
+            ->each(function ($json) use (&$uso) {
+                foreach (json_decode((string) $json, true) ?? [] as $p) {
+                    if (($p['forma_pagamento'] ?? null) === 'credito_loja' && !empty($p['credito_loja_id'])) {
+                        $uso[(int) $p['credito_loja_id']] = round(($uso[(int) $p['credito_loja_id']] ?? 0) + (float) $p['valor'], 2);
+                    }
+                }
+            });
+
+        return $uso;
+    }
+
     private function gravarClienteCache(Cliente $cliente): void
     {
         DB::connection('sqlite_local')->table('clientes_cache')->updateOrInsert(
@@ -989,14 +1049,25 @@ class SyncService
                             ] + $this->camposImpostosItem($item));
                         }
 
+                        $creditoLoja = app(\App\Services\CreditoLojaService::class);
+
                         foreach ($pagamentos as $pagamento) {
+                            $creditoId = ($pagamento['forma_pagamento'] ?? null) === 'credito_loja' && !empty($pagamento['credito_loja_id'])
+                                ? (int) $pagamento['credito_loja_id'] : null;
+
                             DB::table('venda_pagamentos')->insert([
                                 'venda_id' => $vendaId,
                                 'forma_pagamento' => $pagamento['forma_pagamento'],
                                 'valor' => $pagamento['valor'],
+                                'credito_loja_id' => $creditoId && \App\Models\CreditoLoja::whereKey($creditoId)->exists() ? $creditoId : null,
                                 'created_at' => now(),
                                 'updated_at' => now(),
                             ]);
+
+                            // Crédito em loja usado no caixa: abate no servidor (idempotente pelo uuid da venda)
+                            if ($creditoId && $vendaLocal->status_fiscal !== 'cancelada') {
+                                $creditoLoja->usarNaVenda($creditoId, (float) $pagamento['valor'], $vendaLocal->uuid, $vendaLocal->operador_id_central);
+                            }
                         }
                     });
                 } elseif ($vendaLocal->fiscal_sync_pendente) {
@@ -1012,6 +1083,9 @@ class SyncService
 
                         // Cancelada no caixa: devolve o estoque que o servidor baixou. Só na transição, para nunca devolver duas vezes.
                         if ($afetadas && $vendaLocal->status_fiscal === 'cancelada') {
+                            // Crédito em loja usado na venda volta para o cliente
+                            app(\App\Services\CreditoLojaService::class)->estornarVenda($vendaLocal->uuid);
+
                             // [MOVIMENTAÇÃO] devolução pelo EstoqueService (registra no histórico e não devolve duas vezes)
                             $vendaId = DB::table('vendas')->where('uuid', $vendaLocal->uuid)->value('id');
 
@@ -1187,6 +1261,7 @@ class SyncService
             'empresa'  => 'puxarEmpresa',
             'catalogo' => 'puxarCatalogo',
             'clientes' => 'puxarClientes',
+            'creditos_loja' => 'puxarCreditosLoja',
             'usuarios' => 'puxarUsuarios',
             'pdvs'     => 'puxarPdvs',
             'pedidos'  => 'puxarPedidosVenda',

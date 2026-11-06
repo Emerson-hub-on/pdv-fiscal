@@ -362,6 +362,28 @@
                 </button>
                 @error('operador_id') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
             </div>
+
+            {{-- Crédito em loja (troca / haver do cliente): aparece quando o cliente tem saldo --}}
+            @php $creditoInicial = (float) old('valor_credito_loja', $temBase ? $notaBase->valor_credito_loja : 0); @endphp
+            <div id="bloco-credito-loja" class="col-span-2 {{ $creditoInicial > 0 ? '' : 'hidden' }} rounded-xl bg-amber-50 ring-1 ring-amber-200 px-4 py-3 flex flex-wrap items-end gap-4">
+                <div class="w-48">
+                    <label for="campo-credito-loja" class="{{ $rotuloCls }}">Crédito em loja (R$)</label>
+                    <input type="number" step="0.01" min="0" name="valor_credito_loja" id="campo-credito-loja"
+                           value="{{ $creditoInicial > 0 ? number_format($creditoInicial, 2, '.', '') : '' }}"
+                           oninput="atualizarTravaCabecalho(); atualizarAvisoCreditoLoja()"
+                           class="w-full bg-white border border-amber-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
+                </div>
+                <div class="flex-1 min-w-60 text-sm text-amber-900">
+                    <p class="font-semibold">Pago com crédito em loja (troca / haver do cliente)</p>
+                    <p id="texto-credito-loja" class="text-xs text-amber-800">Saldo disponível: consultando…</p>
+                    <p class="text-xs text-amber-800">Sai na NF-e como "21 – Crédito em loja". O tipo de pagamento acima vale só para a diferença.</p>
+                </div>
+                <button type="button" onclick="usarCreditoLojaTotal()"
+                        class="text-xs bg-white border border-amber-300 text-amber-900 rounded-xl px-3 py-2 font-medium hover:bg-amber-100 transition">
+                    Usar saldo disponível
+                </button>
+                @error('valor_credito_loja') <p class="{{ $erroCls }} w-full">{{ $message }}</p> @enderror
+            </div>
             <input type="hidden" name="operador_token" id="campo-operador-token" value="{{ old('operador_token') }}">
 
             <input type="hidden" name="natureza_operacao" id="campo-natureza" value="{{ $naturezaAtual }}">
@@ -1655,6 +1677,7 @@ function selecionarCliente(index) {
 
     campoCliente.value = c.id;
     document.getElementById('texto-cliente-selecionado').innerText = `${c.nome} — ${c.cpf_cnpj}`;
+    carregarCreditoLoja();
 
     atualizarTravaCabecalho(); // input hidden não dispara 'change', então chamamos na mão
     fecharModalCliente();
@@ -1689,6 +1712,60 @@ function sugerirTipoCfop() {
     else if (['5', '6', '7'].includes(primeiro)) document.getElementById('cfop-form-tipo').value = 'saida';
 }
 
+// ---------------- Crédito em loja (troca / haver do cliente) ----------------
+const URL_CREDITO_LOJA = @json(route('notasfiscais.credito-loja'));
+const trocaEntradaIdNota = @json($temBase ? $notaBase->troca_entrada_id : null);
+let saldoCreditoLoja = 0;
+
+function totalItensNota() {
+    return (itensNota || []).reduce((soma, i) => soma + Number(i.valor_total || 0) + Number(i.valor_outras_despesas || 0), 0);
+}
+
+async function carregarCreditoLoja() {
+    const bloco = document.getElementById('bloco-credito-loja');
+    const campo = document.getElementById('campo-credito-loja');
+    const clienteId = campoCliente?.value ?? '';
+
+    if (!clienteId && !trocaEntradaIdNota) {
+        saldoCreditoLoja = 0;
+        bloco.classList.toggle('hidden', !(parseFloat(campo.value || '0') > 0));
+        atualizarAvisoCreditoLoja();
+        return;
+    }
+
+    try {
+        const params = new URLSearchParams({ cliente_id: clienteId, troca_entrada_id: trocaEntradaIdNota ?? '' });
+        const resp = await fetch(`${URL_CREDITO_LOJA}?${params}`, { headers: { 'Accept': 'application/json' } });
+        const dados = await resp.json();
+        saldoCreditoLoja = Number(dados.saldo || 0);
+    } catch (e) {
+        saldoCreditoLoja = 0;
+    }
+
+    bloco.classList.toggle('hidden', saldoCreditoLoja <= 0 && !(parseFloat(campo.value || '0') > 0));
+    atualizarAvisoCreditoLoja();
+}
+
+function atualizarAvisoCreditoLoja() {
+    const texto = document.getElementById('texto-credito-loja');
+    if (!texto) return;
+    const usado = parseFloat(document.getElementById('campo-credito-loja').value || '0') || 0;
+    const moeda = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    texto.textContent = `Saldo disponível: ${moeda(saldoCreditoLoja)}`
+        + (usado > saldoCreditoLoja + 0.004 ? ' — o valor informado é maior que o saldo.' : '')
+        + (usado > 0 && totalItensNota() > usado + 0.004 ? ` · diferença a pagar: ${moeda(totalItensNota() - usado)}` : '');
+    texto.className = 'text-xs ' + (usado > saldoCreditoLoja + 0.004 ? 'text-red-700 font-semibold' : 'text-amber-800');
+}
+
+function usarCreditoLojaTotal() {
+    const total = totalItensNota();
+    const valor = total > 0 ? Math.min(saldoCreditoLoja, total) : saldoCreditoLoja;
+    document.getElementById('campo-credito-loja').value = valor > 0 ? valor.toFixed(2) : '';
+    atualizarTravaCabecalho();
+    atualizarAvisoCreditoLoja();
+}
+
 function cabecalhoValido() {
     const cliente = campoCliente?.value ?? '';
     const cfop = campoCfop?.value ?? '';
@@ -1699,7 +1776,7 @@ function cabecalhoValido() {
 
     return cliente !== '' && 
            cfop !== '' && 
-           pagamento !== '' && 
+           (pagamento !== '' || (parseFloat(document.getElementById('campo-credito-loja')?.value || '0') || 0) > 0) && 
            operador !== '' && 
            natureza !== '' && 
            finalidade !== '';
@@ -2788,5 +2865,6 @@ function postJson(url, payload) {
 // Inicialização: se vier preenchido (edição) ou old() de uma tentativa anterior (criação), já libera e renderiza
 atualizarTravaCabecalho();
 renderizarGridItens();
+carregarCreditoLoja();
 aplicarVisibilidadeFrete();
 </script>

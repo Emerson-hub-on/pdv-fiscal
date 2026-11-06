@@ -347,6 +347,10 @@
                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
                     Contas a receber
                     </a>
+                    <a href="{{ route('creditos-loja.index') }}"
+                   class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                    Créditos em loja
+                    </a>
                     <a href="{{ route('pedidos-compra.index') }}"
                        class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
                         Pedidos de compra

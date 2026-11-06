@@ -150,7 +150,21 @@
     @if ($notaFiscal->origem_tipo === 'troca' && ($notaFiscal->troca_venda_id || $notaFiscal->troca_nota_fiscal_id) && $notaFiscal->status !== 'cancelada')
         @php
             $vendaDaTroca = \App\Models\NotaFiscal::where('troca_entrada_id', $notaFiscal->id)->where('status', '!=', 'cancelada')->first();
+            $creditoDaTroca = \App\Models\CreditoLoja::where('nota_fiscal_id', $notaFiscal->id)->first();
         @endphp
+        <div class="bg-white rounded-xl shadow-sm ring-1 ring-slate-200 border-l-4 border-l-amber-400 px-5 py-4 text-sm">
+            <p class="font-semibold text-slate-800">Troca · crédito em loja</p>
+            @if ($creditoDaTroca)
+                <p class="text-slate-600 mt-0.5">
+                    Vale-troca <span class="font-mono font-bold text-[#10284A]">{{ $creditoDaTroca->codigo }}</span>
+                    · valor R$ {{ number_format((float) $creditoDaTroca->valor, 2, ',', '.') }}
+                    · saldo <strong>R$ {{ number_format((float) $creditoDaTroca->saldo, 2, ',', '.') }}</strong>
+                    {{ $creditoDaTroca->cliente ? '· em nome de ' . $creditoDaTroca->cliente->nome : '· consumidor não identificado: use o código no caixa' }}
+                </p>
+            @else
+                <p class="text-slate-600 mt-0.5">O crédito em loja no valor desta nota é gerado quando ela for autorizada pela SEFAZ.</p>
+            @endif
+        </div>
         <div class="bg-white rounded-xl shadow-sm ring-1 ring-slate-200 border-l-4 border-l-[#10284A] px-5 py-4 flex flex-wrap items-center justify-between gap-4">
             <div class="text-sm">
                 <p class="font-semibold text-slate-800">Troca · saída do item novo</p>

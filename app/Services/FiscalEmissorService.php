@@ -880,8 +880,9 @@ if ($empresa->crt <= 2) {
             // Endereco do destinatario e opcional na NFC-e - so monta se os
             // campos minimos estiverem completos (cadastro rapido do caixa
             // normalmente NAO tem endereco preenchido, e tudo bem)
-            $enderecoCompleto = $cliente->logradouro && $cliente->numero && $cliente->bairro
-                && $cliente->municipio && $cliente->cod_municipio && $cliente->uf && $cliente->cep;
+            // Vazio é só o que está em branco: número "0" é válido (em PHP a string "0" contaria como vazia)
+            $enderecoCompleto = collect(['logradouro', 'numero', 'bairro', 'municipio', 'cod_municipio', 'uf', 'cep'])
+                ->every(fn ($campo) => trim((string) ($cliente->{$campo} ?? '')) !== '');
 
             if ($enderecoCompleto) {
                 $endereco = new \stdClass();
@@ -965,7 +966,8 @@ protected function montarTotais(Make $nfe, Venda $venda): void
 
     protected function montarPagamento(Make $nfe, Venda $venda): void
     {
-        $pagMap = ['dinheiro' => '01', 'credito' => '03', 'debito' => '04', 'pix' => '17'];
+        // credito_loja = crédito em loja (troca/haver do cliente): tPag 21
+        $pagMap = ['dinheiro' => '01', 'credito' => '03', 'debito' => '04', 'pix' => '17', 'credito_loja' => '21'];
 
         $std = new \stdClass();
         $std->vTroco = number_format($venda->troco ?? 0, 2, '.', '');

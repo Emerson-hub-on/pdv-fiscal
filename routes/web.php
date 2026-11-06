@@ -126,6 +126,7 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
         Route::get('pdv', [VendaController::class, 'pdv'])->name('vendas.pdv');
         Route::get('pdv/buscar-produto', [VendaController::class, 'buscarProduto'])->name('vendas.buscar-produto');
         Route::post('pdv/finalizar', [VendaController::class, 'finalizar'])->name('vendas.finalizar');
+        Route::get('pdv/creditos-loja', [VendaController::class, 'creditosLoja'])->name('vendas.creditos-loja');
         Route::post('pdv/pagamento/preparar', [VendaController::class, 'prepararPagamento'])->name('vendas.preparar-pagamento');
         Route::get('pdv/pagamento', [VendaController::class, 'telaPagamento'])->name('vendas.pagamento');
         Route::get('pdv/cupons', [CupomFiscalController::class, 'listar'])->name('vendas.cupons');
@@ -347,6 +348,9 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
 
             // ---------------- CONTAS A PAGAR ----------------
             Route::prefix('financeiro')->group(function () {
+                // Crédito em loja (haver do cliente / vale-troca)
+                Route::get('creditos-loja', [\App\Http\Controllers\CreditoLojaController::class, 'index'])->name('creditos-loja.index');
+
                 Route::get('contas-pagar/buscar-fornecedor', [ContaPagarController::class, 'buscarFornecedor'])
                     ->name('contas-pagar.buscar-fornecedor');
 
@@ -566,6 +570,8 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
 
             Route::get('notasfiscais/buscar-produto', [NotaFiscalController::class, 'buscarProduto'])
                 ->name('notasfiscais.buscar-produto');
+            Route::get('notasfiscais/credito-loja', [NotaFiscalController::class, 'saldoCreditoLoja'])
+                ->name('notasfiscais.credito-loja');
             Route::get('notasfiscais/buscar-cliente', [NotaFiscalController::class, 'buscarCliente'])
                 ->name('notasfiscais.buscar-cliente');
             Route::get('notasfiscais/buscar-operador', [NotaFiscalController::class, 'buscarOperador'])

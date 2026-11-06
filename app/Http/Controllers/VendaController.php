@@ -304,6 +304,76 @@ class VendaController extends Controller
         }
     }
  
+    /**
+     * Pagamento com crédito em loja (troca/haver): confere no SQLite do caixa e abate o saldo
+     * (dentro da transação da venda). O servidor registra o uso quando a venda sobe.
+     * Crédito não dá troco: a soma dos créditos não pode passar do total da venda.
+     */
+    private function abaterCreditoLoja(array $pagamentos, float $totalVenda, $clienteId): void
+    {
+        $usos = collect($pagamentos)->where('forma_pagamento', 'credito_loja')
+            ->groupBy(fn ($p) => (int) ($p['credito_loja_id'] ?? 0))
+            ->map(fn ($g) => round((float) $g->sum('valor'), 2));
+
+        if ($usos->isEmpty()) {
+            return;
+        }
+
+        if ($usos->sum() - $totalVenda > 0.009) {
+            throw new \Exception('O crédito em loja não pode ser maior que o total da venda (crédito não dá troco).');
+        }
+
+        $db = DB::connection('sqlite_local');
+
+        foreach ($usos as $creditoId => $valor) {
+            $credito = $db->table('creditos_loja_cache')->where('id', $creditoId)->lockForUpdate()->first();
+
+            if (!$credito || $credito->status !== 'ativo') {
+                throw new \Exception('Crédito em loja não encontrado neste caixa. Use "Atualizar Caixa" e tente de novo.');
+            }
+
+            // Crédito com dono só vale para ele; vale-troca sem cliente vale pelo código
+            if ($credito->cliente_id && (int) $credito->cliente_id !== (int) $clienteId) {
+                throw new \Exception("O crédito {$credito->codigo} é de outro cliente. Identifique o consumidor dono do crédito.");
+            }
+
+            if ($valor - (float) $credito->saldo > 0.009) {
+                throw new \Exception(sprintf('O crédito %s tem só R$ %s de saldo.', $credito->codigo, number_format((float) $credito->saldo, 2, ',', '.')));
+            }
+
+            $db->table('creditos_loja_cache')->where('id', $creditoId)
+                ->update(['saldo' => round((float) $credito->saldo - $valor, 2), 'updated_at' => now()]);
+        }
+    }
+
+    /** Caixa: créditos em loja do cliente da venda, ou de um vale-troca pelo código (JSON). */
+    public function creditosLoja(Request $request)
+    {
+        $db = DB::connection('sqlite_local');
+
+        if (!$db->getSchemaBuilder()->hasTable('creditos_loja_cache')) {
+            return response()->json([]);
+        }
+
+        $codigo = strtoupper(trim((string) $request->get('codigo', '')));
+        $clienteId = (int) $request->get('cliente_id', 0);
+
+        $creditos = $db->table('creditos_loja_cache')
+            ->where('status', 'ativo')->where('saldo', '>', 0)
+            ->when($codigo !== '', fn ($q) => $q->where('codigo', $codigo))
+            ->when($codigo === '', fn ($q) => $q->where('cliente_id', $clienteId ?: -1))
+            ->orderBy('id')
+            ->get();
+
+        return response()->json($creditos->map(fn ($c) => [
+            'id'         => $c->id,
+            'codigo'     => $c->codigo,
+            'cliente_id' => $c->cliente_id,
+            'cliente'    => $c->cliente_nome,
+            'saldo'      => round((float) $c->saldo, 2),
+        ])->values());
+    }
+
     public function finalizar(Request $request)
     {
         // 1. Lê o ID do pedido da sessão ANTES de ela ser limpa (previne adulteração via request)
@@ -316,8 +386,9 @@ class VendaController extends Controller
             'itens.*.quantidade' => 'required|integer|min:1',
             'itens.*.desconto' => 'nullable|numeric|min:0',
             'pagamentos' => 'required|array|min:1',
-            'pagamentos.*.forma_pagamento' => 'required|in:dinheiro,pix,credito,debito',
+            'pagamentos.*.forma_pagamento' => 'required|in:dinheiro,pix,credito,debito,credito_loja',
             'pagamentos.*.valor' => 'required|numeric|min:0.01',
+            'pagamentos.*.credito_loja_id' => 'required_if:pagamentos.*.forma_pagamento,credito_loja|nullable|integer',
             'desconto_global' => 'nullable|numeric|min:0',
             'cliente_id' => 'nullable|integer',
             'cpf_na_nota' => 'nullable|digits:11',
@@ -418,6 +489,8 @@ class VendaController extends Controller
                 if ($troco < -0.01) {
                     throw new \Exception('A soma dos pagamentos é menor que o total da venda.');
                 }
+
+                $this->abaterCreditoLoja($validado['pagamentos'], $totalComDesconto, $validado['cliente_id'] ?? null);
 
 
                 if ($pedidoVendaId) {
