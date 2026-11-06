@@ -55,7 +55,7 @@ class SpedPagamentosEletronicos
             ->pluck('total', 'forma_pagamento');
 
         foreach ($pagamentosCaixa as $forma => $total) {
-            $somar(Credenciadora::MEIO_DO_CAIXA[$forma] ?? '99', (float) $total);
+            $somar(\App\Support\FormasCaixa::meio($forma), (float) $total); // meio (tPag) pelo cadastro de formas do caixa
         }
 
         // ---- NF-e de saída ----

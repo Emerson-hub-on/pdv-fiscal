@@ -542,7 +542,7 @@ class VendaController extends Controller
         $dados = $request->validate([
             'venda_uuid'      => 'required|string|max:36',
             'valor'           => 'required|numeric|min:0.01',
-            'forma_pagamento' => 'required|in:' . implode(',', array_keys(\App\Services\ConvenioService::FORMAS_RECEBIMENTO)),
+            'forma_pagamento' => ['required', \Illuminate\Validation\Rule::in(\App\Support\FormasCaixa::paraRecebimento('caixa')->pluck('codigo')->all())],
         ], [
             'valor.required' => 'Informe o valor pago.',
             'valor.min'      => 'O valor pago deve ser maior que zero.',
@@ -627,7 +627,8 @@ class VendaController extends Controller
             'itens.*.quantidade' => 'required|numeric|min:0.001', // fracionada no produto de balança (kg)
             'itens.*.desconto' => 'nullable|numeric|min:0',
             'pagamentos' => 'required|array|min:1',
-            'pagamentos.*.forma_pagamento' => 'required|in:dinheiro,pix,credito,debito,credito_loja,convenio',
+            // Formas do cadastro (Cadastros → Caixa → Formas de pagamento), ativas neste caixa
+            'pagamentos.*.forma_pagamento' => ['required', \Illuminate\Validation\Rule::in(\App\Support\FormasCaixa::ativas('caixa')->pluck('codigo')->all())],
             'pagamentos.*.valor' => 'required|numeric|min:0.01',
             'pagamentos.*.credito_loja_id' => 'required_if:pagamentos.*.forma_pagamento,credito_loja|nullable|integer',
             'desconto_global' => 'nullable|numeric|min:0',
@@ -729,6 +730,16 @@ class VendaController extends Controller
 
                 if ($troco < -0.01) {
                     throw new \Exception('A soma dos pagamentos é menor que o total da venda.');
+                }
+
+                // Troco só pode sair de forma que aceita troco (dinheiro, em geral)
+                if ($troco > 0.009) {
+                    $aceitaTroco = collect($validado['pagamentos'])
+                        ->filter(fn ($p) => \App\Support\FormasCaixa::forma($p['forma_pagamento'], 'caixa')['permite_troco'] ?? false)
+                        ->sum('valor');
+                    if ($troco - $aceitaTroco > 0.009) {
+                        throw new \Exception('O valor pago passou do total numa forma que não dá troco. Ajuste o valor ou use uma forma que aceite troco.');
+                    }
                 }
 
                 $this->abaterCreditoLoja($validado['pagamentos'], $totalComDesconto, $validado['cliente_id'] ?? null);

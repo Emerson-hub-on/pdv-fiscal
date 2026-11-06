@@ -23,22 +23,7 @@ use Illuminate\Support\Facades\DB;
  */
 class MontagemNfeService
 {
-    // Forma de pagamento do caixa → meio de pagamento (tPag) da NF-e
-    private const MEIOS_DO_CAIXA = [
-        'dinheiro' => ['01'],
-        'credito'  => ['03'],
-        'debito'   => ['04'],
-        'pix'      => ['17', '20'],
-        'convenio' => ['05'],
-    ];
-
-    private const NOMES_PAGAMENTO = [
-        'dinheiro' => 'Dinheiro',
-        'credito'  => 'Crédito',
-        'debito'   => 'Débito',
-        'pix'      => 'Pix',
-        'convenio' => 'Convênio',
-    ];
+    // Forma de pagamento do caixa -> meio (tPag) e nome: pelo cadastro (FormasCaixa)
 
     /** Motivo que impede montar NF-e desta venda (null = pode montar). */
     public static function erroVendaParaMontagem(?Venda $venda): ?string
@@ -305,13 +290,15 @@ class MontagemNfeService
 
         if ($pagamentos->count() > 1) {
             $descricao = $pagamentos
-                ->map(fn ($valor, $forma) => (self::NOMES_PAGAMENTO[$forma] ?? $forma) . ' R$ ' . number_format($valor, 2, ',', '.'))
+                ->map(fn ($valor, $forma) => \App\Support\FormasCaixa::rotulo($forma) . ' R$ ' . number_format($valor, 2, ',', '.'))
                 ->implode(', ');
             $avisos[] = "A NFC-e foi paga com mais de uma forma ({$descricao}). A NF-e aceita uma: foi pré-selecionada a de maior valor.";
         }
 
         $formaCaixa = (string) $pagamentos->keys()->first();
-        $meios = self::MEIOS_DO_CAIXA[$formaCaixa] ?? ['99'];
+        // Meio pelo cadastro de formas do caixa; PIX aceita dinâmico ou estático
+        $meio = \App\Support\FormasCaixa::meio($formaCaixa);
+        $meios = in_array($meio, ['17', '20'], true) ? ['17', '20'] : [$meio];
 
         $forma = FormaPagamento::ativos()->paraSaida()
             ->whereIn('meio_pagamento', $meios)
@@ -320,7 +307,7 @@ class MontagemNfeService
             ->first();
 
         if (!$forma) {
-            $nome = self::NOMES_PAGAMENTO[$formaCaixa] ?? $formaCaixa;
+            $nome = \App\Support\FormasCaixa::rotulo($formaCaixa);
             $avisos[] = "Nenhuma forma de pagamento de saída ativa para \"{$nome}\": selecione o tipo de pagamento.";
         }
 

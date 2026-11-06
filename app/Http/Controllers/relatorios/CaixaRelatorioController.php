@@ -152,12 +152,12 @@ class CaixaRelatorioController extends Controller
                 ->join('vendas', 'vendas.id', '=', 'venda_pagamentos.venda_id')
                 ->whereColumn('vendas.caixa_id', 'caixas.id')
                 ->where('vendas.status', '!=', 'cancelada')
-                ->where('venda_pagamentos.forma_pagamento', 'dinheiro')
+                ->whereIn('venda_pagamentos.forma_pagamento', \App\Support\FormasCaixa::codigosDinheiro())
                 ->selectRaw('coalesce(sum(venda_pagamentos.valor), 0)'),
             // Baixa de convênio recebida em dinheiro neste caixa também está na gaveta
             'total_convenio_dinheiro' => DB::table('contas_receber_parcelas')
                 ->whereColumn('contas_receber_parcelas.recebido_caixa_uuid', 'caixas.uuid')
-                ->where('contas_receber_parcelas.recebido_forma_caixa', 'dinheiro')
+                ->whereIn('contas_receber_parcelas.recebido_forma_caixa', \App\Support\FormasCaixa::codigosDinheiro())
                 ->selectRaw('coalesce(sum(contas_receber_parcelas.valor_recebido), 0)'),
         ];
     }

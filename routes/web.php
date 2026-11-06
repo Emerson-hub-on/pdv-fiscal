@@ -255,6 +255,13 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
         Route::middleware('permissao:pdvs')->group(function () {
             Route::resource('pdvs', PdvController::class)->except(['destroy', 'show']);
             Route::patch('pdvs/{pdv}/toggle-ativo', [PdvController::class, 'toggleAtivo'])->name('pdvs.toggle-ativo');
+
+            // Cadastros → Caixa → Formas de pagamento (as opções da tela de pagamento do caixa)
+            Route::resource('formas-pagamento-caixa', \App\Http\Controllers\FormaPagamentoCaixaController::class)
+                ->except(['show'])
+                ->parameters(['formas-pagamento-caixa' => 'forma']);
+            Route::patch('formas-pagamento-caixa/{forma}/toggle-ativo', [\App\Http\Controllers\FormaPagamentoCaixaController::class, 'toggleAtivo'])
+                ->name('formas-pagamento-caixa.toggle-ativo');
         });
 
         // ---------------- CLIENTES E FORNECEDORES ----------------

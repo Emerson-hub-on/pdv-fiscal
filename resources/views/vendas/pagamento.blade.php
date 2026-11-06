@@ -4,6 +4,8 @@
 
 @section('conteudo')
 @php
+    // Formas de pagamento cadastradas no painel (cache do caixa, vale offline)
+    $formasCaixa = \App\Support\FormasCaixa::ativas('caixa')->values();
     // Padrões visuais do sistema (Tailwind) usados nesta tela
     $rotuloCx = 'block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5';
     $campoCx = 'w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 hover:border-slate-300 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition';
@@ -80,15 +82,14 @@
                     <div class="relative flex-1">
                         <button type="button" id="btn-forma-pagamento" onclick="toggleDropdownFormaPagamento()"
                                 class="w-full h-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-medium text-left text-slate-800 hover:bg-white hover:border-[#10284A]/40 focus:outline-none focus:ring-2 focus:ring-[#10284A]/30 transition">
-                            Dinheiro
+                            {{ $formasCaixa->first()['descricao'] ?? 'Dinheiro' }}
                         </button>
-                        <div id="dropdown-forma-pagamento" class="absolute bg-white ring-1 ring-slate-200 rounded-xl shadow-lg w-full mt-1 hidden z-10 overflow-hidden">
-                            <div class="px-3 py-2.5 cursor-pointer text-sm text-slate-700 hover:bg-slate-50" data-forma="dinheiro" data-index="0" onclick="selecionarFormaPagamento('dinheiro')">Dinheiro</div>
-                            <div class="px-3 py-2.5 cursor-pointer text-sm text-slate-700 hover:bg-slate-50" data-forma="pix" data-index="1" onclick="selecionarFormaPagamento('pix')">PIX</div>
-                            <div class="px-3 py-2.5 cursor-pointer text-sm text-slate-700 hover:bg-slate-50" data-forma="credito" data-index="2" onclick="selecionarFormaPagamento('credito')">Cartão de Crédito</div>
-                            <div class="px-3 py-2.5 cursor-pointer text-sm text-slate-700 hover:bg-slate-50" data-forma="debito" data-index="3" onclick="selecionarFormaPagamento('debito')">Cartão de Débito</div>
-                            <div class="px-3 py-2.5 cursor-pointer text-sm text-slate-700 hover:bg-slate-50 border-t border-slate-100" data-forma="credito_loja" data-index="4" onclick="selecionarFormaPagamento('credito_loja')">Crédito em loja (troca)</div>
-                            <div class="px-3 py-2.5 cursor-pointer text-sm text-slate-700 hover:bg-slate-50" data-forma="convenio" data-index="5" onclick="selecionarFormaPagamento('convenio')">Convênio (fiado)</div>
+                        <div id="dropdown-forma-pagamento" class="absolute bg-white ring-1 ring-slate-200 rounded-xl shadow-lg w-full mt-1 hidden z-10 overflow-hidden max-h-80 overflow-y-auto">
+                            {{-- Opções do cadastro (Cadastros → Caixa → Formas de pagamento), na ordem de lá --}}
+                            @foreach ($formasCaixa as $i => $f)
+                                <div class="px-3 py-2.5 cursor-pointer text-sm text-slate-700 hover:bg-slate-50 {{ in_array($f['tipo'], \App\Support\FormasCaixa::TIPOS_ESPECIAIS, true) ? 'border-t border-slate-100' : '' }}"
+                                     data-forma="{{ $f['codigo'] }}" data-index="{{ $i }}" onclick="selecionarFormaPagamento(@js($f['codigo']))">{{ $f['descricao'] }}</div>
+                            @endforeach
                         </div>
                     </div>
                 </div>
@@ -504,7 +505,8 @@ const totalDaVenda = {{ $total }};
 let pagamentos = [];
 let descontoGlobal = 0;
 let tipoDescontoPendente = null;
-let formaSelecionada = 'dinheiro';
+const FORMAS_CAIXA = @json(\App\Support\FormasCaixa::ativas('caixa')->values());
+let formaSelecionada = FORMAS_CAIXA[0]?.codigo ?? 'dinheiro';
 let indiceFormaDestacada = 0;
 let tipoDescontoEscolhido = null;
 const liberacoes = @json($liberacoes);
@@ -515,14 +517,7 @@ let cpfNaNotaValor = null;
 let timeoutCliente;
 
 
-const formasPagamento = [
-    { valor: 'dinheiro', label: 'Dinheiro' },
-    { valor: 'pix', label: 'PIX' },
-    { valor: 'credito', label: 'Cartão de Crédito' },
-    { valor: 'debito', label: 'Cartão de Débito' },
-    { valor: 'credito_loja', label: 'Crédito em loja (troca)' },
-    { valor: 'convenio', label: 'Convênio (fiado)' },
-];
+const formasPagamento = FORMAS_CAIXA.map(f => ({ valor: f.codigo, label: f.descricao }));
 
 // ===================== LINHA DE CLIENTE NAS LISTAS (Nome | CPF/CNPJ | UF) =====================
 // Nome comprido (comum em CNPJ) termina em "..." na própria coluna: o nome completo fica no cadastro do cliente
@@ -1421,7 +1416,7 @@ function removerPagamento(index) {
 }
 
 function renderizarPagamentos() {
-    const nomes = { dinheiro: 'Dinheiro', pix: 'PIX', credito: 'Crédito', debito: 'Débito', credito_loja: 'Crédito em loja', convenio: 'Convênio' };
+    const nomes = Object.fromEntries(FORMAS_CAIXA.map(f => [f.codigo, f.descricao]));
 
     document.getElementById('lista-pagamentos').innerHTML = pagamentos.length === 0
         ? '<p class="text-sm text-slate-400 rounded-xl border border-dashed border-slate-200 px-3 py-2.5 text-center">Nenhum pagamento lançado</p>'
@@ -1508,6 +1503,18 @@ async function finalizarVenda() {
         document.getElementById('erro-venda').innerText = 'A soma dos pagamentos é menor que o total da venda.';
         document.getElementById('erro-venda').classList.remove('hidden');
         return;
+    }
+
+    // Troco só sai de forma que aceita troco (dinheiro, em geral)
+    if (diferenca > 0.009) {
+        const aceitaTroco = pagamentos
+            .filter(p => FORMAS_CAIXA.find(f => f.codigo === p.forma_pagamento)?.permite_troco)
+            .reduce((soma, p) => soma + p.valor, 0);
+        if (diferenca - aceitaTroco > 0.009) {
+            document.getElementById('erro-venda').innerText = 'O valor passou do total e a forma usada não dá troco. Ajuste o valor ou use uma forma que aceite troco (ex.: dinheiro).';
+            document.getElementById('erro-venda').classList.remove('hidden');
+            return;
+        }
     }
 
     document.getElementById('erro-venda').classList.add('hidden');

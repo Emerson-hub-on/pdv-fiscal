@@ -11,6 +11,17 @@
 
 $historico = [
     [
+        'versao' => '1.12.0',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Cadastros → Caixa → Formas de pagamento (novo grupo "Caixa" no menu, com PDVs e Formas de pagamento): lista as opções da tela de pagamento do caixa com ordem, meio de pagamento da NFC-e (tPag), se aceita troco, nº de vendas e situação, e o botão "Nova forma de pagamento".',
+            'Nova forma: descrição no caixa, meio de pagamento da SEFAZ (dinheiro, cheque, cartões, vales, boleto, depósito, PIX, transferência, fidelidade, outros), ordem, aceita troco e ativa. Pode ser editada, inativada ou excluída (só se nunca foi usada em venda).',
+            'As 6 formas de antes viram "do sistema" (Dinheiro, PIX, Crédito, Débito, Crédito em loja e Convênio): podem ser renomeadas, reordenadas e inativadas, mas não excluídas nem ter o meio trocado. O caixa nunca fica sem forma ativa.',
+            'O caixa deixou de usar formas fixas: a lista vem no "Atualizar Caixa" (vale offline) e alimenta a tela de pagamento, a validação da venda, a NFC-e (tPag pelo cadastro; "99 - Outros" leva a descrição em xPag; cartões e PIX com tpIntegra), o fechamento (dinheiro da gaveta = formas de meio 01), a baixa do convênio no caixa, o SPED 1601, a montagem de NF-e, o relatório de vendas por forma de pagamento e o relatório de caixa.',
+            'Troco só sai de forma que aceita troco: pagar a mais em cartão, PIX ou vale é recusado com aviso.',
+        ],
+    ],
+    [
         'versao' => '1.11.7',
         'data' => '2026-11-06',
         'itens' => [

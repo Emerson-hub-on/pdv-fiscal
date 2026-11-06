@@ -732,6 +732,46 @@ class SyncService
         }
     }
 
+    /**
+     * Direção 1: formas de pagamento do caixa cadastradas no painel (Cadastros → Caixa → Formas de pagamento).
+     * Substitui a lista inteira; a tela de pagamento e a NFC-e do caixa leem daqui (também offline).
+     */
+    public function puxarFormasPagamento(): array
+    {
+        try {
+            $local = DB::connection('sqlite_local');
+            if (!$local->getSchemaBuilder()->hasTable('formas_pagamento_cache')) {
+                return ['sucesso' => true, 'formas' => 0];
+            }
+
+            $agora = now();
+            $linhas = \App\Models\FormaPagamentoCaixa::ordenadas()->get()->map(fn ($f) => [
+                'id'             => $f->id,
+                'codigo'         => $f->codigo,
+                'descricao'      => $f->descricao,
+                'meio_pagamento' => $f->meio_pagamento,
+                'tipo'           => $f->tipo,
+                'permite_troco'  => $f->permite_troco,
+                'ativo'          => $f->ativo,
+                'ordem'          => $f->ordem,
+                'updated_at'     => $agora,
+            ])->all();
+
+            // Lista vazia no servidor não apaga a do caixa (o caixa seguiria sem formas)
+            if ($linhas) {
+                $local->transaction(function () use ($local, $linhas) {
+                    $local->table('formas_pagamento_cache')->delete();
+                    $local->table('formas_pagamento_cache')->insert($linhas);
+                });
+            }
+            \App\Support\FormasCaixa::limpar();
+
+            return ['sucesso' => true, 'formas' => count($linhas)];
+        } catch (\Throwable $e) {
+            return $this->registrarFalha($e);
+        }
+    }
+
     /** Baixas de convênio feitas neste caixa que ainda não subiram: [[cliente_id => valor], [venda_uuid => valor]]. */
     public static function convenioRecebidoPendente(): array
     {
@@ -1431,6 +1471,7 @@ class SyncService
             'catalogo' => 'puxarCatalogo',
             'clientes' => 'puxarClientes',
             'creditos_loja' => 'puxarCreditosLoja',
+            'formas_pagamento' => 'puxarFormasPagamento',
             'usuarios' => 'puxarUsuarios',
             'pdvs'     => 'puxarPdvs',
             'pedidos'  => 'puxarPedidosVenda',

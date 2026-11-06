@@ -120,10 +120,28 @@
                 @endif
 
                 @if (auth()->user()?->podeVer('pdvs'))
-                    <a href="{{ route('pdvs.index') }}"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
-                        PDVs
-                    </a>
+                    {{-- Caixa: PDVs e as formas de pagamento da tela de pagamento --}}
+                    <div class="relative">
+                        <button id="btn-cadastro-caixa" onclick="toggleFlyout('sub-cadastro-caixa', 'btn-cadastro-caixa')"
+                                class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                            <span>Caixa</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
+
+                        <div id="sub-cadastro-caixa" data-flyout data-botao="btn-cadastro-caixa"
+                            class="hidden fixed bg-[#10284A] border border-white/10 rounded-lg py-1 min-w-48 z-50 shadow-lg">
+                            <a href="{{ route('pdvs.index') }}"
+                            class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                                PDVs
+                            </a>
+                            <a href="{{ route('formas-pagamento-caixa.index') }}"
+                            class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition border-t border-white/10">
+                                Formas de pagamento
+                            </a>
+                        </div>
+                    </div>
                 @endif
 
                 @if (auth()->user()?->podeVer('transportadoras'))
@@ -655,7 +673,8 @@
                     'produtos' => ['Cadastros', 'Produtos'],
                     'clientes' => ['Cadastros', 'Clientes'],
                     'empresa'  => ['Cadastros', 'Empresa'],
-                    'pdvs'     => ['Cadastros', 'PDVs'],
+                    'pdvs'     => ['Cadastros', 'Caixa', 'PDVs'],
+                    'formas-pagamento-caixa' => ['Cadastros', 'Caixa', 'Formas de pagamento'],
                     'notasfiscais' => ['Faturamento', 'Nota Fiscal - Saída'],
                     'entradas-nota' => ['Faturamento', 'Nota Fiscal - Entrada'],
                     'series-nfe' => ['Faturamento', 'Séries de NF-e'],
@@ -688,9 +707,14 @@
                 @hasSection('breadcrumb')
                     @yield('breadcrumb')
                 @elseif ($breadcrumbAuto)
-                    <span>{{ $breadcrumbAuto[0] }}</span>
-                    <span class="text-slate-400">›</span>
-                    <span class="text-white font-medium truncate">{{ $breadcrumbAuto[1] }}</span>
+                    @foreach ($breadcrumbAuto as $parte)
+                        @if ($loop->last)
+                            <span class="text-white font-medium truncate">{{ $parte }}</span>
+                        @else
+                            <span>{{ $parte }}</span>
+                            <span class="text-slate-400">›</span>
+                        @endif
+                    @endforeach
                 @endif
             </div>
             <div class="[.sem-sidebar_&]:hidden">

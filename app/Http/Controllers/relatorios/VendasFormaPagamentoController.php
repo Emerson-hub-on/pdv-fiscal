@@ -146,6 +146,14 @@ class VendasFormaPagamentoController extends Controller
     {
         $formas = (new FormaPagamento())->getTable();
 
+        // Formas do caixa (Cadastros → Caixa → Formas de pagamento): meio (tPag) e nome de cada código
+        $pdo = DB::getPdo();
+        $formasCaixa = \App\Support\FormasCaixa::lista();
+        $casoMeio = $formasCaixa->map(fn ($f) => 'WHEN ' . $pdo->quote($f['codigo']) . ' THEN ' . $pdo->quote($f['meio_pagamento']))->implode(' ') ?: "WHEN '' THEN '99'";
+        $casoNome = $formasCaixa->map(fn ($f) => 'WHEN ' . $pdo->quote($f['codigo']) . ' THEN ' . $pdo->quote($f['descricao']))->implode(' ') ?: "WHEN '' THEN 'Outros'";
+        $dinheiro = collect(\App\Support\FormasCaixa::codigosDinheiro())->map(fn ($c) => $pdo->quote($c))->implode(', ');
+        $aPrazo = $formasCaixa->where('tipo', 'convenio')->keys()->map(fn ($c) => $pdo->quote($c))->implode(', ') ?: "''";
+
         $nfce = DB::table('venda_pagamentos as vp')
             ->join('vendas as d', 'd.id', '=', 'vp.venda_id')
             ->where('d.status', 'emitida')
@@ -156,17 +164,12 @@ class VendasFormaPagamentoController extends Controller
                 d.numero_nfce as numero,
                 d.serie_nfce COLLATE utf8mb4_unicode_ci as serie,
                 vp.id as pagamento_id,
-                (CASE vp.forma_pagamento
-                    WHEN 'dinheiro' THEN '01' WHEN 'credito' THEN '03' WHEN 'debito' THEN '04' WHEN 'pix' THEN '17'
-                    ELSE '99' END) COLLATE utf8mb4_unicode_ci as codigo,
-                (CASE vp.forma_pagamento
-                    WHEN 'dinheiro' THEN 'Dinheiro' WHEN 'credito' THEN 'Cartão de crédito'
-                    WHEN 'debito' THEN 'Cartão de débito' WHEN 'pix' THEN 'PIX'
-                    ELSE 'Outros' END) COLLATE utf8mb4_unicode_ci as forma,
-                0 as a_prazo,
+                (CASE vp.forma_pagamento {$casoMeio} ELSE '99' END) COLLATE utf8mb4_unicode_ci as codigo,
+                (CASE vp.forma_pagamento {$casoNome} ELSE 'Outros' END) COLLATE utf8mb4_unicode_ci as forma,
+                (CASE WHEN vp.forma_pagamento IN ({$aPrazo}) THEN 1 ELSE 0 END) as a_prazo,
                 (vp.valor - CASE
-                    WHEN vp.forma_pagamento = 'dinheiro'
-                         AND vp.id = (SELECT MIN(x.id) FROM venda_pagamentos x WHERE x.venda_id = vp.venda_id AND x.forma_pagamento = 'dinheiro')
+                    WHEN vp.forma_pagamento IN ({$dinheiro})
+                         AND vp.id = (SELECT MIN(x.id) FROM venda_pagamentos x WHERE x.venda_id = vp.venda_id AND x.forma_pagamento IN ({$dinheiro}))
                     THEN COALESCE(d.troco, 0) ELSE 0 END) as valor
             ");
 

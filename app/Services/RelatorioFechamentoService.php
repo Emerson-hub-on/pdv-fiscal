@@ -22,6 +22,9 @@ class RelatorioFechamentoService
     /** @var callable id do usuário => código */
     private $codigoDe;
 
+    /** De onde vêm as formas de pagamento: 'caixa' (SQLite) ou 'servidor' (MySQL). */
+    private string $fonte = 'servidor';
+
     public const FORMAS = [
         'dinheiro' => 'Dinheiro',
         'pix' => 'Pix',
@@ -34,6 +37,7 @@ class RelatorioFechamentoService
     public function dados(CaixaLocal $caixa): array
     {
         $db = DB::connection('sqlite_local');
+        $this->fonte = 'caixa';
 
         $vendas = $db->table('vendas_pendentes')
             ->where(function ($q) use ($caixa) {
@@ -77,6 +81,7 @@ class RelatorioFechamentoService
      */
     public function dadosServidor(Caixa $caixa): array
     {
+        $this->fonte = 'servidor';
         $vendas = Venda::with(['pagamentos', 'itens'])
             ->where('caixa_id', $caixa->id)
             ->orderBy('created_at')
@@ -152,7 +157,9 @@ class RelatorioFechamentoService
 
         // ---------------- Vendas ----------------
         $linhas = [];
-        $formas = array_fill_keys(array_keys(self::FORMAS), 0.0);
+        // Formas do cadastro (Cadastros → Caixa → Formas de pagamento); forma sem cadastro aparece pelo próprio código
+        $rotulosFormas = \App\Support\FormasCaixa::rotulos($this->fonte) + self::FORMAS;
+        $formas = array_fill_keys(array_keys($rotulosFormas), 0.0);
         $totalBruto = 0.0;
         $totalDescontos = 0.0;
         $totalLiquido = 0.0;
@@ -196,8 +203,8 @@ class RelatorioFechamentoService
             }
 
             foreach ($pagamentos as $p) {
-                $chave = array_key_exists($p['forma_pagamento'] ?? '', self::FORMAS) ? $p['forma_pagamento'] : 'dinheiro';
-                $formas[$chave] += (float) $p['valor'];
+                $chave = ($p['forma_pagamento'] ?? null) ?: 'dinheiro';
+                $formas[$chave] = ($formas[$chave] ?? 0.0) + (float) $p['valor'];
             }
         }
 
@@ -263,13 +270,17 @@ class RelatorioFechamentoService
             'hora' => $r->recebido_em ? Carbon::parse($r->recebido_em)->format('H:i') : '',
             'cliente' => $r->cliente,
             'numero' => $r->numero_nfce ? str_pad($r->numero_nfce, 6, '0', STR_PAD_LEFT) : 's/ NFC-e',
-            'forma' => \App\Services\ConvenioService::FORMAS_RECEBIMENTO[$r->forma_pagamento] ?? $r->forma_pagamento,
+            'forma' => \App\Support\FormasCaixa::rotulo($r->forma_pagamento, $this->fonte),
             'valor' => round((float) $r->valor, 2),
         ])->values()->all();
 
         // ---------------- Gaveta ----------------
         // Dinheiro de venda + dinheiro recebido de convênio − troco
-        $dinheiroEsperado = $valorAbertura + $formas['dinheiro'] + ($convenioRecebido['dinheiro'] ?? 0) - $troco;
+        // Na gaveta fica o que foi pago em formas de meio 01 (dinheiro), de venda e de convênio recebido
+        $codigosDinheiro = \App\Support\FormasCaixa::codigosDinheiro($this->fonte);
+        $dinheiroVendas = array_sum(array_intersect_key($formas, array_flip($codigosDinheiro)));
+        $dinheiroConvenio = array_sum(array_intersect_key($convenioRecebido, array_flip($codigosDinheiro)));
+        $dinheiroEsperado = $valorAbertura + $dinheiroVendas + $dinheiroConvenio - $troco;
         $informado = $informado !== null ? (float) $informado : null;
 
         return [
@@ -288,6 +299,9 @@ class RelatorioFechamentoService
             'recebimentos_convenio' => $linhasRecebimentos,
             'convenio_recebido' => $convenioRecebido,
             'total_convenio_recebido' => round(array_sum($convenioRecebido), 2),
+            'rotulos_formas' => $rotulosFormas,
+            'dinheiro_vendas' => round($dinheiroVendas, 2),
+            'dinheiro_convenio' => round($dinheiroConvenio, 2),
             'dinheiro_esperado' => round($dinheiroEsperado, 2),
             'informado' => $informado,
             'diferenca' => $informado !== null ? round($informado - $dinheiroEsperado, 2) : null,
@@ -311,7 +325,7 @@ class RelatorioFechamentoService
             return 'Múltiplo';
         }
 
-        return self::FORMAS[$chaves->first()] ?? ($chaves->first() ?: '-');
+        return $chaves->first() ? \App\Support\FormasCaixa::rotulo($chaves->first(), $this->fonte) : '-';
     }
 
     private function liberadoPor(?object $o): string

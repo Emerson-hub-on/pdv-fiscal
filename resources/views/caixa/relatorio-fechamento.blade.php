@@ -7,7 +7,7 @@
     $numeroCaixa = $caixa->id_central
         ? str_pad($caixa->id_central, 6, '0', STR_PAD_LEFT)
         : 'L' . str_pad($caixa->id, 5, '0', STR_PAD_LEFT);
-    $formas = \App\Services\RelatorioFechamentoService::FORMAS;
+    $formas = $r['rotulos_formas'] ?? \App\Services\RelatorioFechamentoService::FORMAS;
 @endphp
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -126,7 +126,7 @@
             </div>
         @endforeach
         @foreach ($r['convenio_recebido'] as $chave => $valor)
-            <div class="flex justify-between"><span>{{ \App\Services\ConvenioService::FORMAS_RECEBIMENTO[$chave] ?? $chave }}</span><span>{{ $n($valor) }}</span></div>
+            <div class="flex justify-between"><span>{{ $formas[$chave] ?? $chave }}</span><span>{{ $n($valor) }}</span></div>
         @endforeach
         <div class="flex justify-between font-bold mt-1"><span>Total recebido</span><span>{{ $n($r['total_convenio_recebido']) }}</span></div>
     @endif
@@ -182,9 +182,9 @@
     <p class="font-bold">CONFERÊNCIA DA GAVETA (DINHEIRO)</p>
     <div class="space-y-0.5 mt-1">
         <div class="flex justify-between"><span>Fundo de troco</span><span>{{ $n($caixa->valor_abertura) }}</span></div>
-        <div class="flex justify-between"><span>(+) Vendas em dinheiro</span><span>{{ $n($r['formas']['dinheiro'] ?? 0) }}</span></div>
-        @if (($r['convenio_recebido']['dinheiro'] ?? 0) > 0)
-            <div class="flex justify-between"><span>(+) Convênio recebido em dinheiro</span><span>{{ $n($r['convenio_recebido']['dinheiro']) }}</span></div>
+        <div class="flex justify-between"><span>(+) Vendas em dinheiro</span><span>{{ $n($r['dinheiro_vendas'] ?? ($r['formas']['dinheiro'] ?? 0)) }}</span></div>
+        @if (($r['dinheiro_convenio'] ?? 0) > 0)
+            <div class="flex justify-between"><span>(+) Convênio recebido em dinheiro</span><span>{{ $n($r['dinheiro_convenio']) }}</span></div>
         @endif
         <div class="flex justify-between"><span>(-) Troco devolvido</span><span>{{ $n($r['troco']) }}</span></div>
         <div class="flex justify-between font-bold"><span>Esperado na gaveta</span><span>{{ $n($r['dinheiro_esperado']) }}</span></div>

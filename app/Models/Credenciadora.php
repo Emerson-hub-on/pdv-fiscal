@@ -18,16 +18,6 @@ class Credenciadora extends Model
     /** PIX tem três códigos na NF-e; a venda do caixa só sabe que foi "pix" */
     public const MEIOS_PIX = ['17', '20', '23'];
 
-    /** venda_pagamentos.forma_pagamento (caixa) => código do meio */
-    public const MEIO_DO_CAIXA = [
-        'dinheiro' => '01',
-        'credito'  => '03',
-        'debito'   => '04',
-        'pix'      => '17',
-        'credito_loja' => '21', // crédito em loja (troca/haver): não é meio eletrônico, fica fora do 1601
-        'convenio'     => '05', // convênio (fiado no limite do cliente): crédito loja a prazo, fora do 1601
-    ];
-
     protected $fillable = ['nome', 'cnpj', 'cep', 'logradouro', 'numero', 'complemento', 'bairro', 'municipio', 'cod_municipio', 'uf', 'ativo'];
 
     protected $casts = ['ativo' => 'boolean'];

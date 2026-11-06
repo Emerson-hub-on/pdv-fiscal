@@ -88,7 +88,7 @@
 
             <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Forma de pagamento</label>
             <div id="baixa-convenio-formas" class="grid grid-cols-2 gap-2 mb-3">
-                @foreach (\App\Services\ConvenioService::FORMAS_RECEBIMENTO as $chave => $rotulo)
+                @foreach (\App\Support\FormasCaixa::paraRecebimento('caixa')->pluck('descricao', 'codigo') as $chave => $rotulo)
                     <button type="button" data-forma="{{ $chave }}" onclick="escolherFormaBaixaConvenio('{{ $chave }}')"
                             class="forma-baixa-convenio border-2 border-gray-200 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:border-[#10284A] transition">
                         <span class="opacity-50 text-xs mr-1">{{ $loop->iteration }}</span>{{ $rotulo }}
@@ -103,7 +103,7 @@
                     class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-lg font-semibold disabled:opacity-60">
                 Confirmar recebimento <span class="opacity-70 text-xs">Enter</span>
             </button>
-            <p class="text-xs text-gray-400 mt-3">Teclas 1 a 4 escolhem a forma. O valor recebido entra no fechamento deste caixa.</p>
+            <p class="text-xs text-gray-400 mt-3">Teclas numéricas escolhem a forma. O valor recebido entra no fechamento deste caixa.</p>
         </div>
     </div>
 </div>
@@ -247,7 +247,7 @@
         document.getElementById('btn-confirmar-baixa-convenio').disabled = false;
         const campo = document.getElementById('baixa-convenio-valor');
         campo.value = Number(l.saldo).toFixed(2);
-        escolherFormaBaixaConvenio('dinheiro');
+        escolherFormaBaixaConvenio(@json(\App\Support\FormasCaixa::paraRecebimento('caixa')->first()['codigo'] ?? 'dinheiro'));
         atualizarInfoBaixaConvenio();
 
         const modal = document.getElementById('modal-baixa-convenio');
@@ -334,7 +334,7 @@
         e.stopPropagation();
         if (e.key === 'Escape') { e.preventDefault(); fecharModalBaixaConvenio(); return; }
         if (e.key === 'Enter') { e.preventDefault(); confirmarBaixaConvenio(); return; }
-        const formas = Object.keys(@json(\App\Services\ConvenioService::FORMAS_RECEBIMENTO));
+        const formas = @json(\App\Support\FormasCaixa::paraRecebimento('caixa')->pluck('codigo'));
         const n = parseInt(e.key, 10);
         if (n >= 1 && n <= formas.length && e.target.id !== 'baixa-convenio-valor') {
             e.preventDefault();

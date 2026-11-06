@@ -219,7 +219,7 @@ class ContaReceberController extends Controller
         \App\Models\ContaReceberHistorico::registrar($parcela->conta_receber_id, 'estorno', [
             'valor' => $parcela->valor_recebido,
             'forma' => $parcela->formaPagamento?->descricao
-                ?? (\App\Services\ConvenioService::FORMAS_RECEBIMENTO[$parcela->recebido_forma_caixa] ?? null),
+                ?? ($parcela->recebido_forma_caixa ? \App\Support\FormasCaixa::rotulo($parcela->recebido_forma_caixa) : null),
             'descricao' => 'Estorno da baixa de ' . $parcela->data_recebimento->format('d/m/Y')
                 . ($baixaNoCaixa ? ' feita no caixa' : '') . '. Motivo: ' . trim($motivo),
         ], $parcela);

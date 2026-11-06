@@ -202,21 +202,6 @@ class ConvenioService
         });
     }
 
-    /** Forma do caixa → meio de pagamento (tPag) da forma de pagamento do financeiro. */
-    private const MEIOS_DO_CAIXA = [
-        'dinheiro' => ['01'],
-        'pix'      => ['17', '20'],
-        'credito'  => ['03'],
-        'debito'   => ['04'],
-    ];
-
-    public const FORMAS_RECEBIMENTO = [
-        'dinheiro' => 'Dinheiro',
-        'pix'      => 'PIX',
-        'credito'  => 'Cartão de crédito',
-        'debito'   => 'Cartão de débito',
-    ];
-
     /**
      * Baixa do convênio feita no caixa (sobe pela sincronização). Idempotente pelo uuid do recebimento.
      * Abate das parcelas em aberto pela ordem de vencimento; pagamento menor que a parcela a divide em
@@ -242,8 +227,10 @@ class ConvenioService
             }
 
             $data = Carbon::parse($r['recebido_em'] ?? now())->toDateString();
+            // Forma de pagamento do financeiro com o mesmo meio (tPag) da forma usada no caixa
+            $meio = \App\Support\FormasCaixa::meio($r['forma_pagamento']);
             $formaId = \App\Models\FormaPagamento::ativos()
-                ->whereIn('meio_pagamento', self::MEIOS_DO_CAIXA[$r['forma_pagamento']] ?? ['99'])
+                ->whereIn('meio_pagamento', in_array($meio, ['17', '20'], true) ? ['17', '20'] : [$meio])
                 ->orderBy('id')->value('id');
             $marca = [
                 'data_recebimento'     => $data,
@@ -293,7 +280,7 @@ class ConvenioService
                 ->each(fn ($p, $i) => $p->update(['numero' => $i + 1]));
             $conta->recalcularStatus();
 
-            $forma = self::FORMAS_RECEBIMENTO[$r['forma_pagamento']] ?? $r['forma_pagamento'];
+            $forma = \App\Support\FormasCaixa::rotulo($r['forma_pagamento']);
             foreach ($historico as [$parcela, $valor, $texto]) {
                 // parcela recebida (a dividida aparece pela parte recebida, já renumerada)
                 $parcela ??= $conta->parcelas()->where('recebimento_uuid', $r['uuid'])->orderByDesc('id')->first();

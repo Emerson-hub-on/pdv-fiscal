@@ -966,9 +966,9 @@ protected function montarTotais(Make $nfe, Venda $venda): void
 
     protected function montarPagamento(Make $nfe, Venda $venda): void
     {
-        // credito_loja = crédito em loja (troca/haver do cliente): tPag 21
-        // convenio = venda fiado no limite do cliente: tPag 05 (Crédito Loja) a prazo (indPag 1)
-        $pagMap = ['dinheiro' => '01', 'credito' => '03', 'debito' => '04', 'pix' => '17', 'credito_loja' => '21', 'convenio' => '05'];
+        // Meio de pagamento (tPag) pelo cadastro de formas do caixa: crédito em loja 21, convênio 05 (a prazo, indPag 1)...
+        // Emissão no caixa lê o cache local (vale offline); no servidor, o MySQL
+        $fonte = $this instanceof EmissorLocalService ? 'caixa' : 'servidor';
 
         $std = new \stdClass();
         $std->vTroco = number_format($venda->troco ?? 0, 2, '.', '');
@@ -976,11 +976,17 @@ protected function montarTotais(Make $nfe, Venda $venda): void
 
         foreach ($venda->pagamentos as $pagamento) {
             $det = new \stdClass();
-            $det->indPag = $pagamento->forma_pagamento === 'convenio' ? 1 : 0;
-            $det->tPag = $pagMap[$pagamento->forma_pagamento] ?? '99';
+            $forma = \App\Support\FormasCaixa::forma($pagamento->forma_pagamento, $fonte);
+            $det->tPag = \App\Support\FormasCaixa::meio($pagamento->forma_pagamento, $fonte);
+            $det->indPag = ($forma['tipo'] ?? $pagamento->forma_pagamento) === 'convenio' ? 1 : 0;
             $det->vPag = number_format($pagamento->valor, 2, '.', '');
 
-            if (in_array($pagamento->forma_pagamento, ['credito', 'debito', 'pix'])) {
+            // 99 (Outros) exige a descrição do meio (xPag)
+            if ($det->tPag === '99') {
+                $det->xPag = mb_substr(\App\Support\FormasCaixa::rotulo($pagamento->forma_pagamento, $fonte), 0, 60);
+            }
+
+            if (in_array($det->tPag, \App\Support\FormasCaixa::MEIOS_ELETRONICOS, true)) {
                 $det->tpIntegra = 2;
             }
 
