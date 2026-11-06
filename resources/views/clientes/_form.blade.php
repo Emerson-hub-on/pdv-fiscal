@@ -18,6 +18,12 @@
                     class="tab-btn pb-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">
                 Fiscal
             </button>
+            @if ($cliente?->exists)
+                <button type="button" data-tab="credito-loja" onclick="mudarAba('credito-loja')"
+                        class="tab-btn pb-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">
+                    Crédito em loja
+                </button>
+            @endif
         </nav>
     </div>
 
@@ -166,6 +172,13 @@
             </div>
 
         </div>
+
+        @if ($cliente?->exists)
+            {{-- ===================== ABA: CRÉDITO EM LOJA ===================== --}}
+            <div id="aba-credito-loja" class="tab-conteudo hidden">
+                @include('clientes._credito-loja', ['cliente' => $cliente])
+            </div>
+        @endif
 
     </div>
 </div>

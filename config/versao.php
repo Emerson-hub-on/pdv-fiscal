@@ -11,6 +11,20 @@
 
 $historico = [
     [
+        'versao' => '1.7.2',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Cadastro do cliente → Crédito em loja → Histórico: lista os itens da venda devolvida (nº do item, quantidade vendida e valor) e destaca os itens devolvidos naquela troca ("Devolvido" ou "Devolvido em parte"), com a quantidade e o valor devolvidos.',
+        ],
+    ],
+    [
+        'versao' => '1.7.1',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Cadastro do cliente: nova aba "Crédito em loja" com o saldo disponível para compras, o total gerado e o já usado, as vendas devolvidas (NFC-e ou NF-e) que geraram cada crédito e o histórico de uso (NF-e ou caixa).',
+        ],
+    ],
+    [
         'versao' => '1.7.0',
         'data' => '2026-11-06',
         'itens' => [
