@@ -1,8 +1,6 @@
 @php
     $ehEdicao = $conta->exists;
-    $inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed';
-    $labelCls = 'block text-sm font-medium text-gray-700 mb-1';
-    $erroCls  = 'text-red-600 text-xs mt-1';
+    extract(config('estilo.formulario')); // $inputCls, $labelCls, $botaoPrimarioCls...
 
     // Parcelas já recebidas (travadas) vêm sempre do banco
     $recebidas = $conta->parcelas->filter(fn ($p) => $p->isRecebida())->sortBy('numero')->map(fn ($p) => [
@@ -54,16 +52,10 @@
     @if ($ehEdicao) @method('PUT') @endif
 
     {{-- ===================== Dados da conta ===================== --}}
-    <div class="bg-white rounded-lg shadow p-6">
-        <div class="flex items-center gap-3 mb-4">
-            <a href="{{ route('contas-receber.index') }}" title="Voltar para Contas a Receber"
-               class="text-gray-500 hover:text-gray-800 transition">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                </svg>
-            </a>
-            <h1 class="text-lg font-semibold">{{ $ehEdicao ? 'Editar Conta a Receber' : 'Nova Conta a Receber' }}</h1>
-        </div>
+    <div class="{{ $cartaoCls }}">
+        <x-form.cabecalho rotulo="Financeiro · Contas a receber" :titulo="$ehEdicao ? 'Editar Conta a Receber' : 'Nova Conta a Receber'"
+                          :voltar="route('contas-receber.index')" voltar-titulo="Voltar para Contas a Receber" />
+        <div class="p-6">
 
         <div class="flex flex-col gap-4">
             {{-- Linha 1: tipo e cliente --}}
@@ -80,7 +72,7 @@
                             @endforeach
                         </select>
                         <button type="button" onclick="abrirModalTipo()"
-                                class="shrink-0 border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
+                                class="shrink-0 {{ $botaoSecundarioCls }}">
                             + Novo
                         </button>
                     </div>
@@ -94,22 +86,24 @@
                 @endphp
 
                 <div>
-                    <label class="{{ $labelCls }}">Cliente <span class="text-gray-400 font-normal">(opcional)</span></label>
+                    <label class="{{ $labelCls }}">Cliente <span class="{{ $opcionalCls }}">(opcional)</span></label>
                     <input type="hidden" name="cliente_id" id="campo-cliente"
                            value="{{ old('cliente_id', $conta->cliente_id) }}">
                     <div class="flex gap-2">
                         <button type="button" onclick="abrirModalCliente()"
-                                class="w-full min-w-0 text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
-                            <span id="texto-cliente-selecionado" class="block truncate">
+                                class="{{ $seletorCls }}">
+                            <span class="{{ $seletorIconeCls }}"><x-form.icone nome="pessoa" tamanho="w-3.5 h-3.5" /></span>
+                            <span id="texto-cliente-selecionado" class="flex-1 min-w-0 truncate">
                                 @if ($clienteAtual)
                                     {{ \App\Models\ContaReceber::rotuloCliente($clienteAtual) }} — {{ $clienteAtual->cpf_cnpj_formatado ?? $clienteAtual->cpf_cnpj }}
                                 @else
                                     Selecionar cliente...
                                 @endif
                             </span>
+                            <x-form.icone nome="setas" class="shrink-0 text-slate-400 group-hover:text-[#10284A] transition" />
                         </button>
                         <button type="button" id="limpar-cliente" onclick="limparCliente()" title="Remover cliente"
-                                class="shrink-0 border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50 {{ $clienteAtual ? '' : 'hidden' }}">
+                                class="{{ $limparCls }} {{ $clienteAtual ? '' : 'hidden' }}">
                             &times;
                         </button>
                     </div>
@@ -127,7 +121,7 @@
                 </div>
 
                 <div>
-                    <label class="{{ $labelCls }}">Nº do documento <span class="text-gray-400 font-normal">(opcional)</span></label>
+                    <label class="{{ $labelCls }}">Nº do documento <span class="{{ $opcionalCls }}">(opcional)</span></label>
                     <input type="text" name="numero_documento" maxlength="30"
                            value="{{ old('numero_documento', $conta->numero_documento) }}" class="{{ $inputCls }}">
                     @error('numero_documento') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
@@ -164,15 +158,15 @@
                 <textarea name="observacao" rows="2" maxlength="1000" class="{{ $inputCls }}">{{ old('observacao', $conta->observacao) }}</textarea>
             </div>
         </div>
+        </div>
     </div>
 
     {{-- ===================== Parcelas ===================== --}}
-    <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-sm font-semibold mb-1">Parcelas</h2>
-        <p class="text-xs text-gray-500 mb-4">
+    <div class="{{ $cartaoCls }} p-6">
+        <x-form.secao titulo="Parcelas" icone="calendario">
             Conta à vista ou em parcela única? Não precisa preencher nada aqui: será criada uma parcela com o valor total e o vencimento acima.
             Se for parcelada, informe a quantidade e clique em <strong>Gerar parcelas</strong>; depois você pode ajustar cada data e valor.
-        </p>
+        </x-form.secao>
 
         <div class="flex flex-wrap items-end gap-3 mb-4">
             <div class="w-32">
@@ -189,20 +183,20 @@
                 </select>
             </div>
             <button type="button" onclick="gerarParcelas()"
-                    class="bg-gray-700 hover:bg-gray-500 text-amber-50 px-4 py-2 rounded-lg text-sm font-medium transition">
+                    class="{{ $botaoAcaoCls }}">
                 Gerar parcelas
             </button>
             <button type="button" onclick="adicionarParcela()"
-                    class="border border-gray-300 rounded-lg px-4 py-2 text-sm hover:bg-gray-50">
+                    class="{{ $botaoSecundarioCls }}">
                 + Adicionar parcela
             </button>
         </div>
 
         @error('parcelas') <p class="text-red-600 text-sm mb-3">{{ $message }}</p> @enderror
 
-        <div class="overflow-auto max-h-[26rem]">
+        <div class="overflow-auto max-h-[26rem] rounded-xl ring-1 ring-slate-200">
             <table class="w-full text-sm">
-                <thead class="bg-gray-50 text-gray-500 text-xs uppercase sticky top-0 z-10">
+                <thead class="{{ $theadCls }} sticky top-0 z-10">
                     <tr>
                         <th class="text-left px-3 py-2 w-12">Nº</th>
                         <th class="text-left px-3 py-2">Vencimento</th>
@@ -224,13 +218,14 @@
             </p>
         @endif
 
-        <div class="flex flex-wrap gap-3 mt-6">
+        <div class="flex flex-row-reverse flex-wrap gap-3 mt-6 pt-5 border-t border-slate-100">
             <button type="submit"
-                    class="bg-green-700 text-white rounded-lg px-6 py-2.5 text-sm font-medium hover:bg-green-800">
+                    class="{{ $botaoPrimarioCls }}">
+                <x-form.icone nome="check" />
                 {{ $ehEdicao ? 'Salvar Alterações' : 'Salvar Conta' }}
             </button>
             <a href="{{ route('contas-receber.index') }}"
-               class="border border-gray-300 rounded-lg px-6 py-2.5 text-sm hover:bg-gray-50">Cancelar</a>
+               class="{{ $botaoCancelarCls }}">Cancelar</a>
         </div>
     </div>
 </form>
@@ -242,7 +237,7 @@
 <div id="modal-baixa" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <form id="form-baixa" method="POST" class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-y-auto">
         @csrf
-        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
             <h2 class="text-lg font-bold text-white">Baixar parcela</h2>
             <button type="button" onclick="fecharModalBaixa()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
@@ -266,7 +261,8 @@
                 </select>
             </div>
             <button type="submit"
-                    class="w-full bg-green-700 hover:bg-green-800 text-white py-2.5 rounded-lg text-sm font-medium">
+                    class="w-full {{ $botaoPrimarioCls }}">
+                <x-form.icone nome="check" />
                 Confirmar baixa
             </button>
         </div>
@@ -276,14 +272,14 @@
 <!-- Modal de busca de cliente -->
 <div id="modal-busca-cliente" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
-        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
             <h2 class="text-lg font-bold text-white">Selecionar Cliente</h2>
             <button type="button" onclick="fecharModalCliente()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
         <div class="p-6">
             <input type="text" id="busca-cliente-modal" placeholder="Buscar por nome ou CPF/CNPJ..."
                    autocomplete="off"
-                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
+                   class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm mb-4 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
@@ -303,7 +299,7 @@
 <!-- Modal: cadastro rápido de tipo de conta -->
 <div id="modal-tipo" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-y-auto">
-        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
             <h2 class="text-lg font-bold text-white">Novo tipo de conta</h2>
             <button type="button" onclick="fecharModalTipo()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
@@ -315,7 +311,8 @@
             </div>
             <p id="tipo-erro" class="text-red-600 text-sm hidden"></p>
             <button type="button" onclick="salvarTipo()"
-                    class="w-full bg-green-700 hover:bg-green-800 text-white py-2.5 rounded-lg text-sm font-medium">
+                    class="w-full {{ $botaoPrimarioCls }}">
+                <x-form.icone nome="check" />
                 Cadastrar tipo
             </button>
         </div>
@@ -330,7 +327,7 @@ const urlTipoRapido    = {{ Illuminate\Support\Js::from(route('tipos-conta-receb
 const urlBaixaModelo   = {{ Illuminate\Support\Js::from(route('contas-receber.parcelas.baixar', ['parcela' => '__ID__'])) }};
 const urlEstornoModelo = {{ Illuminate\Support\Js::from(route('contas-receber.parcelas.estornar', ['parcela' => '__ID__'])) }};
 const csrfToken        = {{ Illuminate\Support\Js::from(csrf_token()) }};
-const clsInputParcela  = 'border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none transition';
+const clsInputParcela  = 'bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition';
 
 const moeda     = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const centavos  = v => Math.round((parseFloat(v) || 0) * 100);
@@ -663,7 +660,7 @@ function renderizarClientes() {
     linhasBuscaCliente.innerHTML = clientesAtuais.map((f, index) => {
         const destacado = index === indiceCliente;
         return `
-            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
+            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-[#10284A] text-amber-50' : 'hover:bg-gray-50'}"
                 onclick="selecionarCliente(${index})">
                 <td class="py-3 font-medium">${esc(f.nome)}</td>
                 <td class="py-3 font-mono text-sm ${destacado ? 'text-slate-300' : 'text-gray-500'}">${esc(f.cpf_cnpj)}</td>

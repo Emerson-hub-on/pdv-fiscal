@@ -2,10 +2,11 @@
     $mdfe = $mdfe ?? null;
     $ufs  = \App\Models\Transportador::UFS;
 
-    $campo    = 'w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition';
-    $campoSel = $campo . ' bg-white';
-    $botaoAdd = 'bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition whitespace-nowrap';
-    $caixaRes = 'hidden absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto z-20';
+    extract(config('estilo.formulario')); // $inputCls, $labelCls, $botaoPrimarioCls...
+    $campo    = $inputCls;
+    $campoSel = $inputCls;
+    $botaoAdd = $botaoSecundarioCls;
+    $caixaRes = 'hidden absolute left-0 right-0 mt-1 bg-white ring-1 ring-slate-200 rounded-xl shadow-xl max-h-64 overflow-y-auto z-20';
 
     $abas = [
         'gerais'        => 'Dados gerais',
@@ -29,17 +30,20 @@
     };
 @endphp
 
-{{-- Card único (abas + painéis), igual ao form da empresa --}}
-<div class="bg-white rounded-xl shadow-sm border border-gray-200">
+{{-- Card único (faixa azul-marinho + abas + painéis) --}}
+<div class="{{ $cartaoCls }}">
+
+<x-form.cabecalho rotulo="Faturamento · MDF-e" :titulo="$mdfe ? 'Editar MDF-e' : 'Novo MDF-e'" selo="Rascunho"
+                  :voltar="route('mdfes.index')" voltar-titulo="Voltar para Manifestos" />
 
 {{-- ===================== BARRA DE ABAS ===================== --}}
-<div class="flex overflow-x-auto border-b border-gray-200">
+<div class="flex overflow-x-auto border-b border-slate-200 px-2">
     @foreach ($abas as $chave => $rotulo)
         <button type="button" data-aba="{{ $chave }}" onclick="abrirAba('{{ $chave }}')"
-                class="aba-botao flex items-center gap-2 px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">
+                class="aba-botao flex items-center gap-2 px-5 py-3.5 -mb-px text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition">
             {{ $rotulo }}
             @if (in_array($chave, ['percurso', 'carregamentos', 'documentos']))
-                <span data-contador="{{ $chave }}" class="px-1.5 py-0.5 rounded-full text-xs bg-gray-100 text-gray-500">0</span>
+                <span data-contador="{{ $chave }}" class="px-1.5 py-0.5 rounded-full text-xs bg-slate-100 text-slate-500">0</span>
             @endif
         </button>
     @endforeach
@@ -47,10 +51,11 @@
 
 {{-- ===================== DADOS GERAIS ===================== --}}
 <div data-painel="gerais" class="p-6">
+    <x-form.secao titulo="Dados gerais" icone="caminhao">Emitente, UFs de início e fim da viagem e RNTRC.</x-form.secao>
     <div class="grid grid-cols-3 gap-5">
 
         <div class="col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de emitente <span class="text-red-500">*</span></label>
+            <label class="{{ $labelCls }}">Tipo de emitente <span class="text-red-500">*</span></label>
             <select name="tipo_emitente" required class="{{ $campoSel }}">
                 @foreach ($tiposEmitente as $codigo => $rotulo)
                     <option value="{{ $codigo }}" {{ (string) old('tipo_emitente', $mdfe->tipo_emitente ?? 2) === (string) $codigo ? 'selected' : '' }}>{{ $rotulo }}</option>
@@ -59,8 +64,8 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-                Tipo de transportador <span class="text-xs text-gray-400 font-normal">(opcional)</span>
+            <label class="{{ $labelCls }}">
+                Tipo de transportador <span class="{{ $opcionalCls }}">(opcional)</span>
             </label>
             <select name="tipo_transportador" class="{{ $campoSel }}">
                 <option value="">Não informar</option>
@@ -71,7 +76,7 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">UF de início <span class="text-red-500">*</span></label>
+            <label class="{{ $labelCls }}">UF de início <span class="text-red-500">*</span></label>
             <select name="uf_inicio" required class="{{ $campoSel }}">
                 <option value="">Selecione...</option>
                 @foreach ($ufs as $uf)
@@ -81,7 +86,7 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">UF de fim <span class="text-red-500">*</span></label>
+            <label class="{{ $labelCls }}">UF de fim <span class="text-red-500">*</span></label>
             <select name="uf_fim" required class="{{ $campoSel }}">
                 <option value="">Selecione...</option>
                 @foreach ($ufs as $uf)
@@ -91,8 +96,8 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-                Início da viagem <span class="text-xs text-gray-400 font-normal">(opcional)</span>
+            <label class="{{ $labelCls }}">
+                Início da viagem <span class="{{ $opcionalCls }}">(opcional)</span>
             </label>
             <input type="datetime-local" name="inicio_viagem"
                    value="{{ old('inicio_viagem', $mdfe?->inicio_viagem?->format('Y-m-d\TH:i')) }}"
@@ -100,8 +105,8 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-                RNTRC <span class="text-xs text-gray-400 font-normal">(8 dígitos, ANTT)</span>
+            <label class="{{ $labelCls }}">
+                RNTRC <span class="{{ $opcionalCls }}">(8 dígitos, ANTT)</span>
             </label>
             <input type="text" name="rntrc" maxlength="8" inputmode="numeric"
                    value="{{ old('rntrc', $mdfe->rntrc ?? $rntrcPadrao) }}"
@@ -110,12 +115,12 @@
         </div>
 
         <div class="col-span-3">
-            <label class="flex items-start gap-3 cursor-pointer">
+            <label class="flex items-start gap-3 cursor-pointer rounded-xl bg-slate-50 ring-1 ring-slate-200 px-4 py-3 hover:bg-white transition">
                 <input type="checkbox" id="dividir-por-uf" name="dividir_por_uf" value="1"
                        {{ old('dividir_por_uf') ? 'checked' : '' }}
-                       class="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500">
+                       class="mt-0.5 h-4 w-4 rounded border-slate-300 accent-[#10284A] focus:ring-2 focus:ring-[#10284A]/30">
                 <span>
-                    <span class="block text-sm font-medium text-gray-700">Separar automaticamente por UF de descarga</span>
+                    <span class="block text-sm font-semibold text-slate-800">Separar automaticamente por UF de descarga</span>
                     <span class="block text-xs text-gray-400 mt-0.5">
                         Cada MDF-e atende uma única UF de descarga. Com esta opção, as NF-e são divididas em um MDF-e por UF
                         (a UF de fim de cada um vem do município do cliente) e os demais dados são copiados para todos.
@@ -125,8 +130,8 @@
         </div>
 
         <div class="col-span-3">
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-                Informações adicionais <span class="text-xs text-gray-400 font-normal">(opcional)</span>
+            <label class="{{ $labelCls }}">
+                Informações adicionais <span class="{{ $opcionalCls }}">(opcional)</span>
             </label>
             <textarea name="informacoes_adicionais" rows="3" maxlength="5000" class="{{ $campo }}">{{ old('informacoes_adicionais', $mdfe->informacoes_adicionais ?? '') }}</textarea>
         </div>
@@ -135,7 +140,7 @@
 
 {{-- ===================== PERCURSO ===================== --}}
 <div data-painel="percurso" class="hidden p-6">
-    <p class="text-xs text-gray-400 mb-4">Estados por onde a carga passa entre o início e o fim, na ordem da viagem (opcional quando início e fim são vizinhos).</p>
+    <x-form.secao titulo="UFs do percurso" icone="mapa">Estados por onde a carga passa entre o início e o fim, na ordem da viagem (opcional quando início e fim são vizinhos).</x-form.secao>
 
     <div class="flex items-center gap-2 mb-3">
         <div class="w-32">
@@ -152,7 +157,7 @@
 
 {{-- ===================== CARREGAMENTO ===================== --}}
 <div data-painel="carregamentos" class="hidden p-6">
-    <p class="text-xs text-gray-400 mb-4">Informe ao menos um município. Os municípios de descarga vêm automaticamente do cadastro dos clientes das NF-e.</p>
+    <x-form.secao titulo="Municípios de carregamento" icone="pino">Informe ao menos um município. Os municípios de descarga vêm automaticamente do cadastro dos clientes das NF-e.</x-form.secao>
 
     <div class="grid grid-cols-12 gap-2 mb-3">
         <input type="text" id="car-ibge" maxlength="7" inputmode="numeric" placeholder="Código IBGE (7 dígitos)" data-sem-enter
@@ -171,7 +176,7 @@
 
 {{-- ===================== DOCUMENTOS ===================== --}}
 <div data-painel="documentos" class="hidden p-6">
-    <p class="text-xs text-gray-400 mb-4">Só aparecem NF-e emitidas que ainda não estão em outro MDF-e em rascunho ou emitido.</p>
+    <x-form.secao titulo="NF-e do manifesto" icone="documento">Só aparecem NF-e emitidas que ainda não estão em outro MDF-e em rascunho ou emitido.</x-form.secao>
 
     <div class="relative mb-4">
         <input type="text" id="nfe-busca" autocomplete="off" data-sem-enter
@@ -184,10 +189,11 @@
 
 {{-- ===================== VEÍCULOS E CONDUTORES ===================== --}}
 <div data-painel="veiculos" class="hidden p-6">
+    <x-form.secao titulo="Veículos e condutores" icone="caminhao">Veículo de tração, reboques e condutores da viagem.</x-form.secao>
     <div class="grid grid-cols-2 gap-6">
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Veículo de tração <span class="text-red-500">*</span></label>
+            <label class="{{ $labelCls }}">Veículo de tração <span class="text-red-500">*</span></label>
             <div class="relative">
                 <input type="text" id="trac-busca" autocomplete="off" data-sem-enter placeholder="Buscar por placa ou transportadora..." class="{{ $campo }}">
                 <div id="trac-resultados" class="{{ $caixaRes }}"></div>
@@ -196,8 +202,8 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-                Reboques <span class="text-xs text-gray-400 font-normal">(até 3, opcional)</span>
+            <label class="{{ $labelCls }}">
+                Reboques <span class="{{ $opcionalCls }}">(até 3, opcional)</span>
             </label>
             <div class="relative">
                 <input type="text" id="reb-busca" autocomplete="off" data-sem-enter placeholder="Buscar reboque por placa..." class="{{ $campo }}">
@@ -207,7 +213,7 @@
         </div>
 
         <div class="col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Condutores <span class="text-red-500">*</span> <span class="text-xs text-gray-400 font-normal">(até 10)</span></label>
+            <label class="{{ $labelCls }}">Condutores <span class="text-red-500">*</span> <span class="{{ $opcionalCls }}">(até 10)</span></label>
             <div class="relative">
                 <input type="text" id="cond-busca" autocomplete="off" data-sem-enter placeholder="Buscar por nome ou CPF..." class="{{ $campo }}">
                 <div id="cond-resultados" class="{{ $caixaRes }}"></div>
@@ -219,11 +225,12 @@
 
 </div>{{-- /card --}}
 
-<div class="mt-6 flex gap-3">
-    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-semibold text-sm transition">
+<div class="mt-6 flex flex-row-reverse gap-3">
+    <button type="submit" class="{{ $botaoPrimarioCls }}">
+        <x-form.icone nome="check" />
         Salvar rascunho
     </button>
-    <a href="{{ route('mdfes.index') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2.5 rounded-lg text-sm font-medium transition">
+    <a href="{{ route('mdfes.index') }}" class="{{ $botaoCancelarCls }}">
         Cancelar
     </a>
 </div>
@@ -246,10 +253,10 @@
     const brl = (n) => Number(n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const kg = (n) => Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 
-    const CLASSE_ITEM = 'flex items-center justify-between gap-3 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700';
+    const CLASSE_ITEM = 'flex items-center justify-between gap-3 bg-slate-50 ring-1 ring-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700';
     const CLASSE_REMOVER = 'text-red-600 hover:text-red-700 font-medium text-sm';
-    const ATIVA = ['border-blue-600', 'text-blue-600'];
-    const INATIVA = ['border-transparent', 'text-gray-500', 'hover:text-gray-700'];
+    const ATIVA = ['border-[#10284A]', 'text-[#10284A]'];
+    const INATIVA = ['border-transparent', 'text-slate-500', 'hover:text-slate-800'];
 
     // ---------------- Separar por UF de descarga ----------------
     const caixaDividir = document.getElementById('dividir-por-uf');
@@ -304,16 +311,16 @@
         const el = document.querySelector(`[data-contador="${chave}"]`);
         if (!el) return;
         el.textContent = total;
-        el.className = 'px-1.5 py-0.5 rounded-full text-xs ' + (total > 0 ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-500');
+        el.className = 'px-1.5 py-0.5 rounded-full text-xs ' + (total > 0 ? 'bg-[#10284A] text-amber-50' : 'bg-slate-100 text-slate-500');
     }
 
     // ---------------- UFs do percurso ----------------
     function renderPercurso() {
         document.getElementById('lista-percurso').innerHTML = estado.percurso.length
             ? estado.percurso.map((uf, i) => `
-                <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-[#10284A] text-amber-50">
                     ${i + 1}. ${esc(uf)}
-                    <button type="button" onclick="removerPercurso(${i})" class="text-gray-400 hover:text-red-600">×</button>
+                    <button type="button" onclick="removerPercurso(${i})" class="text-slate-300 hover:text-red-300">×</button>
                     <input type="hidden" name="percurso[]" value="${esc(uf)}">
                 </span>`).join('')
             : '<p class="text-xs text-gray-400">Nenhuma UF intermediária.</p>';
@@ -369,9 +376,9 @@
         }
 
         box.innerHTML = `
-            <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <div class="rounded-xl ring-1 ring-slate-200 overflow-hidden">
                 <table class="w-full text-sm">
-                    <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                    <thead class="bg-[#10284A] text-amber-50 text-[11px] uppercase tracking-wider">
                         <tr>
                             <th class="px-3 py-2 text-left font-medium">NF-e</th>
                             <th class="px-3 py-2 text-left font-medium">Cliente</th>
@@ -392,7 +399,7 @@
                                 <td class="px-3 py-2">
                                     <input type="number" min="0" step="0.001" name="documentos[${i}][peso_bruto_kg]" value="${d.peso}"
                                            oninput="estado.documentos[${i}].peso = this.value; atualizarTotais()"
-                                           class="w-32 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition">
+                                           class="w-32 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
                                 </td>
                                 <td class="px-3 py-2 text-right">
                                     <button type="button" onclick="removerDocumento(${i})" class="${CLASSE_REMOVER}">Remover</button>
@@ -465,7 +472,7 @@
             const itens = (await resp.json()).filter(filtrar ?? (() => true));
 
             lista.innerHTML = itens.length
-                ? itens.map((it, i) => `<button type="button" data-i="${i}" class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-100 last:border-0">${rotulo(it)}</button>`).join('')
+                ? itens.map((it, i) => `<button type="button" data-i="${i}" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 border-b border-slate-100 last:border-0">${rotulo(it)}</button>`).join('')
                 : '<p class="px-3 py-2 text-sm text-gray-400">Nada encontrado.</p>';
             lista.classList.remove('hidden');
 

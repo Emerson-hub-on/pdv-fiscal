@@ -1,8 +1,6 @@
 @php
     $ehEdicao = $pedido->exists;
-    $inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed';
-    $labelCls = 'block text-sm font-medium text-gray-700 mb-1';
-    $erroCls  = 'text-red-600 text-xs mt-1';
+    extract(config('estilo.formulario')); // $inputCls, $labelCls, $botaoPrimarioCls...
 
     // Itens: o que o operador digitou (se a validação falhou) ou o que está no banco
     if (is_array(old('itens'))) {
@@ -47,18 +45,10 @@
     @if ($ehEdicao) @method('PUT') @endif
 
     {{-- ===================== Cabeçalho do pedido ===================== --}}
-    <div class="bg-white rounded-lg shadow p-6">
-        <div class="flex items-center gap-3 mb-4">
-            <a href="{{ route('pedidos-compra.index') }}" title="Voltar para Pedidos de Compra"
-               class="text-gray-500 hover:text-gray-800 transition">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                </svg>
-            </a>
-            <h1 class="text-lg font-semibold">
-                {{ $ehEdicao ? 'Editar Pedido de Compra nº ' . $pedido->numeroExibicao() : 'Novo Pedido de Compra' }}
-            </h1>
-        </div>
+    <div class="{{ $cartaoCls }}">
+        <x-form.cabecalho rotulo="Financeiro · Pedido de compra" :titulo="$ehEdicao ? 'Editar Pedido de Compra nº ' . $pedido->numeroExibicao() : 'Novo Pedido de Compra'"
+                          :voltar="route('pedidos-compra.index')" voltar-titulo="Voltar para Pedidos de Compra" />
+        <div class="p-6">
 
         <div class="flex flex-col gap-4">
             <div class="grid grid-cols-3 gap-4">
@@ -70,29 +60,31 @@
                 </div>
 
                 <div>
-                    <label class="{{ $labelCls }}">Previsão de entrega <span class="text-gray-400 font-normal">(opcional)</span></label>
+                    <label class="{{ $labelCls }}">Previsão de entrega <span class="{{ $opcionalCls }}">(opcional)</span></label>
                     <input type="date" name="previsao_entrega"
                            value="{{ old('previsao_entrega', $pedido->previsao_entrega?->format('Y-m-d')) }}" class="{{ $inputCls }}">
                     @error('previsao_entrega') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
-                    <label class="{{ $labelCls }}">Fornecedor <span class="text-gray-400 font-normal">(opcional)</span></label>
+                    <label class="{{ $labelCls }}">Fornecedor <span class="{{ $opcionalCls }}">(opcional)</span></label>
                     <input type="hidden" name="fornecedor_id" id="campo-fornecedor"
                            value="{{ old('fornecedor_id', $pedido->fornecedor_id) }}">
                     <div class="flex gap-2">
                         <button type="button" onclick="abrirModalFornecedor()"
-                                class="w-full min-w-0 text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
-                            <span id="texto-fornecedor-selecionado" class="block truncate">
+                                class="{{ $seletorCls }}">
+                            <span class="{{ $seletorIconeCls }}"><x-form.icone nome="loja" tamanho="w-3.5 h-3.5" /></span>
+                            <span id="texto-fornecedor-selecionado" class="flex-1 min-w-0 truncate">
                                 @if ($fornecedorAtual)
                                     {{ $fornecedorAtual->nome_exibicao }} — {{ $fornecedorAtual->documento_formatado }}
                                 @else
                                     Selecionar fornecedor...
                                 @endif
                             </span>
+                            <x-form.icone nome="setas" class="shrink-0 text-slate-400 group-hover:text-[#10284A] transition" />
                         </button>
                         <button type="button" id="limpar-fornecedor" onclick="limparFornecedor()" title="Remover fornecedor"
-                                class="shrink-0 border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50 {{ $fornecedorAtual ? '' : 'hidden' }}">
+                                class="{{ $limparCls }} {{ $fornecedorAtual ? '' : 'hidden' }}">
                             &times;
                         </button>
                     </div>
@@ -107,19 +99,20 @@
                           class="{{ $inputCls }}">{{ old('observacao', $pedido->observacao) }}</textarea>
             </div>
         </div>
+        </div>
     </div>
 
     {{-- ===================== Dados da empresa (para o fornecedor emitir a NF) ===================== --}}
-    <div class="bg-white rounded-lg shadow p-6">
-        <div class="flex items-start justify-between gap-4 mb-1">
-            <h2 class="text-sm font-semibold">Dados da empresa para emissão da nota fiscal</h2>
-            <a href="{{ route('empresa.editar') }}" target="_blank"
-               class="text-xs text-gray-500 hover:underline shrink-0">Editar dados da empresa</a>
-        </div>
-        <p class="text-xs text-gray-500 mb-4">Vêm do cadastro da empresa e vão no pedido para o fornecedor emitir a NF-e.</p>
+    <div class="{{ $cartaoCls }} p-6">
+        <x-form.secao titulo="Dados da empresa para emissão da nota fiscal" icone="predio">
+            Vêm do cadastro da empresa e vão no pedido para o fornecedor emitir a NF-e.
+            <x-slot:acoes>
+                <a href="{{ route('empresa.editar') }}" target="_blank" class="text-xs {{ $botaoSecundarioCls }}">Editar dados da empresa</a>
+            </x-slot:acoes>
+        </x-form.secao>
 
         @unless ($empresa->exists)
-            <div class="border border-red-300 bg-red-50 text-red-800 rounded-lg px-4 py-3 text-sm">
+            <div class="ring-1 ring-red-200 bg-red-50 text-red-800 rounded-xl px-4 py-3 text-sm">
                 Os dados da empresa ainda não foram cadastrados.
                 <a href="{{ route('empresa.editar') }}" class="underline font-medium">Cadastrar agora</a>
             </div>
@@ -129,11 +122,10 @@
     </div>
 
     {{-- ===================== Itens ===================== --}}
-    <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-sm font-semibold mb-1">Itens do pedido</h2>
-        <p class="text-xs text-gray-500 mb-4">
+    <div class="{{ $cartaoCls }} p-6">
+        <x-form.secao titulo="Itens do pedido" icone="caixa">
             Leia o código de barras e tecle Enter, ou comece a digitar a descrição para buscar o produto. O que não estiver no cadastro pode ser incluído como item avulso.
-        </p>
+        </x-form.secao>
 
         {{-- Linha de inclusão --}}
         <div class="grid grid-cols-12 gap-2 items-end mb-4">
@@ -156,11 +148,11 @@
             </div>
             <div class="col-span-1">
                 <button type="button" onclick="adicionarItem()" title="Adicionar item"
-                        class="w-full bg-gray-700 text-amber-50 rounded-lg px-3 py-2 text-sm hover:bg-gray-500">+</button>
+                        class="w-full {{ $botaoAcaoCls }}">+</button>
             </div>
         </div>
 
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
+        <div class="{{ $tabelaCaixaCls }}">
             <table class="w-full text-sm table-fixed">
                 <colgroup>
                     <col class="w-[18%]">
@@ -169,7 +161,7 @@
                     <col class="w-[20%]">
                     <col class="w-[8%]">
                 </colgroup>
-                <thead class="bg-[#10284A] text-amber-50 text-xs uppercase">
+                <thead class="{{ $theadCls }}">
                     <tr>
                         <th class="text-left px-2 py-2">Cód. barras</th>
                         <th class="text-left px-2 py-2">Descrição</th>
@@ -185,27 +177,28 @@
         @error('itens') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
     </div>
 
-    <div class="flex gap-3">
+    <div class="flex flex-row-reverse gap-3">
         <button type="submit"
-                class="bg-green-700 hover:bg-green-800 text-white rounded-lg px-6 py-2.5 text-sm font-medium">
+                class="{{ $botaoPrimarioCls }}">
+            <x-form.icone nome="check" />
             {{ $ehEdicao ? 'Salvar alterações' : 'Salvar pedido' }}
         </button>
         <a href="{{ route('pedidos-compra.index') }}"
-           class="border border-gray-300 rounded-lg px-6 py-2.5 text-sm hover:bg-gray-50">Cancelar</a>
+           class="{{ $botaoCancelarCls }}">Cancelar</a>
     </div>
 </form>
 
 <!-- Modal de busca de fornecedor -->
 <div id="modal-busca-fornecedor" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
-        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
             <h2 class="text-lg font-bold text-white">Selecionar Fornecedor</h2>
             <button type="button" onclick="fecharModalFornecedor()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
         <div class="p-6">
             <input type="text" id="busca-fornecedor-modal" placeholder="Buscar por nome ou CPF/CNPJ..."
                    autocomplete="off"
-                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
+                   class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm mb-4 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
@@ -225,14 +218,14 @@
 <!-- Modal de busca de produto -->
 <div id="modal-busca-produto" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
-        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
             <h2 class="text-lg font-bold text-white">Selecionar Produto</h2>
             <button type="button" onclick="fecharModalProduto()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
         <div class="p-6">
             <input type="text" id="busca-produto-modal" placeholder="Buscar por nome, código ou código de barras..."
                    autocomplete="off"
-                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
+                   class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm mb-4 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
             {{-- Largura fixa: descrição longa é cortada com "…" (a descrição completa fica no cadastro do produto) --}}
             <table class="w-full text-sm table-fixed">
                 <colgroup>
@@ -254,7 +247,7 @@
             <div class="flex items-center justify-between mt-3">
                 <p class="text-xs text-gray-400">Use ↑ ↓ para navegar e Enter para selecionar.</p>
                 <button type="button" onclick="usarComoAvulso()"
-                        class="text-xs text-gray-600 border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50">
+                        class="text-xs {{ $botaoSecundarioCls }}">
                     Não está no cadastro? Incluir como item avulso
                 </button>
             </div>
@@ -271,7 +264,7 @@ const urlBuscaProduto    = {{ Illuminate\Support\Js::from(route('pedidos-compra.
 const urlBuscaFornecedor = {{ Illuminate\Support\Js::from(route('contas-pagar.buscar-fornecedor')) }};
 
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-const clsCelula = 'w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-slate-800 outline-none transition';
+const clsCelula = 'w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition';
 
 let itens = itensIniciais.map(i => ({ ...i }));
 let pendente = null; // produto encontrado na busca, aguardando a quantidade
@@ -431,7 +424,7 @@ function renderizarProdutos() {
         const destacado = index === indiceProduto;
         const estoque = r.estoque === null || r.estoque === undefined ? '—' : Number(r.estoque).toLocaleString('pt-BR');
         return `
-            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
+            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-[#10284A] text-amber-50' : 'hover:bg-gray-50'}"
                 onclick="selecionarProduto(${index})">
                 <td class="py-3 px-2 font-mono text-sm truncate ${destacado ? 'text-slate-300' : 'text-gray-500'}">${esc(r.codigo_barras || r.codigo_interno)}</td>
                 <td class="py-3 px-2 font-medium truncate">${esc(r.descricao)}</td>
@@ -676,7 +669,7 @@ function renderizarFornecedores() {
     linhasBuscaFornecedor.innerHTML = fornecedoresAtuais.map((f, index) => {
         const destacado = index === indiceFornecedor;
         return `
-            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
+            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-[#10284A] text-amber-50' : 'hover:bg-gray-50'}"
                 onclick="selecionarFornecedor(${index})">
                 <td class="py-3 font-medium">${esc(f.nome)}</td>
                 <td class="py-3 font-mono text-sm ${destacado ? 'text-slate-300' : 'text-gray-500'}">${esc(f.cpf_cnpj)}</td>

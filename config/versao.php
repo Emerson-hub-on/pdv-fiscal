@@ -11,6 +11,21 @@
 
 $historico = [
     [
+        'versao' => '1.2.2',
+        'data' => '2026-11-06',
+        'itens' => [
+            'MDF-e, Pedido de venda, Pedido de compra, Contas a pagar e Contas a receber: formulários no mesmo visual da tela de NF-e — faixa azul-marinho no topo, títulos dos campos em destaque, campos e seletores arredondados com ícones, seções com ícone, tabelas com cabeçalho azul-marinho e botão de salvar azul-marinho à direita.',
+            'Janelas de busca e de confirmação desses formulários com o topo em azul-marinho.',
+        ],
+    ],
+    [
+        'versao' => '1.2.1',
+        'data' => '2026-11-06',
+        'itens' => [
+            'Nota Fiscal (NF-e): tela de criação/edição do rascunho no visual do sistema — cabeçalho azul-marinho, campos de seleção com ícones, títulos dos campos em destaque, tabela de itens com cabeçalho azul-marinho e total da nota realçado.',
+        ],
+    ],
+    [
         'versao' => '1.2.0',
         'data' => '2026-11-06',
         'itens' => [

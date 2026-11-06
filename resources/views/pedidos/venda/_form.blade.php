@@ -1,8 +1,6 @@
 @php
     $ehEdicao = $pedido->exists;
-    $inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-800 outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed';
-    $labelCls = 'block text-sm font-medium text-gray-700 mb-1';
-    $erroCls  = 'text-red-600 text-xs mt-1';
+    extract(config('estilo.formulario')); // $inputCls, $labelCls, $botaoPrimarioCls...
 
     // Itens: o que o operador digitou (se a validação falhou) ou o que está no banco
     if (is_array(old('itens'))) {
@@ -56,18 +54,10 @@
     @if ($ehEdicao) @method('PUT') @endif
 
     {{-- ===================== Cabeçalho do pedido ===================== --}}
-    <div class="bg-white rounded-lg shadow p-6">
-        <div class="flex items-center gap-3 mb-4">
-            <a href="{{ route('pedidos-venda.index') }}" title="Voltar para Pedidos de Venda"
-               class="text-gray-500 hover:text-gray-800 transition">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                </svg>
-            </a>
-            <h1 class="text-lg font-semibold">
-                {{ $ehEdicao ? 'Editar Pedido de Venda nº ' . $pedido->numeroExibicao() : 'Novo Pedido de Venda' }}
-            </h1>
-        </div>
+    <div class="{{ $cartaoCls }}">
+        <x-form.cabecalho rotulo="Pedidos · Pedido de venda" :titulo="$ehEdicao ? 'Editar Pedido de Venda nº ' . $pedido->numeroExibicao() : 'Novo Pedido de Venda'"
+                          :voltar="route('pedidos-venda.index')" voltar-titulo="Voltar para Pedidos de Venda" />
+        <div class="p-6">
 
         <div class="flex flex-col gap-4">
             <div class="grid grid-cols-3 gap-4">
@@ -86,7 +76,7 @@
                 </div>
 
                 <div>
-                    <label class="{{ $labelCls }}">Previsão de entrega <span class="text-gray-400 font-normal">(opcional)</span></label>
+                    <label class="{{ $labelCls }}">Previsão de entrega <span class="{{ $opcionalCls }}">(opcional)</span></label>
                     <input type="date" name="previsao_entrega"
                            value="{{ old('previsao_entrega', $pedido->previsao_entrega?->format('Y-m-d')) }}" class="{{ $inputCls }}">
                     @error('previsao_entrega') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
@@ -113,22 +103,24 @@
                 </div>
 
                 <div>
-                    <label class="{{ $labelCls }}">Cliente <span class="text-gray-400 font-normal">(opcional)</span></label>
+                    <label class="{{ $labelCls }}">Cliente <span class="{{ $opcionalCls }}">(opcional)</span></label>
                     <input type="hidden" name="cliente_id" id="campo-cliente"
                            value="{{ old('cliente_id', $pedido->cliente_id) }}">
                     <div class="flex gap-2">
                         <button type="button" onclick="abrirModalCliente()"
-                                class="w-full min-w-0 text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
-                            <span id="texto-cliente-selecionado" class="block truncate">
+                                class="{{ $seletorCls }}">
+                            <span class="{{ $seletorIconeCls }}"><x-form.icone nome="pessoa" tamanho="w-3.5 h-3.5" /></span>
+                            <span id="texto-cliente-selecionado" class="flex-1 min-w-0 truncate">
                                 @if ($clienteAtual)
                                     {{ $clienteAtual->nome_exibicao ?? $clienteAtual->nome }} — {{ $clienteAtual->documento_formatado ?? $clienteAtual->cpf_cnpj }}
                                 @else
                                     Selecionar cliente...
                                 @endif
                             </span>
+                            <x-form.icone nome="setas" class="shrink-0 text-slate-400 group-hover:text-[#10284A] transition" />
                         </button>
                         <button type="button" id="limpar-cliente" onclick="limparCliente()" title="Remover cliente"
-                                class="shrink-0 border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50 {{ $clienteAtual ? '' : 'hidden' }}">
+                                class="{{ $limparCls }} {{ $clienteAtual ? '' : 'hidden' }}">
                             &times;
                         </button>
                     </div>
@@ -136,7 +128,7 @@
                 </div>
 
                 <div>
-                    <label class="{{ $labelCls }}">Forma de pagamento <span class="text-gray-400 font-normal">(opcional)</span></label>
+                    <label class="{{ $labelCls }}">Forma de pagamento <span class="{{ $opcionalCls }}">(opcional)</span></label>
                     <select name="forma_pagamento_id" class="{{ $inputCls }}">
                         <option value="">—</option>
                         @foreach ($formasPagamento as $fp)
@@ -149,14 +141,14 @@
                 </div>
             </div>
         </div>
+        </div>
     </div>
 
     {{-- ===================== Itens ===================== --}}
-    <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-sm font-semibold mb-1">Itens do pedido</h2>
-        <p class="text-xs text-gray-500 mb-4">
+    <div class="{{ $cartaoCls }} p-6">
+        <x-form.secao titulo="Itens do pedido" icone="caixa">
             Leia o código de barras e tecle Enter, ou comece a digitar a descrição para buscar o produto. Só produtos cadastrados podem ser incluídos.
-        </p>
+        </x-form.secao>
 
         {{-- Linha de inclusão --}}
         <div class="grid grid-cols-12 gap-2 items-end mb-4">
@@ -171,7 +163,7 @@
             </div>
             <div class="col-span-1">
                 <label class="{{ $labelCls }}">Un.</label>
-                <input type="text" id="add-unidade" maxlength="6" value="UN" readonly class="{{ $inputCls }} uppercase bg-gray-50">
+                <input type="text" id="add-unidade" maxlength="6" value="UN" readonly class="{{ $inputCls }} uppercase">
             </div>
             <div class="col-span-2">
                 <label class="{{ $labelCls }}">Quantidade</label>
@@ -183,11 +175,11 @@
             </div>
             <div class="col-span-1">
                 <button type="button" onclick="adicionarItem()" title="Adicionar item"
-                        class="w-full bg-gray-700 text-amber-50 rounded-lg px-3 py-2 text-sm hover:bg-gray-500">+</button>
+                        class="w-full {{ $botaoAcaoCls }}">+</button>
             </div>
         </div>
 
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
+        <div class="{{ $tabelaCaixaCls }}">
             <table class="w-full text-sm table-fixed">
                 <colgroup>
                     <col class="w-[15%]">
@@ -198,7 +190,7 @@
                     <col class="w-[14%]">
                     <col class="w-[6%]">
                 </colgroup>
-                <thead class="bg-[#10284A] text-amber-50 text-xs uppercase">
+                <thead class="{{ $theadCls }}">
                     <tr>
                         <th class="text-left px-2 py-2">Cód. barras</th>
                         <th class="text-left px-2 py-2">Descrição</th>
@@ -216,44 +208,46 @@
         <div class="flex items-center justify-between mt-3">
             <p id="resumo-itens" class="text-xs text-gray-500"></p>
             <p class="text-sm text-gray-600">Total do pedido:
-                <span id="total-pedido" class="text-lg font-semibold text-gray-900">R$ 0,00</span>
+                <span id="total-pedido" class="text-lg font-bold text-[#10284A]">R$ 0,00</span>
             </p>
         </div>
         @error('itens') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
     </div>
 
-    <div class="flex gap-3">
+    <div class="flex flex-row-reverse gap-3">
         <button type="button" onclick="abrirModalFinalizar()"
-                class="bg-green-700 hover:bg-green-800 text-white rounded-lg px-6 py-2.5 text-sm font-medium">
+                class="{{ $botaoPrimarioCls }}">
+            <x-form.icone nome="check" />
             {{ $ehEdicao ? 'Salvar alterações' : 'Finalizar pedido' }}
         </button>
         <a href="{{ route('pedidos-venda.index') }}"
-           class="border border-gray-300 rounded-lg px-6 py-2.5 text-sm hover:bg-gray-50">Cancelar</a>
+           class="{{ $botaoCancelarCls }}">Cancelar</a>
     </div>
 </form>
 
 <!-- Modal de finalização (descrição do pedido) -->
 <div id="modal-finalizar" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg">
-        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900 rounded-t-xl">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A] rounded-t-xl">
             <h2 class="text-lg font-bold text-white">{{ $ehEdicao ? 'Salvar pedido' : 'Finalizar pedido' }}</h2>
             <button type="button" onclick="fecharModalFinalizar()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
         <div class="p-6">
             <p id="resumo-finalizar" class="text-sm text-gray-600 mb-4"></p>
 
-            <label class="{{ $labelCls }}">Descrição <span class="text-gray-400 font-normal">(opcional)</span></label>
+            <label class="{{ $labelCls }}">Descrição <span class="{{ $opcionalCls }}">(opcional)</span></label>
             {{-- fica fora do <form>, mas é enviado junto por causa do atributo form="" --}}
             <textarea name="descricao" id="campo-descricao" form="form-pedido" rows="4" maxlength="1000"
                       placeholder="Ex.: condição de pagamento, forma de entrega, contato..."
                       class="{{ $inputCls }}">{{ old('descricao', $pedido->descricao) }}</textarea>
             @error('descricao') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
 
-            <div class="flex justify-end gap-3 mt-5">
+            <div class="flex justify-end gap-3 mt-5 pt-4 border-t border-slate-100">
                 <button type="button" onclick="fecharModalFinalizar()"
-                        class="border border-gray-300 rounded-lg px-5 py-2 text-sm hover:bg-gray-50">Voltar</button>
+                        class="{{ $botaoSecundarioCls }}">Voltar</button>
                 <button type="submit" form="form-pedido" id="btn-confirmar-finalizar"
-                        class="bg-green-700 hover:bg-green-800 text-white rounded-lg px-5 py-2 text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed">
+                        class="{{ $botaoPrimarioCls }}">
+                    <x-form.icone nome="check" />
                     {{ $ehEdicao ? 'Confirmar e salvar' : 'Confirmar e finalizar' }}
                 </button>
             </div>
@@ -264,14 +258,14 @@
 <!-- Modal de busca de cliente -->
 <div id="modal-busca-cliente" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
-        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
             <h2 class="text-lg font-bold text-white">Selecionar Cliente</h2>
             <button type="button" onclick="fecharModalCliente()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
         <div class="p-6">
             <input type="text" id="busca-cliente-modal" placeholder="Buscar por nome ou CPF/CNPJ..."
                    autocomplete="off"
-                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
+                   class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm mb-4 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="text-left text-xs text-gray-400 uppercase tracking-wide border-b">
@@ -291,14 +285,14 @@
 <!-- Modal de busca de produto -->
 <div id="modal-busca-produto" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
-        <div class="flex justify-between items-center px-6 py-4 bg-linear-to-r from-slate-800 via-slate-900 to-slate-900">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
             <h2 class="text-lg font-bold text-white">Selecionar Produto</h2>
             <button type="button" onclick="fecharModalProduto()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
         <div class="p-6">
             <input type="text" id="busca-produto-modal" placeholder="Buscar por nome, código ou código de barras..."
                    autocomplete="off"
-                   class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition">
+                   class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm mb-4 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
             {{-- Largura fixa: descrição longa é cortada com "…" --}}
             <table class="w-full text-sm table-fixed">
                 <colgroup>
@@ -333,7 +327,7 @@ const urlBuscaProduto   = {{ Illuminate\Support\Js::from(route('pedidos-venda.bu
 const urlBuscaCliente   = {{ Illuminate\Support\Js::from(route('contas-receber.buscar-cliente')) }};
 
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-const clsCelula = 'w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-slate-800 outline-none transition';
+const clsCelula = 'w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition';
 const brl = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 let itens = itensIniciais.map(i => ({ ...i }));
@@ -507,7 +501,7 @@ function renderizarProdutos() {
         const destacado = index === indiceProduto;
         const estoque = r.estoque === null || r.estoque === undefined ? '—' : Number(r.estoque).toLocaleString('pt-BR');
         return `
-            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
+            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-[#10284A] text-amber-50' : 'hover:bg-gray-50'}"
                 onclick="selecionarProduto(${index})">
                 <td class="py-3 px-2 font-mono text-sm truncate ${destacado ? 'text-slate-300' : 'text-gray-500'}">${esc(r.codigo_barras || r.codigo_interno)}</td>
                 <td class="py-3 px-2 font-medium truncate" title="${esc(r.descricao)}">${esc(r.descricao)}</td>
@@ -739,7 +733,7 @@ function renderizarClientes() {
     linhasBuscaCliente.innerHTML = clientesAtuais.map((c, index) => {
         const destacado = index === indiceCliente;
         return `
-            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-slate-800 text-white' : 'hover:bg-gray-50'}"
+            <tr class="cursor-pointer border-b border-gray-100 transition ${destacado ? 'bg-[#10284A] text-amber-50' : 'hover:bg-gray-50'}"
                 onclick="selecionarCliente(${index})">
                 <td class="py-3 font-medium">${esc(c.nome)}</td>
                 <td class="py-3 font-mono text-sm ${destacado ? 'text-slate-300' : 'text-gray-500'}">${esc(c.cpf_cnpj)}</td>

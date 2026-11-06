@@ -19,8 +19,8 @@
         3 => 'Regime Normal',
     ][(int) $empresa->crt] ?? '—';
 
-    $dtCls = 'text-xs text-gray-500 uppercase';
-    $ddCls = 'text-sm font-medium text-gray-800';
+    $dtCls = 'text-[11px] font-semibold uppercase tracking-wider text-slate-500';
+    $ddCls = 'text-sm font-medium text-slate-800 mt-0.5';
 @endphp
 
 <dl class="grid grid-cols-3 gap-x-4 gap-y-3">

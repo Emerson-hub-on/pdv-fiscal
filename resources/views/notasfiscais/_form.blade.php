@@ -122,104 +122,144 @@
         <input type="hidden" name="venda_id" value="{{ old('venda_id', $notaBase->venda_id) }}">
     @endif
 
+    @php
+        // Visual da tela: mesmo padrão do sistema (azul-marinho com detalhes em âmbar claro)
+        $rotuloCls  = 'block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5';
+        $seletorCls = 'group w-full flex items-center gap-3 text-left bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-sm font-medium text-slate-800 hover:bg-white hover:border-[#10284A]/40 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-[#10284A]/30 transition';
+        $iconeCls   = 'shrink-0 w-8 h-8 rounded-lg bg-[#10284A] text-amber-50 flex items-center justify-center';
+        $erroCls    = 'text-red-600 text-xs mt-1';
+    @endphp
+
     @if (!$ehEdicao && $temBase && $notaBase->venda_id)
         @php $vendaOrigem = $notaBase->venda; @endphp
-        <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-900 flex flex-col gap-1">
-            <p class="font-medium">
-                Montada a partir da NFC-e nº {{ $vendaOrigem->numero_nfce }}, série {{ $vendaOrigem->serie_nfce }}
-                ({{ $vendaOrigem->created_at?->format('d/m/Y H:i') }} — R$ {{ number_format((float) $vendaOrigem->total, 2, ',', '.') }}).
-                Confira os dados antes de salvar.
-            </p>
-            @foreach ($avisosMontagem ?? [] as $aviso)
-                <p>• {{ $aviso }}</p>
-            @endforeach
+        <div class="bg-white rounded-xl shadow-sm ring-1 ring-slate-200 border-l-4 border-l-amber-400 px-5 py-4 flex gap-4">
+            <span class="shrink-0 w-10 h-10 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+            </span>
+            <div class="flex-1 min-w-0 text-sm">
+                <div class="flex flex-wrap items-center gap-2">
+                    <p class="font-semibold text-slate-800">Montada a partir da NFC-e</p>
+                    <span class="rounded-full bg-[#10284A] text-amber-50 px-2.5 py-0.5 text-xs font-semibold">
+                        nº {{ $vendaOrigem->numero_nfce }} · série {{ $vendaOrigem->serie_nfce }}
+                    </span>
+                    <span class="text-slate-500">
+                        {{ $vendaOrigem->created_at?->format('d/m/Y H:i') }} · R$ {{ number_format((float) $vendaOrigem->total, 2, ',', '.') }}
+                    </span>
+                </div>
+                <p class="text-slate-500 mt-0.5">Confira os dados abaixo antes de salvar o rascunho.</p>
+                @if (!empty($avisosMontagem))
+                    <ul class="mt-2 flex flex-col gap-1 text-amber-800">
+                        @foreach ($avisosMontagem as $aviso)
+                            <li class="flex gap-2">
+                                <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                                <span>{{ $aviso }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
         </div>
     @endif
 
-    <div class="bg-white rounded-lg shadow p-6">
-        <div class="flex items-center justify-between mb-4">
-            @if ($ehEdicao || $temBase)
-                <a href="{{ $ehEdicao ? route('notasfiscais.index') : route('montagem-nfe.nfce.index') }}"
-                   title="{{ $ehEdicao ? 'Voltar para Notas Fiscais' : 'Voltar para a busca de NFC-e' }}"
-                class="text-gray-500 hover:text-gray-800 transition">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+    <div class="bg-white rounded-xl shadow-sm ring-1 ring-slate-200">
+        <div class="flex items-center justify-between gap-4 bg-[#10284A] rounded-t-xl px-6 py-4">
+            <div class="flex items-center gap-3 min-w-0">
+                @if ($ehEdicao || $temBase)
+                    <a href="{{ $ehEdicao ? route('notasfiscais.index') : route('montagem-nfe.nfce.index') }}"
+                       title="{{ $ehEdicao ? 'Voltar para Notas Fiscais' : 'Voltar para a busca de NFC-e' }}"
+                       class="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                    </a>
+                @endif
+                <div class="min-w-0">
+                    <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">NF-e · Modelo 55 · Saída</p>
+                    <h1 class="text-lg font-semibold text-amber-50 leading-tight truncate">
+                        {{ $ehEdicao ? 'Editar Nota Fiscal' : 'Nova Nota Fiscal' }}
+                    </h1>
+                </div>
+                <span class="shrink-0 rounded-full bg-amber-50/10 ring-1 ring-amber-50/25 text-amber-50 px-2.5 py-0.5 text-xs font-medium">
+                    Rascunho
+                </span>
+            </div>
+
+            <div class="relative" id="menu-opcoes">
+                <button type="button" id="btn-opcoes" onclick="alternarMenuOpcoes()"
+                        class="flex items-center gap-1.5 border border-white/20 text-slate-200 rounded-lg px-3 py-1.5 text-sm hover:bg-amber-50/10 hover:text-amber-50 transition">
+                    Opções
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
-                </a>
-            @endif
-            <h1 class="text-lg font-semibold">{{ $ehEdicao ? 'Editar Nota Fiscal (rascunho)' : 'Nova Nota Fiscal (Saída)' }}</h1>
-            
-        <div class="relative" id="menu-opcoes">
-            <button type="button" id="btn-opcoes" onclick="alternarMenuOpcoes()"
-                    class="flex items-center gap-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm hover:bg-gray-50">
-                Opções
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-            </button>
+                </button>
 
-            <div id="painel-opcoes"
-                class="hidden absolute right-0 mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-40 p-4 text-sm">
-                <p class="font-medium text-gray-700 mb-2">Modalidade do frete</p>
-                @foreach (\App\Models\NotaFiscal::MODALIDADES_FRETE as $codigo => $nome)
-                    <label class="flex items-center gap-2 mb-1 cursor-pointer">
-                        <input type="radio" name="mod_frete_ui" value="{{ $codigo }}"
-                            onchange="definirModFrete('{{ $codigo }}')"
-                            {{ $modFreteInicial === (string) $codigo ? 'checked' : '' }}>
-                        {{ $nome }}
-                    </label>
-                @endforeach
+                <div id="painel-opcoes"
+                    class="hidden absolute right-0 mt-2 w-80 bg-white ring-1 ring-slate-200 rounded-xl shadow-xl z-40 p-4 text-sm text-slate-700">
+                    <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Modalidade do frete</p>
+                    @foreach (\App\Models\NotaFiscal::MODALIDADES_FRETE as $codigo => $nome)
+                        <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer hover:bg-slate-50">
+                            <input type="radio" name="mod_frete_ui" value="{{ $codigo }}" class="accent-[#10284A]"
+                                onchange="definirModFrete('{{ $codigo }}')"
+                                {{ $modFreteInicial === (string) $codigo ? 'checked' : '' }}>
+                            {{ $nome }}
+                        </label>
+                    @endforeach
 
-                <div id="opcoes-valor-frete" class="mt-3 pt-3 border-t border-gray-100">
-                    <p class="font-medium text-gray-700 mb-2">Valor do frete</p>
-                    <label class="flex items-center gap-2 mb-1 cursor-pointer">
-                        <input type="radio" name="frete_modo_ui" value="item" onchange="definirFreteModo('item')"
-                            {{ $freteModoInicial === 'item' ? 'checked' : '' }}> Item a item
-                    </label>
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="frete_modo_ui" value="global" onchange="definirFreteModo('global')"
-                            {{ $freteModoInicial === 'global' ? 'checked' : '' }}> Valor total (informado ao confirmar)
-                    </label>
+                    <div id="opcoes-valor-frete" class="mt-3 pt-3 border-t border-slate-100">
+                        <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Valor do frete</p>
+                        <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer hover:bg-slate-50">
+                            <input type="radio" name="frete_modo_ui" value="item" class="accent-[#10284A]" onchange="definirFreteModo('item')"
+                                {{ $freteModoInicial === 'item' ? 'checked' : '' }}> Item a item
+                        </label>
+                        <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer hover:bg-slate-50">
+                            <input type="radio" name="frete_modo_ui" value="global" class="accent-[#10284A]" onchange="definirFreteModo('global')"
+                                {{ $freteModoInicial === 'global' ? 'checked' : '' }}> Valor total (informado ao confirmar)
+                        </label>
+                    </div>
                 </div>
             </div>
         </div>
-        
-        </div>
 
-
-        <div class="grid grid-cols-2 gap-4 max-w-5xl">
+        <div class="p-6">
+        <div class="grid grid-cols-2 gap-x-5 gap-y-4 max-w-5xl">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Nota</label>
+                <label class="{{ $rotuloCls }}">Tipo de nota</label>
                 <input type="hidden" name="cfop_saida_id" id="campo-cfop"
                     value="{{ old('cfop_saida_id', $temBase ? $notaBase->cfop_saida_id : '') }}">
-                <button type="button" onclick="abrirModalCfop()"
-                        class="w-full text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
-                    <span id="texto-cfop-selecionado">
+                <button type="button" onclick="abrirModalCfop()" class="{{ $seletorCls }}">
+                    <span class="{{ $iconeCls }}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    </span>
+                    <span id="texto-cfop-selecionado" class="flex-1 min-w-0 truncate">
                         @if ($temBase && $notaBase->cfopSaida)
                             {{ $notaBase->cfopSaida->codigo }} - {{ $notaBase->cfopSaida->descricao }}
                         @else
                             Selecionar tipo de nota...
                         @endif
                     </span>
+                    <svg class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-[#10284A] transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg>
                 </button>
-                @error('cfop_saida_id') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+                @error('cfop_saida_id') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Pagamento</label>
+                <label class="{{ $rotuloCls }}">Tipo de pagamento</label>
                 <input type="hidden" name="forma_pagamento_id" id="campo-pagamento"
                     value="{{ old('forma_pagamento_id', $temBase ? $notaBase->forma_pagamento_id : '') }}">
-                <button type="button" onclick="abrirModalPagamento()"
-                        class="w-full text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
-                    <span id="texto-pagamento-selecionado">
+                <button type="button" onclick="abrirModalPagamento()" class="{{ $seletorCls }}">
+                    <span class="{{ $iconeCls }}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                    </span>
+                    <span id="texto-pagamento-selecionado" class="flex-1 min-w-0 truncate">
                         @if ($temBase && $notaBase->formaPagamento)
                             {{ $notaBase->formaPagamento->descricao }}
                         @else
                             Selecionar tipo de pagamento...
                         @endif
                     </span>
+                    <svg class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-[#10284A] transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg>
                 </button>
-                @error('forma_pagamento_id') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+                @error('forma_pagamento_id') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
             </div>
 
             @php
@@ -229,36 +269,42 @@
             @endphp
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+                <label class="{{ $rotuloCls }}">Cliente</label>
                 <input type="hidden" name="cliente_id" id="campo-cliente"
                     value="{{ old('cliente_id', $temBase ? $notaBase->cliente_id : '') }}">
-                <button type="button" onclick="abrirModalCliente()"
-                        class="w-full text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
-                    <span id="texto-cliente-selecionado">
+                <button type="button" onclick="abrirModalCliente()" class="{{ $seletorCls }}">
+                    <span class="{{ $iconeCls }}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    </span>
+                    <span id="texto-cliente-selecionado" class="flex-1 min-w-0 truncate">
                         @if ($clienteAtual)
                             {{ $clienteAtual->nome }} — {{ $clienteAtual->cpf_cnpj_formatado }}
                         @else
                             Selecionar cliente...
                         @endif
                     </span>
+                    <svg class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-[#10284A] transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg>
                 </button>
-                @error('cliente_id') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+                @error('cliente_id') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Operador</label>
+                <label class="{{ $rotuloCls }}">Operador</label>
                 <input type="hidden" name="operador_id" id="campo-operador" value="{{ $operadorAtual?->id }}">
-                <button type="button" onclick="abrirModalOperador()"
-                        class="w-full text-left border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50">
-                    <span id="texto-operador-selecionado">
+                <button type="button" onclick="abrirModalOperador()" class="{{ $seletorCls }}">
+                    <span class="{{ $iconeCls }}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    </span>
+                    <span id="texto-operador-selecionado" class="flex-1 min-w-0 truncate">
                         @if ($operadorAtual)
                             {{ $operadorAtual->name }} — Cód. {{ $operadorAtual->codigo }}
                         @else
                             Selecionar operador...
                         @endif
                     </span>
+                    <svg class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-[#10284A] transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg>
                 </button>
-                @error('operador_id') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+                @error('operador_id') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
             </div>
             <input type="hidden" name="operador_token" id="campo-operador-token" value="{{ old('operador_token') }}">
 
@@ -276,24 +322,37 @@
             @endforeach
 
         </div>
+        </div>
     </div>
 
-    <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-sm font-semibold mb-3">Itens da nota</h2>
+    <div class="bg-white rounded-xl shadow-sm ring-1 ring-slate-200 p-6">
+        <div class="flex items-center gap-3 mb-4">
+            <span class="{{ $iconeCls }}">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+            </span>
+            <div>
+                <h2 class="text-base font-semibold text-slate-800 leading-tight">Itens da nota</h2>
+                <p class="text-xs text-slate-500">Clique em um item para editar quantidade, valores e impostos.</p>
+            </div>
+        </div>
 
-        <div id="aviso-cabecalho" class="bg-amber-50 text-amber-800 border border-amber-200 rounded-lg px-3 py-2 text-sm mb-4">
+        <div id="aviso-cabecalho" class="flex items-center gap-2 bg-amber-50 text-amber-800 ring-1 ring-amber-200 rounded-xl px-3 py-2 text-sm mb-4">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             Preencha cliente, natureza da operação e finalidade acima para liberar a adição de itens.
         </div>
 
-        <input type="text" id="input-busca-item-nf" placeholder="Nome, código interno ou código de barras..."
-               autocomplete="off" disabled
-               class="w-full max-w-2xl border border-gray-300 rounded-lg px-3 py-2 text-sm mb-4 focus:ring-2 focus:ring-slate-800 outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed">
+        <div class="relative w-full max-w-2xl mb-4">
+            <svg class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/></svg>
+            <input type="text" id="input-busca-item-nf" placeholder="Adicionar item: nome, código interno ou código de barras..."
+                   autocomplete="off" disabled
+                   class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition disabled:opacity-60 disabled:cursor-not-allowed">
+        </div>
 
         @error('itens') <p class="text-red-600 text-sm mb-3">{{ $message }}</p> @enderror
 
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm whitespace-nowrap">
-                <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+        <div class="overflow-x-auto rounded-xl ring-1 ring-slate-200">
+            <table class="w-full text-sm whitespace-nowrap text-slate-700">
+                <thead class="bg-[#10284A] text-amber-50 text-[11px] uppercase tracking-wider">
                     <tr>
                         <th class="text-left px-3 py-2">Itens</th>
                         <th class="text-left px-3 py-2">Código</th>
@@ -317,10 +376,10 @@
                     </tr>
                 </thead>
                 <tbody id="linhas-grid-itens" class="divide-y divide-gray-100"></tbody>
-                <tfoot class="bg-gray-50 font-medium">
-                    <tr class="border-t-2 border-gray-200">
+                <tfoot class="bg-slate-50 font-medium text-slate-700">
+                    <tr class="border-t-2 border-slate-200">
                         <td class="px-3 py-2 text-left">
-                            <span class="text-xs font-semibold uppercase tracking-wide text-gray-500 mr-2">Totais</span><span id="tot-itens">0</span>
+                            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mr-2">Totais</span><span id="tot-itens">0</span>
                         </td>
                         <td colspan="5"></td>
                         <td class="px-3 py-2 text-right" id="tot-qtd">0</td>
@@ -337,24 +396,26 @@
                         <td class="px-3 py-2 text-right" id="tot-aliq-ipi" title="Média ponderada pela base do IPI">0,00%</td>
                         <td></td>
                     </tr>
-                    <tr>
-                        <td colspan="8" class="px-3 py-2 text-right">Total da nota</td>
-                        <td class="px-3 py-2 text-right" id="total-grid-itens">R$ 0,00</td>
+                    <tr class="border-t border-slate-200">
+                        <td colspan="8" class="px-3 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-500">Total da nota</td>
+                        <td class="px-3 py-3 text-right text-base font-bold text-[#10284A]" id="total-grid-itens">R$ 0,00</td>
                         <td colspan="10"></td>
                     </tr>
                 </tfoot>
             </table>
-            <p id="grid-vazia" class="text-center text-gray-400 py-8">Nenhum item adicionado ainda.</p>
+            <p id="grid-vazia" class="text-center text-sm text-slate-400 py-10">Nenhum item adicionado ainda.</p>
         </div>
 
-        <div>
+        <div class="flex justify-end mt-5 pt-5 border-t border-slate-100">
             <button type="button" onclick="abrirModalReferencia()"
-                    class="bg-green-700 text-white rounded-lg px-6 py-2.5 text-sm font-medium hover:bg-green-800">
-                {{ $ehEdicao ? 'Salvar Alterações' : 'Salvar Nota' }}
+                    class="inline-flex items-center gap-2 bg-[#10284A] text-amber-50 rounded-xl px-6 py-2.5 text-sm font-semibold shadow-sm hover:bg-[#163a68] focus:outline-none focus:ring-2 focus:ring-[#10284A]/40 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                {{ $ehEdicao ? 'Salvar alterações' : 'Salvar rascunho' }}
             </button>
         </div>
 
         <div id="area-avisos" class="fixed top-4 right-4 z-[100] flex flex-col gap-2 w-80 max-w-[90vw]"></div>
+    </div>
 </form>
 
 <!-- Modal CFOP -->
@@ -2389,9 +2450,9 @@ function renderizarGridItens() {
             : '—';
 
         return `
-            <tr class="cursor-pointer transition ${emEdicao ? 'bg-slate-100' : 'hover:bg-gray-50'}"
+            <tr class="cursor-pointer transition ${emEdicao ? 'bg-amber-50' : 'hover:bg-slate-50'}"
                 onclick="editarItemDaGrid(${index})" title="Clique para editar">
-                <td class="px-3 py-2 font-medium text-gray-500">${index + 1}</td>
+                <td class="px-3 py-2 font-semibold text-slate-400">${index + 1}</td>
                 <td class="px-3 py-2">${escHtml(item.codigo ?? '—')}</td>
                 <td class="px-3 py-2">${escHtml(item.codigo_barras ?? '—')}</td>
                 <td class="px-3 py-2"><div class="max-w-[16rem] truncate">${escHtml(item.descricao)}</div></td>
@@ -2399,7 +2460,8 @@ function renderizarGridItens() {
                 <td class="px-3 py-2 font-mono">${item.cst_csosn ?? '—'}</td>
                 <td class="px-3 py-2 text-right">${item.quantidade}</td>
                 <td class="px-3 py-2 text-right">R$ ${item.valor_unitario.toFixed(2)}</td>
-                <td class="px-3 py-2 text-right font-medium">R$ ${item.valor_total.toFixed(2)}</td>
+                <td class="px-3 py-2 text-right font-semibold text-slate-900">R$ ${item.valor_total.toFixed(2)}</td>
+
                 <td class="px-3 py-2 text-right">R$ ${item.valor_desconto.toFixed(2)}</td>
                 <td class="px-3 py-2 text-right">${item.desconto_percentual.toFixed(2)}%</td>
                 <td class="px-3 py-2 text-right">R$ ${Number(item.valor_outras_despesas ?? 0).toFixed(2)}</td>
