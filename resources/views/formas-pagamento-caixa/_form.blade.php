@@ -77,11 +77,27 @@
         </div>
     </div>
 
-    <div class="flex flex-row-reverse gap-3 mt-6 pt-5 border-t border-slate-100">
-        <button type="submit" class="{{ $botaoPrimarioCls }}">
-            <x-form.icone nome="check" /> Salvar
-        </button>
-        <a href="{{ route('formas-pagamento-caixa.index') }}" class="{{ $botaoCancelarCls }}">Cancelar</a>
+    <div class="flex items-center gap-3 mt-6 pt-5 border-t border-slate-100">
+        {{-- Excluir: só na edição, de forma que não é do sistema e nunca foi usada (o form fica fora deste, no edit) --}}
+        @if ($forma->exists)
+            @if (!$sistema && !($emUso ?? false))
+                <button type="submit" form="form-excluir-forma"
+                        class="inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-medium text-red-600 ring-1 ring-red-200 hover:bg-red-50 transition">
+                    Excluir
+                </button>
+            @else
+                <span class="text-xs text-slate-400">
+                    {{ $sistema ? 'Forma do sistema: não pode ser excluída (inative-a se não for usar).' : 'Já usada em vendas: não pode ser excluída (inative-a).' }}
+                </span>
+            @endif
+        @endif
+
+        <div class="ml-auto flex flex-row-reverse gap-3">
+            <button type="submit" class="{{ $botaoPrimarioCls }}">
+                <x-form.icone nome="check" /> Salvar
+            </button>
+            <a href="{{ route('formas-pagamento-caixa.index') }}" class="{{ $botaoCancelarCls }}">Cancelar</a>
+        </div>
     </div>
 </div>
 

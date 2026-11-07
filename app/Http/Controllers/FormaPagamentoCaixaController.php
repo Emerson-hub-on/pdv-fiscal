@@ -58,7 +58,9 @@ class FormaPagamentoCaixaController extends Controller
 
     public function edit(FormaPagamentoCaixa $forma)
     {
-        return view('formas-pagamento-caixa.edit', compact('forma'));
+        $emUso = $forma->emUso();
+
+        return view('formas-pagamento-caixa.edit', compact('forma', 'emUso'));
     }
 
     public function update(Request $request, FormaPagamentoCaixa $forma): RedirectResponse
@@ -102,7 +104,7 @@ class FormaPagamentoCaixaController extends Controller
         $forma->delete();
         FormasCaixa::limpar();
 
-        return back()->with('sucesso', 'Forma de pagamento excluída.');
+        return redirect()->route('formas-pagamento-caixa.index')->with('sucesso', "\"{$forma->descricao}\" excluída.");
     }
 
     private function validar(Request $request, ?FormaPagamentoCaixa $forma = null): array

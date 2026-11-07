@@ -11,6 +11,13 @@
 
 $historico = [
     [
+        'versao' => '1.12.1',
+        'data' => '2026-11-07',
+        'itens' => [
+            'Cadastros → Caixa → Formas de pagamento: a lista ficou só com as informações; clicar numa forma abre a edição, onde ficam a chave "Ativa" (ativar/inativar) e o botão Excluir (só para forma criada no painel e nunca usada em venda; nas demais aparece o motivo).',
+        ],
+    ],
+    [
         'versao' => '1.12.0',
         'data' => '2026-11-06',
         'itens' => [

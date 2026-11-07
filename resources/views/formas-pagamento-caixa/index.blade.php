@@ -20,7 +20,7 @@
     <div class="rounded-xl bg-amber-50 ring-1 ring-amber-200 px-4 py-3 text-sm text-amber-900 mb-5">
         Estas são as opções da tela de <strong>Pagamento</strong> do caixa, na ordem abaixo. Formas inativas não aparecem no caixa.
         Depois de alterar, use <strong>Atualizar Caixa</strong> (F8 → Atualizar Caixa) em cada caixa para aplicar.
-        O <strong>meio de pagamento</strong> é o código que vai na NFC-e (tPag) e no SPED.
+        O <strong>meio de pagamento</strong> é o código que vai na NFC-e (tPag) e no SPED. Clique numa forma para editar, ativar/inativar ou excluir.
     </div>
 
     @if ($errors->any())
@@ -37,12 +37,14 @@
                     <th class="text-center px-4 py-3">Troco</th>
                     <th class="text-right px-4 py-3">Vendas</th>
                     <th class="text-left px-4 py-3">Situação</th>
-                    <th class="text-right px-4 py-3">Ações</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
                 @forelse ($formas as $forma)
-                    <tr class="hover:bg-slate-50 {{ $forma->ativo ? '' : 'opacity-60' }}">
+                    {{-- Clique na linha abre a edição (lá ficam a situação e o excluir) --}}
+                    <tr class="cursor-pointer hover:bg-amber-50 transition {{ $forma->ativo ? '' : 'opacity-60' }}"
+                        onclick="window.location='{{ route('formas-pagamento-caixa.edit', $forma) }}'"
+                        title="Clique para editar">
                         <td class="px-4 py-3 text-slate-500 font-mono">{{ $forma->ordem }}</td>
                         <td class="px-4 py-3">
                             <span class="font-semibold text-slate-800">{{ $forma->descricao }}</span>
@@ -78,27 +80,9 @@
                                 </span>
                             @endif
                         </td>
-                        <td class="px-4 py-3">
-                            @if ($podeAlterar)
-                                <div class="flex items-center justify-end gap-3">
-                                    <a href="{{ route('formas-pagamento-caixa.edit', $forma) }}" class="text-[#10284A] hover:underline font-medium">Editar</a>
-                                    <form action="{{ route('formas-pagamento-caixa.toggle-ativo', $forma) }}" method="POST">
-                                        @csrf @method('PATCH')
-                                        <button type="submit" class="text-amber-700 hover:underline font-medium">{{ $forma->ativo ? 'Inativar' : 'Reativar' }}</button>
-                                    </form>
-                                    @if (!$forma->sistema && empty($usos[$forma->codigo]))
-                                        <form action="{{ route('formas-pagamento-caixa.destroy', $forma) }}" method="POST"
-                                              onsubmit="return confirm('Excluir a forma de pagamento &quot;{{ $forma->descricao }}&quot;?')">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="text-red-600 hover:underline font-medium">Excluir</button>
-                                        </form>
-                                    @endif
-                                </div>
-                            @endif
-                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="px-4 py-10 text-center text-slate-400">Nenhuma forma de pagamento cadastrada.</td></tr>
+                    <tr><td colspan="6" class="px-4 py-10 text-center text-slate-400">Nenhuma forma de pagamento cadastrada.</td></tr>
                 @endforelse
             </tbody>
         </table>
