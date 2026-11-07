@@ -11,6 +11,22 @@
 
 $historico = [
     [
+        'versao' => '1.13.1',
+        'data' => '2026-11-07',
+        'itens' => [
+            'Relatórios → Vendas → Canceladas: nova coluna "Liberado por" (na tela, no PDF e no Excel) com quem liberou o cancelamento — o supervisor que autorizou ou "Próprio operador (liberado)" quando o operador tem liberação para cancelar. "Cancelado por" passou a mostrar só o operador.',
+        ],
+    ],
+    [
+        'versao' => '1.13.0',
+        'data' => '2026-11-07',
+        'itens' => [
+            'Relatórios → Vendas → Canceladas: lista as vendas canceladas (NFC-e do caixa e NF-e de venda) com a data do cancelamento, o nº/série, a data da venda, o cliente, o valor, o motivo, quem cancelou (e o supervisor que liberou, na NFC-e), o vendedor e os itens em "Ver itens" (com o protocolo do cancelamento da NF-e).',
+            'Filtros iguais aos outros relatórios de vendas: NFC-e, NF-e ou ambos, período (padrão: mês atual) pela data do cancelamento ou da venda, busca por nº do documento, cliente, motivo ou vendedor e ordenação. Cartões com a quantidade e o valor cancelado, separados por NFC-e e NF-e.',
+            'Exportar Excel e PDF de todas as vendas canceladas do filtro, só as vendas (resumida) ou com os itens (detalhada).',
+        ],
+    ],
+    [
         'versao' => '1.12.1',
         'data' => '2026-11-07',
         'itens' => [

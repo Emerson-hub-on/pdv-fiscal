@@ -461,6 +461,13 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
                 Route::get('vendedor/exportar-pdf', [VendasPorVendedorController::class, 'exportarPdf'])->name('vendedor.exportar-pdf');
             });
 
+            // ---- Vendas canceladas ----
+            Route::prefix('relatorios/vendas')->name('relatorios.vendas.')->group(function () {
+                Route::get('canceladas', [\App\Http\Controllers\Relatorios\VendasCanceladasController::class, 'index'])->name('canceladas.index');
+                Route::get('canceladas/exportar-excel', [\App\Http\Controllers\Relatorios\VendasCanceladasController::class, 'exportarExcel'])->name('canceladas.exportar-excel');
+                Route::get('canceladas/exportar-pdf', [\App\Http\Controllers\Relatorios\VendasCanceladasController::class, 'exportarPdf'])->name('canceladas.exportar-pdf');
+            });
+
             // ---- Gráficos > Comparativo diário de vendas ----
             Route::prefix('relatorios/graficos')->name('relatorios.graficos.')->group(function () {
                 Route::get('comparativo-diario', [ComparativoDiarioVendasController::class, 'index'])->name('comparativo-diario.index');
