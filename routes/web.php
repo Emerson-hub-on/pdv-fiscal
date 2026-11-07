@@ -264,6 +264,19 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
                 ->name('formas-pagamento-caixa.toggle-ativo');
         });
 
+        // ---------------- COMANDAS ----------------
+        Route::middleware('permissao:comandas')->group(function () {
+            // Comandas → Cardápio → Menu (produtos e fotos que o garçom vê ao fazer o pedido)
+            Route::get('comandas/cardapio/buscar-produto', [\App\Http\Controllers\CardapioController::class, 'buscarProduto'])
+                ->name('cardapio.buscar-produto');
+            Route::get('comandas/cardapio/{item}/imagem', [\App\Http\Controllers\CardapioController::class, 'imagem'])
+                ->name('cardapio.imagem');
+            Route::resource('comandas/cardapio', \App\Http\Controllers\CardapioController::class)
+                ->except(['show'])
+                ->names('cardapio')
+                ->parameters(['cardapio' => 'item']);
+        });
+
         // ---------------- CLIENTES E FORNECEDORES ----------------
         Route::middleware('permissao:clientes')->group(function () {
             Route::get('/clientes', [ClienteController::class, 'index'])->name('clientes.index');

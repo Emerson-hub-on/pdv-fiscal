@@ -87,6 +87,85 @@ class SyncService
     }
 
 
+    /**
+     * Saldo de estoque do caixa = saldo do servidor ± o que o caixa já mexeu e o servidor ainda não sabe.
+     *
+     * A venda do caixa baixa o cache na hora e só baixa o servidor quando sobe (EstoqueService::baixarVenda,
+     * sem tocar updated_at). Antes, o estoque do cache só era renovado quando o produto era alterado no
+     * cadastro, e aí vinha o saldo puro do servidor: uma venda ainda pendente perdia a baixa local
+     * (o caixa ficava com 1 a mais) e as vendas dos outros caixas nunca chegavam.
+     * Agora todo "Atualizar Caixa" renova o saldo de todos os produtos e variantes, descontando:
+     *  - venda ainda não enviada (pendente_sync / erro_sync), que não foi cancelada: o servidor ainda não baixou;
+     *  - e somando o cancelamento de venda já enviada cuja situação ainda não subiu: o caixa já devolveu, o servidor não.
+     */
+    public function atualizarEstoqueCache(): array
+    {
+        try {
+            $local = DB::connection('sqlite_local');
+
+            // Lê o servidor antes de travar o banco do caixa (a leitura do MySQL pode demorar)
+            $produtos = DB::table('produtos')->pluck('estoque', 'id');
+            $variantes = DB::table('produto_variantes')->pluck('estoque', 'id');
+
+            $alterados = 0;
+
+            $local->transaction(function () use ($local, $produtos, $variantes, &$alterados) {
+                $ajusteProduto = [];
+                $ajusteVariante = [];
+
+                $vendas = $local->table('vendas_pendentes')
+                    ->where(function ($q) {
+                        // ainda não subiu e não foi cancelada: o servidor não baixou
+                        $q->where(fn ($w) => $w->whereIn('status', ['pendente_sync', 'erro_sync'])
+                            ->where(fn ($f) => $f->whereNull('status_fiscal')->orWhere('status_fiscal', '!=', 'cancelada')))
+                        // subiu, foi cancelada no caixa e o cancelamento ainda não subiu: o servidor não devolveu
+                          ->orWhere(fn ($w) => $w->where('status', 'sincronizada')
+                            ->where('status_fiscal', 'cancelada')
+                            ->where('fiscal_sync_pendente', true));
+                    })
+                    ->get(['status', 'itens']);
+
+                foreach ($vendas as $venda) {
+                    $sinal = $venda->status === 'sincronizada' ? 1 : -1;
+
+                    foreach (json_decode($venda->itens, true) ?? [] as $item) {
+                        $qtd = $sinal * (float) ($item['quantidade'] ?? 0);
+
+                        if (!empty($item['produto_variante_id'])) {
+                            $ajusteVariante[$item['produto_variante_id']] = ($ajusteVariante[$item['produto_variante_id']] ?? 0) + $qtd;
+                        } elseif (!empty($item['produto_id'])) {
+                            $ajusteProduto[$item['produto_id']] = ($ajusteProduto[$item['produto_id']] ?? 0) + $qtd;
+                        }
+                    }
+                }
+
+                $atualizar = function (string $tabela, $saldos, array $ajustes) use ($local, &$alterados) {
+                    $cache = $local->table($tabela)->pluck('estoque', 'id');
+
+                    foreach ($cache as $id => $atual) {
+                        if (!isset($saldos[$id])) {
+                            continue;
+                        }
+
+                        $novo = round((float) $saldos[$id] + ($ajustes[$id] ?? 0), 3);
+
+                        if (abs($novo - (float) $atual) >= 0.0005) {
+                            $local->table($tabela)->where('id', $id)->update(['estoque' => $novo]);
+                            $alterados++;
+                        }
+                    }
+                };
+
+                $atualizar('produtos_cache', $produtos, $ajusteProduto);
+                $atualizar('produto_variantes_cache', $variantes, $ajusteVariante);
+            });
+
+            return ['sucesso' => true, 'estoques_corrigidos' => $alterados];
+        } catch (\Throwable $e) {
+            return $this->registrarFalha($e);
+        }
+    }
+
     public function puxarCatalogo(): array
     {
         try {
@@ -192,6 +271,9 @@ class SyncService
             DB::connection('sqlite_local')->table('produto_variantes_cache')
                 ->whereNotIn('id', DB::table('produto_variantes')->pluck('id'))
                 ->delete();
+
+            // O estoque gravado acima é o do servidor puro: corrige pelas vendas que ainda não subiram
+            $this->atualizarEstoqueCache();
 
             $this->salvarMeta('ultima_sincronizacao_produtos', now()->toDateTimeString());
 
@@ -1485,6 +1567,10 @@ class SyncService
         }
 
         $resultado['vendas'] = $this->enviarVendasPendentes();
+        // Depois das vendas: traz o saldo do servidor (já com as baixas que acabaram de subir e as dos outros caixas)
+        $resultado['estoque'] = CentralStatus::fora()
+            ? ['sucesso' => false, 'erro' => 'Servidor indisponível']
+            : $this->atualizarEstoqueCache();
         // Baixas de convênio do caixa sobem depois das vendas (a dívida nasce com a venda)
         $resultado['convenio_recebimentos'] = $this->enviarRecebimentosConvenio();
         // Depois das vendas: o limite usado e as dívidas em aberto já incluem o que acabou de subir

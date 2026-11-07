@@ -11,6 +11,40 @@
 
 $historico = [
     [
+        'versao' => '1.14.3',
+        'data' => '2026-11-07',
+        'itens' => [
+            'Comandas → Cardápio → Menu: produto com variação agora entra igual ao caixa, uma linha por variante, com o código de barras dela (ex.: "Arroz — BRANCO / 1", 9900000000011). Cada variante é um item do cardápio, com foto, descrição, ordem e situação próprias, e mostra o estoque dela. O produto pai sozinho não entra mais.',
+            'O modal de busca lista cada variante separada, com o código, o preço e o estoque dela; ler o código de barras da variante escolhe direto. Variante ou produto que já está no cardápio não aparece na busca.',
+        ],
+    ],
+    [
+        'versao' => '1.14.2',
+        'data' => '2026-11-07',
+        'itens' => [
+            'Caixa: o estoque do caixa podia ficar diferente do servidor. A venda do caixa baixa o estoque do caixa na hora e o do servidor quando sobe; se o produto fosse alterado no cadastro enquanto havia venda ainda não enviada, o "Atualizar Caixa" trazia o saldo do servidor sem essa venda e o caixa ficava com unidades a mais. As vendas de outros caixas também não chegavam ao estoque deste caixa.',
+            'Agora todo "Atualizar Caixa" (e a sincronização automática) renova o estoque de todos os produtos e variantes com o saldo do servidor, descontando as vendas do caixa que ainda não subiram e somando os cancelamentos que ainda não subiram.',
+            'Comandas → Cardápio → Menu: produto com variação mostra o estoque somado das variantes e o estoque de cada uma (no cartão, na edição e no modal de busca). Antes aparecia o estoque do produto pai, que não é movimentado pelas vendas das variantes. A busca também acha o produto pelo código de barras da variante.',
+        ],
+    ],
+    [
+        'versao' => '1.14.1',
+        'data' => '2026-11-07',
+        'itens' => [
+            'Comandas → Cardápio → Menu → Adicionar produto: a busca do produto ficou igual à do caixa — ao começar a digitar abre o modal "Selecionar Produto" (código, produto, preço e estoque), com ↑ ↓ para navegar, Enter para escolher e Esc para fechar. Código de barras ou código interno exato escolhe o produto direto.',
+        ],
+    ],
+    [
+        'versao' => '1.14.0',
+        'data' => '2026-11-07',
+        'itens' => [
+            'Novo menu Comandas → Cardápio → Menu: escolha os produtos que o garçom vê na hora do pedido. Cada produto aparece num cartão com a foto, o nome, o valor, a descrição e a quantidade em estoque (em vermelho sem estoque e em âmbar abaixo do estoque mínimo).',
+            '"Adicionar produto" busca os produtos ativos que ainda não estão no cardápio (por nome, código interno ou código de barras) e permite enviar a foto (JPG, PNG ou WEBP, reduzida automaticamente para ficar leve no celular), uma descrição própria do cardápio (em branco usa a do cadastro), a ordem e se o item está ativo.',
+            'Clicar num cartão abre a edição: trocar ou remover a foto, mudar a descrição, a ordem, ativar/inativar ou retirar do cardápio (o cadastro do produto não é alterado). Filtros por nome/código, categoria e situação, e cartões de resumo (itens, visíveis, sem foto, sem estoque).',
+            'Nova permissão "Comandas" no cadastro de Operador Fiscal.',
+        ],
+    ],
+    [
         'versao' => '1.13.1',
         'data' => '2026-11-07',
         'itens' => [

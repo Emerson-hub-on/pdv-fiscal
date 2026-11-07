@@ -460,6 +460,45 @@
             </div>
         </div>
 
+        <!-- Menu Dropdown: Comandas -->
+        @if (auth()->user()?->podeVer('comandas'))
+            <div class="flex flex-col">
+                <button onclick="toggleComandas()"
+                        class="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 text-sm font-medium transition cursor-pointer [.sidebar-oculta_&]:justify-center [.sidebar-oculta_&]:px-0">
+                    <span class="flex items-center gap-3">
+                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l2 2 4-4M7 3h10a2 2 0 012 2v16l-3-2-2 2-2-2-2 2-2-2-3 2V5a2 2 0 012-2z"></path>
+                        </svg>
+                        <span class="whitespace-nowrap [.sidebar-oculta_&]:hidden">Comandas</span>
+                    </span>
+                    <svg id="seta-comandas" class="w-4 h-4 transition-transform duration-200 [.sidebar-oculta_&]:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+
+                <div id="sub-comandas" class="hidden [.sidebar-oculta_&]:hidden flex flex-col gap-1 pl-4 mt-1 border-l border-white/10 ml-3">
+                    <!-- Cardápio (nível 2, abre lateral) -->
+                    <div class="relative">
+                        <button id="btn-comandas-cardapio" onclick="toggleFlyout('sub-comandas-cardapio', 'btn-comandas-cardapio')"
+                                class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                            <span>Cardápio</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
+
+                        <div id="sub-comandas-cardapio" data-flyout data-botao="btn-comandas-cardapio"
+                             class="hidden fixed bg-[#10284A] border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                            <a href="{{ route('cardapio.index') }}"
+                               class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                                Menu
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <!-- Menu Dropdown: Relatórios -->
         <div class="flex flex-col">
             <button onclick="toggleRelatorios()"
@@ -695,6 +734,7 @@
                     'pedidos-compra' => ['Financeiro', 'Pedidos de Compra'],
                     'pedidos-venda' => ['Pedidos', 'Pedido de Venda'],
                     'ordens-servico' => ['Pedidos', 'Ordem de Serviço'],
+                    'cardapio' => ['Comandas', 'Cardápio', 'Menu'],
                     'licenca' => ['Configuração', 'Licença'],
                     'versao' => ['Configuração', 'Versão'],
                 ];
@@ -898,6 +938,15 @@ function togglePedidos() {
 
     document.getElementById('sub-pedidos').classList.toggle('hidden');
     document.getElementById('seta-pedidos').classList.toggle('rotate-180');
+}
+
+function toggleComandas() {
+    if (document.body.classList.contains('sidebar-oculta')) {
+        document.body.classList.remove('sidebar-oculta');
+    }
+
+    document.getElementById('sub-comandas').classList.toggle('hidden');
+    document.getElementById('seta-comandas').classList.toggle('rotate-180');
 }
 
 function toggleRelatorios() {

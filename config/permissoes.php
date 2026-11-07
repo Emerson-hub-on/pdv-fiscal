@@ -9,6 +9,7 @@ return [
         'notas'           => ['nome' => 'Nota Fiscal - Saída',               'descricao' => 'Montar, emitir e cancelar NF-e; CFOPs e formas de pagamento'],
         'series'          => ['nome' => 'Numeração de NF-e',                 'descricao' => 'Séries e última numeração'],
         'transportadoras' => ['nome' => 'Transportadoras e veículos',        'descricao' => 'Cadastro de transportadoras e veículos'],
+        'comandas'        => ['nome' => 'Comandas',                          'descricao' => 'Cardápio (produtos e fotos que o garçom vê) e pedidos das comandas'],
     ],
 
     'niveis' => [
