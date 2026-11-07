@@ -4,6 +4,7 @@
         'fiscal'     => 'bg-blue-50 text-blue-700',
         'supervisor' => 'bg-purple-50 text-purple-700',
         'tecnico'    => 'bg-orange-50 text-orange-700',
+        'garcom'     => 'bg-rose-50 text-rose-700',
     ];
 @endphp
 

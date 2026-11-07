@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CardapioCategoria;
 use App\Models\CardapioItem;
-use App\Models\Categoria;
 use App\Models\Produto;
 use App\Models\ProdutoVariante;
 use Illuminate\Http\JsonResponse;
@@ -30,10 +30,11 @@ class CardapioController extends Controller
     public function index(Request $request)
     {
         $busca = trim((string) $request->query('busca'));
-        $categoriaId = $request->integer('categoria') ?: null;
+        // Categoria do cardápio: id, "sem" (itens sem categoria) ou vazio (todas)
+        $categoriaId = $request->query('categoria') === 'sem' ? 'sem' : ($request->integer('categoria') ?: null);
         $situacao = $request->query('situacao', 'todos');
 
-        $itens = CardapioItem::with(['produto.categoria', 'variante'])
+        $itens = CardapioItem::with(['produto', 'variante', 'categoria'])
             ->when($busca !== '', function ($q) use ($busca) {
                 $like = '%' . addcslashes($busca, '\\%_') . '%';
                 $q->where(fn ($w) => $w
@@ -44,15 +45,16 @@ class CardapioController extends Controller
                         ->orWhere('cor', 'like', $like)
                         ->orWhere('tamanho', 'like', $like)));
             })
-            ->when($categoriaId, fn ($q) => $q->whereHas('produto', fn ($p) => $p->where('categoria_id', $categoriaId)))
+            ->when($categoriaId === 'sem', fn ($q) => $q->whereNull('cardapio_categoria_id'))
+            ->when(is_int($categoriaId), fn ($q) => $q->where('cardapio_categoria_id', $categoriaId))
             ->when($situacao === 'ativos', fn ($q) => $q->where('ativo', true))
             ->when($situacao === 'inativos', fn ($q) => $q->where('ativo', false))
-            ->ordenados()
-            ->get();
+            ->get()
+            // Ordem alfabática pelo nome que aparece na tab (produto + variação), sem ligar para acento e maiúscula
+            ->sortBy(fn (CardapioItem $i) => Str::lower(Str::ascii($i->nomeExibido())), SORT_NATURAL)
+            ->values();
 
-        $categorias = Categoria::whereIn('id', Produto::whereIn('id', CardapioItem::select('produto_id'))->select('categoria_id'))
-            ->orderBy('nome')
-            ->get(['id', 'nome']);
+        $categorias = CardapioCategoria::ordenadas()->get(['id', 'nome']);
 
         $totais = [
             'itens'      => CardapioItem::count(),
@@ -71,7 +73,9 @@ class CardapioController extends Controller
             'ordem' => (int) CardapioItem::max('ordem') + 10,
         ]);
 
-        return view('comandas.cardapio.create', compact('item'));
+        $categorias = CardapioCategoria::ordenadas()->get();
+
+        return view('comandas.cardapio.create', compact('item', 'categorias'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -93,8 +97,9 @@ class CardapioController extends Controller
     public function edit(CardapioItem $item)
     {
         $item->load(['produto.categoria', 'variante']);
+        $categorias = CardapioCategoria::ordenadas()->get();
 
-        return view('comandas.cardapio.edit', compact('item'));
+        return view('comandas.cardapio.edit', compact('item', 'categorias'));
     }
 
     public function update(Request $request, CardapioItem $item): RedirectResponse
@@ -122,6 +127,52 @@ class CardapioController extends Controller
         $item->delete();
 
         return redirect()->route('cardapio.index')->with('sucesso', '"' . $nome . '" retirado do cardápio.');
+    }
+
+    /** Cria (POST) ou renomeia (PUT) uma categoria do cardápio pelo formulário do item; responde em JSON. */
+    public function salvarCategoria(Request $request, ?CardapioCategoria $categoria = null): JsonResponse
+    {
+        // Validação manual: o sistema só responde erro em JSON para api/* (bootstrap/app.php); aqui o modal
+        // chama por fetch e precisa receber o 422 com a mensagem, não um redirecionamento
+        $validador = Validator::make($request->all(), [
+            'nome'  => ['required', 'string', 'max:60', Rule::unique('cardapio_categorias', 'nome')->ignore($categoria?->id)],
+            'ordem' => ['nullable', 'integer', 'min:0', 'max:9999'],
+        ], [
+            'nome.required' => 'Informe o nome da categoria.',
+            'nome.max'      => 'O nome pode ter no máximo 60 caracteres.',
+            'nome.unique'   => 'Já existe uma categoria com esse nome.',
+        ]);
+
+        if ($validador->fails()) {
+            return response()->json(['errors' => $validador->errors()], 422);
+        }
+
+        $dados = $validador->validated();
+
+        $dados['nome'] = trim($dados['nome']);
+        $dados['ordem'] = (int) ($dados['ordem'] ?? ($categoria?->ordem ?? ((int) CardapioCategoria::max('ordem') + 10)));
+
+        $categoria ??= new CardapioCategoria();
+        $categoria->fill($dados)->save();
+
+        return response()->json([
+            'id'     => $categoria->id,
+            'nome'   => $categoria->nome,
+            'ordem'  => $categoria->ordem,
+            'lista'  => CardapioCategoria::ordenadas()->get(['id', 'nome', 'ordem']),
+        ]);
+    }
+
+    /** Exclui a categoria; os itens dela ficam sem categoria (não saem do cardápio). */
+    public function excluirCategoria(CardapioCategoria $categoria): JsonResponse
+    {
+        $itens = $categoria->itens()->count();
+        $categoria->delete();
+
+        return response()->json([
+            'itens' => $itens,
+            'lista' => CardapioCategoria::ordenadas()->get(['id', 'nome', 'ordem']),
+        ]);
     }
 
     /** Foto do item (também será usada pela tela do garçom). */
@@ -211,6 +262,7 @@ class CardapioController extends Controller
             'descricao' => ['nullable', 'string', 'max:500'],
             'ordem'     => ['nullable', 'integer', 'min:0', 'max:9999'],
             'ativo'     => ['boolean'],
+            'cardapio_categoria_id' => ['nullable', 'integer', Rule::exists('cardapio_categorias', 'id')],
         ];
 
         if (!$item) {
@@ -257,6 +309,7 @@ class CardapioController extends Controller
             'descricao' => trim((string) $request->input('descricao')) ?: null,
             'ordem'     => (int) $request->input('ordem', 0),
             'ativo'     => $request->boolean('ativo'),
+            'cardapio_categoria_id' => $request->integer('cardapio_categoria_id') ?: null,
         ];
     }
 

@@ -15,7 +15,7 @@ class CardapioItem extends Model
 {
     protected $table = 'cardapio_itens';
 
-    protected $fillable = ['produto_id', 'produto_variante_id', 'imagem', 'descricao', 'ativo', 'ordem'];
+    protected $fillable = ['produto_id', 'produto_variante_id', 'cardapio_categoria_id', 'imagem', 'descricao', 'ativo', 'ordem'];
 
     protected $casts = [
         'ativo' => 'boolean',
@@ -30,6 +30,12 @@ class CardapioItem extends Model
     public function variante(): BelongsTo
     {
         return $this->belongsTo(ProdutoVariante::class, 'produto_variante_id');
+    }
+
+    /** Categoria do cardápio (não é a categoria do cadastro do produto). */
+    public function categoria(): BelongsTo
+    {
+        return $this->belongsTo(CardapioCategoria::class, 'cardapio_categoria_id');
     }
 
     public function scopeOrdenados($query)
@@ -66,11 +72,14 @@ class CardapioItem extends Model
         return $this->descricao ?: $this->produto?->descricao;
     }
 
-    /** URL da foto (com a data de alteração, para o navegador não mostrar a antiga do cache). */
-    public function urlImagem(): ?string
+    /**
+     * URL da foto (com a data de alteração, para o navegador não mostrar a antiga do cache).
+     * $rota: cardapio.imagem (painel) ou garcom.cardapio.imagem (tela do garçom, outro login).
+     */
+    public function urlImagem(string $rota = 'cardapio.imagem'): ?string
     {
         return $this->imagem
-            ? route('cardapio.imagem', ['item' => $this->id, 'v' => $this->updated_at?->timestamp])
+            ? route($rota, ['item' => $this->id, 'v' => $this->updated_at?->timestamp])
             : null;
     }
 }

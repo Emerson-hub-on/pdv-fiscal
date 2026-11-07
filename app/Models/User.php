@@ -143,6 +143,12 @@ class User extends Authenticatable
         return $this->isAdmin() || $this->temLoginEm('servidor');
     }
 
+    /** Tela do garçom (login "Garçom"): o administrador e quem tem acesso de Garçom. */
+    public function podeAcessarGarcom(): bool
+    {
+        return $this->isAdmin() || $this->temLoginEm('garcom');
+    }
+
     private function temLoginEm(string $contexto): bool
     {
         foreach ($this->mapaAcessos($contexto) as $acesso) {

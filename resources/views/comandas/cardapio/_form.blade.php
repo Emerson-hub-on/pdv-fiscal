@@ -44,6 +44,28 @@
         @endif
 
         <div class="grid grid-cols-2 gap-5">
+            {{-- Categoria do cardápio (não é a do cadastro do produto): cria, renomeia e exclui sem sair da tela --}}
+            <div class="col-span-2">
+                <label class="{{ $labelCls }}">Categoria no cardápio <span class="{{ $opcionalCls }}">(opcional)</span></label>
+                <div class="flex items-center gap-2">
+                    <select name="cardapio_categoria_id" id="categoria-cardapio" class="{{ $inputCls }}" onchange="atualizarBotoesCategoria()">
+                        <option value="">Sem categoria</option>
+                        @foreach ($categorias as $categoria)
+                            <option value="{{ $categoria->id }}" data-ordem="{{ $categoria->ordem }}"
+                                    @selected((string) old('cardapio_categoria_id', $item->cardapio_categoria_id) === (string) $categoria->id)>{{ $categoria->nome }}</option>
+                        @endforeach
+                    </select>
+                    <button type="button" onclick="abrirModalCategoria(false)" class="{{ $botaoSecundarioCls }} shrink-0" title="Nova categoria">
+                        <x-form.icone nome="mais" /> Nova
+                    </button>
+                    <button type="button" id="btn-editar-categoria" onclick="abrirModalCategoria(true)" class="{{ $botaoSecundarioCls }} shrink-0 disabled:opacity-50 disabled:cursor-not-allowed" title="Editar a categoria escolhida">
+                        Editar
+                    </button>
+                </div>
+                <p class="text-xs text-slate-400 mt-1">Ex.: Bebidas, Lanches, Sobremesas. É por ela que o garçom vai navegar no cardápio; não altera o cadastro do produto.</p>
+                @error('cardapio_categoria_id') <p class="{{ $erroCls }}">{{ $message }}</p> @enderror
+            </div>
+
             <div class="col-span-2">
                 <label class="{{ $labelCls }}">Descrição no cardápio <span class="{{ $opcionalCls }}">(opcional)</span></label>
                 <textarea name="descricao" id="descricao" rows="4" maxlength="500" class="{{ $inputCls }}"
@@ -148,6 +170,152 @@
         if (remover) document.getElementById('imagem').value = '';
         mostrarPrevia(remover ? null : fotoOriginal);
     }
+</script>
+
+{{-- Modal da categoria do cardápio (nova / editar / excluir), salvo por fetch. Fica dentro do <form> do item,
+     mas os campos não têm "name": não vão junto ao salvar o item. --}}
+<div id="modal-categoria" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50"
+     onclick="if (event.target === this) fecharModalCategoria()">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div class="flex justify-between items-center px-6 py-4 bg-[#10284A]">
+            <h2 id="modal-categoria-titulo" class="text-lg font-bold text-amber-50">Nova categoria</h2>
+            <button type="button" onclick="fecharModalCategoria()" class="text-slate-400 hover:text-white text-2xl leading-none transition">&times;</button>
+        </div>
+        <div class="p-6 flex flex-col gap-4">
+            <div>
+                <label class="{{ $labelCls }}">Nome <span class="text-red-500">*</span></label>
+                <input type="text" id="categoria-nome" maxlength="60" autocomplete="off" placeholder="Ex.: Bebidas" class="{{ $inputCls }}">
+            </div>
+            <div>
+                <label class="{{ $labelCls }}">Ordem</label>
+                <input type="number" id="categoria-ordem" min="0" max="9999" placeholder="Automática" class="{{ $inputCls }}">
+                <p class="text-xs text-slate-400 mt-1">Menor número aparece primeiro para o garçom.</p>
+            </div>
+            <p id="categoria-erro" class="{{ $erroCls }} hidden"></p>
+
+            <div class="flex items-center gap-3 pt-2 border-t border-slate-100">
+                <button type="button" id="btn-excluir-categoria" onclick="excluirCategoria()"
+                        class="hidden items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-medium text-red-600 ring-1 ring-red-200 hover:bg-red-50 transition">
+                    Excluir
+                </button>
+                <div class="ml-auto flex flex-row-reverse gap-3">
+                    <button type="button" id="btn-salvar-categoria" onclick="salvarCategoria()" class="{{ $botaoPrimarioCls }}">
+                        <x-form.icone nome="check" /> Salvar
+                    </button>
+                    <button type="button" onclick="fecharModalCategoria()" class="{{ $botaoCancelarCls }}">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const selectCategoria = document.getElementById('categoria-cardapio');
+    const modalCategoria = document.getElementById('modal-categoria');
+    const urlCategorias = @json(route('cardapio.categorias.store'));
+    let editandoCategoria = null; // id da categoria em edição; null = nova
+
+    function atualizarBotoesCategoria() {
+        document.getElementById('btn-editar-categoria').disabled = !selectCategoria.value;
+    }
+
+    function abrirModalCategoria(editar) {
+        const opcao = selectCategoria.selectedOptions[0];
+        editandoCategoria = editar && selectCategoria.value ? selectCategoria.value : null;
+
+        document.getElementById('modal-categoria-titulo').textContent = editandoCategoria ? 'Editar categoria' : 'Nova categoria';
+        document.getElementById('categoria-nome').value = editandoCategoria ? opcao.textContent.trim() : '';
+        document.getElementById('categoria-ordem').value = editandoCategoria ? (opcao.dataset.ordem ?? '') : '';
+        document.getElementById('categoria-erro').classList.add('hidden');
+        const excluir = document.getElementById('btn-excluir-categoria');
+        excluir.classList.toggle('hidden', !editandoCategoria);
+        excluir.classList.toggle('inline-flex', !!editandoCategoria);
+
+        modalCategoria.classList.remove('hidden');
+        modalCategoria.classList.add('flex');
+        document.getElementById('categoria-nome').focus();
+    }
+
+    function fecharModalCategoria() {
+        modalCategoria.classList.add('hidden');
+        modalCategoria.classList.remove('flex');
+    }
+
+    function mostrarErroCategoria(texto) {
+        const erro = document.getElementById('categoria-erro');
+        erro.textContent = texto;
+        erro.classList.remove('hidden');
+    }
+
+    // Remonta o select com a lista que o servidor devolveu, mantendo/escolhendo a categoria indicada
+    function redesenharCategorias(lista, selecionar) {
+        selectCategoria.innerHTML = '<option value="">Sem categoria</option>' + lista.map(c =>
+            `<option value="${c.id}" data-ordem="${c.ordem}">${escHtml(c.nome)}</option>`).join('');
+        selectCategoria.value = selecionar ? String(selecionar) : '';
+        atualizarBotoesCategoria();
+    }
+
+    async function enviarCategoria(metodo, url, corpo) {
+        const resp = await fetch(url, {
+            method: metodo,
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': @json(csrf_token()) },
+            body: corpo ? JSON.stringify(corpo) : null,
+        });
+        const dados = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+            throw new Error(dados.errors ? Object.values(dados.errors)[0][0] : (dados.message || 'Não foi possível salvar a categoria.'));
+        }
+        return dados;
+    }
+
+    async function salvarCategoria() {
+        const nome = document.getElementById('categoria-nome').value.trim();
+        const ordem = document.getElementById('categoria-ordem').value;
+        if (!nome) return mostrarErroCategoria('Informe o nome da categoria.');
+
+        const botao = document.getElementById('btn-salvar-categoria');
+        botao.disabled = true;
+        try {
+            const dados = await enviarCategoria(
+                editandoCategoria ? 'PUT' : 'POST',
+                editandoCategoria ? `${urlCategorias}/${editandoCategoria}` : urlCategorias,
+                { nome, ordem: ordem === '' ? null : Number(ordem) },
+            );
+            redesenharCategorias(dados.lista, dados.id);
+            fecharModalCategoria();
+        } catch (e) {
+            mostrarErroCategoria(e.message);
+        } finally {
+            botao.disabled = false;
+        }
+    }
+
+    async function excluirCategoria() {
+        if (!editandoCategoria) return;
+        const nome = selectCategoria.selectedOptions[0]?.textContent.trim();
+        if (!confirm(`Excluir a categoria "${nome}"? Os itens dela continuam no cardápio, sem categoria.`)) return;
+
+        try {
+            const dados = await enviarCategoria('DELETE', `${urlCategorias}/${editandoCategoria}`);
+            redesenharCategorias(dados.lista, null);
+            fecharModalCategoria();
+        } catch (e) {
+            mostrarErroCategoria(e.message);
+        }
+    }
+
+    // Enter no nome salva a categoria (sem enviar o formulário do item); Esc fecha
+    document.getElementById('categoria-nome').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); salvarCategoria(); }
+    });
+    document.getElementById('categoria-ordem').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); salvarCategoria(); }
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !modalCategoria.classList.contains('hidden')) fecharModalCategoria();
+    });
+
+    atualizarBotoesCategoria();
 </script>
 
 @unless ($editando)

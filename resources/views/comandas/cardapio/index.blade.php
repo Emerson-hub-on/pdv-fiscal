@@ -17,12 +17,6 @@
         @endif
     </x-form.cabecalho>
 
-    <div class="rounded-xl bg-amber-50 ring-1 ring-amber-200 px-4 py-3 text-sm text-amber-900 mb-5">
-        Estes são os produtos que o <strong>garçom</strong> vê ao fazer o pedido, na ordem abaixo. Nome, valor e estoque vêm do
-        cadastro do produto; aqui ficam a <strong>foto</strong>, a descrição do cardápio e se o item aparece. Itens inativos não aparecem para o garçom.
-        @if ($podeAlterar) Clique num item para trocar a foto, editar ou retirar do cardápio. @endif
-    </div>
-
     {{-- Cartões de resumo --}}
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         @foreach ([
@@ -39,21 +33,24 @@
     </div>
 
     {{-- Filtros --}}
-    <form method="GET" action="{{ route('cardapio.index') }}" class="{{ $cartaoCls }} p-4 mb-5 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-        <div class="sm:col-span-6">
+    {{-- Buscar, Categoria e Situação lado a lado (linha flex: sem breakpoints, que não estão no CSS compilado) --}}
+    <form method="GET" action="{{ route('cardapio.index') }}" class="{{ $cartaoCls }} p-4 mb-5">
+        <div class="flex items-end gap-3">
+        <div class="flex-1 min-w-0">
             <label class="{{ $labelCls }}">Buscar</label>
             <input type="search" name="busca" value="{{ $busca }}" placeholder="Nome, código interno ou código de barras" class="{{ $inputCls }}">
         </div>
-        <div class="sm:col-span-3">
+        <div class="w-56 shrink-0">
             <label class="{{ $labelCls }}">Categoria</label>
             <select name="categoria" class="{{ $inputCls }}" onchange="this.form.submit()">
                 <option value="">Todas</option>
                 @foreach ($categorias as $categoria)
                     <option value="{{ $categoria->id }}" @selected($categoriaId === $categoria->id)>{{ $categoria->nome }}</option>
                 @endforeach
+                <option value="sem" @selected($categoriaId === 'sem')>Sem categoria</option>
             </select>
         </div>
-        <div class="sm:col-span-2">
+        <div class="w-40 shrink-0">
             <label class="{{ $labelCls }}">Situação</label>
             <select name="situacao" class="{{ $inputCls }}" onchange="this.form.submit()">
                 <option value="todos" @selected($situacao === 'todos')>Todos</option>
@@ -61,11 +58,10 @@
                 <option value="inativos" @selected($situacao === 'inativos')>Inativos</option>
             </select>
         </div>
-        <div class="sm:col-span-1 flex gap-2">
-            <button type="submit" class="{{ $botaoAcaoCls }} w-full">Filtrar</button>
+        <button type="submit" class="{{ $botaoAcaoCls }} shrink-0">Filtrar</button>
         </div>
         @if ($filtrando)
-            <div class="sm:col-span-12 -mt-1">
+            <div class="mt-2">
                 <a href="{{ route('cardapio.index') }}" class="text-xs text-slate-500 hover:text-[#10284A] underline">Limpar filtros</a>
             </div>
         @endif
@@ -87,7 +83,8 @@
             @endif
         </div>
     @else
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {{-- Tabs horizontais: foto à esquerda; nome, descrição, preço e estoque à direita (como o garçom vai ver) --}}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             @foreach ($itens as $item)
                 @php
                     $produto = $item->produto;
@@ -97,55 +94,56 @@
                     $descricao = $item->descricaoExibida();
                 @endphp
                 <{{ $podeAlterar ? 'a' : 'div' }} @if ($podeAlterar) href="{{ route('cardapio.edit', $item) }}" title="Clique para editar" @endif
-                    class="group {{ $cartaoCls }} overflow-hidden flex flex-col transition {{ $podeAlterar ? 'hover:ring-[#10284A]/40 hover:shadow-md' : '' }} {{ $item->ativo ? '' : 'opacity-60' }}">
+                    class="group flex gap-4 bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 p-4 transition {{ $podeAlterar ? 'hover:ring-[#10284A]/40 hover:shadow-md' : '' }} {{ $item->ativo ? '' : 'opacity-60' }}">
 
                     {{-- Foto --}}
-                    <div class="relative aspect-4/3 bg-slate-100">
+                    <div class="relative shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-slate-100">
                         @if ($item->imagem)
                             <img src="{{ $item->urlImagem() }}" alt="{{ $item->nomeExibido() }}" loading="lazy" class="w-full h-full object-cover">
                         @else
                             <div class="w-full h-full flex flex-col items-center justify-center text-slate-400">
-                                <svg class="w-10 h-10 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-8 h-8 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                 </svg>
-                                <span class="text-xs">Sem foto</span>
+                                <span class="text-[11px]">Sem foto</span>
                             </div>
                         @endif
-                        <span class="absolute top-2 left-2 rounded-md bg-[#10284A]/85 text-amber-50 px-2 py-0.5 text-[11px] font-mono">#{{ $item->ordem }}</span>
-                        @unless ($item->ativo)
-                            <span class="absolute top-2 right-2 rounded-full bg-red-600 text-white px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide">Inativo</span>
-                        @endunless
                     </div>
 
                     {{-- Dados --}}
-                    <div class="p-4 flex flex-col gap-2 flex-1">
-                        <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0 flex-1 flex flex-col">
+                        <div class="flex items-start justify-between gap-2">
                             <div class="min-w-0">
-                                <h3 class="font-semibold text-slate-800 leading-snug group-hover:text-[#10284A]">{{ $item->nomeExibido() }}</h3>
-                                <p class="text-xs text-slate-400">
-                                    <span class="font-mono">{{ $item->codigoExibido() ?: 'Sem código' }}</span>
-                                    @if ($produto->categoria) · {{ $produto->categoria->nome }} @endif
-                                </p>
+                                <h3 class="font-bold text-slate-800 leading-snug group-hover:text-[#10284A]">{{ $item->nomeExibido() }}</h3>
+                                @if ($item->categoria)
+                                    <p class="text-[11px] font-semibold uppercase tracking-wider text-[#10284A]/70">{{ $item->categoria->nome }}</p>
+                                @endif
                             </div>
-                            <p class="shrink-0 text-lg font-bold text-[#10284A] whitespace-nowrap">R$ {{ number_format((float) $produto->preco_venda, 2, ',', '.') }}</p>
+                            <div class="shrink-0 flex items-center gap-1.5">
+                                @unless ($item->ativo)
+                                    <span class="rounded-full bg-red-600 text-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">Inativo</span>
+                                @endunless
+                                <span class="rounded-md bg-slate-100 text-slate-500 px-1.5 py-0.5 text-[10px] font-mono" title="Ordem no cardápio">#{{ $item->ordem }}</span>
+                            </div>
                         </div>
 
-                        <p class="text-sm text-slate-500 line-clamp-3 {{ $descricao ? '' : 'italic text-slate-400' }}">
+                        <p class="text-sm leading-snug mt-1 line-clamp-2 {{ $descricao ? 'text-slate-400' : 'italic text-slate-300' }}">
                             {{ $descricao ?: 'Sem descrição.' }}
                         </p>
 
-                        <div class="mt-auto pt-2 flex items-center justify-between border-t border-slate-100">
-                            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Estoque</span>
-                            <span @class([
-                                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+                        <div class="mt-auto pt-2 flex items-end justify-between gap-3">
+                            <p class="text-lg font-bold text-[#10284A] whitespace-nowrap">R$ {{ number_format((float) $produto->preco_venda, 2, ',', '.') }}</p>
+                            <span title="Estoque{{ $item->codigoExibido() ? ' · código ' . $item->codigoExibido() : '' }}" @class([
+                                'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap',
                                 'bg-red-50 text-red-600' => $semEstoque,
                                 'bg-amber-50 text-amber-700' => $estoqueBaixo,
                                 'bg-green-50 text-green-700' => !$semEstoque && !$estoqueBaixo,
                             ])>
-                                {{ rtrim(rtrim(number_format($estoque, 3, ',', '.'), '0'), ',') }} {{ $produto->unidade_comercial ?: 'UN' }}
+                                Estoque: {{ rtrim(rtrim(number_format($estoque, 3, ',', '.'), '0'), ',') }} {{ $produto->unidade_comercial ?: 'UN' }}
                                 @if ($semEstoque) · sem estoque @elseif ($estoqueBaixo) · baixo @endif
                             </span>
-                        </div>                    </div>
+                        </div>
+                    </div>
                 </{{ $podeAlterar ? 'a' : 'div' }}>
             @endforeach
         </div>

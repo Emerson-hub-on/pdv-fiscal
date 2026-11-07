@@ -1,7 +1,7 @@
 @php
     // A mesma tela serve para a escolha e para o login: sem modo, o operador escolhe no dropdown
     $modo = old('modo', $modo ?? request('modo'));
-    $modo = in_array($modo, ['admin', 'operador'], true) ? $modo : null;
+    $modo = in_array($modo, ['admin', 'operador', 'garcom'], true) ? $modo : null;
 
     $modos = [
         'admin' => [
@@ -14,6 +14,18 @@
             'descricao' => 'Frente de caixa (PDV) e emissão de NFC-e',
             'subtitulo' => 'Acesso à frente de caixa',
         ],
+        'garcom' => [
+            'titulo'    => 'Garçom',
+            'descricao' => 'Mesas, cardápio e pedidos pelo celular ou tablet',
+            'subtitulo' => 'Acesso à tela do garçom',
+        ],
+    ];
+
+    // Cor e ícone de cada acesso no seletor (o JavaScript usa as mesmas classes)
+    $coresModo = [
+        'admin'    => 'bg-blue-100 text-[#163f86]',
+        'operador' => 'bg-emerald-100 text-emerald-700',
+        'garcom'   => 'bg-[#10284A] text-amber-50',
     ];
 @endphp
 <!DOCTYPE html>
@@ -141,9 +153,12 @@
                             @foreach ($modos as $chave => $m)
                                 <button type="button" onclick="escolherModo('{{ $chave }}')" data-opcao="{{ $chave }}"
                                         class="w-full flex items-center gap-3 px-3.5 py-3 text-left text-sm hover:bg-blue-50 transition {{ $loop->first ? '' : 'border-t border-gray-100' }}">
-                                    <span class="h-8 w-8 shrink-0 rounded-lg flex items-center justify-center {{ $chave === 'admin' ? 'bg-blue-100 text-[#163f86]' : 'bg-emerald-100 text-emerald-700' }}">
+                                    <span class="h-8 w-8 shrink-0 rounded-lg flex items-center justify-center {{ $coresModo[$chave] }}">
                                         @if ($chave === 'admin')
                                             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 5h7v7H4zM13 5h7v4h-7zM13 11h7v8h-7zM4 14h7v5H4z"/></svg>
+                                        @elseif ($chave === 'garcom')
+                                            {{-- garfo e faca --}}
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 3v8m-3-8v5a3 3 0 0 0 6 0V3M7 11v10M17 21V3c-2 1.5-3 4-3 7v4h3"/></svg>
                                         @else
                                             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18v10H3zM7 17v3h10v-3M7 11h4"/></svg>
                                         @endif
@@ -167,7 +182,7 @@
                             <label for="campo-codigo" class="block text-sm font-medium text-gray-700 mb-1.5">Código</label>
                             <input type="text" id="campo-codigo" name="codigo" inputmode="numeric" pattern="[0-9]*"
                                    autocomplete="off" value="{{ old('codigo') }}" {{ $modo ? 'required' : '' }}
-                                   class="w-full rounded-xl border border-gray-200 bg-blue-50/60 px-3.5 py-3 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                                   class="w-full rounded-xl border border-gray-200 bg-blue-50/60 px-3.5 py-3 text-base sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
                         </div>
                         <div class="col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-1.5">Usuário</label>
@@ -184,7 +199,7 @@
                         <div class="relative">
                             <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 11V8a5 5 0 0 1 10 0v3M6 11h12v9H6z"/></svg>
                             <input type="password" id="campo-senha" name="password" autocomplete="current-password" {{ $modo ? 'required' : '' }}
-                                   class="w-full rounded-xl border border-gray-200 bg-blue-50/60 pl-10 pr-11 py-3 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                                   class="w-full rounded-xl border border-gray-200 bg-blue-50/60 pl-10 pr-11 py-3 text-base sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
                             <button type="button" onclick="alternarSenha()" tabindex="-1" title="Mostrar/ocultar senha"
                                     class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -250,6 +265,7 @@
 
 <script>
     const MODOS = @json($modos);
+    const CORES_MODO = @json($coresModo);
     let modoLogin = @json($modo);
 
     const campoModo = document.getElementById('campo-modo');
@@ -279,7 +295,7 @@
 
         const icone = document.getElementById('icone-modo');
         icone.className = 'h-8 w-8 shrink-0 rounded-lg flex items-center justify-center '
-            + (modo === 'admin' ? 'bg-blue-100 text-[#163f86]' : 'bg-emerald-100 text-emerald-700');
+            + CORES_MODO[modo];
         icone.innerHTML = lista.querySelector(`[data-opcao="${modo}"] span svg`).outerHTML;
 
         lista.querySelectorAll('[data-opcao]').forEach(b =>
@@ -333,7 +349,7 @@
             return;
         }
         botaoEntrar.disabled = true;
-        textoValidando.textContent = modoLogin === 'admin' ? 'Abrindo o painel administrativo' : 'Preparando o caixa';
+        textoValidando.textContent = { admin: 'Abrindo o painel administrativo', garcom: 'Abrindo a tela do garçom' }[modoLogin] ?? 'Preparando o caixa';
         modalValidando.classList.remove('hidden');
         timeoutDemora = setTimeout(() => {
             textoValidando.textContent = 'Está demorando mais que o normal. Aguarde...';

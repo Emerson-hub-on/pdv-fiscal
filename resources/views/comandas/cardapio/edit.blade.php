@@ -12,7 +12,7 @@
 
     {{-- Fora do formulário principal (HTML não aceita form dentro de form); o botão "Retirar do cardápio" aponta para ele --}}
     <form id="form-excluir-item" method="POST" action="{{ route('cardapio.destroy', $item) }}"
-          onsubmit="return confirm('Retirar &quot;{{ e($item->nomeExibido()) }}&quot; do cardápio? O cadastro do produto não é alterado.')" class="hidden">
+          onsubmit="return confirm({{ Illuminate\Support\Js::from('Retirar "' . $item->nomeExibido() . '" do cardápio? O cadastro do produto não é alterado.') }})" class="hidden">
         @csrf
         @method('DELETE')
     </form>

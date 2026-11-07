@@ -47,6 +47,12 @@ return [
             'driver' => 'session',
             'provider' => 'usuarios_caixa',
         ],
+
+        // Tela do garçom: login próprio (independente do painel e do caixa), usuários do servidor
+        'garcom' => [
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
     ],
 
     /*

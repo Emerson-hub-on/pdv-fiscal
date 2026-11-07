@@ -161,6 +161,21 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
     });
 
     // =====================================================================
+    // GARÇOM — tela do garçom no celular/tablet (login próprio, guard "garcom")
+    // =====================================================================
+    Route::middleware(['auth:garcom', 'acesso:garcom'])->prefix('garcom')->name('garcom.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\GarcomController::class, 'index'])->name('index');
+        Route::get('cardapio/{item}/imagem', [\App\Http\Controllers\GarcomController::class, 'imagem'])->name('cardapio.imagem');
+        Route::get('mesas', [\App\Http\Controllers\GarcomController::class, 'mesas'])->name('mesas');
+        Route::post('mesas/{mesa}/status', [\App\Http\Controllers\GarcomController::class, 'mudarStatusMesa'])
+            ->middleware('throttle:60,1')
+            ->name('mesas.status');
+        Route::post('mesas/{mesa}/pedidos', [\App\Http\Controllers\GarcomController::class, 'enviarPedido'])
+            ->middleware('throttle:30,1')
+            ->name('mesas.pedidos');
+    });
+
+    // =====================================================================
     // USADAS PELOS DOIS SISTEMAS (caixa e cadastros)
     // =====================================================================
     // Caixa primeiro: com o servidor fora do ar, um login de admin antigo na mesma sessão não é consultado no MySQL
@@ -271,6 +286,19 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
                 ->name('cardapio.buscar-produto');
             Route::get('comandas/cardapio/{item}/imagem', [\App\Http\Controllers\CardapioController::class, 'imagem'])
                 ->name('cardapio.imagem');
+            // Categorias do cardápio (criar/editar/excluir pelo formulário do item, sem sair da tela)
+            Route::post('comandas/cardapio/categorias', [\App\Http\Controllers\CardapioController::class, 'salvarCategoria'])
+                ->name('cardapio.categorias.store');
+            Route::put('comandas/cardapio/categorias/{categoria}', [\App\Http\Controllers\CardapioController::class, 'salvarCategoria'])
+                ->name('cardapio.categorias.update');
+            Route::delete('comandas/cardapio/categorias/{categoria}', [\App\Http\Controllers\CardapioController::class, 'excluirCategoria'])
+                ->name('cardapio.categorias.destroy');
+            // Comandas → Mesas → Lista de Mesas (cadastro; a situação é mudada pelo garçom)
+            Route::resource('comandas/mesas', \App\Http\Controllers\MesaController::class)
+                ->except(['show'])
+                ->names('mesas')
+                ->parameters(['mesas' => 'mesa']);
+
             Route::resource('comandas/cardapio', \App\Http\Controllers\CardapioController::class)
                 ->except(['show'])
                 ->names('cardapio')
@@ -717,7 +745,7 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
     // =====================================================================
      Route::middleware(['auth:web', 'acesso:admin'])
         ->prefix('usuarios')
-        ->where(['perfil' => 'caixa|fiscal|supervisor|tecnico'])
+        ->where(['perfil' => 'caixa|fiscal|supervisor|tecnico|garcom'])
         ->group(function () {
             Route::get('{perfil}', [UsuarioController::class, 'index'])->name('usuarios.index');
             Route::get('{perfil}/create', [UsuarioController::class, 'create'])->name('usuarios.create');

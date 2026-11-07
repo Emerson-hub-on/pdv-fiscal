@@ -15,6 +15,7 @@ class VerificaAcesso
             'admin'  => $usuario->isAdmin(),
             'caixa'  => $usuario->podeAcessarCaixa(),
             'fiscal' => $usuario->podeAcessarFiscal(),
+            'garcom' => $usuario->podeAcessarGarcom(),
             default  => false,
         });
 

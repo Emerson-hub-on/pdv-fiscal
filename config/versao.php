@@ -11,6 +11,82 @@
 
 $historico = [
     [
+        'versao' => '1.18.0',
+        'data' => '2026-11-07',
+        'itens' => [
+            'Tela do garçom: o topo passou a mostrar a mesa selecionada (número, nome, situação e tempo). Os dados do garçom (Operador / Garçom, nome e Sair) aparecem ao tocar no ícone dele.',
+            'Aba Mesas: tocar numa mesa seleciona e leva direto para o Cardápio. Sem mesa selecionada, a tela abre nas Mesas e tocar num item pede para escolher a mesa primeiro.',
+            'Montagem do pedido: tocar no item abre a janela com a quantidade (− e +), a observação (ex.: sem cebola) e "Adicionar à comanda". Aparece a barra "Comanda Mesa X · Ver Comanda" no fim da tela, com a quantidade de itens e o total. Mesmo item com a mesma observação soma na mesma linha.',
+            'Janela da comanda: confere os itens, muda a quantidade, remove, "+ Adicionar mais itens" e "Finalizar pedido". A comanda em montagem fica guardada no aparelho (não se perde se a página recarregar).',
+            'Finalizar pedido grava o pedido da mesa (o preço é sempre o do cadastro, calculado no servidor) e a mesa vai para "Aguardando pedido". Enviar duas vezes o mesmo pedido (toque duplo, conexão caiu) não duplica. O estoque ainda não é baixado: isso fica para quando a comanda for cobrada.',
+            'Situação da mesa (tocando no selo do topo): mostra cada pedido da mesa com o horário, os itens e o tempo de espera de cada um. "Pedido entregue" tira os pedidos da espera; "Disponível" libera a mesa e fecha os pedidos dela.',
+            'Comandas → Mesas: mesa que já teve pedidos não pode ser excluída (pode ser inativada).',
+        ],
+    ],
+    [
+        'versao' => '1.17.0',
+        'data' => '2026-11-07',
+        'itens' => [
+            'Novo menu Comandas → Mesas → Lista de Mesas: cadastro das mesas (número, nome e lugares), feito só no painel. As mesas aparecem em tabs com o número em destaque, a situação e há quanto tempo estão nela; filtros por número/nome, situação e ativas/inativas, e cartões com o total de mesas, disponíveis, aguardando pedido e com pedido entregue.',
+            'Situações da mesa: Disponível, Aguardando pedido e Pedido entregue. Mesa em atendimento não pode ser inativada nem excluída (só quando estiver disponível).',
+            'Tela do garçom → aba Mesas: as mesas ativas com a situação e o tempo; filtro por situação (com a quantidade) e busca pelo número ou nome. Tocar na mesa abre a janela com o tempo de espera (desde que horas e quem mudou) e os botões para mudar a situação. A lista se atualiza sozinha a cada 15 segundos, para ver o que os outros garçons mudaram.',
+            'Comandas → Cardápio → Menu: a confirmação de "Retirar do cardápio" não quebra mais com nome que tem apóstrofo.',
+        ],
+    ],
+    [
+        'versao' => '1.16.3',
+        'data' => '2026-11-07',
+        'itens' => [
+            'Tela do garçom e login no celular: tocar no campo de busca, no código ou na senha não dá mais zoom na tela (o iPhone aumenta a página quando a letra do campo é menor que 16px; no celular os campos passaram a usar 16px).',
+        ],
+    ],
+    [
+        'versao' => '1.16.2',
+        'data' => '2026-11-07',
+        'itens' => [
+            'Comandas → Cardápio → Menu: a lista dos itens passou a vir em ordem alfabática pelo nome (produto e variação), sem diferenciar acento nem maiúscula. A ordem do item continua valendo para a tela do garçom.',
+        ],
+    ],
+    [
+        'versao' => '1.16.1',
+        'data' => '2026-11-07',
+        'itens' => [
+            'Tela do garçom, Comandas → Cardápio → Menu e opção Garçom do login: o laranja foi trocado pelo azul-marinho padrão do sistema (avatar do garçom, aba ativa, busca, preços e ícone do login).',
+        ],
+    ],
+    [
+        'versao' => '1.16.0',
+        'data' => '2026-11-07',
+        'itens' => [
+            'Novo tipo de operador Garçom. Cadastro em Cadastros → Usuários → Garçom (criar, editar, vincular uma pessoa que já tem código e remover o acesso), igual aos outros tipos.',
+            'Login: nova opção "Garçom" no tipo de acesso. O garçom entra só na tela do garçom: não acessa o painel administrativo nem o caixa (e o login dele é independente dos outros no mesmo navegador). Ao sair, volta direto para o login de garçom.',
+            'Tela do garçom (feita para celular e tablet): no topo o garçom logado; abaixo a busca e as abas Cardápio e Mesas. No Cardápio, as categorias (Todos + as do cardápio) e os itens ativos com foto, nome, descrição e preço; a busca procura por nome, descrição ou código em todas as categorias. A aba Mesas fica vazia até o cadastro de mesas.',
+        ],
+    ],
+    [
+        'versao' => '1.15.0',
+        'data' => '2026-11-07',
+        'itens' => [
+            'Comandas → Cardápio: categorias próprias do cardápio (Bebidas, Lanches, Sobremesas...), separadas da categoria do cadastro do produto — organizar o cardápio não altera o produto. É por elas que o garçom vai navegar.',
+            'No formulário de cada item, o campo "Categoria no cardápio" com os botões "Nova" e "Editar": abrem uma janela para criar, renomear, mudar a ordem ou excluir a categoria sem sair da tela. Excluir a categoria deixa os itens dela sem categoria (eles continuam no cardápio).',
+            'Na lista do Menu, a categoria aparece em cada tab e o filtro Categoria passou a usar as categorias do cardápio, com a opção "Sem categoria".',
+        ],
+    ],
+    [
+        'versao' => '1.14.5',
+        'data' => '2026-11-07',
+        'itens' => [
+            'Comandas → Cardápio → Menu: saiu o aviso do topo da página, e os filtros Buscar, Categoria e Situação ficaram lado a lado, numa linha só, com o botão Filtrar.',
+        ],
+    ],
+    [
+        'versao' => '1.14.4',
+        'data' => '2026-11-07',
+        'itens' => [
+            'Comandas → Cardápio → Menu: a lista virou tabs horizontais, como o garçom vai ver — foto quadrada à esquerda e, ao lado, o nome em negrito, a descrição, o preço em destaque e o estoque.',
+        ],
+    ],
+    [
         'versao' => '1.14.3',
         'data' => '2026-11-07',
         'itens' => [

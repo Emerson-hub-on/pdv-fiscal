@@ -28,10 +28,14 @@ return Application::configure(basePath: dirname(__DIR__))
                         'tem_login_caixa' => collect($request->session()->all())->keys()->contains(fn ($k) => str_starts_with($k, 'login_caixa')),
                     ]);
 
+                    $middlewares = $request->route()?->gatherMiddleware() ?? [];
+
                     return route('auth.login', [
-                        'modo' => in_array('auth:caixa', $request->route()?->gatherMiddleware() ?? [], true)
-                            ? 'operador'
-                            : 'admin',
+                        'modo' => match (true) {
+                            in_array('auth:caixa', $middlewares, true)  => 'operador',
+                            in_array('auth:garcom', $middlewares, true) => 'garcom',
+                            default                                     => 'admin',
+                        },
                     ]);
                 });
             })
