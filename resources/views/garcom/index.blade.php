@@ -284,6 +284,9 @@
         <div class="flex-1 overflow-y-auto px-5 py-3" id="comanda-itens"></div>
 
         <div class="px-5 pt-3 pb-8 sm:pb-5 border-t border-slate-100">
+            <label for="comanda-cliente" class="block mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Nome do cliente <span class="font-normal normal-case tracking-normal text-slate-400">(opcional)</span></label>
+            <input type="text" id="comanda-cliente" maxlength="60" autocomplete="off" placeholder="Ex.: João"
+                   class="w-full mb-3 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none transition">
             <div class="flex items-center justify-between mb-4">
                 <span class="text-sm font-semibold text-slate-500">Total do pedido</span>
                 <span class="text-2xl font-bold text-[#10284A]" id="comanda-total"></span>
@@ -333,10 +336,17 @@
                 </button>
             @endforeach
         </div>
-        <p class="mt-2 text-xs text-slate-400">"Pedido entregue" tira os pedidos da espera; "Disponível" libera a mesa e fecha os pedidos dela.</p>
+        <p class="mt-2 text-xs text-slate-400">"Pedido entregue" marca os pedidos da mesa como entregues. A mesa com conta a pagar só fica "Disponível" ao fechar a conta.</p>
+        <button type="button" id="mesa-fechar-conta" onclick="fecharSituacao(); fecharContaMesa()"
+                class="hidden mt-4 w-full rounded-2xl bg-[#10284A] text-amber-50 px-4 py-3.5 text-base font-bold active:opacity-90"></button>
         <p id="mesa-erro" class="hidden mt-3 text-sm text-red-600"></p>
     </div>
 </div>
+
+{{-- Aviso de pedido pronto (fica até o garçom tocar) --}}
+<div id="aviso-pronto" class="hidden fixed inset-x-0 top-3 z-50 px-4 max-w-3xl mx-auto flex flex-col gap-2"></div>
+
+@include('comandas._fechar-conta', ['formas' => $formas])
 
 {{-- Aviso rápido (mesa selecionada, item adicionado, pedido enviado) --}}
 <div id="aviso" class="hidden fixed left-1/2 -translate-x-1/2 top-4 z-50 max-w-sm w-[calc(100%-2rem)] rounded-2xl bg-slate-900 text-white px-4 py-3 text-sm font-medium shadow-2xl text-center"></div>
@@ -352,6 +362,9 @@
     const URL_PEDIDO = @json(route('garcom.mesas.pedidos', ['mesa' => '__ID__']));
     const CSRF = @json(csrf_token());
     const ICONE_MESA = @json($iconeMesa);
+    const URL_CONTA = @json(route('garcom.mesas.conta', ['mesa' => '__ID__']));
+    const URL_FECHAR_CONTA = @json(route('garcom.mesas.conta.fechar', ['mesa' => '__ID__']));
+    const MEU_ID = @json($garcom->id);
 
     let mesas = @json($mesas);
     let mesaSelecionada = null;   // id da mesa em que o garçom está montando o pedido
@@ -458,7 +471,10 @@
                         <span class="w-1.5 h-1.5 rounded-full ${s.ponto}"></span> ${escHtml(s.rotulo)}${tempo}
                     </button>
                 </span>
-                <button type="button" onclick="trocarAba('mesas')" class="shrink-0 rounded-xl px-3 py-2 text-xs font-semibold text-[#10284A] ring-1 ring-[#10284A]/20 active:bg-slate-50">Trocar</button>
+                <span class="shrink-0 flex flex-col gap-1">
+                    <button type="button" onclick="trocarAba('mesas')" class="rounded-xl px-3 py-1.5 text-xs font-semibold text-[#10284A] ring-1 ring-[#10284A]/20 active:bg-slate-50">Trocar</button>
+                    ${m.conta ? `<button type="button" onclick="fecharContaMesa()" class="rounded-xl px-3 py-1.5 text-xs font-semibold bg-[#10284A] text-amber-50 active:opacity-90">Fechar conta</button>` : ''}
+                </span>
             </div>`;
         relogioMesas.atualizar(topo);
     }
@@ -687,6 +703,7 @@
         if (!m) return fecharComanda();
 
         document.getElementById('comanda-mesa').textContent = nomeMesa(m);
+        document.getElementById('comanda-cliente').value = c.cliente || '';
         document.getElementById('comanda-total').textContent = moeda(totalComanda(c));
         document.getElementById('comanda-finalizar').disabled = c.itens.length === 0;
 
@@ -749,6 +766,7 @@
 
         // O mesmo uuid em toda tentativa deste pedido: reenviar não duplica
         c.uuid ??= novoUuid();
+        c.cliente = document.getElementById('comanda-cliente').value.trim().slice(0, 60);
         comandas[m.id] = c;
         salvarEstado();
 
@@ -758,6 +776,7 @@
                 headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': CSRF },
                 body: JSON.stringify({
                     uuid: c.uuid,
+                    cliente: c.cliente || null,
                     itens: c.itens.map(l => ({ cardapio_item_id: l.id, quantidade: l.quantidade, observacao: l.observacao || null })),
                 }),
             });
@@ -814,17 +833,25 @@
 
         // Tempo de espera de cada pedido da mesa
         const hora = (iso) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        // Situação de cada pedido: esperando (com o tempo), pronto para buscar, entregue
+        const seloPedido = (p) => ({
+            preparo:  `<span class="shrink-0 rounded-full bg-amber-50 text-amber-700 px-2.5 py-1 text-xs font-bold">Em preparo <span data-desde="${escHtml(p.enviado_em)}"></span></span>`,
+            pronto:   `<span class="shrink-0 rounded-full bg-blue-600 text-white px-2.5 py-1 text-xs font-bold">Pronto! Pode buscar</span>`,
+            entregue: `<span class="shrink-0 rounded-full bg-indigo-50 text-indigo-700 px-2.5 py-1 text-xs font-semibold">Entregue ${escHtml(hora(p.entregue_em || p.enviado_em))}</span>`,
+        })[p.status] ?? '';
         document.getElementById('mesa-pedidos').innerHTML = m.pedidos.map(p => `
-            <div class="rounded-2xl ring-1 ring-slate-200 px-4 py-3">
+            <div class="rounded-2xl ring-1 ${p.status === 'pronto' ? 'ring-2 ring-blue-500' : 'ring-slate-200'} px-4 py-3">
                 <div class="flex items-center justify-between gap-3">
-                    <p class="font-semibold text-slate-900">${p.numero}º pedido <span class="font-normal text-slate-400 text-sm">· ${escHtml(hora(p.enviado_em))}</span></p>
-                    ${p.entregue_em
-                        ? `<span class="shrink-0 rounded-full bg-blue-50 text-blue-700 px-2.5 py-1 text-xs font-semibold">Entregue ${escHtml(hora(p.entregue_em))}</span>`
-                        : `<span class="shrink-0 rounded-full bg-amber-50 text-amber-700 px-2.5 py-1 text-xs font-bold">Esperando <span data-desde="${escHtml(p.enviado_em)}"></span></span>`}
+                    <p class="font-semibold text-slate-900">${p.numero}º pedido <span class="font-normal text-slate-400 text-sm">· #${p.id} · ${escHtml(hora(p.enviado_em))}</span></p>
+                    ${seloPedido(p)}
                 </div>
                 <p class="text-sm text-slate-500 mt-1">${p.itens.map(i => `${i.quantidade}× ${escHtml(i.nome)}${i.observacao ? ' (' + escHtml(i.observacao) + ')' : ''}`).join(' · ')}</p>
-                <p class="text-xs text-slate-400 mt-1">${p.garcom ? escHtml(p.garcom) + ' · ' : ''}${escHtml(moeda(p.total))}</p>
+                <p class="text-xs text-slate-400 mt-1">${p.cliente ? escHtml(p.cliente) + ' · ' : ''}${p.garcom ? escHtml(p.garcom) + ' · ' : ''}${escHtml(moeda(p.total))}</p>
             </div>`).join('');
+
+        const botaoConta = document.getElementById('mesa-fechar-conta');
+        botaoConta.classList.toggle('hidden', !m.conta);
+        if (m.conta) botaoConta.textContent = `Fechar conta · ${moeda(m.conta.total)}`;
 
         document.querySelectorAll('#mesa-botoes [data-status]').forEach(botao => {
             const atual = botao.dataset.status === m.status;
@@ -840,8 +867,6 @@
     async function mudarStatusMesa(status) {
         const m = mesaAtual();
         if (!m || m.status === status) return;
-        if (status === 'disponivel' && m.pedidos.length
-            && !confirm(`Liberar a ${nomeMesa(m)}? Os pedidos dela serão fechados.`)) return;
 
         const botoes = document.querySelectorAll('#mesa-botoes [data-status]');
         botoes.forEach(b => b.disabled = true);
@@ -868,6 +893,92 @@
         }
     }
 
+    // ===================== Fechar conta (o cliente pagou na mesa) =====================
+    function fecharContaMesa() {
+        const m = mesaAtual();
+        if (!m?.conta) return;
+
+        const pendentes = (comandas[m.id]?.itens || []).length;
+        if (pendentes && !confirm(`A comanda desta mesa tem ${pendentes} ${pendentes === 1 ? 'item que ainda não foi enviado' : 'itens que ainda não foram enviados'} e não entra na conta. Fechar a conta mesmo assim?`)) return;
+
+        FecharConta.abrir({
+            urlConta: URL_CONTA.replace('__ID__', m.id),
+            urlFechar: URL_FECHAR_CONTA.replace('__ID__', m.id),
+            aoFechar: (dados) => {
+                mesas = mesas.map(x => x.id === dados.mesa.id ? dados.mesa : x);
+                delete comandas[m.id];
+                mesaSelecionada = null;
+                salvarEstado();
+                atualizarTudo();
+                trocarAba('mesas');
+                avisar(`Conta da ${nomeMesa(dados.mesa)} fechada. Mesa liberada.`);
+            },
+        });
+    }
+
+    // ===================== Aviso de pedido pronto =====================
+    // Guarda a situação de cada pedido; quando um pedido deste garçom vira "pronto", avisa (som, vibração e faixa)
+    let situacaoPedidos = null;
+
+    function pedidosProntosNovos() {
+        const atual = new Map();
+        mesas.forEach(m => m.pedidos.forEach(p => atual.set(p.id, { ...p, mesa: m })));
+
+        const novos = situacaoPedidos === null ? [] : [...atual.values()].filter(p =>
+            p.status === 'pronto' && situacaoPedidos.get(p.id) !== 'pronto' && (p.garcom_id === MEU_ID || p.garcom_id === null));
+
+        situacaoPedidos = new Map([...atual].map(([id, p]) => [id, p.status]));
+        return novos;
+    }
+
+    function bipe() {
+        try {
+            const ctx = bipe.ctx ??= new (window.AudioContext || window.webkitAudioContext)();
+            [0, 0.2, 0.4].forEach(atraso => {
+                const osc = ctx.createOscillator();
+                const vol = ctx.createGain();
+                osc.frequency.value = 988;
+                vol.gain.setValueAtTime(0.2, ctx.currentTime + atraso);
+                vol.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + atraso + 0.15);
+                osc.connect(vol).connect(ctx.destination);
+                osc.start(ctx.currentTime + atraso);
+                osc.stop(ctx.currentTime + atraso + 0.16);
+            });
+        } catch (e) {}
+    }
+    // O navegador só libera o som depois de um toque na tela: prepara o áudio no 1º toque
+    document.addEventListener('pointerdown', () => {
+        try { (bipe.ctx ??= new (window.AudioContext || window.webkitAudioContext)()).resume(); } catch (e) {}
+    }, { once: true });
+
+    function avisarProntos(prontos) {
+        if (!prontos.length) return;
+        const faixa = document.getElementById('aviso-pronto');
+        faixa.innerHTML = prontos.map(p => `
+            <button type="button" onclick="verPronto(${p.mesa.id})" class="w-full text-left flex items-center gap-3 rounded-2xl bg-blue-600 text-white px-4 py-3 shadow-2xl">
+                <svg class="w-7 h-7 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 0 0-4-5.7V5a2 2 0 1 0-4 0v.3A6 6 0 0 0 6 11v3.2a2 2 0 0 1-.6 1.4L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"/></svg>
+                <span class="min-w-0 flex-1">
+                    <span class="block font-bold">Pedido pronto! Pode buscar</span>
+                    <span class="block text-sm text-blue-100 truncate">${escHtml(nomeMesa(p.mesa))} · ${p.numero}º pedido (#${p.id})</span>
+                </span>
+                <span class="text-sm font-semibold">Ver</span>
+            </button>`).join('');
+        faixa.classList.remove('hidden');
+        bipe();
+        try { navigator.vibrate?.([300, 150, 300]); } catch (e) {}
+    }
+
+    function verPronto(mesaId) {
+        document.getElementById('aviso-pronto').classList.add('hidden');
+        if (mesaSelecionada !== mesaId) {
+            mesaSelecionada = mesaId;
+            salvarEstado();
+            desenharTopo();
+            desenharBarra();
+        }
+        abrirSituacao();
+    }
+
     // ===================== Atualização =====================
     function atualizarTudo() {
         // mesa inativada/excluída no painel: deixa de estar selecionada
@@ -892,9 +1003,10 @@
             if (!resp.ok) return;
             mesas = (await resp.json()).mesas;
             atualizarTudo();
+            avisarProntos(pedidosProntosNovos());
         } catch (e) { /* sem conexão: tenta de novo no próximo ciclo */ }
     }
-    setInterval(recarregarMesas, 15000);
+    setInterval(recarregarMesas, 10000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) recarregarMesas(); });
 
     document.addEventListener('keydown', (e) => {
@@ -903,7 +1015,17 @@
     });
 
     // ===================== Início =====================
+    // Nome do cliente fica guardado com a comanda (mudou: é um pedido novo)
+    document.getElementById('comanda-cliente').addEventListener('input', (e) => {
+        const m = mesaAtual();
+        if (!m || !comandas[m.id]) return;
+        comandas[m.id].cliente = e.target.value.slice(0, 60);
+        comandas[m.id].uuid = null;
+        salvarEstado();
+    });
+
     carregarEstado();
+    pedidosProntosNovos(); // marca a situação atual (só avisa o que ficar pronto daqui em diante)
     escolherCategoria('');
     filtrarStatusMesa('');
     desenharTopo();

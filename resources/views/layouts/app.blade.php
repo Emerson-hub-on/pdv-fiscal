@@ -482,6 +482,25 @@
                 </button>
 
                 <div id="sub-comandas" class="hidden [.sidebar-oculta_&]:hidden flex flex-col gap-1 pl-4 mt-1 border-l border-white/10 ml-3">
+                    <!-- Pedidos (nível 2, abre lateral) -->
+                    <div class="relative">
+                        <button id="btn-comandas-pedidos" onclick="toggleFlyout('sub-comandas-pedidos', 'btn-comandas-pedidos')"
+                                class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                            <span>Pedidos</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
+
+                        <div id="sub-comandas-pedidos" data-flyout data-botao="btn-comandas-pedidos"
+                             class="hidden fixed bg-[#10284A] border border-white/10 rounded-lg py-1 min-w-40 z-50 shadow-lg">
+                            <a href="{{ route('comanda-pedidos.index') }}"
+                               class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                                Lista de Pedidos
+                            </a>
+                        </div>
+                    </div>
+
                     <!-- Cardápio (nível 2, abre lateral) -->
                     <div class="relative">
                         <button id="btn-comandas-cardapio" onclick="toggleFlyout('sub-comandas-cardapio', 'btn-comandas-cardapio')"
@@ -760,6 +779,7 @@
                     'ordens-servico' => ['Pedidos', 'Ordem de Serviço'],
                     'cardapio' => ['Comandas', 'Cardápio', 'Menu'],
                     'mesas' => ['Comandas', 'Mesas', 'Lista de Mesas'],
+                    'comanda-pedidos' => ['Comandas', 'Pedidos', 'Lista de Pedidos'],
                     'licenca' => ['Configuração', 'Licença'],
                     'versao' => ['Configuração', 'Versão'],
                 ];

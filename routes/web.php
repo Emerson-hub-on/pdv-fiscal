@@ -173,6 +173,10 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
         Route::post('mesas/{mesa}/pedidos', [\App\Http\Controllers\GarcomController::class, 'enviarPedido'])
             ->middleware('throttle:30,1')
             ->name('mesas.pedidos');
+        Route::get('mesas/{mesa}/conta', [\App\Http\Controllers\GarcomController::class, 'conta'])->name('mesas.conta');
+        Route::post('mesas/{mesa}/conta/fechar', [\App\Http\Controllers\GarcomController::class, 'fecharConta'])
+            ->middleware('throttle:30,1')
+            ->name('mesas.conta.fechar');
     });
 
     // =====================================================================
@@ -293,6 +297,13 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
                 ->name('cardapio.categorias.update');
             Route::delete('comandas/cardapio/categorias/{categoria}', [\App\Http\Controllers\CardapioController::class, 'excluirCategoria'])
                 ->name('cardapio.categorias.destroy');
+            // Comandas → Pedidos → Lista de Pedidos (Em preparo / Pronto / Concluído; fechar conta no balcão)
+            Route::get('comandas/pedidos', [\App\Http\Controllers\PedidoComandaController::class, 'index'])->name('comanda-pedidos.index');
+            Route::get('comandas/pedidos/dados', [\App\Http\Controllers\PedidoComandaController::class, 'dados'])->name('comanda-pedidos.dados');
+            Route::patch('comandas/pedidos/{pedido}/status', [\App\Http\Controllers\PedidoComandaController::class, 'mudarStatus'])->name('comanda-pedidos.status');
+            Route::get('comandas/contas/{comanda}', [\App\Http\Controllers\PedidoComandaController::class, 'conta'])->name('comanda-pedidos.conta');
+            Route::post('comandas/contas/{comanda}/fechar', [\App\Http\Controllers\PedidoComandaController::class, 'fecharConta'])->name('comanda-pedidos.conta.fechar');
+
             // Comandas → Mesas → Lista de Mesas (cadastro; a situação é mudada pelo garçom)
             Route::resource('comandas/mesas', \App\Http\Controllers\MesaController::class)
                 ->except(['show'])

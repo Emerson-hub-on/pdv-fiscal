@@ -4,23 +4,29 @@ namespace App\Http\Controllers;
 
 use App\Models\CardapioCategoria;
 use App\Models\CardapioItem;
-use App\Models\ComandaPedido;
+use App\Models\Comanda;
 use App\Models\Mesa;
+use App\Services\ComandaService;
+use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
  * Tela do garçom (login "Garçom", guard "garcom"): roda no celular/tablet ligado ao servidor.
- * Abas Cardápio (itens ativos de Comandas → Cardápio → Menu, por categoria) e Mesas
- * (vazia por enquanto: o cadastro de mesas é o próximo passo).
+ * Mesas → escolhe a mesa; Cardápio → monta o pedido; Ver Comanda → finaliza o pedido;
+ * Fechar conta → revisa os itens da mesa, recebe o pagamento (uma ou mais formas) e libera a mesa.
+ * Os JSON validam à mão: o sistema só responde erro em JSON para api/* (bootstrap/app.php).
  */
 class GarcomController extends Controller
 {
+    public function __construct(private ComandaService $comandas)
+    {
+    }
+
     public function index()
     {
         // Só o que o garçom pode oferecer: item ativo de produto ativo (variante que ainda existe)
@@ -47,11 +53,12 @@ class GarcomController extends Controller
         $temSemCategoria = $itens->contains(fn ($i) => !$i->cardapio_categoria_id);
         $garcom = Auth::guard('garcom')->user();
         $mesas = $this->mesasAtivas();
+        $formas = $this->comandas->formasPagamento();
 
-        return view('garcom.index', compact('itens', 'categorias', 'temSemCategoria', 'garcom', 'mesas'));
+        return view('garcom.index', compact('itens', 'categorias', 'temSemCategoria', 'garcom', 'mesas', 'formas'));
     }
 
-    /** Mesas ativas em JSON: a tela do garçom atualiza a situação delas sozinha (outros garçons mudam também). */
+    /** Mesas ativas em JSON: a tela do garçom atualiza sozinha (outros garçons e a cozinha mudam também). */
     public function mesas(): JsonResponse
     {
         return response()->json([
@@ -63,7 +70,6 @@ class GarcomController extends Controller
     /** O garçom muda a situação da mesa (disponível / aguardando pedido / pedido entregue). */
     public function mudarStatusMesa(Request $request, Mesa $mesa): JsonResponse
     {
-        // Validação manual: o sistema só responde erro em JSON para api/* (bootstrap/app.php)
         $status = (string) $request->input('status');
 
         if (!array_key_exists($status, Mesa::STATUS)) {
@@ -74,28 +80,29 @@ class GarcomController extends Controller
             return response()->json(['message' => 'Esta mesa foi inativada no painel.'], 422);
         }
 
-        $mesa->mudarStatus($status, Auth::guard('garcom')->id());
+        try {
+            $mesa->mudarStatus($status, Auth::guard('garcom')->id());
+        } catch (DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
         return response()->json(['mesa' => $this->mesaParaTela($mesa)]);
     }
 
-    /**
-     * "Finalizar pedido": grava o pedido da mesa com os itens da comanda montada no celular.
-     * Nome e preço vêm do cadastro (o celular manda só o item, a quantidade e a observação).
-     * Reenviar o mesmo uuid (toque duplo, conexão caiu no meio) devolve o pedido já gravado.
-     */
+    /** "Finalizar pedido": grava o pedido da mesa com os itens da comanda montada no celular. */
     public function enviarPedido(Request $request, Mesa $mesa): JsonResponse
     {
-        // Validação manual: o sistema só responde erro em JSON para api/* (bootstrap/app.php)
         $validador = Validator::make($request->all(), [
             'uuid'                      => ['required', 'uuid'],
+            'cliente'                   => ['nullable', 'string', 'max:60'],
             'itens'                     => ['required', 'array', 'min:1', 'max:100'],
             'itens.*.cardapio_item_id'  => ['required', 'integer'],
             'itens.*.quantidade'        => ['required', 'integer', 'min:1', 'max:999'],
             'itens.*.observacao'        => ['nullable', 'string', 'max:200'],
         ], [
-            'itens.required' => 'A comanda está vazia.',
-            'itens.min'      => 'A comanda está vazia.',
+            'itens.required'         => 'A comanda está vazia.',
+            'itens.min'              => 'A comanda está vazia.',
+            'cliente.max'            => 'O nome do cliente pode ter no máximo 60 caracteres.',
             'itens.*.quantidade.max' => 'Quantidade máxima por item: 999.',
             'itens.*.observacao.max' => 'A observação pode ter no máximo 200 caracteres.',
         ]);
@@ -104,82 +111,49 @@ class GarcomController extends Controller
             return response()->json(['message' => $validador->errors()->first()], 422);
         }
 
-        if (!$mesa->ativo) {
-            return response()->json(['message' => 'Esta mesa foi inativada no painel.'], 422);
-        }
-
         $dados = $validador->validated();
 
-        if ($jaGravado = ComandaPedido::where('uuid', $dados['uuid'])->first()) {
-            return response()->json(['pedido_id' => $jaGravado->id, 'mesa' => $this->mesaParaTela($jaGravado->mesa)]);
+        try {
+            $pedido = $this->comandas->registrarPedido(
+                $mesa, $dados['uuid'], $dados['itens'], $dados['cliente'] ?? null, Auth::guard('garcom')->id()
+            );
+        } catch (DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        // Itens que o garçom pode oferecer agora (ativos, de produto ativo)
-        $cardapio = CardapioItem::with(['produto', 'variante'])
-            ->whereIn('id', collect($dados['itens'])->pluck('cardapio_item_id'))
-            ->where('ativo', true)
-            ->whereHas('produto', fn ($p) => $p->where('ativo', true))
-            ->get()
-            ->keyBy('id');
+        return response()->json(['pedido_id' => $pedido->id, 'mesa' => $this->mesaParaTela($pedido->mesa)]);
+    }
 
-        $faltando = collect($dados['itens'])->pluck('cardapio_item_id')->reject(fn ($id) => $cardapio->has($id));
-        if ($faltando->isNotEmpty()) {
-            return response()->json([
-                'message' => 'Algum item da comanda saiu do cardápio. Atualize a tela, confira a comanda e envie de novo.',
-            ], 422);
+    /** Conta da mesa para a tela "Fechar conta": itens de todos os pedidos e o total. */
+    public function conta(Mesa $mesa): JsonResponse
+    {
+        $conta = $mesa->contaAberta()->first();
+
+        if (!$conta) {
+            return response()->json(['message' => 'Esta mesa não tem conta aberta.'], 404);
         }
 
-        $pedido = DB::transaction(function () use ($dados, $mesa, $cardapio) {
-            $pedido = ComandaPedido::create([
-                'uuid'       => $dados['uuid'],
-                'mesa_id'    => $mesa->id,
-                'garcom_id'  => Auth::guard('garcom')->id(),
-                'enviado_em' => now(),
-            ]);
+        $conta->recalcularTotal();
 
-            $total = 0;
-            foreach ($dados['itens'] as $linha) {
-                $item = $cardapio[$linha['cardapio_item_id']];
-                $preco = round((float) $item->produto->preco_venda, 2);
-                $subtotal = round($preco * $linha['quantidade'], 2);
-                $total += $subtotal;
-
-                $pedido->itens()->create([
-                    'cardapio_item_id'    => $item->id,
-                    'produto_id'          => $item->produto_id,
-                    'produto_variante_id' => $item->produto_variante_id,
-                    'nome'                => $item->nomeExibido(),
-                    'quantidade'          => $linha['quantidade'],
-                    'preco_unitario'      => $preco,
-                    'subtotal'            => $subtotal,
-                    'observacao'          => trim((string) ($linha['observacao'] ?? '')) ?: null,
-                ]);
-            }
-
-            $pedido->update(['total' => round($total, 2)]);
-
-            // Mesa passa a "Aguardando pedido" (se já estava, o relógio dela continua; o do pedido começa agora)
-            $mesa->mudarStatus(Mesa::AGUARDANDO, Auth::guard('garcom')->id());
-
-            return $pedido;
-        });
-
-        return response()->json(['pedido_id' => $pedido->id, 'mesa' => $this->mesaParaTela($mesa)]);
+        return response()->json(['conta' => $conta->paraFechamento()]);
     }
 
-    private function mesaParaTela(Mesa $mesa): array
+    /** Fecha a conta da mesa com os pagamentos (uma ou mais formas) e libera a mesa. */
+    public function fecharConta(Request $request, Mesa $mesa): JsonResponse
     {
-        return $mesa->fresh(['alteradoPor:id,name', 'pedidosAbertos.itens', 'pedidosAbertos.garcom:id,name'])->paraTela();
-    }
+        $conta = Comanda::where('mesa_id', $mesa->id)->find((int) $request->input('conta_id'));
 
-    private function mesasAtivas(): array
-    {
-        return Mesa::with(['alteradoPor:id,name', 'pedidosAbertos.itens', 'pedidosAbertos.garcom:id,name'])
-            ->where('ativo', true)
-            ->ordenadas()
-            ->get()
-            ->map(fn (Mesa $m) => $m->paraTela())
-            ->all();
+        if (!$conta) {
+            return response()->json(['message' => 'Conta não encontrada. Atualize a tela.'], 404);
+        }
+
+        try {
+            $conta = $this->comandas->fecharConta($conta, (array) $request->input('pagamentos', []), Auth::guard('garcom')->id(), 'garcom');
+        } catch (DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['conta' => $conta->paraFechamento(), 'mesa' => $this->mesaParaTela($mesa)]);
     }
 
     /** Foto do item do cardápio para a tela do garçom (a rota do painel exige login do painel). */
@@ -190,5 +164,22 @@ class GarcomController extends Controller
         return response()->file(Storage::disk('local')->path($item->imagem), [
             'Cache-Control' => 'private, max-age=31536000, immutable',
         ]);
+    }
+
+    private const CARREGAR_MESA = ['alteradoPor:id,name', 'pedidosAbertos.itens', 'pedidosAbertos.garcom:id,name', 'contaAberta'];
+
+    private function mesaParaTela(Mesa $mesa): array
+    {
+        return $mesa->fresh(self::CARREGAR_MESA)->paraTela();
+    }
+
+    private function mesasAtivas(): array
+    {
+        return Mesa::with(self::CARREGAR_MESA)
+            ->where('ativo', true)
+            ->ordenadas()
+            ->get()
+            ->map(fn (Mesa $m) => $m->paraTela())
+            ->all();
     }
 }

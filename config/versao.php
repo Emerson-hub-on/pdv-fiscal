@@ -11,6 +11,39 @@
 
 $historico = [
     [
+        'versao' => '1.19.3',
+        'data' => '2026-11-08',
+        'itens' => [
+            'Comandas → Pedidos → Lista de Pedidos: cada pedido em aberto tem o botão da próxima ação ("Marcar como pronto →" ou "Marcar como entregue →") e, à direita, "Cancelar". Cancelar pergunta "Deseja cancelar o pedido #N da Mesa X?"; confirmado, o pedido vai para a coluna Concluído com o selo "Cancelado" e sai da conta da mesa.',
+        ],
+    ],
+    [
+        'versao' => '1.19.2',
+        'data' => '2026-11-08',
+        'itens' => [
+            'Comandas → Pedidos → Lista de Pedidos: saiu a fileira de botões de situação dos cartões (a coluna já mostra a situação). No lugar, um botão com a próxima ação: "Marcar como pronto" em Em preparo e "Marcar como entregue" em Pronto / A caminho. "Voltar para preparo" e "Cancelar pedido" ficaram dentro do "Ver mais". Pedido entregue ou cancelado mostra um selo pequeno.',
+        ],
+    ],
+    [
+        'versao' => '1.19.1',
+        'data' => '2026-11-08',
+        'itens' => [
+            'Comandas → Pedidos → Lista de Pedidos: as colunas Em preparo, Pronto / A caminho e Concluído ficaram com altura fixa, ocupando a tela até embaixo mesmo sem pedidos; quando há muitos pedidos, a lista rola dentro da coluna.',
+        ],
+    ],
+    [
+        'versao' => '1.19.0',
+        'data' => '2026-11-08',
+        'itens' => [
+            'Novo menu Comandas → Pedidos → Lista de Pedidos: os pedidos dos garçons chegam em três colunas — Em preparo, Pronto / A caminho e Concluído. Cada pedido mostra o número, o cliente, a mesa, os horários (com o tempo de espera) e o valor; "Ver mais" abre os itens com as observações e o pagamento. A tela se atualiza sozinha e toca um aviso quando chega pedido novo (com botão para desligar o som).',
+            'Botões de situação em cada pedido: Em preparo, Pronto, Entregue e Cancelado (cancelado sai da conta da mesa). Concluído acontece quando a conta da mesa é paga.',
+            'Pedido pronto: o garçom que fez o pedido recebe o aviso na tela dele ("Pedido pronto! Pode buscar", com som e vibração); tocar no aviso abre a mesa.',
+            'Conta da mesa: abre no primeiro pedido e soma todos os pedidos da mesa. "Fechar conta" (no topo da tela do garçom ou na janela da mesa) mostra a revisão dos itens e recebe o pagamento em uma ou mais formas (as formas ativas do caixa, menos crédito em loja e convênio), com o que falta e o troco (troco só em dinheiro). Ao finalizar a comanda, todos os pedidos da mesa vão para Concluído e a mesa fica disponível.',
+            'O operador do painel também fecha a conta, pelo "Ver mais" do pedido (cliente que paga no balcão).',
+            'Garçom: campo "Nome do cliente" (opcional) ao finalizar o pedido. Mesa com conta a pagar só fica "Disponível" fechando a conta.',
+        ],
+    ],
+    [
         'versao' => '1.18.0',
         'data' => '2026-11-07',
         'itens' => [

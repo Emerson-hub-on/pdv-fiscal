@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -65,10 +66,16 @@ class Mesa extends Model
         return $this->hasMany(ComandaPedido::class);
     }
 
-    /** Pedidos que ainda estão na mesa (desde que ela saiu de "Disponível"), do mais antigo ao mais novo. */
+    /** Pedidos que ainda estão na mesa (conta não paga, não cancelados), do mais antigo ao mais novo. */
     public function pedidosAbertos(): HasMany
     {
         return $this->pedidos()->abertos()->orderBy('enviado_em')->orderBy('id');
+    }
+
+    /** Conta (comanda) aberta da mesa: existe do 1º pedido até o cliente pagar. */
+    public function contaAberta(): HasOne
+    {
+        return $this->hasOne(Comanda::class)->where('status', Comanda::ABERTA)->latestOfMany();
     }
 
     public function scopeOrdenadas($query)
@@ -89,8 +96,11 @@ class Mesa extends Model
 
     /**
      * Muda a situação e zera o relógio da mesa. Efeito nos pedidos dela:
-     *  - Pedido entregue: os que estavam esperando saem da espera (entregue_em = agora);
-     *  - Disponível: a mesa liberou, os pedidos dela são fechados (fechado_em = agora).
+     *  - Pedido entregue: os que estavam em preparo ou prontos passam a "Entregue";
+     *  - Disponível: só sem conta a cobrar. Conta aberta só com pedidos cancelados é encerrada
+     *    (com pedido a cobrar, a mesa é liberada ao fechar a conta: ComandaService::fecharConta).
+     *
+     * @throws \DomainException mesa com conta a cobrar indo para "Disponível"
      */
     public function mudarStatus(string $status, ?int $userId): void
     {
@@ -102,9 +112,14 @@ class Mesa extends Model
             $agora = now();
 
             if ($status === self::ENTREGUE) {
-                $this->pedidos()->abertos()->whereNull('entregue_em')->update(['entregue_em' => $agora]);
+                $this->pedidos()->whereIn('status', [ComandaPedido::PREPARO, ComandaPedido::PRONTO])
+                    ->get()->each(fn (ComandaPedido $p) => $p->mudarStatus(ComandaPedido::ENTREGUE, $userId));
             } elseif ($status === self::DISPONIVEL) {
-                $this->pedidos()->abertos()->update(['fechado_em' => $agora]);
+                $conta = $this->contaAberta()->lockForUpdate()->first();
+                if ($conta && $conta->pedidos()->abertos()->exists()) {
+                    throw new \DomainException('A mesa tem conta a pagar (R$ ' . number_format((float) $conta->total, 2, ',', '.') . '): feche a conta para liberar a mesa.');
+                }
+                $conta?->forceFill(['status' => Comanda::CANCELADA, 'fechada_em' => $agora, 'fechada_por' => $userId])->save();
             }
 
             $this->forceFill([
@@ -131,6 +146,10 @@ class Mesa extends Model
             'pedidos'      => $this->relationLoaded('pedidosAbertos')
                 ? $this->pedidosAbertos->values()->map(fn (ComandaPedido $p, int $i) => $p->paraTela($i + 1))->all()
                 : [],
+            // Conta aberta (o garçom fecha por aqui)
+            'conta'        => $this->relationLoaded('contaAberta') && $this->contaAberta
+                ? ['id' => $this->contaAberta->id, 'total' => (float) $this->contaAberta->total]
+                : null,
         ];
     }
 }
