@@ -116,9 +116,11 @@ class ComandaPedido extends Model
             'cliente'     => $this->cliente_nome,
             'total'       => (float) $this->total,
             'itens'       => $this->itens->map(fn (ComandaPedidoItem $i) => [
-                'nome'       => $i->nome,
-                'quantidade' => $i->quantidade,
-                'observacao' => $i->observacao,
+                'nome'           => $i->nome,
+                'quantidade'     => $i->quantidade,
+                'preco_unitario' => (float) $i->preco_unitario,
+                'subtotal'       => (float) $i->subtotal,
+                'observacao'     => $i->observacao,
             ])->all(),
         ];
     }

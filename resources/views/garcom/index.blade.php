@@ -331,6 +331,37 @@
     </div>
 </div>
 
+{{-- ===== Itens de um pedido (abre por cima da janela da mesa) ===== --}}
+<div id="modal-pedido" class="fixed inset-0 z-50 bg-black/50 hidden items-end sm:items-center justify-center"
+     onclick="if (event.target === this) fecharPedido()">
+    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[88vh] flex flex-col">
+        <div class="px-5 pt-5 pb-3 border-b border-slate-100">
+            <div class="mx-auto w-10 h-1 rounded-full bg-slate-200 mb-4 sm:hidden"></div>
+            <div class="flex items-start gap-3">
+                <div class="min-w-0 flex-1">
+                    <h2 class="font-bold text-slate-900 text-lg" id="pedido-titulo"></h2>
+                    <p class="text-sm text-slate-400 truncate" id="pedido-sub"></p>
+                </div>
+                <button type="button" onclick="fecharPedido()" aria-label="Fechar"
+                        class="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-100 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="mt-2 flex items-center justify-between gap-3">
+                <span id="pedido-selo"></span>
+                <span id="pedido-cliente" class="text-sm text-slate-500 truncate"></span>
+            </div>
+        </div>
+        <div id="pedido-itens" class="flex-1 overflow-y-auto px-5 divide-y divide-slate-100"></div>
+        <div class="px-5 pt-3 pb-8 sm:pb-5 border-t border-slate-100">
+            <div class="flex items-center justify-between mb-3">
+                <span class="font-semibold text-slate-600">Total do pedido</span>
+                <span class="text-xl font-bold text-[#10284A]" id="pedido-total"></span>
+            </div>
+            <button type="button" onclick="fecharPedido()"
+                    class="w-full rounded-2xl ring-1 ring-slate-200 px-4 py-3.5 text-base font-semibold text-slate-700 active:bg-slate-100">← Voltar para a mesa</button>
+        </div>
+    </div>
+</div>
+
 {{-- Aviso de pedido pronto (fica até o garçom tocar) --}}
 <div id="aviso-pronto" class="hidden fixed inset-x-0 top-3 z-50 px-4 max-w-3xl mx-auto flex flex-col gap-2"></div>
 
@@ -799,7 +830,53 @@
     }
 
     function fecharSituacao() {
+        fecharPedido();
         fecharJanela('modal-mesa');
+    }
+
+    const horaPedido = (iso) => iso ? new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+    // Situação de cada pedido: esperando (com o tempo), pronto para buscar, entregue
+    const seloPedido = (p) => ({
+        preparo:  `<span class="shrink-0 rounded-full bg-amber-50 text-amber-700 px-2.5 py-1 text-xs font-bold">Em preparo <span data-desde="${escHtml(p.enviado_em)}"></span></span>`,
+        pronto:   `<span class="shrink-0 rounded-full bg-blue-600 text-white px-2.5 py-1 text-xs font-bold">Pronto! Pode buscar</span>`,
+        entregue: `<span class="shrink-0 rounded-full bg-indigo-50 text-indigo-700 px-2.5 py-1 text-xs font-semibold">Entregue ${escHtml(horaPedido(p.entregue_em || p.enviado_em))}</span>`,
+    })[p.status] ?? '';
+
+    // ===================== Itens de um pedido (tocando no cartão do pedido na janela da mesa) =====================
+    let pedidoAberto = null;
+
+    function abrirPedido(id) {
+        pedidoAberto = id;
+        if (desenharPedido()) abrirJanela('modal-pedido');
+    }
+
+    function fecharPedido() {
+        pedidoAberto = null;
+        fecharJanela('modal-pedido');
+    }
+
+    // Redesenha com os dados atuais (a situação pode mudar enquanto a janela está aberta)
+    function desenharPedido() {
+        const p = mesaAtual()?.pedidos.find(x => x.id === pedidoAberto);
+        if (!p) { fecharPedido(); return false; }
+
+        document.getElementById('pedido-titulo').textContent = `${p.numero}º pedido`;
+        document.getElementById('pedido-sub').textContent = `#${p.id} · ${horaPedido(p.enviado_em)}${p.garcom ? ' · ' + p.garcom : ''}`;
+        document.getElementById('pedido-selo').innerHTML = seloPedido(p);
+        document.getElementById('pedido-cliente').textContent = p.cliente ? 'Cliente: ' + p.cliente : '';
+        document.getElementById('pedido-cliente').classList.toggle('hidden', !p.cliente);
+        document.getElementById('pedido-itens').innerHTML = p.itens.map(i => `
+            <div class="py-3 flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="text-base text-slate-900"><span class="font-bold">${i.quantidade}×</span> ${escHtml(i.nome)}</p>
+                    ${i.preco_unitario != null ? `<p class="text-xs text-slate-400">${escHtml(moeda(i.preco_unitario))} cada</p>` : ''}
+                    ${i.observacao ? `<p class="mt-1 text-sm text-amber-700">Obs.: ${escHtml(i.observacao)}</p>` : ''}
+                </div>
+                ${i.subtotal != null ? `<span class="shrink-0 font-semibold text-slate-800">${escHtml(moeda(i.subtotal))}</span>` : ''}
+            </div>`).join('');
+        document.getElementById('pedido-total').textContent = moeda(p.total);
+        relogioMesas.atualizar(document.getElementById('modal-pedido'));
+        return true;
     }
 
     function desenharSituacao() {
@@ -818,23 +895,22 @@
             : `<p class="font-semibold">${escHtml(s.rotulo)}</p>
                <p class="text-sm opacity-80"><span data-desde="${escHtml(m.status_desde || '')}"></span>${m.status_por ? ' · ' + escHtml(m.status_por) : ''}</p>`;
 
-        // Tempo de espera de cada pedido da mesa
-        const hora = (iso) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-        // Situação de cada pedido: esperando (com o tempo), pronto para buscar, entregue
-        const seloPedido = (p) => ({
-            preparo:  `<span class="shrink-0 rounded-full bg-amber-50 text-amber-700 px-2.5 py-1 text-xs font-bold">Em preparo <span data-desde="${escHtml(p.enviado_em)}"></span></span>`,
-            pronto:   `<span class="shrink-0 rounded-full bg-blue-600 text-white px-2.5 py-1 text-xs font-bold">Pronto! Pode buscar</span>`,
-            entregue: `<span class="shrink-0 rounded-full bg-indigo-50 text-indigo-700 px-2.5 py-1 text-xs font-semibold">Entregue ${escHtml(hora(p.entregue_em || p.enviado_em))}</span>`,
-        })[p.status] ?? '';
-        document.getElementById('mesa-pedidos').innerHTML = m.pedidos.map(p => `
-            <div class="rounded-2xl ring-1 ${p.status === 'pronto' ? 'ring-2 ring-blue-500' : 'ring-slate-200'} px-4 py-3">
+        // Cada pedido é um cartão resumido; tocando nele abre a janela com os itens
+        document.getElementById('mesa-pedidos').innerHTML = m.pedidos.map(p => {
+            const qtd = p.itens.reduce((t, i) => t + Number(i.quantidade), 0);
+            return `
+            <button type="button" onclick="abrirPedido(${p.id})"
+                    class="w-full text-left rounded-2xl ring-1 ${p.status === 'pronto' ? 'ring-2 ring-blue-500' : 'ring-slate-200'} px-4 py-3 bg-white active:bg-slate-50 hover:ring-[#10284A]/40 transition">
                 <div class="flex items-center justify-between gap-3">
-                    <p class="font-semibold text-slate-900">${p.numero}º pedido <span class="font-normal text-slate-400 text-sm">· #${p.id} · ${escHtml(hora(p.enviado_em))}</span></p>
+                    <p class="font-semibold text-slate-900">${p.numero}º pedido <span class="font-normal text-slate-400 text-sm">· #${p.id} · ${escHtml(horaPedido(p.enviado_em))}</span></p>
                     ${seloPedido(p)}
                 </div>
-                <p class="text-sm text-slate-500 mt-1">${p.itens.map(i => `${i.quantidade}× ${escHtml(i.nome)}${i.observacao ? ' (' + escHtml(i.observacao) + ')' : ''}`).join(' · ')}</p>
-                <p class="text-xs text-slate-400 mt-1">${p.cliente ? escHtml(p.cliente) + ' · ' : ''}${p.garcom ? escHtml(p.garcom) + ' · ' : ''}${escHtml(moeda(p.total))}</p>
-            </div>`).join('');
+                <div class="mt-1 flex items-center justify-between gap-3">
+                    <p class="text-xs text-slate-400 min-w-0 truncate">${qtd} ${qtd === 1 ? 'item' : 'itens'} · ${p.cliente ? escHtml(p.cliente) + ' · ' : ''}${p.garcom ? escHtml(p.garcom) + ' · ' : ''}<span class="font-semibold text-slate-600">${escHtml(moeda(p.total))}</span></p>
+                    <span class="shrink-0 text-xs font-semibold text-[#10284A]">Ver itens ›</span>
+                </div>
+            </button>`;
+        }).join('');
 
         const botaoConta = document.getElementById('mesa-fechar-conta');
         botaoConta.classList.toggle('hidden', !m.conta);
@@ -942,6 +1018,7 @@
         desenharMesas();
         desenharBarra();
         if (!document.getElementById('modal-mesa').classList.contains('hidden')) desenharSituacao();
+        if (pedidoAberto !== null) desenharPedido();
     }
 
     // Outros garçons também mudam as mesas: busca a situação de novo a cada 15 s (só com a tela visível)
@@ -961,6 +1038,8 @@
 
     document.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape') return;
+        // Com os itens do pedido abertos, o Esc volta só para a janela da mesa
+        if (pedidoAberto !== null) return fecharPedido();
         fecharItem(); fecharComanda(); fecharSituacao(); alternarPerfil(false);
     });
 

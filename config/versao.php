@@ -11,6 +11,13 @@
 
 $historico = [
     [
+        'versao' => '1.21.1',
+        'data' => '2026-11-08',
+        'itens' => [
+            'Comandas → Garçom: na janela da mesa, cada pedido virou um cartão resumido (número, horário, situação, quantidade de itens, cliente, garçom e valor). Tocando no cartão abre outra janela com os itens daquele pedido: quantidade, preço, observação, subtotal e total do pedido.',
+        ],
+    ],
+    [
         'versao' => '1.21.0',
         'data' => '2026-11-08',
         'itens' => [
