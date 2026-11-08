@@ -11,6 +11,20 @@
 
 $historico = [
     [
+        'versao' => '1.20.0',
+        'data' => '2026-11-08',
+        'itens' => [
+            'Comandas: fechar conta em duas etapas, igual no garçom e no painel (Lista de Pedidos → Fechar conta da mesa). 1) Resumo de todos os pedidos da mesa (itens, observações, subtotal de cada pedido e total) → "Confirmar e ir para o pagamento"; 2) Pagamento com uma ou mais formas → "Finalizar conta" (com "← Voltar" ao resumo). Ao finalizar, os pedidos vão para Concluído e a mesa fica disponível.',
+        ],
+    ],
+    [
+        'versao' => '1.19.4',
+        'data' => '2026-11-08',
+        'itens' => [
+            'Comandas → Pedidos → Lista de Pedidos: botões invertidos no cartão — "Cancelar" à esquerda e "Marcar como pronto →" / "Marcar como entregue →" à direita.',
+        ],
+    ],
+    [
         'versao' => '1.19.3',
         'data' => '2026-11-08',
         'itens' => [

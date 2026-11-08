@@ -78,13 +78,13 @@
         // A coluna já diz a situação: no cartão fica só a próxima ação (Em preparo → Pronto → Entregue)
         const proxima = { preparo: ['pronto', 'Marcar como pronto', 'bg-blue-600 hover:bg-blue-700'],
                           pronto: ['entregue', 'Marcar como entregue', 'bg-indigo-600 hover:bg-indigo-700'] }[p.status];
-        // Próxima ação à esquerda e Cancelar à direita (pedido ainda não concluído nem cancelado)
+        // Cancelar à esquerda e próxima ação à direita (pedido ainda não concluído nem cancelado)
         const botoes = PODE_ALTERAR && !finalizado ? `
             <div class="mt-3 flex items-center gap-2">
-                ${proxima ? `<button type="button" onclick="mudarStatus(${p.id}, '${proxima[0]}')"
-                        class="rounded-xl ${proxima[2]} text-white px-3.5 py-2 text-sm font-semibold transition">${proxima[1]} →</button>` : ''}
                 <button type="button" onclick="cancelarPedido(${p.id})"
-                        class="ml-auto rounded-xl px-3.5 py-2 text-sm font-semibold text-red-600 ring-1 ring-red-200 hover:bg-red-50 transition">Cancelar</button>
+                        class="rounded-xl px-3.5 py-2 text-sm font-semibold text-red-600 ring-1 ring-red-200 hover:bg-red-50 transition">Cancelar</button>
+                ${proxima ? `<button type="button" onclick="mudarStatus(${p.id}, '${proxima[0]}')"
+                        class="ml-auto rounded-xl ${proxima[2]} text-white px-3.5 py-2 text-sm font-semibold transition">${proxima[1]} →</button>` : ''}
             </div>` : '';
 
         // Voltar uma etapa (engano ao marcar), dentro do "Ver mais"

@@ -61,8 +61,26 @@ class Comanda extends Model
      */
     public function paraFechamento(): array
     {
-        $this->loadMissing(['mesa', 'pedidos.itens', 'pagamentos']);
-        $pedidos = $this->pedidos->where('status', '!=', ComandaPedido::CANCELADO);
+        $this->loadMissing(['mesa', 'pedidos.itens', 'pedidos.garcom', 'pagamentos']);
+        $pedidos = $this->pedidos->where('status', '!=', ComandaPedido::CANCELADO)->sortBy('id')->values();
+
+        // Resumo pedido a pedido (1ª etapa do fechamento)
+        $resumo = $pedidos->map(fn (ComandaPedido $p, int $i) => [
+            'id'         => $p->id,
+            'numero'     => $i + 1,
+            'status'     => ComandaPedido::STATUS[$p->status]['rotulo'] ?? $p->status,
+            'enviado_em' => $p->enviado_em?->toIso8601String(),
+            'garcom'     => $p->garcom?->name,
+            'cliente'    => $p->cliente_nome,
+            'total'      => (float) $p->total,
+            'itens'      => $p->itens->map(fn (ComandaPedidoItem $item) => [
+                'nome'           => $item->nome,
+                'quantidade'     => (int) $item->quantidade,
+                'preco_unitario' => (float) $item->preco_unitario,
+                'subtotal'       => (float) $item->subtotal,
+                'observacao'     => $item->observacao,
+            ])->values(),
+        ]);
 
         // Mesmo item com o mesmo preço vira uma linha só (a observação não importa na conta)
         $itens = $pedidos->flatMap->itens
@@ -82,6 +100,7 @@ class Comanda extends Model
             'mesa_id'    => $this->mesa_id,
             'aberta_em'  => $this->aberta_em?->toIso8601String(),
             'pedidos'    => $pedidos->count(),
+            'resumo'     => $resumo,
             'clientes'   => $pedidos->pluck('cliente_nome')->filter()->unique()->values(),
             'itens'      => $itens,
             'total'      => (float) $this->total,
