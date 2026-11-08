@@ -67,28 +67,6 @@ class GarcomController extends Controller
         ]);
     }
 
-    /** O garçom muda a situação da mesa (disponível / aguardando pedido / pedido entregue). */
-    public function mudarStatusMesa(Request $request, Mesa $mesa): JsonResponse
-    {
-        $status = (string) $request->input('status');
-
-        if (!array_key_exists($status, Mesa::STATUS)) {
-            return response()->json(['message' => 'Situação inválida.'], 422);
-        }
-
-        if (!$mesa->ativo) {
-            return response()->json(['message' => 'Esta mesa foi inativada no painel.'], 422);
-        }
-
-        try {
-            $mesa->mudarStatus($status, Auth::guard('garcom')->id());
-        } catch (DomainException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
-        }
-
-        return response()->json(['mesa' => $this->mesaParaTela($mesa)]);
-    }
-
     /** "Finalizar pedido": grava o pedido da mesa com os itens da comanda montada no celular. */
     public function enviarPedido(Request $request, Mesa $mesa): JsonResponse
     {

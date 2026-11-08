@@ -11,6 +11,20 @@
 
 $historico = [
     [
+        'versao' => '1.21.0',
+        'data' => '2026-11-08',
+        'itens' => [
+            'Comandas → Garçom: saiu a opção "Mudar situação" da janela da mesa. A situação da mesa agora muda sozinha pelos pedidos: "Aguardando pedido" quando chega pedido (ou um volta para preparo), "Pedido entregue" quando todos os pedidos em aberto foram entregues, e "Disponível" ao fechar a conta ou quando todos os pedidos forem cancelados.',
+        ],
+    ],
+    [
+        'versao' => '1.20.1',
+        'data' => '2026-11-08',
+        'itens' => [
+            'Comandas → Lista de Pedidos: no pedido concluído, o pagamento agora aparece como "Pagamento da conta da mesa", com o aviso de que o pedido foi pago junto com a conta (quantos pedidos e o total da conta), em vez de parecer que cada pedido pagou o valor inteiro. Botão "Ver conta completa →" abre o resumo de todos os pedidos da mesa com o pagamento.',
+        ],
+    ],
+    [
         'versao' => '1.20.0',
         'data' => '2026-11-08',
         'itens' => [

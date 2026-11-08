@@ -153,6 +153,9 @@ class ComandaPedido extends Model
                 ? $this->comanda->pagamentos->map(fn ($p) => ['descricao' => $p->descricao, 'valor' => (float) $p->valor])->all()
                 : [],
             'troco'        => $this->comanda?->status === Comanda::PAGA ? (float) $this->comanda->troco : 0,
+            // O pagamento é da conta da mesa inteira (todos os pedidos), não deste pedido
+            'conta_total'   => $this->comanda ? (float) $this->comanda->total : null,
+            'conta_pedidos' => $this->comanda ? (int) ($this->comanda->pedidos_na_conta ?? 0) : 0,
         ];
     }
 }

@@ -117,6 +117,9 @@ class ComandaService
             if ($status === ComandaPedido::CANCELADO) {
                 $pedido->comanda?->recalcularTotal();
             }
+
+            // A mesa acompanha os pedidos (o garçom não muda a situação à mão)
+            $pedido->mesa?->sincronizarStatus($userId);
         });
     }
 

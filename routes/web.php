@@ -167,9 +167,6 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
         Route::get('/', [\App\Http\Controllers\GarcomController::class, 'index'])->name('index');
         Route::get('cardapio/{item}/imagem', [\App\Http\Controllers\GarcomController::class, 'imagem'])->name('cardapio.imagem');
         Route::get('mesas', [\App\Http\Controllers\GarcomController::class, 'mesas'])->name('mesas');
-        Route::post('mesas/{mesa}/status', [\App\Http\Controllers\GarcomController::class, 'mudarStatusMesa'])
-            ->middleware('throttle:60,1')
-            ->name('mesas.status');
         Route::post('mesas/{mesa}/pedidos', [\App\Http\Controllers\GarcomController::class, 'enviarPedido'])
             ->middleware('throttle:30,1')
             ->name('mesas.pedidos');

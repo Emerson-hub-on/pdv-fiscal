@@ -106,10 +106,19 @@
                             ${i.observacao ? `<span class="block text-xs text-amber-700">Obs.: ${escHtml(i.observacao)}</span>` : ''}</span>
                         <span class="shrink-0 text-slate-600">${escHtml(moeda(i.subtotal))}</span>
                     </div>`).join('')}
-                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mt-3 mb-1">Pagamento</p>
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mt-3 mb-1">${p.pagamentos.length ? 'Pagamento da conta da mesa' : 'Pagamento'}</p>
                 ${p.pagamentos.length
-                    ? p.pagamentos.map(x => `<p class="text-sm text-slate-700">${escHtml(x.descricao)}: <span class="font-semibold">${escHtml(moeda(x.valor))}</span></p>`).join('')
-                      + (p.troco > 0 ? `<p class="text-sm text-slate-500">Troco: ${escHtml(moeda(p.troco))}</p>` : '')
+                    ? (p.conta_pedidos > 1
+                        ? `<p class="text-xs text-slate-500 mb-1.5">Este pedido (${escHtml(moeda(p.total))}) foi pago junto com a conta da ${escHtml(p.mesa || 'mesa')}:
+                               ${p.conta_pedidos} pedidos, total <span class="font-semibold text-slate-700">${escHtml(moeda(p.conta_total))}</span>.</p>`
+                        : '')
+                      + `<div class="rounded-xl bg-slate-50 ring-1 ring-slate-200 px-3 py-2">`
+                      + p.pagamentos.map(x => `<p class="text-sm text-slate-700 flex justify-between gap-2"><span>${escHtml(x.descricao)}</span><span class="font-semibold">${escHtml(moeda(x.valor))}</span></p>`).join('')
+                      + (p.troco > 0 ? `<p class="text-sm text-slate-500 flex justify-between gap-2"><span>Troco</span><span>${escHtml(moeda(p.troco))}</span></p>` : '')
+                      + `</div>`
+                      + (p.comanda_id && p.conta_pedidos > 1 ? `
+                          <button type="button" onclick="verConta(${p.comanda_id})"
+                                  class="mt-2 text-sm font-semibold text-[#10284A] hover:underline">Ver conta completa →</button>` : '')
                     : p.status === 'cancelado'
                         ? '<p class="text-sm text-slate-400">Pedido cancelado (fora da conta).</p>'
                         : `<p class="text-sm text-slate-500">Conta da mesa em aberto — paga ao fechar a conta.</p>
@@ -203,6 +212,11 @@
         } catch (e) {
             avisar(e.message, true);
         }
+    }
+
+    // Conta já paga: abre o resumo de todos os pedidos da mesa com o pagamento (só leitura)
+    function verConta(comandaId) {
+        FecharConta.abrir({ urlConta: URL_CONTA.replace('__ID__', comandaId), urlFechar: null, aoFechar: null });
     }
 
     function fecharConta(comandaId) {

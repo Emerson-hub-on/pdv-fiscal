@@ -130,6 +130,25 @@ class Mesa extends Model
         });
     }
 
+    /**
+     * Situação automática pela situação dos pedidos em aberto da mesa:
+     *   algum em preparo ou pronto → Aguardando pedido; todos entregues → Pedido entregue;
+     *   nenhum (ex.: todos cancelados) → Disponível (a conta vazia é encerrada).
+     * O fechamento da conta libera a mesa à parte (ComandaService::fecharConta).
+     */
+    public function sincronizarStatus(?int $userId): void
+    {
+        $situacoes = $this->pedidos()->abertos()->pluck('status');
+
+        $status = match (true) {
+            $situacoes->contains(fn ($s) => in_array($s, [ComandaPedido::PREPARO, ComandaPedido::PRONTO], true)) => self::AGUARDANDO,
+            $situacoes->isNotEmpty() => self::ENTREGUE,
+            default => self::DISPONIVEL,
+        };
+
+        $this->mudarStatus($status, $userId);
+    }
+
     /** Dados que a tela do garçom e a lista do painel usam no JavaScript. */
     public function paraTela(): array
     {

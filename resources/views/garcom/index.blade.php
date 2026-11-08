@@ -304,7 +304,7 @@
     </div>
 </div>
 
-{{-- ===== Janela da situação da mesa: pedidos com o tempo de espera de cada um e os botões de situação ===== --}}
+{{-- ===== Janela da situação da mesa: pedidos com o tempo de espera de cada um (a situação muda sozinha pelos pedidos) ===== --}}
 <div id="modal-mesa" class="fixed inset-0 z-40 bg-black/50 hidden items-end sm:items-center justify-center"
      onclick="if (event.target === this) fecharSituacao()">
     <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl p-5 pb-8 sm:pb-5 max-h-[92vh] overflow-y-auto">
@@ -325,18 +325,6 @@
         <div id="mesa-espera" class="mt-5 rounded-2xl px-4 py-3"></div>
         <div id="mesa-pedidos" class="mt-3 flex flex-col gap-2"></div>
 
-        <p class="mt-5 mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Mudar situação</p>
-        <div class="flex flex-col gap-2" id="mesa-botoes">
-            @foreach (\App\Models\Mesa::STATUS as $chave => $s)
-                <button type="button" data-status="{{ $chave }}" onclick="mudarStatusMesa('{{ $chave }}')"
-                        class="flex items-center gap-3 w-full rounded-2xl px-4 py-3.5 text-left text-base font-semibold ring-1 ring-slate-200 bg-white text-slate-700 transition disabled:opacity-60">
-                    <span class="w-3 h-3 rounded-full {{ $s['ponto'] }}"></span>
-                    <span class="flex-1">{{ $s['rotulo'] }}</span>
-                    <svg data-marca class="w-5 h-5 hidden" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 5 5 9-10"/></svg>
-                </button>
-            @endforeach
-        </div>
-        <p class="mt-2 text-xs text-slate-400">"Pedido entregue" marca os pedidos da mesa como entregues. A mesa com conta a pagar só fica "Disponível" ao fechar a conta.</p>
         <button type="button" id="mesa-fechar-conta" onclick="fecharSituacao(); fecharContaMesa()"
                 class="hidden mt-4 w-full rounded-2xl bg-[#10284A] text-amber-50 px-4 py-3.5 text-base font-bold active:opacity-90"></button>
         <p id="mesa-erro" class="hidden mt-3 text-sm text-red-600"></p>
@@ -358,7 +346,6 @@
     const STATUS_MESA = @json(\App\Models\Mesa::STATUS);
     const ITENS = @json($itensTela);
     const URL_MESAS = @json(route('garcom.mesas'));
-    const URL_STATUS = @json(route('garcom.mesas.status', ['mesa' => '__ID__']));
     const URL_PEDIDO = @json(route('garcom.mesas.pedidos', ['mesa' => '__ID__']));
     const CSRF = @json(csrf_token());
     const ICONE_MESA = @json($iconeMesa);
@@ -853,44 +840,7 @@
         botaoConta.classList.toggle('hidden', !m.conta);
         if (m.conta) botaoConta.textContent = `Fechar conta · ${moeda(m.conta.total)}`;
 
-        document.querySelectorAll('#mesa-botoes [data-status]').forEach(botao => {
-            const atual = botao.dataset.status === m.status;
-            botao.classList.toggle('ring-2', atual);
-            botao.classList.toggle('ring-[#10284A]', atual);
-            botao.classList.toggle('bg-slate-50', atual);
-            botao.querySelector('[data-marca]').classList.toggle('hidden', !atual);
-        });
-
         relogioMesas.atualizar(document.getElementById('modal-mesa'));
-    }
-
-    async function mudarStatusMesa(status) {
-        const m = mesaAtual();
-        if (!m || m.status === status) return;
-
-        const botoes = document.querySelectorAll('#mesa-botoes [data-status]');
-        botoes.forEach(b => b.disabled = true);
-        const erro = document.getElementById('mesa-erro');
-        erro.classList.add('hidden');
-
-        try {
-            const resp = await fetch(URL_STATUS.replace('__ID__', m.id), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': CSRF },
-                body: JSON.stringify({ status }),
-            });
-            if (resp.redirected) return location.reload();
-            const dados = await resp.json().catch(() => ({}));
-            if (!resp.ok) throw new Error(dados.message || 'Não foi possível mudar a situação da mesa.');
-
-            mesas = mesas.map(x => x.id === dados.mesa.id ? dados.mesa : x);
-            atualizarTudo();
-        } catch (e) {
-            erro.textContent = e.message;
-            erro.classList.remove('hidden');
-        } finally {
-            botoes.forEach(b => b.disabled = false);
-        }
     }
 
     // ===================== Fechar conta (o cliente pagou na mesa) =====================

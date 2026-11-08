@@ -6,7 +6,7 @@
 
 <div class="{{ $cartaoCls }} p-6">
     <x-form.secao titulo="Mesa" icone="loja">
-        A mesa aparece para o garçom na aba Mesas. A situação (disponível, aguardando pedido, pedido entregue) é mudada pelo garçom.
+        A mesa aparece para o garçom na aba Mesas. A situação muda sozinha: "Aguardando pedido" quando chega pedido, "Pedido entregue" quando todos os pedidos foram entregues e "Disponível" ao fechar a conta.
     </x-form.secao>
 
     @if ($mesa->exists)
