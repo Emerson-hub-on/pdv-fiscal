@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Comanda;
 use App\Models\ComandaImpressora;
 use App\Models\ComandaPedido;
+use App\Models\IfoodConfiguracao;
 use App\Services\ComandaService;
+use App\Services\IfoodService;
 use App\Services\ImpressaoComandaService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -36,18 +38,91 @@ class PedidoComandaController extends Controller
 
     public function dados(): JsonResponse
     {
+        // Com a tela aberta, busca os pedidos do iFood a cada 30 s ANTES de responder: o pedido novo já vem
+        // nesta atualização (antes só aparecia na seguinte, até 8 s depois). Fora do intervalo, polling() volta na hora.
+        $cfg = IfoodConfiguracao::atual();
+        if ($cfg->ativo && $cfg->credenciaisPreenchidas()) {
+            app(IfoodService::class)->polling($cfg);
+        }
+
         return response()->json($this->colunas());
     }
 
     public function mudarStatus(Request $request, ComandaPedido $pedido): JsonResponse
     {
+        $status = (string) $request->input('status');
+
         try {
-            $this->comandas->mudarStatusPedido($pedido, (string) $request->input('status'), $request->user()->id);
-        } catch (DomainException $e) {
+            // Pedido do iFood: avisa o iFood antes de mudar aqui
+            if ($pedido->origem === 'ifood' && $pedido->ifood) {
+                if ($status === ComandaPedido::CANCELADO) {
+                    throw new DomainException('Pedido do iFood: use o botão Cancelar para escolher o motivo.');
+                }
+                if ($status === ComandaPedido::PRONTO) {
+                    app(IfoodService::class)->marcarPronto(IfoodConfiguracao::atual(), $pedido->ifood);
+                }
+            }
+
+            $this->comandas->mudarStatusPedido($pedido, $status, $request->user()->id);
+
+            // Pedido do iFood não tem conta de mesa para fechar: entregue já é finalizado (vai para Concluído)
+            if ($pedido->origem === 'ifood' && $status === ComandaPedido::ENTREGUE) {
+                $pedido->refresh()->mudarStatus(ComandaPedido::CONCLUIDO, $request->user()->id);
+            }
+        } catch (DomainException|\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
         return response()->json($this->colunas());
+    }
+
+    /** Aceita o pedido do iFood (aceite manual). */
+    public function aceitarIfood(ComandaPedido $pedido, IfoodService $ifood): JsonResponse
+    {
+        if (!$pedido->ifood) {
+            return response()->json(['message' => 'Este pedido não é do iFood.'], 422);
+        }
+
+        try {
+            $ifood->aceitar(IfoodConfiguracao::atual(), $pedido->ifood);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['message' => "Pedido iFood #{$pedido->ifood->display_id} aceito."] + $this->colunas());
+    }
+
+    public function motivosIfood(ComandaPedido $pedido, IfoodService $ifood): JsonResponse
+    {
+        if (!$pedido->ifood) {
+            return response()->json(['message' => 'Este pedido não é do iFood.'], 422);
+        }
+
+        try {
+            return response()->json(['motivos' => $ifood->motivosCancelamento(IfoodConfiguracao::atual(), $pedido->ifood)]);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function cancelarIfood(Request $request, ComandaPedido $pedido, IfoodService $ifood): JsonResponse
+    {
+        if (!$pedido->ifood) {
+            return response()->json(['message' => 'Este pedido não é do iFood.'], 422);
+        }
+        $codigo = trim((string) $request->input('codigo'));
+        $motivo = trim((string) $request->input('motivo'));
+        if ($codigo === '' || $motivo === '') {
+            return response()->json(['message' => 'Escolha o motivo do cancelamento.'], 422);
+        }
+
+        try {
+            $ifood->cancelar(IfoodConfiguracao::atual(), $pedido->ifood, $codigo, $motivo);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['message' => "Cancelamento do pedido iFood #{$pedido->ifood->display_id} enviado."] + $this->colunas());
     }
 
     /** Conta da mesa para fechar no balcão. */
@@ -118,7 +193,7 @@ class PedidoComandaController extends Controller
     private function colunas(): array
     {
         // A conta (comanda) vem com quantos pedidos válidos tem: o pagamento é da conta inteira, não de cada pedido
-        $com = ['mesa', 'garcom:id,name', 'itens',
+        $com = ['mesa', 'garcom:id,name', 'itens', 'ifood',
             'comanda' => fn ($q) => $q->withCount([
                 'pedidos as pedidos_na_conta' => fn ($p) => $p->where('status', '!=', ComandaPedido::CANCELADO),
                 'pedidos as pedidos_em_preparo' => fn ($p) => $p->where('status', ComandaPedido::PREPARO),

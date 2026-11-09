@@ -69,6 +69,12 @@ class ComandaPedido extends Model
         return $this->belongsTo(User::class, 'garcom_id');
     }
 
+    /** Dados do iFood (só nos pedidos que vieram de lá). */
+    public function ifood(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(IfoodPedido::class, 'comanda_pedido_id');
+    }
+
     public function itens(): HasMany
     {
         return $this->hasMany(ComandaPedidoItem::class, 'pedido_id');
@@ -156,6 +162,7 @@ class ComandaPedido extends Model
                 ? $this->comanda->pagamentos->map(fn ($p) => ['descricao' => $p->descricao, 'valor' => (float) $p->valor])->all()
                 : [],
             'troco'        => $this->comanda?->status === Comanda::PAGA ? (float) $this->comanda->troco : 0,
+            'ifood'          => $this->origem === 'ifood' && $this->relationLoaded('ifood') ? $this->ifood?->paraTela() : null,
             'impresso_em'    => $this->impresso_em?->toIso8601String(),
             'impressao_erro' => $this->impressao_erro,
             // O pagamento é da conta da mesa inteira (todos os pedidos), não deste pedido

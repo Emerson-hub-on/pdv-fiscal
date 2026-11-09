@@ -41,7 +41,7 @@ class ImpressaoComandaService
      */
     public function imprimirPedido(ComandaPedido $pedido, ?ComandaImpressora $somente = null, bool $reimpressao = false): array
     {
-        $pedido->loadMissing(['itens', 'mesa', 'garcom', 'comanda.pedidos:id,comanda_id']);
+        $pedido->loadMissing(['itens', 'mesa', 'garcom', 'comanda.pedidos:id,comanda_id', 'ifood']);
         $impressoras = $somente ? collect([$somente->loadMissing('categorias')])
             : ComandaImpressora::with('categorias')->where('ativo', true)->orderBy('nome')->get();
 
@@ -104,6 +104,10 @@ class ImpressaoComandaService
 
     private function montarComanda(ComandaPedido $pedido, ComandaImpressora $impressora, Collection $itens, bool $reimpressao): string
     {
+        if ($pedido->origem === 'ifood' && $pedido->ifood) {
+            return $this->montarComandaIfood($pedido, $impressora, $itens, $reimpressao);
+        }
+
         $l = $impressora->colunas;
         $metade = intdiv($l, 2);
         $traco = str_repeat('-', $l) . "\n";
@@ -139,9 +143,131 @@ class ImpressaoComandaService
         if ($impressora->mostrar_precos) {
             $via .= self::NEGRITO . $this->colunasDireita('TOTAL', $this->moeda($itens->sum('subtotal')), $l) . self::SEM_NEGRITO;
         }
-        $via .= self::AVANCAR . self::CORTAR;
+        $via .= $this->rodape($l) . self::AVANCAR . self::CORTAR;
 
         return str_repeat($via, max(1, $impressora->copias));
+    }
+
+    /**
+     * Comanda do pedido do iFood: empresa, número do iFood e do sistema, data/hora, cliente (nome, telefone, CPF na nota),
+     * endereço, itens com observações, valores, se já foi pago, forma de pagamento e observações do pedido.
+     */
+    private function montarComandaIfood(ComandaPedido $pedido, ComandaImpressora $impressora, Collection $itens, bool $reimpressao): string
+    {
+        $f = $pedido->ifood;
+        $l = $impressora->colunas;
+        $metade = intdiv($l, 2);
+        $traco = str_repeat('-', $l) . "\n";
+        $titulo = fn (string $t) => self::NEGRITO . $this->texto(mb_strtoupper($t)) . self::SEM_NEGRITO . "\n";
+        $linha = fn (string $rotulo, ?string $valor) => filled($valor) ? $this->quebrar("{$rotulo}: {$valor}", $l) : '';
+        $empresa = \App\Models\Empresa::atual();
+        $nomeEmpresa = $empresa->nome_fantasia ?: $empresa->razao_social;
+        $parcial = $itens->count() < $pedido->itens->count();
+
+        $tipo = [
+            'DELIVERY' => 'ENTREGA', 'TAKEOUT' => 'RETIRADA NO LOCAL', 'DINE_IN' => 'COMER NO LOCAL', 'INDOOR' => 'NO LOCAL',
+        ][$f->tipo] ?? ($f->tipo ?: 'PEDIDO');
+        if ($f->tipo === 'DELIVERY' && $f->entregue_por) {
+            $tipo .= $f->entregue_por === 'IFOOD' ? ' (ENTREGADOR IFOOD)' : ' (ENTREGA PROPRIA)';
+        }
+
+        $documento = preg_replace('/\D/', '', (string) data_get($f->payload, 'customer.documentNumber', ''));
+        if (strlen($documento) === 11) {
+            $documento = substr($documento, 0, 3) . '.' . substr($documento, 3, 3) . '.' . substr($documento, 6, 3) . '-' . substr($documento, 9);
+        } elseif (strlen($documento) === 14) {
+            $documento = substr($documento, 0, 2) . '.' . substr($documento, 2, 3) . '.' . substr($documento, 5, 3) . '/' . substr($documento, 8, 4) . '-' . substr($documento, 12);
+        }
+
+        // ===== Topo =====
+        $via = self::INICIO . self::CENTRO;
+        if ($reimpressao) {
+            $via .= self::NEGRITO . $this->texto('*** REIMPRESSAO ***') . self::SEM_NEGRITO . "\n";
+        }
+        if ($nomeEmpresa) {
+            $via .= self::NEGRITO . $this->quebrar(mb_strtoupper($nomeEmpresa), $l) . self::SEM_NEGRITO;
+        }
+        $via .= self::GRANDE . $this->texto('PEDIDO IFOOD') . "\n"
+            . ($f->display_id ? $this->texto('#' . $f->display_id) . "\n" : '') . self::NORMAL
+            . self::NEGRITO . $this->texto($tipo) . self::SEM_NEGRITO . "\n"
+            . ($parcial ? $this->texto('Setor: ' . mb_strtoupper($impressora->nome)) . "\n" : '')
+            . self::ESQUERDA . $traco
+            . $linha('Pedido no sistema', '#' . $pedido->id)
+            . $linha('Feito em', ($f->criado_ifood_em ?? $pedido->enviado_em ?? now())->timezone(config('app.timezone'))->format('d/m/Y H:i'))
+            . ($f->agendado_para ? self::NEGRITO . $linha('AGENDADO PARA', $f->agendado_para->timezone(config('app.timezone'))->format('d/m/Y H:i')) . self::SEM_NEGRITO : '')
+            . $traco;
+
+        // ===== Cliente =====
+        $via .= $titulo('Cliente')
+            . $linha('Nome', $f->cliente_nome ?? $pedido->cliente_nome)
+            . $linha('Telefone', $f->cliente_telefone ? $f->cliente_telefone . ($f->localizador ? " (localizador {$f->localizador})" : '') : null)
+            . ($documento !== '' ? $linha('CPF/CNPJ na nota', $documento) : '')
+            . $traco;
+
+        // ===== Endereço / retirada =====
+        if ($f->endereco || $f->codigo_retirada) {
+            $via .= $titulo($f->tipo === 'DELIVERY' ? 'Endereco de entrega' : 'Retirada')
+                . ($f->endereco ? $this->quebrar($f->endereco, $l) : '')
+                . $linha('Codigo de retirada', $f->codigo_retirada)
+                . $traco;
+        }
+
+        // ===== Itens =====
+        $via .= $titulo('Itens' . ($parcial ? " deste setor ({$itens->count()} de {$pedido->itens->count()})" : ''));
+        foreach ($itens as $item) {
+            // Mesmo tamanho do resto da comanda (só em negrito)
+            $via .= self::NEGRITO . $this->colunasDireita("{$item->quantidade}x {$item->nome}", $this->moeda($item->subtotal), $l) . self::SEM_NEGRITO;
+            if ($item->observacao) {
+                $via .= $this->quebrar('   Obs.: ' . $item->observacao, $l);
+            }
+        }
+        $via .= $traco;
+
+        // ===== Valores e pagamento (do pedido inteiro) =====
+        $via .= $this->colunasDireita('Subtotal', $this->moeda($f->subtotal), $l)
+            . ((float) $f->taxa_entrega > 0 ? $this->colunasDireita('Taxa de entrega', $this->moeda($f->taxa_entrega), $l) : '')
+            . ((float) $f->taxas_adicionais > 0 ? $this->colunasDireita('Taxas adicionais', $this->moeda($f->taxas_adicionais), $l) : '')
+            . ((float) $f->descontos > 0 ? $this->colunasDireita('Descontos', '-' . $this->moeda($f->descontos), $l) : '')
+            . self::NEGRITO . $this->colunasDireita('TOTAL', $this->moeda($f->total), $l) . self::SEM_NEGRITO
+            . $traco;
+
+        $cobrar = (float) $f->cobrar_na_entrega;
+        $via .= self::CENTRO . self::GRANDE
+            . $this->texto($cobrar > 0 ? 'NAO PAGO' : 'PAGO') . "\n" . self::NORMAL
+            . self::NEGRITO . $this->texto($cobrar > 0 ? 'Cobrar na entrega: ' . $this->moeda($cobrar) : 'Pago online pelo app iFood') . self::SEM_NEGRITO . "\n"
+            . self::ESQUERDA
+            . $titulo('Forma de pagamento');
+
+        $metodos = \App\Models\IfoodPedido::METODOS;
+        foreach ($f->pagamentos ?? [] as $pg) {
+            $descricao = ($metodos[$pg['metodo'] ?? ''] ?? ($pg['metodo'] ?? 'Pagamento'))
+                . (!empty($pg['bandeira']) ? ' ' . $pg['bandeira'] : '')
+                . (($pg['tipo'] ?? '') === 'ONLINE' ? ' (online)' : ' (na entrega)');
+            $via .= $this->colunasDireita($descricao, $this->moeda($pg['valor'] ?? 0), $l);
+            if (!empty($pg['troco_para'])) {
+                $troco = max(0, (float) $pg['troco_para'] - (float) ($pg['valor'] ?? 0));
+                $via .= $this->quebrar('   Troco para ' . $this->moeda($pg['troco_para']) . ' (levar ' . $this->moeda($troco) . ')', $l);
+            }
+        }
+        if (empty($f->pagamentos)) {
+            $via .= $this->texto('Nao informada') . "\n";
+        }
+
+        // ===== Observações =====
+        if (filled($f->observacoes)) {
+            $via .= $traco . $titulo('Observacoes') . $this->quebrar($f->observacoes, $l);
+        }
+
+        $via .= $this->rodape($l) . self::AVANCAR . self::CORTAR;
+
+        return str_repeat($via, max(1, $impressora->copias));
+    }
+
+    /** Rodapé de todas as comandas: o nome do sistema, centralizado. */
+    private function rodape(int $largura): string
+    {
+        return str_repeat('-', $largura) . "
+" . self::CENTRO . $this->texto('Cyberly Sistema') . "
+" . self::ESQUERDA;
     }
 
     /** Manda os bytes para a impressora (rede ou USB). */

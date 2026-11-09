@@ -10,6 +10,7 @@ return [
         'series'          => ['nome' => 'Numeração de NF-e',                 'descricao' => 'Séries e última numeração'],
         'transportadoras' => ['nome' => 'Transportadoras e veículos',        'descricao' => 'Cadastro de transportadoras e veículos'],
         'comandas'        => ['nome' => 'Comandas',                          'descricao' => 'Cardápio (produtos e fotos que o garçom vê) e pedidos das comandas'],
+        'ifood'           => ['nome' => 'iFood',                             'descricao' => 'Credenciais do iFood, vínculo da loja, aceite dos pedidos e cardápio importado'],
     ],
 
     'niveis' => [

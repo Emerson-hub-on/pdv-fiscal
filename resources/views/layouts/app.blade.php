@@ -119,6 +119,13 @@
                     </a>
                 @endif
 
+                @if (auth()->user()?->podeVer('ifood'))
+                    <a href="{{ route('ifood.index') }}"
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-amber-50/10 hover:text-amber-50 text-sm transition">
+                        iFood
+                    </a>
+                @endif
+
                 @if (auth()->user()?->podeVer('pdvs'))
                     {{-- Caixa: PDVs e as formas de pagamento da tela de pagamento --}}
                     <div class="relative">
@@ -759,6 +766,7 @@
                     'produtos' => ['Cadastros', 'Produtos'],
                     'clientes' => ['Cadastros', 'Clientes'],
                     'empresa'  => ['Cadastros', 'Empresa'],
+                    'ifood'    => ['Cadastros', 'iFood'],
                     'pdvs'     => ['Cadastros', 'Caixa', 'PDVs'],
                     'formas-pagamento-caixa' => ['Cadastros', 'Caixa', 'Formas de pagamento'],
                     'notasfiscais' => ['Faturamento', 'Nota Fiscal - Saída'],

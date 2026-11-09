@@ -11,6 +11,82 @@
 
 $historico = [
     [
+        'versao' => '1.26.4',
+        'data' => '2026-11-09',
+        'itens' => [
+            'Comandas → Lista de Pedidos: o pedido novo do iFood aparece na mesma atualização em que o sistema consulta o iFood (antes vinha só na atualização seguinte, até 8 s depois).',
+            'A Lista de Pedidos continua atualizando (e consultando o iFood) com a aba em segundo plano.',
+        ],
+    ],
+    [
+        'versao' => '1.26.3',
+        'data' => '2026-11-09',
+        'itens' => [
+            'Comandas → Lista de Pedidos: pedido do iFood marcado como entregue vai direto para Concluído (não tem conta de mesa para fechar), com a hora da entrega e da conclusão.',
+        ],
+    ],
+    [
+        'versao' => '1.26.2',
+        'data' => '2026-11-09',
+        'itens' => [
+            'Comandas → Impressão: "Cyberly Sistema" no rodapé das comandas impressas (pedidos do iFood e do garçom).',
+        ],
+    ],
+    [
+        'versao' => '1.26.1',
+        'data' => '2026-11-09',
+        'itens' => [
+            'Comandas → Impressão do pedido do iFood: os itens saem no mesmo tamanho de letra do restante da comanda (só em negrito), em vez da letra alta.',
+        ],
+    ],
+    [
+        'versao' => '1.26.0',
+        'data' => '2026-11-09',
+        'itens' => [
+            'Comandas → Impressão: o pedido do iFood sai com layout próprio: nome da empresa, "PEDIDO IFOOD" com o número do iFood, tipo (entrega/retirada), número do pedido no sistema, data e hora, cliente (nome, telefone com localizador, CPF/CNPJ na nota), endereço de entrega ou código de retirada, itens com observações e valores, subtotal/taxa/descontos/total, PAGO ou NÃO PAGO (com o valor a cobrar), forma de pagamento com troco e as observações do pedido.',
+            'iFood: o horário do pedido (e o agendamento) passa a ser gravado no horário de Brasília (o iFood manda em UTC).',
+        ],
+    ],
+    [
+        'versao' => '1.25.2',
+        'data' => '2026-11-09',
+        'itens' => [
+            'Cadastros → iFood → Cardápio: o "Ligar automaticamente" ficou mais seguro. Liga só pelo código de barras real (EAN válido), pelo código externo igual ao código interno quando os nomes têm alguma palavra em comum, ou pelo nome igual. Antes um código curto (ex.: "1") ligava produtos diferentes por coincidência (Refrigerante Coca Cola → Iorgute Isis).',
+        ],
+    ],
+    [
+        'versao' => '1.25.1',
+        'data' => '2026-11-09',
+        'itens' => [
+            'Cadastros → iFood → Cardápio: ao importar de novo, os itens que foram excluídos no iFood saem da lista (a mensagem diz quais). O produto do sistema ligado a eles continua em Cadastros → Produtos. Uma resposta vazia do iFood não apaga nada.',
+        ],
+    ],
+    [
+        'versao' => '1.25.0',
+        'data' => '2026-11-09',
+        'itens' => [
+            'Cadastros → iFood → Cardápio: "Cadastrar produtos automaticamente" cria no sistema os itens do iFood que não têm produto (nome, descrição, preço e código de barras do iFood) e já liga cada um. A parte fiscal, que o iFood não manda, é copiada de um produto modelo: um padrão e, se quiser, um por categoria do iFood (NCM, CEST, tributação, PIS/COFINS, IPI, IBS/CBS, origem, unidade, categoria e grupo).',
+            'Os produtos criados assim ficam marcados "Cadastrado pelo iFood · revisar NCM" na lista do cardápio do iFood.',
+        ],
+    ],
+    [
+        'versao' => '1.24.1',
+        'data' => '2026-11-09',
+        'itens' => [
+            'Cadastros → iFood: ao vincular com um aplicativo criado como centralizado no iFood, a mensagem agora explica o motivo e o que fazer (usar o tipo "Centralizado" ou criar um aplicativo distribuído).',
+        ],
+    ],
+    [
+        'versao' => '1.24.0',
+        'data' => '2026-11-09',
+        'itens' => [
+            'Integração com o iFood (aplicativo distribuído). Cadastros → iFood: Client ID, Client Secret (criptografado) e ID da loja; vínculo da loja pelo código do iFood (Portal do Parceiro); testar conexão; receber pedidos; aceite automático ou manual.',
+            'Pedidos do iFood: o sistema consulta o iFood a cada 30 segundos (polling: funciona com o servidor local, sem IP público) enquanto a tela Comandas → Pedidos estiver aberta, ou sempre com "php artisan ifood:polling --sempre". O pedido entra em Em preparo com o selo iFood, sai nas impressoras e mostra cliente, endereço, valores e pagamento.',
+            'Na Lista de Pedidos: "Aceitar pedido" / "Recusar" (aceite manual); "Marcar como pronto" avisa o iFood (retirada: pronto para retirar; entrega: despachado); cancelar pede um dos motivos do iFood. Concluído e cancelado pelo iFood atualizam sozinhos. Botão no topo troca entre aceite automático e manual.',
+            'Cardápio do iFood: importa os itens (com imagem, categoria e preço) e liga cada um a um produto do sistema, automático pelo código de barras, código externo ou nome, ou manual pela busca. O preço no sistema começa igual ao do iFood, pode ser mudado e enviado ao iFood.',
+        ],
+    ],
+    [
         'versao' => '1.23.4',
         'data' => '2026-11-09',
         'itens' => [

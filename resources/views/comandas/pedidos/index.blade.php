@@ -24,6 +24,17 @@
         <button type="button" id="btn-som" onclick="alternarSom()"
                 class="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-amber-50 ring-1 ring-amber-50/25 hover:bg-amber-50/10">
         </button>
+        @php $ifoodCfg = \App\Models\IfoodConfiguracao::query()->first(); @endphp
+        @if ($ifoodCfg?->ativo)
+            {{-- iFood: aceite automático ou manual (troca na hora; a configuração completa fica em Cadastros → iFood) --}}
+            <button type="button" id="btn-aceite-ifood" onclick="alternarAceiteIfood()" data-automatico="{{ $ifoodCfg->aceite_automatico ? 1 : 0 }}"
+                    @disabled(!auth()->user()?->podeAlterar('ifood'))
+                    title="Clique para trocar entre aceite automático e manual dos pedidos do iFood"
+                    class="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-amber-50 ring-1 ring-amber-50/25 hover:bg-amber-50/10 disabled:cursor-default">
+                <span class="rounded bg-[#EA1D2C] px-1.5 py-0.5 text-[10px] font-bold text-white">iFood</span>
+                <span id="rotulo-aceite-ifood">Aceite {{ $ifoodCfg->aceite_automatico ? 'automático' : 'manual' }}</span>
+            </button>
+        @endif
         <button type="button" onclick="Impressoras.abrir()" title="Impressoras" aria-label="Impressoras"
                 class="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-amber-50 ring-1 ring-amber-50/25 hover:bg-amber-50/10">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2M6 14h12v7H6z"/></svg>
@@ -47,6 +58,27 @@
 
     {{-- Aviso de pedido novo / erro --}}
     <div id="aviso-pedidos" class="hidden fixed right-4 top-16 z-50 max-w-sm rounded-xl bg-[#10284A] text-amber-50 px-4 py-3 text-sm font-medium shadow-2xl"></div>
+
+    {{-- Cancelar / recusar pedido do iFood (com o motivo exigido pelo iFood) --}}
+    <div id="modal-cancelar-ifood" class="fixed inset-0 z-50 bg-black/50 hidden items-center justify-center p-4"
+         onclick="if (event.target === this) CancelarIfood.fechar()">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl max-h-[85vh] flex flex-col">
+            <div class="px-6 pt-5 pb-3 border-b border-slate-100 flex items-center gap-3">
+                <h2 class="flex-1 font-bold text-slate-900" data-ci="titulo"></h2>
+                <button type="button" onclick="CancelarIfood.fechar()" aria-label="Fechar" class="w-10 h-10 rounded-xl text-slate-400 hover:bg-slate-100 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="flex-1 overflow-y-auto px-6 py-4">
+                <p class="text-sm text-slate-600 mb-3">Escolha o motivo. O iFood avisa o cliente e o pedido vai para Concluído como cancelado.</p>
+                <div data-ci="motivos" class="flex flex-col gap-2"></div>
+                <p data-ci="erro" class="hidden mt-3 rounded-xl bg-red-50 text-red-700 px-3 py-2 text-sm"></p>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-100 flex items-center gap-2">
+                <button type="button" onclick="CancelarIfood.fechar()" class="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50">Voltar</button>
+                <button type="button" data-ci="confirmar" onclick="CancelarIfood.confirmar(this)" disabled
+                        class="ml-auto rounded-xl bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 text-sm font-semibold disabled:opacity-50">Cancelar no iFood</button>
+            </div>
+        </div>
+    </div>
 
     {{-- Detalhes do pedido (abre clicando no cartão) --}}
     <div id="modal-detalhe" class="fixed inset-0 z-40 bg-black/50 hidden items-center justify-center p-4"
@@ -104,7 +136,15 @@
         const proxima = { preparo: ['pronto', 'Marcar como pronto', 'bg-blue-600 hover:bg-blue-700'],
                           pronto: ['entregue', 'Marcar como entregue', 'bg-indigo-600 hover:bg-indigo-700'] }[p.status];
         // Cancelar à esquerda e próxima ação à direita (pedido ainda não concluído nem cancelado)
-        const botoes = PODE_ALTERAR && !finalizado ? `
+        const aguardandoAceite = p.ifood?.aguardando_aceite && !finalizado;
+        const botoes = PODE_ALTERAR && aguardandoAceite ? `
+            <div class="mt-3 flex items-center gap-2">
+                <button type="button" onclick="event.stopPropagation(); cancelarPedido(${p.id})"
+                        class="rounded-xl px-3.5 py-2 text-sm font-semibold text-red-600 ring-1 ring-red-200 hover:bg-red-50 transition">Recusar</button>
+                <button type="button" onclick="event.stopPropagation(); aceitarIfood(${p.id}, this)"
+                        class="ml-auto rounded-xl bg-[#EA1D2C] hover:bg-[#c81624] text-white px-3.5 py-2 text-sm font-semibold transition disabled:opacity-60">Aceitar pedido →</button>
+            </div>`
+            : PODE_ALTERAR && !finalizado ? `
             <div class="mt-3 flex items-center gap-2">
                 <button type="button" onclick="event.stopPropagation(); cancelarPedido(${p.id})"
                         class="rounded-xl px-3.5 py-2 text-sm font-semibold text-red-600 ring-1 ring-red-200 hover:bg-red-50 transition">Cancelar</button>
@@ -128,10 +168,14 @@
                         ${p.cliente ? `<p class="text-sm text-slate-600 truncate">Cliente: ${escHtml(p.cliente)}</p>` : ''}
                     </div>
                     <div class="shrink-0 flex items-center gap-1.5">
+                        ${p.ifood ? `
+                        <span class="inline-flex items-center gap-1 rounded-lg bg-[#EA1D2C] text-white px-2 py-1 text-xs font-bold" title="${escHtml(p.ifood.tipo_rotulo || '')}">
+                            iFood${p.ifood.numero ? ' #' + escHtml(p.ifood.numero) : ''}
+                        </span>` : `
                         <span class="inline-flex items-center gap-1 rounded-lg bg-violet-50 text-violet-700 px-2 py-1 text-xs font-semibold">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 9h16M6 9v10m12-10v10M3 9l2-4h14l2 4"/></svg>
                             ${escHtml(p.mesa || 'Mesa')}
-                        </span>
+                        </span>`}
                         ${PODE_ALTERAR && impressoras.length ? `
                             <button type="button" data-imprimir="${p.id}" onclick="event.stopPropagation(); imprimirPedido(${p.id}, null, this)"
                                     title="${p.impresso_em ? 'Reimprimir' : 'Imprimir'} nas impressoras do pedido" aria-label="${p.impresso_em ? 'Reimprimir' : 'Imprimir'} pedido #${p.id}"
@@ -148,7 +192,10 @@
                     ${linhaTempo('Concluído', p.concluido_em, 'text-green-700')}
                     ${linhaTempo('Cancelado', p.cancelado_em, 'text-red-600')}
                 </div>
-                <p class="mt-2 text-lg font-bold text-green-600">${escHtml(moeda(p.total))}</p>
+                <p class="mt-2 text-lg font-bold text-green-600">${escHtml(moeda(p.ifood ? p.ifood.total : p.total))}</p>
+                ${p.ifood ? `<p class="text-xs font-semibold text-slate-600">${escHtml(p.ifood.tipo_rotulo || '')}${p.ifood.agendado_para ? ' · agendado ' + escHtml(dataHora(p.ifood.agendado_para)) : ''}</p>` : ''}
+                ${aguardandoAceite ? '<span class="inline-flex items-center gap-1 mt-2 rounded-lg bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-bold animate-pulse">Aguardando aceite</span>' : ''}
+                ${p.ifood?.erro && !finalizado ? `<span class="inline-flex mt-2 ml-1 rounded-lg bg-red-50 text-red-700 px-2 py-0.5 text-xs font-semibold" title="${escHtml(p.ifood.erro)}">⚠ iFood</span>` : ''}
                 ${selo}${seloImpressao}
                 ${botoes}
                 <p class="mt-2 text-xs font-medium text-slate-400">Clique para ver os detalhes</p>
@@ -191,16 +238,29 @@
         const status = STATUS_PEDIDO[p.status] ?? { rotulo: p.status, selo: 'bg-slate-100 text-slate-600' };
         const secao = (titulo) => `<p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">${titulo}</p>`;
 
-        el('titulo').textContent = `Pedido #${p.id}`;
-        el('sub').textContent = [p.mesa, p.cliente ? 'Cliente: ' + p.cliente : ''].filter(Boolean).join(' · ');
+        const f = p.ifood;
+        el('titulo').textContent = f ? `iFood #${f.numero || p.id}` : `Pedido #${p.id}`;
+        el('sub').textContent = (f ? [f.tipo_rotulo, `Pedido #${p.id}`, p.cliente ? 'Cliente: ' + p.cliente : ''] : [p.mesa, p.cliente ? 'Cliente: ' + p.cliente : '']).filter(Boolean).join(' · ');
         el('selo').className = `shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold ${status.selo}`;
         el('selo').textContent = status.rotulo;
 
         // Garçom e horários
         const linha = (rotulo, valor) => valor ? `<div class="flex justify-between gap-3"><span class="text-slate-500">${rotulo}</span><span class="font-medium text-slate-800 text-right">${escHtml(valor)}</span></div>` : '';
         const info = `
+            ${f ? `
+            <div class="mb-3 rounded-xl bg-red-50/60 ring-1 ring-red-200 px-4 py-3 text-sm flex flex-col gap-1">
+                ${linha('Tipo', f.tipo_rotulo + (f.entregue_por === 'IFOOD' ? ' (entregador iFood)' : f.entregue_por === 'MERCHANT' ? ' (entrega própria)' : ''))}
+                ${f.aguardando_aceite && !finalizado ? '<p class="font-bold text-amber-700">Aguardando aceite</p>' : ''}
+                ${linha('Cliente', p.cliente)}
+                ${linha('Telefone', f.telefone ? f.telefone + (f.localizador ? ' · localizador ' + f.localizador : '') : '')}
+                ${linha('Endereço', f.endereco)}
+                ${linha('Código de retirada', f.codigo_retirada)}
+                ${linha('Agendado para', dataHora(f.agendado_para))}
+                ${linha('Observações', f.observacoes)}
+                ${f.erro ? `<p class="mt-1 rounded-lg bg-red-100 text-red-700 px-2 py-1 text-xs">${escHtml(f.erro)}</p>` : ''}
+            </div>` : ''}
             <div class="rounded-xl bg-slate-50 ring-1 ring-slate-200 px-4 py-3 text-sm flex flex-col gap-1">
-                ${linha('Garçom', p.garcom || '—')}
+                ${f ? '' : linha('Garçom', p.garcom || '—')}
                 ${linha('Pedido', dataHora(p.enviado_em))}
                 ${linha('Pronto', dataHora(p.pronto_em))}
                 ${linha('Entregue', dataHora(p.entregue_em))}
@@ -227,7 +287,21 @@
 
         // Pagamento: só aparece depois que o pedido é finalizado (o cliente paga a conta da mesa no final)
         let pagamento;
-        if (p.status === 'cancelado') {
+        if (f) {
+            // iFood: o pagamento já vem definido (no app ou na entrega)
+            const l = (rotulo, valor, cls = 'text-slate-700') => `<div class="flex justify-between gap-3 ${cls}"><span>${rotulo}</span><span class="font-semibold">${escHtml(moeda(valor))}</span></div>`;
+            pagamento = `<div class="rounded-xl bg-slate-50 ring-1 ring-slate-200 px-4 py-3 text-sm flex flex-col gap-1">
+                    ${l('Itens', f.subtotal)}
+                    ${f.taxa_entrega ? l('Taxa de entrega', f.taxa_entrega) : ''}
+                    ${f.taxas_adicionais ? l('Taxas adicionais', f.taxas_adicionais) : ''}
+                    ${f.descontos ? l('Descontos', -f.descontos, 'text-green-700') : ''}
+                    <div class="flex justify-between gap-3 border-t border-slate-200 pt-1 mt-1 font-bold text-slate-900"><span>Total</span><span>${escHtml(moeda(f.total))}</span></div>
+                </div>
+                <div class="mt-2 rounded-xl ring-1 ring-slate-200 px-4 py-3 text-sm flex flex-col gap-1">
+                    ${f.pagamentos.map(x => `<div class="flex justify-between gap-3"><span class="text-slate-700">${escHtml(x.descricao)}${x.troco_para ? ` · troco para ${escHtml(moeda(x.troco_para))}` : ''}</span><span class="font-semibold">${escHtml(moeda(x.valor))}</span></div>`).join('') || '<p class="text-slate-400">—</p>'}
+                    ${f.cobrar_na_entrega > 0 ? `<p class="mt-1 rounded-lg bg-amber-50 text-amber-800 px-2 py-1 text-xs font-semibold">Cobrar na entrega: ${escHtml(moeda(f.cobrar_na_entrega))}</p>` : ''}
+                </div>`;
+        } else if (p.status === 'cancelado') {
             pagamento = '<p class="text-sm text-slate-400">Pedido cancelado: ficou fora da conta da mesa.</p>';
         } else if (p.status === 'concluido' && p.pagamentos.length) {
             pagamento = (p.conta_pedidos > 1
@@ -251,6 +325,12 @@
 
         // Ações no rodapé: voltar etapa e fechar a conta da mesa (pedido ainda em aberto)
         const acoes = [];
+        if (PODE_ALTERAR && f?.aguardando_aceite && !finalizado) {
+            acoes.push(`<button type="button" onclick="cancelarPedido(${p.id})"
+                class="rounded-xl px-3.5 py-2.5 text-sm font-semibold text-red-600 ring-1 ring-red-200 hover:bg-red-50">Recusar</button>`);
+            acoes.push(`<button type="button" onclick="aceitarIfood(${p.id}, this)"
+                class="ml-auto rounded-xl bg-[#EA1D2C] hover:bg-[#c81624] text-white px-3.5 py-2.5 text-sm font-semibold disabled:opacity-60">Aceitar pedido →</button>`);
+        }
         if (PODE_ALTERAR && !finalizado && p.status !== 'preparo') {
             acoes.push(`<button type="button" onclick="mudarStatus(${p.id}, 'preparo')"
                 class="rounded-xl px-3.5 py-2.5 text-sm font-medium text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50">Voltar para preparo</button>`);
@@ -337,9 +417,104 @@
         avisar.timer = setTimeout(() => aviso.classList.add('hidden'), 5000);
     }
 
+    // ===== iFood =====
+    async function alternarAceiteIfood() {
+        const botao = document.getElementById('btn-aceite-ifood');
+        const automatico = botao.dataset.automatico !== '1';
+        if (automatico && !confirm('Aceitar automaticamente os pedidos do iFood que chegarem?')) return;
+        botao.disabled = true;
+        try {
+            const r = await postarJson(@json(route('ifood.aceite')), { automatico });
+            botao.dataset.automatico = r.aceite_automatico ? '1' : '0';
+            document.getElementById('rotulo-aceite-ifood').textContent = 'Aceite ' + (r.aceite_automatico ? 'automático' : 'manual');
+            avisar('iFood: aceite ' + (r.aceite_automatico ? 'automático ligado.' : 'manual (aceite cada pedido).'));
+        } catch (e) {
+            avisar(e.message === 'Failed to fetch' ? 'Sem conexão com o servidor.' : e.message, true);
+        } finally {
+            botao.disabled = false;
+        }
+    }
+
+    const URL_IFOOD = {
+        aceitar: @json(route('comanda-pedidos.ifood.aceitar', ['pedido' => '__ID__'])),
+        motivos: @json(route('comanda-pedidos.ifood.motivos', ['pedido' => '__ID__'])),
+        cancelar: @json(route('comanda-pedidos.ifood.cancelar', ['pedido' => '__ID__'])),
+    };
+
+    async function postarJson(url, corpo = {}) {
+        const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': CSRF_PEDIDOS }, body: JSON.stringify(corpo) });
+        if (resp.redirected) { location.reload(); throw new Error('Sessão expirada.'); }
+        const r = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(r.message || 'Não foi possível concluir.');
+        return r;
+    }
+
+    async function aceitarIfood(id, botao) {
+        if (botao) botao.disabled = true;
+        try {
+            const r = await postarJson(URL_IFOOD.aceitar.replace('__ID__', id));
+            dados = r; desenhar(); avisar(r.message);
+        } catch (e) {
+            avisar(e.message === 'Failed to fetch' ? 'Sem conexão com o servidor.' : e.message, true);
+            if (botao) botao.disabled = false;
+        }
+    }
+
+    // Cancelar / recusar pedido do iFood: o iFood exige um dos motivos dele
+    window.CancelarIfood = (function () {
+        const modal = () => document.getElementById('modal-cancelar-ifood');
+        const parte = (n) => modal().querySelector(`[data-ci="${n}"]`);
+        let pedido = null;
+
+        async function abrir(p) {
+            pedido = p;
+            parte('titulo').textContent = `${p.ifood.aguardando_aceite ? 'Recusar' : 'Cancelar'} o pedido iFood #${p.ifood.numero || p.id}`;
+            parte('motivos').innerHTML = '<p class="py-4 text-sm text-slate-400">Carregando os motivos do iFood...</p>';
+            erro('');
+            parte('confirmar').disabled = true;
+            modal().classList.remove('hidden'); modal().classList.add('flex');
+            try {
+                const resp = await fetch(URL_IFOOD.motivos.replace('__ID__', p.id), { headers: { Accept: 'application/json' } });
+                const r = await resp.json().catch(() => ({}));
+                if (!resp.ok) throw new Error(r.message || 'Não foi possível buscar os motivos.');
+                parte('motivos').innerHTML = r.motivos.map(x => `
+                    <label class="flex items-start gap-2 rounded-xl ring-1 ring-slate-200 px-3 py-2.5 cursor-pointer text-sm has-[:checked]:ring-2 has-[:checked]:ring-red-500 has-[:checked]:bg-red-50">
+                        <input type="radio" name="motivo-ifood" value="${escHtml(x.codigo)}" data-descricao="${escHtml(x.descricao)}" class="mt-0.5 accent-red-600"> ${escHtml(x.descricao)}
+                    </label>`).join('') || '<p class="py-4 text-sm text-slate-500">O iFood não devolveu motivos: este pedido talvez não possa mais ser cancelado.</p>';
+                parte('motivos').querySelectorAll('input').forEach(i => i.addEventListener('change', () => { parte('confirmar').disabled = false; }));
+            } catch (e) {
+                erro(e.message === 'Failed to fetch' ? 'Sem conexão com o servidor.' : e.message);
+                parte('motivos').innerHTML = '';
+            }
+        }
+
+        function erro(texto) {
+            parte('erro').textContent = texto || '';
+            parte('erro').classList.toggle('hidden', !texto);
+        }
+
+        function fechar() { modal().classList.add('hidden'); modal().classList.remove('flex'); pedido = null; }
+
+        async function confirmar(botao) {
+            const escolhido = modal().querySelector('[name="motivo-ifood"]:checked');
+            if (!pedido || !escolhido) return;
+            botao.disabled = true;
+            try {
+                const r = await postarJson(URL_IFOOD.cancelar.replace('__ID__', pedido.id), { codigo: escolhido.value, motivo: escolhido.dataset.descricao });
+                fechar(); dados = r; desenhar(); avisar(r.message);
+            } catch (e) {
+                erro(e.message === 'Failed to fetch' ? 'Sem conexão com o servidor.' : e.message);
+                botao.disabled = false;
+            }
+        }
+
+        return { abrir, fechar, confirmar, aberto: () => pedido !== null };
+    })();
+
     // Cancelado vai para a coluna Concluído (com o selo "Cancelado") e sai da conta da mesa
     function cancelarPedido(id) {
         const pedido = Object.values(dados.colunas).flat().find(p => p.id === id);
+        if (pedido?.ifood) return CancelarIfood.abrir(pedido);
         const mesa = pedido?.mesa ? ` da ${pedido.mesa}` : '';
         if (!confirm(`Deseja cancelar o pedido #${id}${mesa}?\n\nEle vai para Concluído como cancelado e sai da conta da mesa.`)) return;
         mudarStatus(id, 'cancelado');
@@ -408,8 +583,9 @@
         if (somLigado) bipe();
     }
 
+    // Atualiza mesmo com a aba em segundo plano: é esta consulta que busca os pedidos do iFood
+    // (se parar, o pedido demora a aparecer e o iFood pode considerar a loja desconectada)
     async function atualizar() {
-        if (document.hidden) return;
         try {
             const resp = await fetch(URL_DADOS, { headers: { Accept: 'application/json' } });
             if (resp.redirected) return location.reload();

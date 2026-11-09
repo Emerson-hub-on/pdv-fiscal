@@ -261,6 +261,27 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
         
             });
 
+        // ---------------- IFOOD (Cadastros → iFood) ----------------
+        Route::middleware('permissao:ifood')->prefix('ifood')->name('ifood.')->controller(\App\Http\Controllers\IfoodController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::post('/', 'salvar')->name('salvar');
+            Route::get('situacao', 'situacaoJson')->name('situacao');
+            Route::post('aceite', 'aceite')->name('aceite');
+            Route::post('vincular/codigo', 'gerarCodigo')->middleware('throttle:10,1')->name('vincular.codigo');
+            Route::post('vincular/concluir', 'concluirVinculo')->middleware('throttle:10,1')->name('vincular.concluir');
+            Route::post('desvincular', 'desvincular')->name('desvincular');
+            Route::post('testar', 'testar')->middleware('throttle:20,1')->name('testar');
+            Route::post('pedidos/buscar', 'buscarPedidos')->middleware('throttle:20,1')->name('pedidos.buscar');
+            Route::post('cardapio/importar', 'importarCardapio')->middleware('throttle:6,1')->name('cardapio.importar');
+            Route::post('cardapio/assimilar', 'assimilarAutomatico')->name('cardapio.assimilar');
+            Route::get('cardapio/buscar-produto', 'buscarProduto')->name('cardapio.buscar-produto');
+            Route::get('cardapio/modelos', 'modelos')->name('cardapio.modelos');
+            Route::post('cardapio/modelos', 'salvarModelos')->name('cardapio.modelos.salvar');
+            Route::post('cardapio/cadastrar', 'cadastrarAutomatico')->middleware('throttle:10,1')->name('cardapio.cadastrar');
+            Route::patch('cardapio/{item}', 'atualizarProduto')->name('cardapio.atualizar');
+            Route::post('cardapio/{item}/enviar-preco', 'enviarPreco')->middleware('throttle:30,1')->name('cardapio.enviar-preco');
+        });
+
         // ---------------- EMPRESA ----------------
         Route::middleware('permissao:empresa')->group(function () {
             Route::get('empresa', [EmpresaController::class, 'editar'])->name('empresa.editar');
@@ -300,7 +321,10 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
             Route::patch('comandas/pedidos/{pedido}/status', [\App\Http\Controllers\PedidoComandaController::class, 'mudarStatus'])->name('comanda-pedidos.status');
             Route::get('comandas/contas/{comanda}', [\App\Http\Controllers\PedidoComandaController::class, 'conta'])->name('comanda-pedidos.conta');
             Route::post('comandas/contas/{comanda}/fechar', [\App\Http\Controllers\PedidoComandaController::class, 'fecharConta'])->name('comanda-pedidos.conta.fechar');
-            Route::post('comandas/pedidos/{pedido}/imprimir', [\App\Http\Controllers\PedidoComandaController::class, 'imprimir'])
+            Route::post('comandas/pedidos/{pedido}/ifood/aceitar', [\App\Http\Controllers\PedidoComandaController::class, 'aceitarIfood'])->name('comanda-pedidos.ifood.aceitar');
+            Route::get('comandas/pedidos/{pedido}/ifood/motivos', [\App\Http\Controllers\PedidoComandaController::class, 'motivosIfood'])->name('comanda-pedidos.ifood.motivos');
+            Route::post('comandas/pedidos/{pedido}/ifood/cancelar', [\App\Http\Controllers\PedidoComandaController::class, 'cancelarIfood'])->name('comanda-pedidos.ifood.cancelar');
+            Route::post('comandas/pedidos/{pedido}/imprimir',[\App\Http\Controllers\PedidoComandaController::class, 'imprimir'])
                 ->middleware('throttle:30,1')->name('comanda-pedidos.imprimir');
 
             // Impressoras das comandas (janela do ícone de impressora na Lista de Pedidos)

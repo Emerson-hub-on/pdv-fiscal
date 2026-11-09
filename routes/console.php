@@ -28,3 +28,16 @@ Schedule::call(function () {
         }
     }
 })->everyMinute()->name('sincronizar-pdv')->withoutOverlapping(5);
+// iFood: busca os pedidos a cada 30 s quando o agendador estiver rodando (php artisan schedule:work).
+// Só no servidor (onde existe a tabela de configuração do iFood) e com o recebimento ligado.
+Schedule::call(function () {
+    app(\App\Services\IfoodService::class)->polling();
+})->everyThirtySeconds()->name('ifood-polling')->withoutOverlapping(2)
+    ->when(function () {
+        try {
+            return \Illuminate\Support\Facades\Schema::hasTable('ifood_configuracoes')
+                && \App\Models\IfoodConfiguracao::query()->where('ativo', true)->exists();
+        } catch (\Throwable) {
+            return false;
+        }
+    });
