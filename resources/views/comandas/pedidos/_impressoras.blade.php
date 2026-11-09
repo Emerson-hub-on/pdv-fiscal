@@ -87,7 +87,10 @@
                         <span class="text-sm"><span class="font-semibold text-slate-800">Pedido completo</span> <span class="block text-xs text-slate-500">Todos os itens do pedido (ex.: balcão ou caixa)</span></span>
                     </label>
                     <div data-imp="categorias-area" class="mt-2">
-                        <p class="text-xs text-slate-500 mb-2">Ou só os itens destas categorias do cardápio:</p>
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <p class="text-xs text-slate-500">Ou só os itens destas categorias do cardápio:</p>
+                            <button type="button" data-imp="marcar-todas" onclick="Impressoras.marcarTodas()" class="shrink-0 text-xs font-semibold text-[#10284A] hover:underline">Marcar todas</button>
+                        </div>
                         <div data-imp="categorias" class="flex flex-wrap gap-2"></div>
                     </div>
                 </div>
@@ -200,8 +203,23 @@
             return nomes.join(', ') || '—';
         }
 
+        // Categorias do cardápio que nenhuma impressora ativa recebe (os itens delas não saem em lugar nenhum)
+        function semImpressora() {
+            const ativas = dados.impressoras.filter(i => i.ativo);
+            if (!ativas.length || ativas.some(i => i.pedido_completo)) return [];
+            const faltam = dados.categorias.filter(c => !ativas.some(i => i.categorias.includes(c.id))).map(c => c.nome);
+            if (!ativas.some(i => i.sem_categoria)) faltam.push('itens sem categoria');
+            return faltam;
+        }
+
         function desenharLista() {
-            el('lista').innerHTML = dados.impressoras.map(i => `
+            const faltam = semImpressora();
+            const alerta = faltam.length ? `
+                <div class="rounded-2xl bg-amber-50 ring-1 ring-amber-200 px-4 py-3 text-sm text-amber-800">
+                    <p class="font-semibold">Não saem em nenhuma impressora: ${escHtml(faltam.join(', '))}.</p>
+                    <p class="text-xs mt-0.5">Marque essas categorias em alguma impressora, ou "Pedido completo" no balcão.</p>
+                </div>` : '';
+            el('lista').innerHTML = alerta + dados.impressoras.map(i => `
                 <div class="rounded-2xl ring-1 ring-slate-200 px-4 py-3 flex items-center gap-3 ${i.ativo ? '' : 'opacity-60'}">
                     <div class="min-w-0 flex-1">
                         <p class="font-semibold text-slate-900 flex items-center gap-2">${escHtml(i.nome)}
@@ -246,11 +264,26 @@
                 </label>`
                 + (dados.categorias.length ? '' : '<p class="w-full text-xs text-slate-400">Nenhuma categoria no cardápio ainda (crie no cadastro do item em Comandas → Cardápio).</p>');
 
+            el('categorias').querySelectorAll('input').forEach(c => c.addEventListener('change', atualizarMarcarTodas));
+            atualizarMarcarTodas();
             el('excluir').classList.toggle('hidden', !i.id);
             trocarConexao();
             trocarCompleto();
             mostrar('form');
             id('imp-nome').focus();
+        }
+
+        // Marca todas as categorias (e os itens sem categoria); se já estão todas, desmarca
+        function marcarTodas() {
+            const caixas = [...el('categorias').querySelectorAll('input[type="checkbox"]')];
+            const todas = caixas.every(c => c.checked);
+            caixas.forEach(c => c.checked = !todas);
+            atualizarMarcarTodas();
+        }
+
+        function atualizarMarcarTodas() {
+            const caixas = [...el('categorias').querySelectorAll('input[type="checkbox"]')];
+            el('marcar-todas').textContent = caixas.length && caixas.every(c => c.checked) ? 'Desmarcar todas' : 'Marcar todas';
         }
 
         function trocarConexao() {
@@ -260,6 +293,7 @@
         }
 
         function trocarCompleto() {
+            el('marcar-todas').disabled = id('imp-completo').checked;
             el('categorias-area').classList.toggle('opacity-40', id('imp-completo').checked);
             el('categorias-area').querySelectorAll('input').forEach(c => c.disabled = id('imp-completo').checked);
         }
@@ -332,7 +366,7 @@
             editando !== null ? voltar() : fechar();
         }, true);
 
-        return { abrir, fechar, editar, voltar, salvar, excluir, testar, trocarConexao, trocarCompleto,
+        return { abrir, fechar, editar, voltar, salvar, excluir, testar, trocarConexao, trocarCompleto, marcarTodas,
                  lista: () => dados.impressoras, carregar: async () => { receber(await pedir(URL_LISTA)); return dados.impressoras; } };
     })();
 </script>

@@ -87,7 +87,7 @@ class PedidoComandaController extends Controller
         $resultados = $impressao->imprimirPedido($pedido, $somente, true);
 
         if (!$resultados) {
-            return response()->json(['message' => 'Nenhum item deste pedido é das categorias dessa(s) impressora(s).'], 422);
+            return response()->json(['message' => $this->motivoSemImpressora($pedido, $somente)], 422);
         }
 
         $falhas = collect($resultados)->where('ok', false);
@@ -98,6 +98,21 @@ class PedidoComandaController extends Controller
                 . ($falhas->isNotEmpty() ? ' Falhou: ' . $falhas->map(fn ($f) => "{$f['impressora']} ({$f['erro']})")->implode('; ') : ''),
             'erro' => $falhas->isNotEmpty(),
         ] + $this->colunas());
+    }
+
+    /** Explica por que nada saiu: de que categorias são os itens e o que cada impressora imprime. */
+    private function motivoSemImpressora(ComandaPedido $pedido, ?ComandaImpressora $somente): string
+    {
+        $categorias = \App\Models\CardapioItem::with('categoria:id,nome')
+            ->whereIn('id', $pedido->itens->pluck('cardapio_item_id')->filter())->get()
+            ->map(fn ($i) => $i->categoria?->nome ?? 'sem categoria')->unique()->implode(', ');
+
+        $impressoras = ($somente ? collect([$somente]) : ComandaImpressora::with('categorias')->where('ativo', true)->orderBy('nome')->get())
+            ->map(fn ($i) => $i->nome . ' imprime só ' . ($i->categorias->pluck('nome')->when($i->sem_categoria, fn ($c) => $c->push('sem categoria'))->implode(', ') ?: 'nada'))
+            ->implode('; ');
+
+        return "Nenhuma impressora recebe os itens deste pedido. Itens de: {$categorias}. {$impressoras}. "
+            . 'Ajuste em Impressoras (marque essas categorias ou "Pedido completo").';
     }
 
     private function colunas(): array

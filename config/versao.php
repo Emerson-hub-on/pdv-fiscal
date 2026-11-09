@@ -11,6 +11,20 @@
 
 $historico = [
     [
+        'versao' => '1.23.2',
+        'data' => '2026-11-09',
+        'itens' => [
+            'Comandas → Impressoras: quando nada sai na reimpressão, a mensagem agora diz de que categorias são os itens e o que cada impressora imprime. A janela de impressoras avisa as categorias que não saem em nenhuma impressora ativa, e o formulário ganhou o botão "Marcar todas".',
+        ],
+    ],
+    [
+        'versao' => '1.23.1',
+        'data' => '2026-11-09',
+        'itens' => [
+            'Comandas → Lista de Pedidos: ícone de impressora no cartão de cada pedido, ao lado da mesa, para reimprimir na hora em todas as impressoras do pedido (fica vermelho quando a última impressão falhou). Para escolher uma impressora só, continua na janela do pedido.',
+        ],
+    ],
+    [
         'versao' => '1.23.0',
         'data' => '2026-11-09',
         'itens' => [

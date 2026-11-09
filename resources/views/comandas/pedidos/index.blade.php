@@ -127,10 +127,18 @@
                         <h3 class="font-bold text-slate-900">Pedido #${p.id}</h3>
                         ${p.cliente ? `<p class="text-sm text-slate-600 truncate">Cliente: ${escHtml(p.cliente)}</p>` : ''}
                     </div>
-                    <span class="shrink-0 inline-flex items-center gap-1 rounded-lg bg-violet-50 text-violet-700 px-2 py-1 text-xs font-semibold">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 9h16M6 9v10m12-10v10M3 9l2-4h14l2 4"/></svg>
-                        ${escHtml(p.mesa || 'Mesa')}
-                    </span>
+                    <div class="shrink-0 flex items-center gap-1.5">
+                        <span class="inline-flex items-center gap-1 rounded-lg bg-violet-50 text-violet-700 px-2 py-1 text-xs font-semibold">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 9h16M6 9v10m12-10v10M3 9l2-4h14l2 4"/></svg>
+                            ${escHtml(p.mesa || 'Mesa')}
+                        </span>
+                        ${PODE_ALTERAR && impressoras.length ? `
+                            <button type="button" data-imprimir="${p.id}" onclick="event.stopPropagation(); imprimirPedido(${p.id}, null, this)"
+                                    title="${p.impresso_em ? 'Reimprimir' : 'Imprimir'} nas impressoras do pedido" aria-label="${p.impresso_em ? 'Reimprimir' : 'Imprimir'} pedido #${p.id}"
+                                    class="w-8 h-8 rounded-lg flex items-center justify-center ring-1 transition disabled:opacity-50 disabled:cursor-wait ${p.impressao_erro && !finalizado ? 'text-red-600 ring-red-200 hover:bg-red-50' : 'text-slate-500 ring-slate-200 hover:text-[#10284A] hover:bg-slate-50'}">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2M6 14h12v7H6z"/></svg>
+                            </button>` : ''}
+                    </div>
                 </div>
                 <div class="mt-2 flex flex-col gap-0.5">
                     <p class="text-[11px] text-slate-400">Status time:</p>
@@ -262,7 +270,7 @@
         impressoras = lista;
         const ativas = lista.filter(i => i.ativo).length;
         document.getElementById('btn-impressoras-rotulo').textContent = ativas ? `Impressoras (${ativas})` : 'Impressoras';
-        if (detalheAberto !== null) desenharDetalhe();
+        desenhar(); // mostra/esconde o ícone de impressora nos cartões
     };
 
     function blocoImpressao(p) {
@@ -280,7 +288,7 @@
                     <option value="">Todas as impressoras do pedido</option>
                     ${impressoras.map(i => `<option value="${i.id}">${escHtml(i.nome)}${i.ativo ? '' : ' (inativa)'}</option>`).join('')}
                 </select>
-                <button type="button" id="detalhe-imprimir" onclick="imprimirPedido(${p.id})"
+                <button type="button" id="detalhe-imprimir" onclick="imprimirPedido(${p.id}, document.getElementById('detalhe-impressora').value || null, this)"
                         class="shrink-0 inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold text-[#10284A] ring-1 ring-[#10284A]/30 hover:bg-slate-50 disabled:opacity-50">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2M6 14h12v7H6z"/></svg>
                     ${p.impresso_em ? 'Reimprimir' : 'Imprimir'}
@@ -288,9 +296,8 @@
             </div>`;
     }
 
-    async function imprimirPedido(id) {
-        const botao = document.getElementById('detalhe-imprimir');
-        const impressoraId = document.getElementById('detalhe-impressora')?.value || null;
+    // Cartão: ícone de impressora (todas as impressoras do pedido). Detalhe: impressora escolhida na lista.
+    async function imprimirPedido(id, impressoraId = null, botao = null) {
         if (botao) botao.disabled = true;
         try {
             const resp = await fetch(@json(route('comanda-pedidos.imprimir', ['pedido' => '__ID__'])).replace('__ID__', id), {
