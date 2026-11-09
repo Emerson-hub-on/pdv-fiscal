@@ -11,6 +11,13 @@
 
 $historico = [
     [
+        'versao' => '1.22.0',
+        'data' => '2026-11-09',
+        'itens' => [
+            'Comandas → Lista de Pedidos: o cartão do pedido não expande mais ("Ver mais" saiu). Clicando no cartão abre uma janela com garçom, horários, itens (preço, observação, subtotal e total) e forma de pagamento. O pagamento fica vazio enquanto o pedido está em aberto e só mostra o detalhamento (formas, troco e a conta da mesa) quando o pedido é concluído. "Voltar para preparo" e "Fechar conta da mesa" ficaram no rodapé da janela.',
+        ],
+    ],
+    [
         'versao' => '1.21.1',
         'data' => '2026-11-08',
         'itens' => [
