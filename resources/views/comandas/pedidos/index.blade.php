@@ -24,6 +24,11 @@
         <button type="button" id="btn-som" onclick="alternarSom()"
                 class="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-amber-50 ring-1 ring-amber-50/25 hover:bg-amber-50/10">
         </button>
+        <button type="button" onclick="Impressoras.abrir()" title="Impressoras" aria-label="Impressoras"
+                class="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-amber-50 ring-1 ring-amber-50/25 hover:bg-amber-50/10">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2M6 14h12v7H6z"/></svg>
+            <span id="btn-impressoras-rotulo">Impressoras</span>
+        </button>
     </x-form.cabecalho>
 
     {{-- Colunas com altura fixa (ocupam a tela até o rodapé, com ou sem pedido); a lista rola por dentro --}}
@@ -63,6 +68,7 @@
         </div>
     </div>
 
+    @include('comandas.pedidos._impressoras', ['podeAlterar' => $podeAlterar])
     @include('comandas.mesas._relogio')
     @include('comandas._fechar-conta', ['formas' => $formas])
 
@@ -109,6 +115,9 @@
         // Situação que a coluna não mostra sozinha (entregue dentro de "Pronto / A caminho"; cancelado em "Concluído")
         const selo = ['entregue', 'cancelado'].includes(p.status)
             ? `<span class="inline-block mt-2 rounded-lg px-2 py-0.5 text-xs font-semibold ${STATUS_PEDIDO[p.status].selo}">${escHtml(STATUS_PEDIDO[p.status].rotulo)}</span>` : '';
+        // Impressora não respondeu: avisa no cartão (o detalhe mostra o motivo e reimprime)
+        const seloImpressao = p.impressao_erro && !finalizado
+            ? `<span class="inline-flex items-center gap-1 mt-2 ml-1 rounded-lg bg-red-50 text-red-700 px-2 py-0.5 text-xs font-semibold">⚠ Falha na impressão</span>` : '';
 
         return `
             <article role="button" tabindex="0" onclick="abrirDetalhe(${p.id})" onkeydown="if (event.key === 'Enter') abrirDetalhe(${p.id})"
@@ -132,7 +141,7 @@
                     ${linhaTempo('Cancelado', p.cancelado_em, 'text-red-600')}
                 </div>
                 <p class="mt-2 text-lg font-bold text-green-600">${escHtml(moeda(p.total))}</p>
-                ${selo}
+                ${selo}${seloImpressao}
                 ${botoes}
                 <p class="mt-2 text-xs font-medium text-slate-400">Clique para ver os detalhes</p>
             </article>`;
@@ -229,7 +238,8 @@
         el('corpo').innerHTML = `
             ${info}
             <div class="mt-5">${secao('Itens')}${itens}</div>
-            <div class="mt-5">${secao('Forma de pagamento')}${pagamento}</div>`;
+            <div class="mt-5">${secao('Forma de pagamento')}${pagamento}</div>
+            <div class="mt-5">${secao('Impressão')}${blocoImpressao(p)}</div>`;
 
         // Ações no rodapé: voltar etapa e fechar a conta da mesa (pedido ainda em aberto)
         const acoes = [];
@@ -244,6 +254,60 @@
         el('acoes').innerHTML = acoes.join('');
         el('acoes-wrap').classList.toggle('hidden', !acoes.length);
         return true;
+    }
+
+    // ===== Impressão do pedido =====
+    let impressoras = [];
+    window.aoMudarImpressoras = (lista) => {
+        impressoras = lista;
+        const ativas = lista.filter(i => i.ativo).length;
+        document.getElementById('btn-impressoras-rotulo').textContent = ativas ? `Impressoras (${ativas})` : 'Impressoras';
+        if (detalheAberto !== null) desenharDetalhe();
+    };
+
+    function blocoImpressao(p) {
+        const situacao = p.impressao_erro
+            ? `<p class="rounded-xl bg-red-50 text-red-700 px-3 py-2 text-sm">Falha na impressão: ${escHtml(p.impressao_erro)}</p>`
+            : p.impresso_em
+                ? `<p class="text-sm text-slate-600">Impresso em ${escHtml(dataHora(p.impresso_em))}.</p>`
+                : `<p class="text-sm text-slate-400">${impressoras.some(i => i.ativo) ? 'Ainda não impresso.' : 'Nenhuma impressora ativa (configure no ícone de impressora no topo).'}</p>`;
+
+        if (!PODE_ALTERAR || !impressoras.length) return situacao;
+
+        return situacao + `
+            <div class="mt-2 flex items-center gap-2">
+                <select id="detalhe-impressora" class="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30">
+                    <option value="">Todas as impressoras do pedido</option>
+                    ${impressoras.map(i => `<option value="${i.id}">${escHtml(i.nome)}${i.ativo ? '' : ' (inativa)'}</option>`).join('')}
+                </select>
+                <button type="button" id="detalhe-imprimir" onclick="imprimirPedido(${p.id})"
+                        class="shrink-0 inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold text-[#10284A] ring-1 ring-[#10284A]/30 hover:bg-slate-50 disabled:opacity-50">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2M6 14h12v7H6z"/></svg>
+                    ${p.impresso_em ? 'Reimprimir' : 'Imprimir'}
+                </button>
+            </div>`;
+    }
+
+    async function imprimirPedido(id) {
+        const botao = document.getElementById('detalhe-imprimir');
+        const impressoraId = document.getElementById('detalhe-impressora')?.value || null;
+        if (botao) botao.disabled = true;
+        try {
+            const resp = await fetch(@json(route('comanda-pedidos.imprimir', ['pedido' => '__ID__'])).replace('__ID__', id), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': CSRF_PEDIDOS },
+                body: JSON.stringify({ impressora_id: impressoraId }),
+            });
+            if (resp.redirected) return location.reload();
+            const r = await resp.json().catch(() => ({}));
+            if (!resp.ok) throw new Error(r.message || 'Não foi possível imprimir.');
+            dados = r;
+            desenhar();
+            avisar(r.message, r.erro);
+        } catch (e) {
+            avisar(e.message === 'Failed to fetch' ? 'Sem conexão com o servidor.' : e.message, true);
+            if (botao) botao.disabled = false;
+        }
     }
 
     // Captura (antes do Esc da janela de fechar conta): fecha esta só quando ela é a de cima
@@ -357,5 +421,6 @@
     document.addEventListener('visibilitychange', () => { if (!document.hidden) atualizar(); });
     desenharBotaoSom();
     desenhar();
+    Impressoras.carregar().catch(() => {}); // para o "Reimprimir" e o contador no ícone
 </script>
 @endsection

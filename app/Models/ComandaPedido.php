@@ -42,6 +42,7 @@ class ComandaPedido extends Model
     protected $casts = [
         'total'        => 'decimal:2',
         'enviado_em'   => 'datetime',
+        'impresso_em'  => 'datetime',
         'pronto_em'    => 'datetime',
         'entregue_em'  => 'datetime',
         'concluido_em' => 'datetime',
@@ -155,6 +156,8 @@ class ComandaPedido extends Model
                 ? $this->comanda->pagamentos->map(fn ($p) => ['descricao' => $p->descricao, 'valor' => (float) $p->valor])->all()
                 : [],
             'troco'        => $this->comanda?->status === Comanda::PAGA ? (float) $this->comanda->troco : 0,
+            'impresso_em'    => $this->impresso_em?->toIso8601String(),
+            'impressao_erro' => $this->impressao_erro,
             // O pagamento é da conta da mesa inteira (todos os pedidos), não deste pedido
             'conta_total'   => $this->comanda ? (float) $this->comanda->total : null,
             'conta_pedidos' => $this->comanda ? (int) ($this->comanda->pedidos_na_conta ?? 0) : 0,

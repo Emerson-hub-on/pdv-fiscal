@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Comanda;
+use App\Models\ComandaImpressora;
 use App\Models\ComandaPedido;
 use App\Services\ComandaService;
+use App\Services\ImpressaoComandaService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -67,6 +69,35 @@ class PedidoComandaController extends Controller
         }
 
         return response()->json(['conta' => $conta->paraFechamento()] + $this->colunas());
+    }
+
+    /** Reimprime o pedido em todas as impressoras do setor dele, ou só na escolhida. */
+    public function imprimir(Request $request, ComandaPedido $pedido, ImpressaoComandaService $impressao): JsonResponse
+    {
+        $somente = null;
+        if ($request->filled('impressora_id')) {
+            $somente = ComandaImpressora::find($request->integer('impressora_id'));
+            if (!$somente) {
+                return response()->json(['message' => 'Impressora não encontrada.'], 422);
+            }
+        } elseif (!ComandaImpressora::where('ativo', true)->exists()) {
+            return response()->json(['message' => 'Nenhuma impressora ativa. Configure pelo ícone de impressora no topo da tela.'], 422);
+        }
+
+        $resultados = $impressao->imprimirPedido($pedido, $somente, true);
+
+        if (!$resultados) {
+            return response()->json(['message' => 'Nenhum item deste pedido é das categorias dessa(s) impressora(s).'], 422);
+        }
+
+        $falhas = collect($resultados)->where('ok', false);
+        $ok = collect($resultados)->where('ok', true)->pluck('impressora');
+
+        return response()->json([
+            'message' => ($ok->isNotEmpty() ? 'Impresso em: ' . $ok->implode(', ') . '.' : '')
+                . ($falhas->isNotEmpty() ? ' Falhou: ' . $falhas->map(fn ($f) => "{$f['impressora']} ({$f['erro']})")->implode('; ') : ''),
+            'erro' => $falhas->isNotEmpty(),
+        ] + $this->colunas());
     }
 
     private function colunas(): array

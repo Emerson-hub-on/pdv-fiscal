@@ -300,6 +300,16 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
             Route::patch('comandas/pedidos/{pedido}/status', [\App\Http\Controllers\PedidoComandaController::class, 'mudarStatus'])->name('comanda-pedidos.status');
             Route::get('comandas/contas/{comanda}', [\App\Http\Controllers\PedidoComandaController::class, 'conta'])->name('comanda-pedidos.conta');
             Route::post('comandas/contas/{comanda}/fechar', [\App\Http\Controllers\PedidoComandaController::class, 'fecharConta'])->name('comanda-pedidos.conta.fechar');
+            Route::post('comandas/pedidos/{pedido}/imprimir', [\App\Http\Controllers\PedidoComandaController::class, 'imprimir'])
+                ->middleware('throttle:30,1')->name('comanda-pedidos.imprimir');
+
+            // Impressoras das comandas (janela do ícone de impressora na Lista de Pedidos)
+            Route::get('comandas/impressoras', [\App\Http\Controllers\ImpressoraComandaController::class, 'index'])->name('comanda-impressoras.index');
+            Route::post('comandas/impressoras', [\App\Http\Controllers\ImpressoraComandaController::class, 'salvar'])->name('comanda-impressoras.store');
+            Route::put('comandas/impressoras/{impressora}', [\App\Http\Controllers\ImpressoraComandaController::class, 'salvar'])->name('comanda-impressoras.update');
+            Route::delete('comandas/impressoras/{impressora}', [\App\Http\Controllers\ImpressoraComandaController::class, 'excluir'])->name('comanda-impressoras.destroy');
+            Route::post('comandas/impressoras/{impressora}/testar', [\App\Http\Controllers\ImpressoraComandaController::class, 'testar'])
+                ->middleware('throttle:20,1')->name('comanda-impressoras.testar');
 
             // Comandas → Mesas → Lista de Mesas (cadastro; a situação é mudada pelo garçom)
             Route::resource('comandas/mesas', \App\Http\Controllers\MesaController::class)

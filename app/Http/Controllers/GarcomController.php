@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\CardapioCategoria;
 use App\Models\CardapioItem;
 use App\Models\Comanda;
+use App\Models\ComandaPedido;
 use App\Models\Mesa;
 use App\Services\ComandaService;
+use App\Services\ImpressaoComandaService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -97,6 +99,16 @@ class GarcomController extends Controller
             );
         } catch (DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        // Pedido novo sai sozinho nas impressoras dos setores (depois da resposta: o garçom não espera a impressora)
+        if ($pedido->wasRecentlyCreated) {
+            $id = $pedido->id;
+            defer(function () use ($id) {
+                if ($p = ComandaPedido::find($id)) {
+                    app(ImpressaoComandaService::class)->imprimirPedido($p);
+                }
+            });
         }
 
         return response()->json(['pedido_id' => $pedido->id, 'mesa' => $this->mesaParaTela($pedido->mesa)]);

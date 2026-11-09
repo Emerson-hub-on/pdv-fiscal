@@ -11,6 +11,15 @@
 
 $historico = [
     [
+        'versao' => '1.23.0',
+        'data' => '2026-11-09',
+        'itens' => [
+            'Comandas → Lista de Pedidos: ícone "Impressoras" no topo abre a configuração das impressoras do restaurante (balcão, cozinha, churrascaria...). Cada impressora pode ser de rede (IP e porta, padrão 9100) ou USB no servidor (impressora compartilhada no Windows, ou /dev/usb/lp0 no Linux), com papel 80/58 mm, número de vias, mostrar preços e "Testar".',
+            'Cada impressora imprime o pedido completo ou só os itens das categorias do cardápio escolhidas (e, se marcado, os itens sem categoria). Os pedidos novos do garçom saem sozinhos em todas as impressoras ativas, direto do servidor (sem janela de impressão).',
+            'Na janela do pedido: situação da impressão (impresso em / falha com o motivo) e "Reimprimir" em todas ou numa impressora escolhida. Quando uma impressora não responde, o cartão do pedido mostra "Falha na impressão".',
+        ],
+    ],
+    [
         'versao' => '1.22.0',
         'data' => '2026-11-09',
         'itens' => [
