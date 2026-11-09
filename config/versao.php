@@ -11,6 +11,14 @@
 
 $historico = [
     [
+        'versao' => '1.23.3',
+        'data' => '2026-11-09',
+        'itens' => [
+            'Comandas → Lista de Pedidos: em todas as colunas o pedido mais novo fica no topo e o mais antigo no final (Em preparo pela chegada; Pronto / A caminho pela hora em que ficou pronto; Concluído pela hora em que foi concluído).',
+            'Comandas → Impressão: a observação do item sai como "Obs.: ..." na comanda impressa (antes ">>").',
+        ],
+    ],
+    [
         'versao' => '1.23.2',
         'data' => '2026-11-09',
         'itens' => [

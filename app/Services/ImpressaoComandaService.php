@@ -125,7 +125,7 @@ class ImpressaoComandaService
         foreach ($itens as $item) {
             $via .= self::ALTO . self::NEGRITO . $this->quebrar("{$item->quantidade}x {$item->nome}", $l) . self::SEM_NEGRITO . self::NORMAL;
             if ($item->observacao) {
-                $via .= $this->quebrar('   >> ' . $item->observacao, $l);
+                $via .= $this->quebrar('   Obs.: ' . $item->observacao, $l);
             }
             if ($impressora->mostrar_precos) {
                 $via .= $this->colunasDireita('   ' . $this->moeda($item->preco_unitario) . ' cada', $this->moeda($item->subtotal), $l);

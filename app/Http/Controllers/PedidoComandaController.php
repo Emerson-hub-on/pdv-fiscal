@@ -122,13 +122,14 @@ class PedidoComandaController extends Controller
             'comanda' => fn ($q) => $q->withCount(['pedidos as pedidos_na_conta' => fn ($p) => $p->where('status', '!=', ComandaPedido::CANCELADO)]),
             'comanda.pagamentos'];
 
-        // Em preparo: o mais antigo primeiro (ordem de chegada da cozinha)
+        // Em todas as colunas, o mais novo fica no topo e o mais antigo no final
+        // Em preparo: pela chegada do pedido
         $preparo = ComandaPedido::with($com)->where('status', ComandaPedido::PREPARO)
-            ->orderBy('enviado_em')->orderBy('id')->get();
+            ->orderByDesc('enviado_em')->orderByDesc('id')->get();
 
-        // Pronto / A caminho: prontos e entregues (conta ainda não paga)
+        // Pronto / A caminho: prontos e entregues (conta ainda não paga), pela hora em que ficou pronto
         $pronto = ComandaPedido::with($com)->whereIn('status', [ComandaPedido::PRONTO, ComandaPedido::ENTREGUE])
-            ->orderByRaw('COALESCE(pronto_em, entregue_em, enviado_em)')->orderBy('id')->get();
+            ->orderByRaw('COALESCE(pronto_em, entregue_em, enviado_em) DESC')->orderByDesc('id')->get();
 
         // Concluído: pagos e cancelados, os mais recentes primeiro
         $concluido = ComandaPedido::with($com)->whereIn('status', [ComandaPedido::CONCLUIDO, ComandaPedido::CANCELADO])
