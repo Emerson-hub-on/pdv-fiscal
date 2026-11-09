@@ -119,7 +119,10 @@ class PedidoComandaController extends Controller
     {
         // A conta (comanda) vem com quantos pedidos válidos tem: o pagamento é da conta inteira, não de cada pedido
         $com = ['mesa', 'garcom:id,name', 'itens',
-            'comanda' => fn ($q) => $q->withCount(['pedidos as pedidos_na_conta' => fn ($p) => $p->where('status', '!=', ComandaPedido::CANCELADO)]),
+            'comanda' => fn ($q) => $q->withCount([
+                'pedidos as pedidos_na_conta' => fn ($p) => $p->where('status', '!=', ComandaPedido::CANCELADO),
+                'pedidos as pedidos_em_preparo' => fn ($p) => $p->where('status', ComandaPedido::PREPARO),
+            ]),
             'comanda.pagamentos'];
 
         // Em todas as colunas, o mais novo fica no topo e o mais antigo no final

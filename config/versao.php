@@ -11,6 +11,13 @@
 
 $historico = [
     [
+        'versao' => '1.23.4',
+        'data' => '2026-11-09',
+        'itens' => [
+            'Comandas: "Fechar conta" só fica disponível quando todos os pedidos da mesa estão prontos (ou entregues). Com pedido em preparo, o garçom vê "Fechar conta · aguardando N pedido(s) ficar(em) pronto(s)" desativado e o painel mostra o aviso no lugar do botão. O servidor também recusa fechar a conta com pedido em preparo.',
+        ],
+    ],
+    [
         'versao' => '1.23.3',
         'data' => '2026-11-09',
         'itens' => [

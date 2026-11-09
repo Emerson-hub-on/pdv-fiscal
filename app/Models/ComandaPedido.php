@@ -161,6 +161,8 @@ class ComandaPedido extends Model
             // O pagamento é da conta da mesa inteira (todos os pedidos), não deste pedido
             'conta_total'   => $this->comanda ? (float) $this->comanda->total : null,
             'conta_pedidos' => $this->comanda ? (int) ($this->comanda->pedidos_na_conta ?? 0) : 0,
+            // A conta só fecha quando nenhum pedido dela está em preparo
+            'conta_em_preparo' => $this->comanda ? (int) ($this->comanda->pedidos_em_preparo ?? 0) : 0,
         ];
     }
 }

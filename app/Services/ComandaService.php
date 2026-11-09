@@ -147,6 +147,13 @@ class ComandaService
                 throw new DomainException('Esta conta já foi fechada.');
             }
 
+            // Só fecha quando todos os pedidos da mesa ficaram prontos (ou já foram entregues)
+            $emPreparo = $conta->pedidos()->where('status', ComandaPedido::PREPARO)->pluck('id');
+            if ($emPreparo->isNotEmpty()) {
+                throw new DomainException(($emPreparo->count() === 1 ? 'O pedido #' . $emPreparo->first() . ' ainda está' : 'Os pedidos #' . $emPreparo->implode(', #') . ' ainda estão')
+                    . ' em preparo. A conta só pode ser fechada quando todos os pedidos estiverem prontos.');
+            }
+
             $conta->recalcularTotal();
             $totalCentavos = (int) round((float) $conta->total * 100);
 

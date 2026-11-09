@@ -326,7 +326,7 @@
         <div id="mesa-pedidos" class="mt-3 flex flex-col gap-2"></div>
 
         <button type="button" id="mesa-fechar-conta" onclick="fecharSituacao(); fecharContaMesa()"
-                class="hidden mt-4 w-full rounded-2xl bg-[#10284A] text-amber-50 px-4 py-3.5 text-base font-bold active:opacity-90"></button>
+                class="hidden mt-4 w-full rounded-2xl bg-[#10284A] text-amber-50 px-4 py-3.5 text-base font-bold active:opacity-90 disabled:bg-slate-200 disabled:text-slate-500 disabled:text-sm disabled:font-semibold"></button>
         <p id="mesa-erro" class="hidden mt-3 text-sm text-red-600"></p>
     </div>
 </div>
@@ -491,7 +491,7 @@
                 </span>
                 <span class="shrink-0 flex flex-col gap-1">
                     <button type="button" onclick="trocarAba('mesas')" class="rounded-xl px-3 py-1.5 text-xs font-semibold text-[#10284A] ring-1 ring-[#10284A]/20 active:bg-slate-50">Trocar</button>
-                    ${m.conta ? `<button type="button" onclick="fecharContaMesa()" class="rounded-xl px-3 py-1.5 text-xs font-semibold bg-[#10284A] text-amber-50 active:opacity-90">Fechar conta</button>` : ''}
+                    ${m.conta && !m.conta.em_preparo ? `<button type="button" onclick="fecharContaMesa()" class="rounded-xl px-3 py-1.5 text-xs font-semibold bg-[#10284A] text-amber-50 active:opacity-90">Fechar conta</button>` : ''}
                 </span>
             </div>`;
         relogioMesas.atualizar(topo);
@@ -914,7 +914,14 @@
 
         const botaoConta = document.getElementById('mesa-fechar-conta');
         botaoConta.classList.toggle('hidden', !m.conta);
-        if (m.conta) botaoConta.textContent = `Fechar conta · ${moeda(m.conta.total)}`;
+        // A conta só fecha quando todos os pedidos da mesa estão prontos (ou entregues)
+        if (m.conta) {
+            const emPreparo = m.conta.em_preparo || 0;
+            botaoConta.disabled = emPreparo > 0;
+            botaoConta.textContent = emPreparo
+                ? `Fechar conta · aguardando ${emPreparo} ${emPreparo === 1 ? 'pedido ficar pronto' : 'pedidos ficarem prontos'}`
+                : `Fechar conta · ${moeda(m.conta.total)}`;
+        }
 
         relogioMesas.atualizar(document.getElementById('modal-mesa'));
     }
@@ -923,6 +930,10 @@
     function fecharContaMesa() {
         const m = mesaAtual();
         if (!m?.conta) return;
+        if (m.conta.em_preparo) {
+            avisar('A conta só pode ser fechada quando todos os pedidos estiverem prontos.');
+            return;
+        }
 
         const pendentes = (comandas[m.id]?.itens || []).length;
         if (pendentes && !confirm(`A comanda desta mesa tem ${pendentes} ${pendentes === 1 ? 'item que ainda não foi enviado' : 'itens que ainda não foram enviados'} e não entra na conta. Fechar a conta mesmo assim?`)) return;

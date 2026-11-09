@@ -255,9 +255,13 @@
             acoes.push(`<button type="button" onclick="mudarStatus(${p.id}, 'preparo')"
                 class="rounded-xl px-3.5 py-2.5 text-sm font-medium text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50">Voltar para preparo</button>`);
         }
+        // Fechar conta: só quando todos os pedidos da mesa estão prontos (nenhum em preparo)
         if (PODE_ALTERAR && !finalizado && p.comanda_id && p.conta_status === 'aberta') {
-            acoes.push(`<button type="button" onclick="fecharDetalhe(); fecharConta(${p.comanda_id})"
-                class="ml-auto rounded-xl bg-[#10284A] text-amber-50 px-3.5 py-2.5 text-sm font-semibold hover:bg-[#163a68]">Fechar conta da ${escHtml(p.mesa || 'mesa')}</button>`);
+            const emPreparo = p.conta_em_preparo || 0;
+            acoes.push(emPreparo
+                ? `<span class="ml-auto text-right text-xs text-slate-500">Fechar conta: aguardando ${emPreparo === 1 ? '1 pedido da mesa ficar pronto' : emPreparo + ' pedidos da mesa ficarem prontos'}</span>`
+                : `<button type="button" onclick="fecharDetalhe(); fecharConta(${p.comanda_id})"
+                    class="ml-auto rounded-xl bg-[#10284A] text-amber-50 px-3.5 py-2.5 text-sm font-semibold hover:bg-[#163a68]">Fechar conta da ${escHtml(p.mesa || 'mesa')}</button>`);
         }
         el('acoes').innerHTML = acoes.join('');
         el('acoes-wrap').classList.toggle('hidden', !acoes.length);

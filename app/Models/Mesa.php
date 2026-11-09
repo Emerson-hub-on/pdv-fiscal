@@ -167,7 +167,14 @@ class Mesa extends Model
                 : [],
             // Conta aberta (o garçom fecha por aqui)
             'conta'        => $this->relationLoaded('contaAberta') && $this->contaAberta
-                ? ['id' => $this->contaAberta->id, 'total' => (float) $this->contaAberta->total]
+                ? [
+                    'id'         => $this->contaAberta->id,
+                    'total'      => (float) $this->contaAberta->total,
+                    // Pedidos ainda em preparo: a conta só fecha quando todos estiverem prontos
+                    'em_preparo' => $this->relationLoaded('pedidosAbertos')
+                        ? $this->pedidosAbertos->where('comanda_id', $this->contaAberta->id)->where('status', ComandaPedido::PREPARO)->count()
+                        : $this->contaAberta->pedidos()->where('status', ComandaPedido::PREPARO)->count(),
+                ]
                 : null,
         ];
     }
