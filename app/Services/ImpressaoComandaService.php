@@ -77,6 +77,51 @@ class ImpressaoComandaService
         return $resultados;
     }
 
+    /**
+     * Aviso de PEDIDO CANCELADO (cancelado pelo cliente/iFood depois de chegar): sai nas mesmas impressoras
+     * que receberam o pedido, com os itens de cada setor, para a cozinha parar o preparo.
+     */
+    public function imprimirCancelamento(ComandaPedido $pedido, ?string $motivo = null): array
+    {
+        $pedido->loadMissing(['itens', 'mesa', 'ifood']);
+        $categorias = CardapioItem::whereIn('id', $pedido->itens->pluck('cardapio_item_id')->filter())
+            ->pluck('cardapio_categoria_id', 'id');
+
+        $resultados = [];
+        foreach (ComandaImpressora::with('categorias')->where('ativo', true)->orderBy('nome')->get() as $impressora) {
+            $itens = $this->itensDaImpressora($pedido->itens, $impressora, $categorias);
+            if ($itens->isEmpty()) {
+                continue;
+            }
+
+            $l = $impressora->colunas;
+            $traco = str_repeat('-', $l) . "\n";
+            $f = $pedido->ifood;
+            $via = self::INICIO . self::CENTRO
+                . self::GRANDE . $this->texto('PEDIDO') . "\n" . $this->texto('CANCELADO') . "\n" . self::NORMAL
+                . self::NEGRITO . $this->texto(($f ? 'iFood #' . ($f->display_id ?: $pedido->id) . ' - ' : '') . "Pedido #{$pedido->id}") . self::SEM_NEGRITO . "\n"
+                . ($f?->cliente_nome ? $this->texto('Cliente: ' . $f->cliente_nome) . "\n" : '')
+                . $this->texto('Cancelado em ' . now()->format('d/m/Y H:i')) . "\n"
+                . self::ESQUERDA . $traco
+                . ($motivo ? $this->quebrar('Motivo: ' . $motivo, $l) . $traco : '')
+                . self::NEGRITO . $this->texto('NAO PREPARAR / DESCARTAR:') . self::SEM_NEGRITO . "\n";
+            foreach ($itens as $item) {
+                $via .= self::NEGRITO . $this->quebrar("{$item->quantidade}x {$item->nome}", $l) . self::SEM_NEGRITO;
+            }
+            $via .= $this->rodape($l) . self::AVANCAR . self::CORTAR;
+
+            try {
+                $this->enviar($impressora, $via);
+                $resultados[] = ['impressora' => $impressora->nome, 'ok' => true, 'erro' => null];
+            } catch (Throwable $e) {
+                Log::warning("Comanda: falha ao imprimir o cancelamento do pedido #{$pedido->id} em {$impressora->nome}: {$e->getMessage()}");
+                $resultados[] = ['impressora' => $impressora->nome, 'ok' => false, 'erro' => $e->getMessage()];
+            }
+        }
+
+        return $resultados;
+    }
+
     /** Página de teste: confere a conexão e a largura do papel. */
     public function testar(ComandaImpressora $impressora): void
     {

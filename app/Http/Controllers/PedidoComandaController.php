@@ -58,8 +58,17 @@ class PedidoComandaController extends Controller
                 if ($status === ComandaPedido::CANCELADO) {
                     throw new DomainException('Pedido do iFood: use o botão Cancelar para escolher o motivo.');
                 }
+                if ($pedido->ifood->cancelamento_solicitado_em && $pedido->ifood->status !== \App\Models\IfoodPedido::CANCELLED) {
+                    throw new DomainException('Cancelamento pedido ao iFood: aguarde a resposta antes de mudar a situação.');
+                }
                 if ($status === ComandaPedido::PRONTO) {
                     app(IfoodService::class)->marcarPronto(IfoodConfiguracao::atual(), $pedido->ifood);
+                }
+                // Entrega própria: com o código do cliente, o iFood conclui o pedido lá também
+                // (sem o código, finaliza só aqui: o iFood conclui sozinho mais tarde)
+                $codigo = trim((string) $request->input('codigo_entrega'));
+                if ($status === ComandaPedido::ENTREGUE && $codigo !== '') {
+                    app(IfoodService::class)->confirmarEntrega(IfoodConfiguracao::atual(), $pedido->ifood, $codigo);
                 }
             }
 
@@ -122,7 +131,29 @@ class PedidoComandaController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        return response()->json(['message' => "Cancelamento do pedido iFood #{$pedido->ifood->display_id} enviado."] + $this->colunas());
+        return response()->json(['message' => "Cancelamento do pedido iFood #{$pedido->ifood->display_id} enviado. Aguardando a confirmação do iFood."] + $this->colunas());
+    }
+
+    /** Responde ao pedido de cancelamento / reembolso feito pelo cliente no iFood. */
+    public function disputaIfood(Request $request, ComandaPedido $pedido, IfoodService $ifood): JsonResponse
+    {
+        if (!$pedido->ifood) {
+            return response()->json(['message' => 'Este pedido não é do iFood.'], 422);
+        }
+        $aceitar = $request->input('acao') === 'aceitar';
+        if (!$aceitar && $request->input('acao') !== 'recusar') {
+            return response()->json(['message' => 'Escolha aceitar ou recusar.'], 422);
+        }
+
+        try {
+            $ifood->responderDisputa(IfoodConfiguracao::atual(), $pedido->ifood, $aceitar, $request->input('motivo'));
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['message' => $aceitar
+            ? "Pedido do cliente aceito (iFood #{$pedido->ifood->display_id}). O iFood vai atualizar o pedido."
+            : "Pedido do cliente recusado (iFood #{$pedido->ifood->display_id})."] + $this->colunas());
     }
 
     /** Conta da mesa para fechar no balcão. */

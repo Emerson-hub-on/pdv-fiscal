@@ -11,6 +11,17 @@
 
 $historico = [
     [
+        'versao' => '1.27.0',
+        'data' => '2026-11-09',
+        'itens' => [
+            'iFood, entrega própria: "Marcar como entregue" pede o código de entrega do cliente e confirma no iFood, que conclui o pedido lá também (sem o código, dá para finalizar só no sistema). O cartão avisa quando o iFood pede o código.',
+            'iFood: o cancelamento pela loja espera a confirmação do iFood. Se o iFood recusar, o pedido continua valendo e a tela mostra o motivo.',
+            'iFood: quando o cliente pede cancelamento ou reembolso, o pedido mostra o pedido, a mensagem e o prazo, com os botões Aceitar e Recusar (com motivo).',
+            'iFood: pedido cancelado pelo iFood ou pelo cliente gera alerta sonoro e aviso vermelho na tela, e imprime "PEDIDO CANCELADO - NAO PREPARAR" nas impressoras do pedido.',
+            'iFood: enquanto houver pedido aguardando aceite ou pedido do cliente sem resposta, a Lista de Pedidos bipa a cada 5 s e mostra a contagem no título da aba.',
+        ],
+    ],
+    [
         'versao' => '1.26.4',
         'data' => '2026-11-09',
         'itens' => [

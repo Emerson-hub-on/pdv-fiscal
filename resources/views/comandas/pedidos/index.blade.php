@@ -68,7 +68,7 @@
                 <button type="button" onclick="CancelarIfood.fechar()" aria-label="Fechar" class="w-10 h-10 rounded-xl text-slate-400 hover:bg-slate-100 text-2xl leading-none">&times;</button>
             </div>
             <div class="flex-1 overflow-y-auto px-6 py-4">
-                <p class="text-sm text-slate-600 mb-3">Escolha o motivo. O iFood avisa o cliente e o pedido vai para Concluído como cancelado.</p>
+                <p class="text-sm text-slate-600 mb-3">Escolha o motivo. Quando o iFood confirmar (em alguns segundos), o pedido vai para Concluído como cancelado.</p>
                 <div data-ci="motivos" class="flex flex-col gap-2"></div>
                 <p data-ci="erro" class="hidden mt-3 rounded-xl bg-red-50 text-red-700 px-3 py-2 text-sm"></p>
             </div>
@@ -76,6 +76,53 @@
                 <button type="button" onclick="CancelarIfood.fechar()" class="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50">Voltar</button>
                 <button type="button" data-ci="confirmar" onclick="CancelarIfood.confirmar(this)" disabled
                         class="ml-auto rounded-xl bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 text-sm font-semibold disabled:opacity-50">Cancelar no iFood</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Entrega própria do iFood: código de entrega que o cliente informa ao entregador --}}
+    <div id="modal-entrega-ifood" class="fixed inset-0 z-50 bg-black/50 hidden items-center justify-center p-4"
+         onclick="if (event.target === this) EntregaIfood.fechar()">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl flex flex-col">
+            <div class="px-6 pt-5 pb-3 border-b border-slate-100 flex items-center gap-3">
+                <h2 class="flex-1 font-bold text-slate-900" data-ei="titulo"></h2>
+                <button type="button" onclick="EntregaIfood.fechar()" aria-label="Fechar" class="w-10 h-10 rounded-xl text-slate-400 hover:bg-slate-100 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="px-6 py-4">
+                <p class="text-sm text-slate-600">Peça ao cliente o <span class="font-semibold">código de entrega</span> que aparece no app do iFood. Com ele, o pedido também é concluído no iFood.</p>
+                <input type="text" data-ei="codigo" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="Código"
+                       onkeydown="if (event.key === 'Enter') EntregaIfood.confirmar()"
+                       class="mt-3 w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-center text-2xl font-bold tracking-[0.4em] outline-none focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30">
+                <p data-ei="erro" class="hidden mt-3 rounded-xl bg-red-50 text-red-700 px-3 py-2 text-sm"></p>
+                <p class="mt-3 text-xs text-slate-400">Sem o código, use "Finalizar só no sistema": o pedido vai para Concluído aqui e o iFood conclui sozinho mais tarde.</p>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-100 flex items-center gap-2">
+                <button type="button" data-ei="sem-codigo" onclick="EntregaIfood.semCodigo()" class="rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 disabled:opacity-50">Finalizar só no sistema</button>
+                <button type="button" data-ei="confirmar" onclick="EntregaIfood.confirmar()"
+                        class="ml-auto rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 text-sm font-semibold disabled:opacity-50">Confirmar entrega</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Pedido do cliente no iFood (cancelamento / reembolso): recusar com o motivo --}}
+    <div id="modal-disputa-ifood" class="fixed inset-0 z-50 bg-black/50 hidden items-center justify-center p-4"
+         onclick="if (event.target === this) DisputaIfood.fechar()">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl flex flex-col">
+            <div class="px-6 pt-5 pb-3 border-b border-slate-100 flex items-center gap-3">
+                <h2 class="flex-1 font-bold text-slate-900" data-di="titulo"></h2>
+                <button type="button" onclick="DisputaIfood.fechar()" aria-label="Fechar" class="w-10 h-10 rounded-xl text-slate-400 hover:bg-slate-100 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="px-6 py-4">
+                <label class="text-sm font-medium text-slate-700" for="disputa-motivo">Motivo da recusa (o cliente vai ver)</label>
+                <textarea id="disputa-motivo" data-di="motivo" rows="3" maxlength="250"
+                          class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30"
+                          placeholder="Ex.: o pedido já saiu para entrega."></textarea>
+                <p data-di="erro" class="hidden mt-3 rounded-xl bg-red-50 text-red-700 px-3 py-2 text-sm"></p>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-100 flex items-center gap-2">
+                <button type="button" onclick="DisputaIfood.fechar()" class="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50">Voltar</button>
+                <button type="button" data-di="confirmar" onclick="DisputaIfood.recusar()"
+                        class="ml-auto rounded-xl bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 text-sm font-semibold disabled:opacity-50">Recusar pedido do cliente</button>
             </div>
         </div>
     </div>
@@ -121,6 +168,8 @@
 
     const moeda = (v) => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const dataHora = (iso) => iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+    const hora = (iso) => iso ? new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+    const buscarPedido = (id) => Object.values(dados.colunas).flat().find(p => p.id === id);
 
     // ===== Desenho =====
     function cartao(p) {
@@ -137,7 +186,17 @@
                           pronto: ['entregue', 'Marcar como entregue', 'bg-indigo-600 hover:bg-indigo-700'] }[p.status];
         // Cancelar à esquerda e próxima ação à direita (pedido ainda não concluído nem cancelado)
         const aguardandoAceite = p.ifood?.aguardando_aceite && !finalizado;
-        const botoes = PODE_ALTERAR && aguardandoAceite ? `
+        const cancelamentoPedido = p.ifood?.cancelamento_solicitado && !finalizado;
+        const disputa = !finalizado ? p.ifood?.disputa : null;
+        const botoes = PODE_ALTERAR && disputa ? `
+            <div class="mt-3 flex items-center gap-2">
+                <button type="button" onclick="event.stopPropagation(); DisputaIfood.abrir(${p.id})"
+                        class="rounded-xl px-3.5 py-2 text-sm font-semibold text-red-600 ring-1 ring-red-200 hover:bg-red-50 transition">Recusar</button>
+                <button type="button" onclick="event.stopPropagation(); DisputaIfood.aceitar(${p.id}, this)"
+                        class="ml-auto rounded-xl bg-[#EA1D2C] hover:bg-[#c81624] text-white px-3.5 py-2 text-sm font-semibold transition disabled:opacity-60">Aceitar pedido do cliente →</button>
+            </div>`
+            : cancelamentoPedido ? ''
+            : PODE_ALTERAR && aguardandoAceite ? `
             <div class="mt-3 flex items-center gap-2">
                 <button type="button" onclick="event.stopPropagation(); cancelarPedido(${p.id})"
                         class="rounded-xl px-3.5 py-2 text-sm font-semibold text-red-600 ring-1 ring-red-200 hover:bg-red-50 transition">Recusar</button>
@@ -195,6 +254,10 @@
                 <p class="mt-2 text-lg font-bold text-green-600">${escHtml(moeda(p.ifood ? p.ifood.total : p.total))}</p>
                 ${p.ifood ? `<p class="text-xs font-semibold text-slate-600">${escHtml(p.ifood.tipo_rotulo || '')}${p.ifood.agendado_para ? ' · agendado ' + escHtml(dataHora(p.ifood.agendado_para)) : ''}</p>` : ''}
                 ${aguardandoAceite ? '<span class="inline-flex items-center gap-1 mt-2 rounded-lg bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-bold animate-pulse">Aguardando aceite</span>' : ''}
+                ${disputa ? `<p class="mt-2 rounded-lg bg-red-100 text-red-800 px-2 py-1 text-xs font-bold animate-pulse">Cliente pede: ${escHtml(disputa.acao_rotulo)}${disputa.expira_em ? ' · responder até ' + escHtml(hora(disputa.expira_em)) : ''}</p>` : ''}
+                ${cancelamentoPedido ? '<span class="inline-flex items-center gap-1 mt-2 rounded-lg bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-bold">Cancelamento pedido · aguardando o iFood</span>' : ''}
+                ${p.ifood?.codigo_entrega_solicitado && !finalizado ? '<span class="inline-flex mt-2 ml-1 rounded-lg bg-indigo-50 text-indigo-700 px-2 py-0.5 text-xs font-semibold">Pedir código de entrega ao cliente</span>' : ''}
+                ${p.status === 'cancelado' && p.ifood?.cancelado_por === 'ifood' ? '<span class="inline-flex mt-2 ml-1 rounded-lg bg-red-50 text-red-700 px-2 py-0.5 text-xs font-semibold">pelo iFood/cliente</span>' : ''}
                 ${p.ifood?.erro && !finalizado ? `<span class="inline-flex mt-2 ml-1 rounded-lg bg-red-50 text-red-700 px-2 py-0.5 text-xs font-semibold" title="${escHtml(p.ifood.erro)}">⚠ iFood</span>` : ''}
                 ${selo}${seloImpressao}
                 ${botoes}
@@ -251,6 +314,9 @@
             <div class="mb-3 rounded-xl bg-red-50/60 ring-1 ring-red-200 px-4 py-3 text-sm flex flex-col gap-1">
                 ${linha('Tipo', f.tipo_rotulo + (f.entregue_por === 'IFOOD' ? ' (entregador iFood)' : f.entregue_por === 'MERCHANT' ? ' (entrega própria)' : ''))}
                 ${f.aguardando_aceite && !finalizado ? '<p class="font-bold text-amber-700">Aguardando aceite</p>' : ''}
+                ${f.cancelamento_solicitado && !finalizado ? '<p class="font-bold text-amber-700">Cancelamento pedido: aguardando a confirmação do iFood.</p>' : ''}
+                ${f.codigo_entrega_solicitado && !finalizado ? '<p class="font-semibold text-indigo-700">O iFood pede o código de entrega: peça ao cliente na entrega.</p>' : ''}
+                ${p.status === 'cancelado' && f.cancelado_por ? `<p class="font-semibold text-red-700">Cancelado ${f.cancelado_por === 'ifood' ? 'pelo iFood/cliente' : 'pela loja'}.</p>` : ''}
                 ${linha('Cliente', p.cliente)}
                 ${linha('Telefone', f.telefone ? f.telefone + (f.localizador ? ' · localizador ' + f.localizador : '') : '')}
                 ${linha('Endereço', f.endereco)}
@@ -258,7 +324,15 @@
                 ${linha('Agendado para', dataHora(f.agendado_para))}
                 ${linha('Observações', f.observacoes)}
                 ${f.erro ? `<p class="mt-1 rounded-lg bg-red-100 text-red-700 px-2 py-1 text-xs">${escHtml(f.erro)}</p>` : ''}
-            </div>` : ''}
+            </div>
+            ${f.disputa && !finalizado ? `
+            <div class="mb-3 rounded-xl bg-red-100 ring-2 ring-red-400 px-4 py-3 text-sm flex flex-col gap-1">
+                <p class="font-bold text-red-800">O cliente pede: ${escHtml(f.disputa.acao_rotulo)}</p>
+                ${f.disputa.mensagem ? `<p class="text-red-900">"${escHtml(f.disputa.mensagem)}"</p>` : ''}
+                ${f.disputa.itens.length ? `<p class="text-red-900">Itens: ${escHtml(f.disputa.itens.join(', '))}</p>` : ''}
+                ${f.disputa.valor ? `<p class="text-red-900">Valor: ${escHtml(moeda(f.disputa.valor))}</p>` : ''}
+                ${f.disputa.expira_em ? `<p class="text-xs text-red-700">Responda até ${escHtml(dataHora(f.disputa.expira_em))}${f.disputa.no_prazo ? ' · sem resposta, o iFood ' + (String(f.disputa.no_prazo).startsWith('ACCEPT') ? 'aceita' : 'recusa') + ' sozinho' : ''}.</p>` : ''}
+            </div>` : ''}` : ''}
             <div class="rounded-xl bg-slate-50 ring-1 ring-slate-200 px-4 py-3 text-sm flex flex-col gap-1">
                 ${f ? '' : linha('Garçom', p.garcom || '—')}
                 ${linha('Pedido', dataHora(p.enviado_em))}
@@ -325,13 +399,18 @@
 
         // Ações no rodapé: voltar etapa e fechar a conta da mesa (pedido ainda em aberto)
         const acoes = [];
-        if (PODE_ALTERAR && f?.aguardando_aceite && !finalizado) {
+        if (PODE_ALTERAR && f?.disputa && !finalizado) {
+            acoes.push(`<button type="button" onclick="DisputaIfood.abrir(${p.id})"
+                class="rounded-xl px-3.5 py-2.5 text-sm font-semibold text-red-600 ring-1 ring-red-200 hover:bg-red-50">Recusar</button>`);
+            acoes.push(`<button type="button" onclick="DisputaIfood.aceitar(${p.id}, this)"
+                class="ml-auto rounded-xl bg-[#EA1D2C] hover:bg-[#c81624] text-white px-3.5 py-2.5 text-sm font-semibold disabled:opacity-60">Aceitar pedido do cliente →</button>`);
+        } else if (PODE_ALTERAR && f?.aguardando_aceite && !finalizado) {
             acoes.push(`<button type="button" onclick="cancelarPedido(${p.id})"
                 class="rounded-xl px-3.5 py-2.5 text-sm font-semibold text-red-600 ring-1 ring-red-200 hover:bg-red-50">Recusar</button>`);
             acoes.push(`<button type="button" onclick="aceitarIfood(${p.id}, this)"
                 class="ml-auto rounded-xl bg-[#EA1D2C] hover:bg-[#c81624] text-white px-3.5 py-2.5 text-sm font-semibold disabled:opacity-60">Aceitar pedido →</button>`);
         }
-        if (PODE_ALTERAR && !finalizado && p.status !== 'preparo') {
+        if (PODE_ALTERAR && !finalizado && p.status !== 'preparo' && !f?.cancelamento_solicitado && !f?.disputa) {
             acoes.push(`<button type="button" onclick="mudarStatus(${p.id}, 'preparo')"
                 class="rounded-xl px-3.5 py-2.5 text-sm font-medium text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50">Voltar para preparo</button>`);
         }
@@ -403,18 +482,19 @@
 
     // Captura (antes do Esc da janela de fechar conta): fecha esta só quando ela é a de cima
     window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && detalheAberto !== null && document.getElementById('modal-fechar-conta').classList.contains('hidden')) fecharDetalhe();
+        if (e.key === 'Escape' && detalheAberto !== null && document.getElementById('modal-fechar-conta').classList.contains('hidden')
+            && !EntregaIfood.aberto() && !DisputaIfood.aberto() && !CancelarIfood.aberto()) fecharDetalhe();
     }, true);
 
     // ===== Ações =====
-    function avisar(texto, erro = false) {
+    function avisar(texto, erro = false, duracao = 5000) {
         const aviso = document.getElementById('aviso-pedidos');
         aviso.textContent = texto;
         aviso.classList.toggle('bg-red-600', erro);
         aviso.classList.toggle('bg-[#10284A]', !erro);
         aviso.classList.remove('hidden');
         clearTimeout(avisar.timer);
-        avisar.timer = setTimeout(() => aviso.classList.add('hidden'), 5000);
+        avisar.timer = setTimeout(() => aviso.classList.add('hidden'), duracao);
     }
 
     // ===== iFood =====
@@ -520,23 +600,134 @@
         mudarStatus(id, 'cancelado');
     }
 
-    async function mudarStatus(id, status) {
+    // extra: { codigo_entrega } na entrega própria do iFood. Devolve true quando deu certo.
+    async function mudarStatus(id, status, extra = null) {
+        // Entrega própria do iFood: pede o código de entrega do cliente antes
+        if (status === 'entregue' && extra === null && buscarPedido(id)?.ifood?.entrega_propria) {
+            EntregaIfood.abrir(buscarPedido(id));
+            return false;
+        }
         try {
             const resp = await fetch(URL_STATUS.replace('__ID__', id), {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': CSRF_PEDIDOS },
-                body: JSON.stringify({ status }),
+                body: JSON.stringify({ status, ...(extra || {}) }),
             });
-            if (resp.redirected) return location.reload();
+            if (resp.redirected) { location.reload(); return false; }
             const r = await resp.json().catch(() => ({}));
             if (!resp.ok) throw new Error(r.message || 'Não foi possível mudar a situação.');
             dados = r;
             desenhar();
             if (status === 'pronto') avisar(`Pedido #${id} pronto: o garçom foi avisado.`);
+            return true;
         } catch (e) {
+            if (extra !== null) throw e; // a janela do código mostra o erro
             avisar(e.message, true);
+            return false;
         }
     }
+
+    // Entrega própria do iFood: confirma com o código do cliente (o iFood conclui lá) ou finaliza só aqui
+    window.EntregaIfood = (function () {
+        const modal = () => document.getElementById('modal-entrega-ifood');
+        const parte = (n) => modal().querySelector(`[data-ei="${n}"]`);
+        let pedido = null;
+
+        function abrir(p) {
+            pedido = p;
+            parte('titulo').textContent = `Entregar o pedido iFood #${p.ifood.numero || p.id}`;
+            parte('codigo').value = '';
+            erro('');
+            ocupado(false);
+            modal().classList.remove('hidden'); modal().classList.add('flex');
+            parte('codigo').focus();
+        }
+        function fechar() { modal().classList.add('hidden'); modal().classList.remove('flex'); pedido = null; }
+        function erro(texto) { parte('erro').textContent = texto || ''; parte('erro').classList.toggle('hidden', !texto); }
+        function ocupado(sim) { parte('confirmar').disabled = sim; parte('sem-codigo').disabled = sim; }
+
+        async function enviar(codigo) {
+            if (!pedido) return;
+            ocupado(true);
+            try {
+                const id = pedido.id;
+                await mudarStatus(id, 'entregue', { codigo_entrega: codigo });
+                fechar();
+                avisar(codigo ? `Entrega do pedido #${id} confirmada no iFood.` : `Pedido #${id} finalizado no sistema.`);
+            } catch (e) {
+                erro(e.message === 'Failed to fetch' ? 'Sem conexão com o servidor.' : e.message);
+                ocupado(false);
+            }
+        }
+
+        function confirmar() {
+            const codigo = parte('codigo').value.replace(/\D/g, '');
+            if (!codigo) return erro('Digite o código de entrega que o cliente informou.');
+            enviar(codigo);
+        }
+        function semCodigo() {
+            if (confirm('Finalizar só no sistema, sem o código?\n\nNo iFood o pedido continua "a caminho" até ele concluir sozinho.')) enviar('');
+        }
+
+        return { abrir, fechar, confirmar, semCodigo, aberto: () => pedido !== null };
+    })();
+
+    // Pedido do cliente no iFood (cancelamento / reembolso): aceitar ou recusar com motivo
+    window.DisputaIfood = (function () {
+        const modal = () => document.getElementById('modal-disputa-ifood');
+        const parte = (n) => modal().querySelector(`[data-di="${n}"]`);
+        const url = @json(route('comanda-pedidos.ifood.disputa', ['pedido' => '__ID__']));
+        let pedidoId = null;
+
+        async function aceitar(id, botao) {
+            const p = buscarPedido(id);
+            if (!p?.ifood?.disputa) return;
+            if (!confirm(`Aceitar o pedido do cliente (${p.ifood.disputa.acao_rotulo}) no iFood #${p.ifood.numero || id}?`)) return;
+            if (botao) botao.disabled = true;
+            try {
+                const r = await postarJson(url.replace('__ID__', id), { acao: 'aceitar' });
+                dados = r; desenhar(); avisar(r.message);
+            } catch (e) {
+                avisar(e.message === 'Failed to fetch' ? 'Sem conexão com o servidor.' : e.message, true);
+                if (botao) botao.disabled = false;
+            }
+        }
+
+        function abrir(id) {
+            const p = buscarPedido(id);
+            if (!p?.ifood?.disputa) return;
+            pedidoId = id;
+            parte('titulo').textContent = `Recusar: ${p.ifood.disputa.acao_rotulo} (iFood #${p.ifood.numero || id})`;
+            parte('motivo').value = '';
+            erro('');
+            parte('confirmar').disabled = false;
+            modal().classList.remove('hidden'); modal().classList.add('flex');
+            parte('motivo').focus();
+        }
+        function fechar() { modal().classList.add('hidden'); modal().classList.remove('flex'); pedidoId = null; }
+        function erro(texto) { parte('erro').textContent = texto || ''; parte('erro').classList.toggle('hidden', !texto); }
+
+        async function recusar() {
+            const motivo = parte('motivo').value.trim();
+            if (!motivo) return erro('Escreva o motivo da recusa.');
+            parte('confirmar').disabled = true;
+            try {
+                const r = await postarJson(url.replace('__ID__', pedidoId), { acao: 'recusar', motivo });
+                fechar(); dados = r; desenhar(); avisar(r.message);
+            } catch (e) {
+                erro(e.message === 'Failed to fetch' ? 'Sem conexão com o servidor.' : e.message);
+                parte('confirmar').disabled = false;
+            }
+        }
+
+        return { aceitar, abrir, fechar, recusar, aberto: () => pedidoId !== null };
+    })();
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        if (EntregaIfood.aberto()) { e.stopImmediatePropagation(); EntregaIfood.fechar(); }
+        else if (DisputaIfood.aberto()) { e.stopImmediatePropagation(); DisputaIfood.fechar(); }
+    }, true);
 
     // Conta já paga: abre o resumo de todos os pedidos da mesa com o pagamento (só leitura)
     function verConta(comandaId) {
@@ -556,14 +747,16 @@
     }
 
     // ===== Atualização automática e aviso de pedido novo =====
-    function bipe() {
+    // urgente: três toques mais agudos (pedido esperando aceite, cancelamento, pedido do cliente)
+    function bipe(urgente = false) {
         if (!somLigado) return;
         try {
             const ctx = bipe.ctx ??= new (window.AudioContext || window.webkitAudioContext)();
-            [0, 0.18].forEach(atraso => {
+            if (ctx.state === 'suspended') ctx.resume();
+            (urgente ? [0, 0.18, 0.36] : [0, 0.18]).forEach(atraso => {
                 const osc = ctx.createOscillator();
                 const vol = ctx.createGain();
-                osc.frequency.value = 880;
+                osc.frequency.value = urgente ? 1175 : 880;
                 vol.gain.setValueAtTime(0.15, ctx.currentTime + atraso);
                 vol.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + atraso + 0.15);
                 osc.connect(vol).connect(ctx.destination);
@@ -592,17 +785,40 @@
             if (!resp.ok) return;
             const novos = await resp.json();
             const chegaram = novos.colunas.preparo.filter(p => p.id > ultimoId);
+            const anteriores = new Map(Object.values(dados.colunas).flat().map(p => [p.id, p]));
+            const todos = Object.values(novos.colunas).flat();
+            // iFood/cliente cancelou um pedido que estava em andamento aqui
+            const canceladosIfood = todos.filter(p => p.status === 'cancelado' && p.ifood?.cancelado_por === 'ifood'
+                && anteriores.has(p.id) && anteriores.get(p.id).status !== 'cancelado');
+            // Cliente pediu cancelamento / reembolso (novo)
+            const disputasNovas = todos.filter(p => p.ifood?.disputa && !anteriores.get(p.id)?.ifood?.disputa);
             ultimoId = Math.max(ultimoId, novos.ultimo_id);
             dados = novos;
             desenhar();
-            if (chegaram.length) {
+            if (canceladosIfood.length) {
+                bipe(true);
+                avisar(`ATENÇÃO: o iFood cancelou ${canceladosIfood.map(p => '#' + (p.ifood.numero || p.id)).join(', ')}. Pare o preparo.`, true, 20000);
+            } else if (disputasNovas.length) {
+                bipe(true);
+                avisar(`Cliente do iFood #${disputasNovas[0].ifood.numero || disputasNovas[0].id} pede: ${disputasNovas[0].ifood.disputa.acao_rotulo}. Responda no pedido.`, true, 20000);
+            } else if (chegaram.length) {
                 bipe();
                 avisar(chegaram.length === 1
-                    ? `Novo pedido #${chegaram[0].id} — ${chegaram[0].mesa ?? ''}`
+                    ? `Novo pedido #${chegaram[0].id} — ${chegaram[0].ifood ? 'iFood #' + (chegaram[0].ifood.numero || '') : (chegaram[0].mesa ?? '')}`
                     : `${chegaram.length} pedidos novos chegaram.`);
             }
         } catch (e) { /* sem conexão: tenta de novo no próximo ciclo */ }
     }
+
+    // Alerta insistente: enquanto houver pedido do iFood esperando a loja (aceite ou pedido do cliente), bipa a cada 5 s.
+    // O iFood cancela sozinho o pedido que não é aceito em poucos minutos.
+    const TITULO_PAGINA = document.title;
+    setInterval(() => {
+        const esperando = Object.values(dados.colunas).flat().filter(p => !['concluido', 'cancelado'].includes(p.status)
+            && (p.ifood?.aguardando_aceite || p.ifood?.disputa));
+        document.title = esperando.length ? `(${esperando.length}) iFood esperando · ${TITULO_PAGINA}` : TITULO_PAGINA;
+        if (esperando.length && PODE_ALTERAR) bipe(true);
+    }, 5000);
 
     setInterval(atualizar, 8000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) atualizar(); });

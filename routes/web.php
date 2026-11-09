@@ -324,6 +324,7 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
             Route::post('comandas/pedidos/{pedido}/ifood/aceitar', [\App\Http\Controllers\PedidoComandaController::class, 'aceitarIfood'])->name('comanda-pedidos.ifood.aceitar');
             Route::get('comandas/pedidos/{pedido}/ifood/motivos', [\App\Http\Controllers\PedidoComandaController::class, 'motivosIfood'])->name('comanda-pedidos.ifood.motivos');
             Route::post('comandas/pedidos/{pedido}/ifood/cancelar', [\App\Http\Controllers\PedidoComandaController::class, 'cancelarIfood'])->name('comanda-pedidos.ifood.cancelar');
+            Route::post('comandas/pedidos/{pedido}/ifood/disputa', [\App\Http\Controllers\PedidoComandaController::class, 'disputaIfood'])->name('comanda-pedidos.ifood.disputa');
             Route::post('comandas/pedidos/{pedido}/imprimir',[\App\Http\Controllers\PedidoComandaController::class, 'imprimir'])
                 ->middleware('throttle:30,1')->name('comanda-pedidos.imprimir');
 

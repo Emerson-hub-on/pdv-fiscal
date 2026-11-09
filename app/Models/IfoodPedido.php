@@ -38,6 +38,7 @@ class IfoodPedido extends Model
         'entregue_por', 'cliente_nome', 'cliente_telefone', 'localizador', 'endereco', 'codigo_retirada',
         'subtotal', 'taxa_entrega', 'descontos', 'taxas_adicionais', 'total', 'pago_online', 'cobrar_na_entrega',
         'pagamentos', 'observacoes', 'agendado_para', 'criado_ifood_em', 'confirmado_em', 'ultimo_erro', 'payload',
+        'codigo_entrega_solicitado_em', 'cancelamento_solicitado_em', 'cancelado_por', 'disputa',
     ];
 
     protected $casts = [
@@ -53,6 +54,9 @@ class IfoodPedido extends Model
         'agendado_para'    => 'datetime',
         'criado_ifood_em'  => 'datetime',
         'confirmado_em'    => 'datetime',
+        'codigo_entrega_solicitado_em' => 'datetime',
+        'cancelamento_solicitado_em'   => 'datetime',
+        'disputa'          => 'array',
     ];
 
     public function pedido(): BelongsTo
@@ -64,6 +68,19 @@ class IfoodPedido extends Model
     {
         return $this->status === self::PLACED;
     }
+
+    /** Entrega feita pela própria loja: o iFood só conclui com o código que o cliente informa ao entregador. */
+    public function entregaPropria(): bool
+    {
+        return $this->tipo === 'DELIVERY' && $this->entregue_por === 'MERCHANT';
+    }
+
+    /** Ações da disputa (o que o cliente pede) em português. */
+    public const ACOES_DISPUTA = [
+        'CANCELLATION'           => 'Cancelar o pedido',
+        'PARTIAL_CANCELLATION'   => 'Cancelar parte do pedido',
+        'PROPOSED_AMOUNT_REFUND' => 'Reembolso de um valor',
+    ];
 
     public function paraTela(): array
     {
@@ -97,6 +114,19 @@ class IfoodPedido extends Model
             'observacoes'       => $this->observacoes,
             'agendado_para'     => $this->agendado_para?->toIso8601String(),
             'erro'              => $this->ultimo_erro,
+            'entrega_propria'   => $this->entregaPropria(),
+            'codigo_entrega_solicitado' => $this->codigo_entrega_solicitado_em !== null,
+            'cancelamento_solicitado'   => $this->cancelamento_solicitado_em !== null && $this->status !== self::CANCELLED,
+            'cancelado_por'     => $this->cancelado_por,
+            'disputa'           => $this->disputa ? [
+                'acao'      => $this->disputa['acao'] ?? null,
+                'acao_rotulo' => self::ACOES_DISPUTA[$this->disputa['acao'] ?? ''] ?? ($this->disputa['acao'] ?? 'Pedido do cliente'),
+                'mensagem'  => $this->disputa['mensagem'] ?? null,
+                'expira_em' => $this->disputa['expira_em'] ?? null,
+                'no_prazo'  => $this->disputa['no_prazo'] ?? null,
+                'itens'     => $this->disputa['itens'] ?? [],
+                'valor'     => $this->disputa['valor'] ?? null,
+            ] : null,
         ];
     }
 }

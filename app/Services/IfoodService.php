@@ -510,8 +510,13 @@ class IfoodService
         $codigo = strtoupper((string) ($evento['fullCode'] ?? $evento['code'] ?? ''));
         $codigo = match ($codigo) {
             'PLC' => 'PLACED', 'CFM' => 'CONFIRMED', 'RTP' => 'READY_TO_PICKUP', 'DSP' => 'DISPATCHED',
-            'CON' => 'CONCLUDED', 'CAN' => 'CANCELLED', default => $codigo,
+            'CON' => 'CONCLUDED', 'CAN' => 'CANCELLED', 'CAR' => 'CANCELLATION_REQUESTED',
+            'CARF' => 'CANCELLATION_REQUEST_FAILED', 'HSD' => 'HANDSHAKE_DISPUTE', 'HSS' => 'HANDSHAKE_SETTLEMENT',
+            'CCR' => 'CONSUMER_CANCELLATION_REQUESTED', 'CCA' => 'CONSUMER_CANCELLATION_ACCEPTED',
+            'CCD' => 'CONSUMER_CANCELLATION_DENIED',
+            default => $codigo,
         };
+        $meta = (array) ($evento['metadata'] ?? []);
 
         if ($codigo === 'PLACED') {
             return $this->importarPedido($cfg, $orderId);
@@ -531,6 +536,8 @@ class IfoodService
         }
 
         $pedido = $ifood->pedido;
+        $aberto = $pedido && !in_array($pedido->status, [ComandaPedido::CONCLUIDO, ComandaPedido::CANCELADO], true);
+        $texto = fn (...$chaves) => collect($chaves)->map(fn ($c) => $meta[$c] ?? null)->first(fn ($v) => is_string($v) && trim($v) !== '');
 
         switch ($codigo) {
             case 'CONFIRMED':
@@ -544,23 +551,85 @@ class IfoodService
                 }
                 break;
             case 'CONCLUDED':
-                $ifood->update(['status' => IfoodPedido::CONCLUDED]);
-                if ($pedido && !in_array($pedido->status, [ComandaPedido::CONCLUIDO, ComandaPedido::CANCELADO], true)) {
+                $ifood->update(['status' => IfoodPedido::CONCLUDED, 'codigo_entrega_solicitado_em' => null, 'disputa' => null]);
+                if ($aberto) {
                     $pedido->mudarStatus(ComandaPedido::CONCLUIDO, null);
                 }
                 break;
             case 'CANCELLED':
-                $ifood->update(['status' => IfoodPedido::CANCELLED]);
-                if ($pedido && !in_array($pedido->status, [ComandaPedido::CONCLUIDO, ComandaPedido::CANCELADO], true)) {
+                // Sem pedido de cancelamento da loja em andamento: foi o cliente ou o iFood → avisa a cozinha
+                $porLoja = $ifood->cancelado_por === 'loja' || $ifood->cancelamento_solicitado_em !== null;
+                $motivo = $texto('CANCEL_REASON', 'reason', 'cancelReason', 'CANCELLATION_REASON', 'message');
+                $ifood->update([
+                    'status'        => IfoodPedido::CANCELLED,
+                    'cancelado_por' => $porLoja ? 'loja' : 'ifood',
+                    'disputa'       => null,
+                    'ultimo_erro'   => $porLoja ? null : mb_substr('Cancelado pelo iFood/cliente' . ($motivo ? ": {$motivo}" : '.'), 0, 500),
+                ]);
+                if ($aberto) {
                     $pedido->mudarStatus(ComandaPedido::CANCELADO, null);
+                    if (!$porLoja) {
+                        try {
+                            $this->impressao->imprimirCancelamento($pedido->refresh(), $motivo);
+                        } catch (Throwable $e) {
+                            Log::warning('iFood: impressão do cancelamento falhou: ' . $e->getMessage());
+                        }
+                    }
                 }
                 break;
+            case 'CANCELLATION_REQUEST_FAILED':
+                // O iFood não aceitou o cancelamento pedido pela loja: o pedido continua valendo
+                $motivo = $texto('reason', 'message', 'CANCEL_REASON', 'description');
+                $ifood->update([
+                    'cancelamento_solicitado_em' => null,
+                    'cancelado_por'              => null,
+                    'ultimo_erro'                => mb_substr('O iFood não aceitou o cancelamento' . ($motivo ? ": {$motivo}" : '. O pedido continua valendo.'), 0, 500),
+                ]);
+                break;
+            case 'DELIVERY_DROP_CODE_REQUESTED':
+                // Entrega própria: o iFood só conclui o pedido com o código que o cliente dá ao entregador
+                $ifood->update(['codigo_entrega_solicitado_em' => $ifood->codigo_entrega_solicitado_em ?? now()]);
+                break;
+            case 'HANDSHAKE_DISPUTE':
+            case 'CONSUMER_CANCELLATION_REQUESTED':
+                // Cliente pediu cancelamento / reembolso: a loja aceita ou recusa dentro do prazo
+                $ifood->update(['disputa' => $this->dadosDisputa($meta, $codigo === 'CONSUMER_CANCELLATION_REQUESTED')]);
+                break;
+            case 'HANDSHAKE_SETTLEMENT':
+            case 'CONSUMER_CANCELLATION_ACCEPTED':
+            case 'CONSUMER_CANCELLATION_DENIED':
+                $ifood->update(['disputa' => null]);
+                Log::info('iFood: negociação encerrada ' . $codigo, ['orderId' => $orderId, 'metadata' => $meta]);
+                break;
             default:
-                // Outros eventos (pedido de cancelamento, entregador chegando...) só ficam registrados no log
-                Log::info('iFood: evento ' . $codigo, ['orderId' => $orderId]);
+                // Outros eventos (entregador chegando, código validado...) só ficam registrados no log
+                Log::info('iFood: evento ' . $codigo, ['orderId' => $orderId, 'metadata' => $meta]);
         }
 
         return false;
+    }
+
+    /** Dados da disputa (Plataforma de Negociação) ou do pedido de cancelamento do cliente (modelo antigo). */
+    private function dadosDisputa(array $m, bool $legado): array
+    {
+        $expira = $m['expiresAt'] ?? null;
+        $mensagem = collect([$m['message'] ?? null, $m['reason'] ?? null])->first(fn ($v) => is_string($v) && $v !== '');
+        $valor = data_get($m, 'metadata.proposedAmountRefund.value', data_get($m, 'proposedAmount.value'));
+
+        return [
+            'id'          => $m['disputeId'] ?? $m['handshakeId'] ?? $m['id'] ?? null,
+            'legado'      => $legado,
+            'acao'        => $legado ? 'CANCELLATION' : ($m['action'] ?? null),
+            'tipo'        => $m['handshakeType'] ?? null,
+            'mensagem'    => $mensagem ? mb_substr($mensagem, 0, 500) : null,
+            'expira_em'   => $expira ? \Illuminate\Support\Carbon::parse($expira)->setTimezone(config('app.timezone'))->toIso8601String() : null,
+            'no_prazo'    => $m['timeoutAction'] ?? null,
+            'itens'       => collect(data_get($m, 'metadata.items', $m['items'] ?? []))
+                ->map(fn ($i) => is_array($i) ? trim((isset($i['quantity']) ? ((int) $i['quantity']) . 'x ' : '') . ($i['name'] ?? $i['description'] ?? '')) : '')
+                ->filter()->values()->all(),
+            'valor'       => is_numeric($valor) ? (float) $valor : null,
+            'recebida_em' => now()->toIso8601String(),
+        ];
     }
 
     /** Busca o pedido no iFood e cria na Lista de Pedidos (uma vez só). Aceita sozinho se configurado. */
@@ -717,18 +786,63 @@ class IfoodService
             ->filter(fn ($m) => $m['codigo'] !== '')->values()->all();
     }
 
-    /** Pede o cancelamento ao iFood; o pedido fica cancelado aqui quando o iFood confirmar (evento) ou já agora. */
+    /**
+     * Pede o cancelamento ao iFood. O pedido só fica cancelado aqui quando o iFood confirmar (evento CANCELLED):
+     * se ele recusar (CANCELLATION_REQUEST_FAILED), o pedido continua valendo e a tela mostra o motivo.
+     */
     public function cancelar(IfoodConfiguracao $cfg, IfoodPedido $ifood, string $codigo, string $motivo): void
     {
+        if ($ifood->cancelamento_solicitado_em && $ifood->status !== IfoodPedido::CANCELLED) {
+            throw new RuntimeException('O cancelamento deste pedido já foi pedido: aguardando a resposta do iFood.');
+        }
+
         $this->chamar($cfg, 'post', "/order/v1.0/orders/{$ifood->ifood_order_id}/requestCancellation", [
             'reason'           => mb_substr($motivo, 0, 250),
             'cancellationCode' => $codigo,
         ]);
-        $ifood->update(['status' => IfoodPedido::CANCELLED, 'ultimo_erro' => null]);
-        $pedido = $ifood->pedido;
-        if ($pedido && !in_array($pedido->status, [ComandaPedido::CONCLUIDO, ComandaPedido::CANCELADO], true)) {
-            $pedido->mudarStatus(ComandaPedido::CANCELADO, auth()->id());
+        $ifood->update(['cancelamento_solicitado_em' => now(), 'cancelado_por' => 'loja', 'ultimo_erro' => null]);
+    }
+
+    /** Entrega própria: confirma a entrega com o código que o cliente informa ao entregador. O iFood conclui o pedido. */
+    public function confirmarEntrega(IfoodConfiguracao $cfg, IfoodPedido $ifood, string $codigo): void
+    {
+        $codigo = preg_replace('/\D/', '', $codigo);
+        if ($codigo === '') {
+            throw new RuntimeException('Digite o código de entrega que o cliente informou.');
         }
+
+        $resp = $this->chamar($cfg, 'post', "/order/v1.0/orders/{$ifood->ifood_order_id}/verifyDeliveryCode", ['code' => $codigo]);
+        if (is_array($resp) && array_key_exists('success', $resp) && !$resp['success']) {
+            throw new RuntimeException('Código de entrega incorreto. Confira com o cliente e tente de novo.');
+        }
+
+        $ifood->update(['codigo_entrega_solicitado_em' => null, 'ultimo_erro' => null]);
+    }
+
+    /** Responde ao pedido de cancelamento / reembolso do cliente: aceitar ou recusar (com motivo). */
+    public function responderDisputa(IfoodConfiguracao $cfg, IfoodPedido $ifood, bool $aceitar, ?string $motivo = null): void
+    {
+        $d = $ifood->disputa;
+        if (!$d) {
+            throw new RuntimeException('Este pedido não tem pedido do cliente aguardando resposta.');
+        }
+        $motivo = trim((string) $motivo);
+        if (!$aceitar && $motivo === '') {
+            throw new RuntimeException('Escreva o motivo da recusa (o cliente vai ver).');
+        }
+        $corpo = $aceitar ? [] : ['reason' => mb_substr($motivo, 0, 250)];
+
+        if (!empty($d['legado'])) {
+            $this->chamar($cfg, 'post', "/order/v1.0/orders/{$ifood->ifood_order_id}/" . ($aceitar ? 'acceptCancellation' : 'denyCancellation'), $corpo);
+        } else {
+            if (blank($d['id'] ?? null)) {
+                throw new RuntimeException('O iFood não informou o número da negociação: responda pelo Portal do Parceiro.');
+            }
+            $this->chamar($cfg, 'post', "/order/v1.0/disputes/{$d['id']}/" . ($aceitar ? 'accept' : 'reject'), $corpo);
+        }
+
+        // Aceitou o cancelamento: o iFood manda o CANCELLED em seguida
+        $ifood->update(['disputa' => null, 'ultimo_erro' => null, 'cancelado_por' => $aceitar ? 'ifood' : $ifood->cancelado_por]);
     }
 
     // =====================================================================
