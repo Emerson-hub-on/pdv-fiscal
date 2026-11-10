@@ -122,6 +122,7 @@ class VendaLocal extends Venda
             'ind_pres' => $linha->ind_pres ?? null,
             'intermediador_cnpj' => $linha->intermediador_cnpj ?? null,
             'intermediador_id' => $linha->intermediador_id ?? null,
+            'destinatario' => isset($linha->destinatario) ? json_decode($linha->destinatario, true) : null,
         ];
     }
 

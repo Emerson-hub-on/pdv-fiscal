@@ -120,6 +120,7 @@ class PedidoRestauranteController extends Controller
                 'restaurante_ref_id' => $id,
                 'restaurante_rotulo' => $venda['rotulo'],
                 'ind_pres' => $venda['ind_pres'],
+                'destinatario' => $venda['destinatario'] ? json_encode($venda['destinatario'], JSON_UNESCAPED_UNICODE) : null,
                 'intermediador_cnpj' => $venda['intermediador_cnpj'],
                 'intermediador_id' => $venda['intermediador_id'],
                 'vendida_em' => now(),

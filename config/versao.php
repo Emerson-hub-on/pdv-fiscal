@@ -11,6 +11,14 @@
 
 $historico = [
     [
+        'versao' => '1.29.3',
+        'data' => '2026-11-10',
+        'itens' => [
+            'NFC-e do iFood: corrigida a rejeição 787 (entrega a domicílio sem destinatário). Pedido de entrega com CPF e endereço válido (município achado no cadastro do IBGE) sai como entrega (indPres 4) com CPF, nome e endereço; sem eles, sai como presencial (indPres 1), mantendo o iFood como intermediador.',
+            'O reenvio de uma NFC-e de entrega rejeitada por falta de destinatário já sai como presencial.',
+        ],
+    ],
+    [
         'versao' => '1.29.2',
         'data' => '2026-11-10',
         'itens' => [

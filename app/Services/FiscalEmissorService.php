@@ -33,6 +33,8 @@ class FiscalEmissorService
 
     /** Presença do comprador (indPres) e intermediador (iFood) da venda que está sendo emitida. */
     protected int $indPres = 1;
+    /** Destinatário da entrega em domicílio (iFood): CPF, nome e endereço. */
+    protected ?array $destinatarioEntrega = null;
     protected ?array $intermediador = null;
 
 public function emitir(Venda $venda): array
@@ -912,6 +914,19 @@ if ($empresa->crt <= 2) {
             return;
         }
 
+        // Entrega em domicílio (iFood): CPF, nome e endereço de entrega guardados na venda
+        if ($this->destinatarioEntrega) {
+            $d = $this->destinatarioEntrega;
+            $nfe->tagdest((object) ['CPF' => $d['cpf'], 'xNome' => $d['nome'], 'indIEDest' => 9]);
+            $nfe->tagenderDest((object) [
+                'xLgr' => $d['xLgr'], 'nro' => $d['nro'], 'xCpl' => $d['xCpl'] ?? null, 'xBairro' => $d['xBairro'],
+                'cMun' => $d['cMun'], 'xMun' => $d['xMun'], 'UF' => $d['UF'], 'CEP' => $d['CEP'],
+                'cPais' => '1058', 'xPais' => 'Brasil',
+            ]);
+
+            return;
+        }
+
         // CPF avulso ("informar CPF na nota") - sem cadastro completo, so o
         // documento mesmo. xNome generico porque nao coletamos nome nesse fluxo.
         if ($venda->cpf_na_nota) {
@@ -1009,6 +1024,17 @@ protected function montarTotais(Make $nfe, Venda $venda): void
     {
         $indPres = (int) ($venda->ind_pres ?? 1);
         $this->indPres = in_array($indPres, [1, 4], true) ? $indPres : 1;
+
+        // Entrega (4) só com o destinatário completo; sem ele a SEFAZ rejeita (787/788) - inclusive no reenvio
+        // de uma venda gravada antes dessa regra -, então sai como presencial (1).
+        $dest = is_array($venda->destinatario ?? null) ? $venda->destinatario : null;
+        $completo = $dest && collect(['cpf', 'nome', 'xLgr', 'nro', 'xBairro', 'cMun', 'xMun', 'UF', 'CEP'])
+            ->every(fn ($campo) => trim((string) ($dest[$campo] ?? '')) !== '');
+        $this->destinatarioEntrega = $this->indPres === 4 && $completo && !$venda->cliente ? $dest : null;
+
+        if ($this->indPres === 4 && !$this->destinatarioEntrega && !$venda->cliente) {
+            $this->indPres = 1;
+        }
         $cnpj = preg_replace('/\D/', '', (string) ($venda->intermediador_cnpj ?? ''));
 
         $this->intermediador = strlen($cnpj) === 14

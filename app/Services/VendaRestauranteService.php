@@ -192,6 +192,7 @@ class VendaRestauranteService
             'troco'      => $troco,
             'cpf'        => null,
             'ind_pres'   => 1,
+            'destinatario' => null,
             'intermediador_cnpj' => null,
             'intermediador_id'   => null,
             'resumo_pagamento'   => $conta->pagamentos->pluck('descricao')->unique()->implode(', '),
@@ -241,6 +242,11 @@ class VendaRestauranteService
         }
 
         $cpf = preg_replace('/\D/', '', (string) data_get($ifood?->payload, 'customer.documentNumber'));
+        $cpf = strlen($cpf) === 11 ? $cpf : null;
+
+        // Entrega em domicílio (indPres 4) exige destinatário com CPF e endereço completo (rejeições 787/788).
+        // Sem isso (o iFood quase nunca manda o CPF), a NFC-e sai como presencial (1), com o iFood de intermediador.
+        $destinatario = ($ifood?->tipo ?? 'DELIVERY') === 'DELIVERY' ? $this->destinatario($ifood, $cpf) : null;
 
         return [
             'rotulo'     => mb_substr($rotulo, 0, 60),
@@ -249,13 +255,52 @@ class VendaRestauranteService
             'total'      => $total,
             'pagamentos' => $pagamentos,
             'troco'      => 0.0,
-            'cpf'        => strlen($cpf) === 11 ? $cpf : null,
+            'cpf'        => $cpf,
             // NFC-e só aceita presencial (1) ou entrega em domicílio (4)
-            'ind_pres'   => ($ifood?->tipo ?? 'DELIVERY') === 'DELIVERY' ? 4 : 1,
+            'ind_pres'   => $destinatario ? 4 : 1,
+            'destinatario' => $destinatario,
             'intermediador_cnpj' => IfoodPedido::CNPJ_INTERMEDIADOR,
             'intermediador_id'   => $ifood?->merchant_id ? mb_substr($ifood->merchant_id, 0, 60) : null,
             'resumo_pagamento'   => $ifood ? collect($ifood->paraTela()['pagamentos'])->pluck('descricao')->implode(', ') : '',
             'problemas'  => array_values(array_unique($problemas)),
+        ];
+    }
+
+    /**
+     * Destinatário da NFC-e de entrega: CPF do cliente + endereço de entrega do iFood, com o município achado
+     * no cadastro do IBGE pela cidade e UF. Retorna null se faltar qualquer dado obrigatório.
+     */
+    private function destinatario(?IfoodPedido $ifood, ?string $cpf): ?array
+    {
+        $end = (array) data_get($ifood?->payload, 'delivery.deliveryAddress', []);
+        $uf = mb_strtoupper(trim((string) ($end['state'] ?? '')));
+        $cidade = trim((string) ($end['city'] ?? ''));
+        $cep = preg_replace('/\D/', '', (string) ($end['postalCode'] ?? ''));
+        $lgr = trim((string) ($end['streetName'] ?? ''));
+        $nro = trim((string) ($end['streetNumber'] ?? '')) ?: 'S/N';
+        $bairro = trim((string) ($end['neighborhood'] ?? ''));
+
+        if (!$cpf || strlen($uf) !== 2 || $cidade === '' || strlen($cep) !== 8 || $lgr === '' || $bairro === '') {
+            return null;
+        }
+
+        $municipio = \App\Models\Municipio::where('uf', $uf)->where('nome_busca', \App\Models\Municipio::normalizar($cidade))->first();
+
+        if (!$municipio) {
+            return null;
+        }
+
+        return [
+            'cpf'     => $cpf,
+            'nome'    => mb_substr(trim((string) data_get($ifood->payload, 'customer.name')) ?: 'CONSUMIDOR', 0, 60),
+            'xLgr'    => mb_substr($lgr, 0, 60),
+            'nro'     => mb_substr($nro, 0, 60),
+            'xCpl'    => mb_substr(trim((string) ($end['complement'] ?? '')), 0, 60) ?: null,
+            'xBairro' => mb_substr($bairro, 0, 60),
+            'cMun'    => $municipio->codigo_ibge,
+            'xMun'    => $municipio->nome,
+            'UF'      => $uf,
+            'CEP'     => $cep,
         ];
     }
 
