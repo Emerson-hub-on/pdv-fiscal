@@ -11,6 +11,24 @@
 
 $historico = [
     [
+        'versao' => '1.28.1',
+        'data' => '2026-11-09',
+        'itens' => [
+            'Cadastros → iFood → Cardápio: tabela com as colunas Situação e Estoque, e resumo no topo (itens, ativos, pausados e com pausa sem estoque) que filtra ao clicar.',
+            'Clique no item abre a janela dele, com as chaves "Disponível no iFood" (pausa ou ativa) e "Pausar quando acabar o estoque", além do estoque, dos preços e do produto ligado.',
+        ],
+    ],
+    [
+        'versao' => '1.28.0',
+        'data' => '2026-11-09',
+        'itens' => [
+            'Estoque dos pedidos: o pedido da mesa baixa o estoque ao ser enviado para a cozinha, e o pedido do iFood ao ser aceito (aqui, automático ou no Gestor de Pedidos). Cancelado, o estoque volta; se o item foi descartado, lance a nota de perda/avaria.',
+            'As baixas e devoluções dos pedidos aparecem no histórico de movimentações como "Pedido (mesa/iFood)" e "Pedido cancelado", com o número do pedido.',
+            'Cadastros → iFood → Cardápio: botão Pausar/Ativar o item no iFood, estoque do produto ligado e filtro por situação (ativos, pausados, com pausa sem estoque).',
+            'iFood: opção "Pausar no iFood quando acabar o estoque" por item. Zerou o estoque, o item sai do iFood sozinho; repôs, volta (confere a cada 30 s). Pausa feita à mão só volta à mão.',
+        ],
+    ],
+    [
         'versao' => '1.27.0',
         'data' => '2026-11-09',
         'itens' => [

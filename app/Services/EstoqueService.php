@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ComandaPedido;
 use App\Models\MovimentacaoEstoque;
 use App\Models\Produto;
 use App\Models\ProdutoVariante;
@@ -28,6 +29,8 @@ class EstoqueService
     public const ENTRADA_COMPRA     = 'entrada_compra';
     public const ENTRADA_ESTORNADA  = 'entrada_estornada';
     public const TRANSFERENCIA      = 'transferencia';
+    public const PEDIDO             = 'pedido';
+    public const PEDIDO_CANCELADO   = 'pedido_cancelado';
 
     /**
      * Soma $quantidade ao saldo (negativa = saída). Retorna o movimento gravado,
@@ -155,6 +158,70 @@ class EstoqueService
     public function devolverVenda(string $vendaUuid, iterable $itens, array $contexto = []): int
     {
         return $this->aplicarVenda(self::VENDA_CANCELADA, 1, $vendaUuid, $itens, $contexto);
+    }
+
+    // ------------------------------------------------------------------
+    // Pedidos da Lista de Pedidos (mesa e iFood)
+    // ------------------------------------------------------------------
+
+    /**
+     * Baixa o estoque dos itens do pedido: mesa ao enviar para a cozinha, iFood ao aceitar.
+     * Uma vez só por pedido (estoque_baixado_em, com a linha travada). Itens sem produto ligado não mexem no estoque.
+     * Não toca updated_at do produto (como a venda do PDV): o caixa renova o saldo no "Atualizar Caixa".
+     */
+    public function baixarPedido(ComandaPedido $pedido): int
+    {
+        return $this->aplicarPedido($pedido, true);
+    }
+
+    /** Devolve o estoque do pedido cancelado (só se tinha baixado, e uma vez só). Descarte vira nota de perda/avaria. */
+    public function devolverPedido(ComandaPedido $pedido): int
+    {
+        return $this->aplicarPedido($pedido, false);
+    }
+
+    private function aplicarPedido(ComandaPedido $pedido, bool $baixar): int
+    {
+        return DB::transaction(function () use ($pedido, $baixar) {
+            $atual = ComandaPedido::whereKey($pedido->id)->lockForUpdate()->first();
+            if (!$atual
+                || ($baixar && $atual->estoque_baixado_em)
+                || (!$baixar && (!$atual->estoque_baixado_em || $atual->estoque_devolvido_em))) {
+                return 0;
+            }
+
+            $atual->loadMissing('itens', 'mesa', 'ifood');
+            $rotulo = $atual->origem === 'ifood'
+                ? 'Pedido iFood #' . ($atual->ifood?->display_id ?? $atual->id)
+                : 'Pedido #' . $atual->id . ($atual->mesa ? ' · ' . $atual->mesa->titulo() : '');
+
+            $gravados = 0;
+            $agrupados = $atual->itens->filter(fn ($i) => $i->produto_id)
+                ->groupBy(fn ($i) => $i->produto_id . ':' . ($i->produto_variante_id ?? 0));
+
+            foreach ($agrupados as $linhas) {
+                $primeiro = $linhas->first();
+                $quantidade = (float) $linhas->sum('quantidade');
+                $movimento = $this->movimentar(
+                    (int) $primeiro->produto_id,
+                    $primeiro->produto_variante_id ? (int) $primeiro->produto_variante_id : null,
+                    ($baixar ? -1 : 1) * $quantidade,
+                    $baixar ? self::PEDIDO : self::PEDIDO_CANCELADO,
+                    [
+                        'documento_tipo'   => 'comanda_pedido',
+                        'documento_id'     => (string) $atual->id,
+                        'documento_rotulo' => mb_substr($rotulo, 0, 100),
+                        'tocar_updated_at' => false,
+                    ]
+                );
+                $gravados += $movimento ? 1 : 0;
+            }
+
+            $atual->forceFill([$baixar ? 'estoque_baixado_em' : 'estoque_devolvido_em' => now()])->save();
+            $pedido->setRawAttributes($atual->getAttributes(), true);
+
+            return $gravados;
+        });
     }
 
     private function aplicarVenda(string $tipo, int $sinal, string $vendaUuid, iterable $itens, array $contexto): int

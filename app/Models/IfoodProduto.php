@@ -18,6 +18,7 @@ class IfoodProduto extends Model
         'ifood_item_id', 'ifood_product_id', 'catalogo_id', 'categoria', 'nome', 'descricao',
         'codigo_externo', 'ean', 'preco_ifood', 'preco', 'imagem_url', 'status',
         'produto_id', 'produto_variante_id', 'importado_em', 'cadastrado_automaticamente',
+        'pausar_sem_estoque', 'pausado_automatico', 'disponibilidade_erro', 'disponibilidade_erro_em',
     ];
 
     protected $casts = [
@@ -25,6 +26,9 @@ class IfoodProduto extends Model
         'preco'        => 'decimal:2',
         'importado_em' => 'datetime',
         'cadastrado_automaticamente' => 'boolean',
+        'pausar_sem_estoque'         => 'boolean',
+        'pausado_automatico'         => 'boolean',
+        'disponibilidade_erro_em'    => 'datetime',
     ];
 
     public function produto(): BelongsTo
@@ -66,6 +70,11 @@ class IfoodProduto extends Model
             'produto_variante_id' => $this->produto_variante_id,
             'produto_nome'   => $this->nomeProdutoSistema(),
             'cadastrado_automaticamente' => $this->cadastrado_automaticamente,
+            // Estoque do produto ligado (da variação, se tiver); null sem produto
+            'estoque'            => $this->produto ? (float) ($this->produto_variante_id ? ($this->variante?->estoque ?? 0) : $this->produto->estoque) : null,
+            'pausar_sem_estoque' => $this->pausar_sem_estoque,
+            'pausado_automatico' => $this->pausado_automatico,
+            'disponibilidade_erro' => $this->disponibilidade_erro,
         ];
     }
 }

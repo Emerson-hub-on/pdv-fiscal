@@ -280,6 +280,7 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
             Route::post('cardapio/cadastrar', 'cadastrarAutomatico')->middleware('throttle:10,1')->name('cardapio.cadastrar');
             Route::patch('cardapio/{item}', 'atualizarProduto')->name('cardapio.atualizar');
             Route::post('cardapio/{item}/enviar-preco', 'enviarPreco')->middleware('throttle:30,1')->name('cardapio.enviar-preco');
+            Route::post('cardapio/{item}/disponibilidade', 'disponibilidade')->middleware('throttle:30,1')->name('cardapio.disponibilidade');
         });
 
         // ---------------- EMPRESA ----------------

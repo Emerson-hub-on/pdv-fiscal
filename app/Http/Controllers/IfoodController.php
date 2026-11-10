@@ -30,7 +30,7 @@ class IfoodController extends Controller
 
         return view('ifood.index', [
             'cfg'      => $cfg,
-            'produtos' => IfoodProduto::with(['produto:id,nome', 'variante'])->orderBy('categoria')->orderBy('nome')->get()->map->paraTela()->values(),
+            'produtos' => $this->produtos(),
         ]);
     }
 
@@ -204,9 +204,49 @@ class IfoodController extends Controller
             }
         }
 
+        // Pausar no iFood quando o estoque acabar (e voltar quando repor)
+        $aviso = null;
+        if ($request->has('pausar_sem_estoque')) {
+            $item->pausar_sem_estoque = $request->boolean('pausar_sem_estoque');
+            if (!$item->pausar_sem_estoque) {
+                $item->pausado_automatico = false; // desligou: uma pausa que já estava fica, e volta à mão
+            }
+        }
+        if (!$item->produto_id) {
+            $item->pausar_sem_estoque = false;
+            $item->pausado_automatico = false;
+        }
+
         $item->save();
 
-        return response()->json(['produto' => $item->fresh(['produto:id,nome', 'variante'])->paraTela()]);
+        // Ligou a pausa automática: confere o estoque agora (sem esperar o próximo polling)
+        if ($request->boolean('pausar_sem_estoque') && $item->pausar_sem_estoque) {
+            $r = $this->ifood->sincronizarDisponibilidade(IfoodConfiguracao::atual(), $item);
+            $aviso = $r['erros'] ? 'Não foi possível pausar no iFood: ' . implode(' | ', $r['erros'])
+                : ($r['pausados'] ? "\"{$item->nome}\" está sem estoque: foi pausado no iFood." : null);
+        }
+
+        return response()->json(['produto' => $this->item($item), 'message' => $aviso, 'erro' => $aviso !== null && str_starts_with($aviso, 'Não')]);
+    }
+
+    /** Pausa ou ativa o item no iFood pela tela (pausa manual: só volta à mão). */
+    public function disponibilidade(Request $request, IfoodProduto $item): JsonResponse
+    {
+        $disponivel = $request->boolean('disponivel');
+
+        return $this->tentar(function () use ($item, $disponivel) {
+            $this->ifood->alterarDisponibilidade(IfoodConfiguracao::atual(), $item, $disponivel);
+            $produto = $this->item($item);
+            $semEstoque = $disponivel && $item->pausar_sem_estoque && ($produto['estoque'] ?? 1) <= 0;
+
+            return [
+                'message' => $disponivel
+                    ? "\"{$item->nome}\" ativado no iFood." . ($semEstoque ? ' Atenção: está sem estoque e a pausa automática vai pausar de novo em até 30 s.' : '')
+                    : "\"{$item->nome}\" pausado no iFood. Ele só volta quando você ativar.",
+                'erro'    => $semEstoque,
+                'produto' => $produto,
+            ];
+        });
     }
 
     public function enviarPreco(IfoodProduto $item): JsonResponse
@@ -214,7 +254,7 @@ class IfoodController extends Controller
         return $this->tentar(function () use ($item) {
             $this->ifood->enviarPreco(IfoodConfiguracao::atual(), $item);
 
-            return ['message' => "Preço de \"{$item->nome}\" atualizado no iFood.", 'produto' => $item->fresh(['produto:id,nome', 'variante'])->paraTela()];
+            return ['message' => "Preço de \"{$item->nome}\" atualizado no iFood.", 'produto' => $this->item($item)];
         });
     }
 
@@ -340,9 +380,14 @@ class IfoodController extends Controller
 
     // ===== Apoio =====
 
+    private function item(IfoodProduto $item): array
+    {
+        return $item->fresh(['produto:id,nome,estoque', 'variante'])->paraTela();
+    }
+
     private function produtos()
     {
-        return IfoodProduto::with(['produto:id,nome', 'variante'])->orderBy('categoria')->orderBy('nome')->get()->map->paraTela()->values();
+        return IfoodProduto::with(['produto:id,nome,estoque', 'variante'])->orderBy('categoria')->orderBy('nome')->get()->map->paraTela()->values();
     }
 
     private function situacao(IfoodConfiguracao $cfg): array

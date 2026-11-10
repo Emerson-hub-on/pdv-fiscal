@@ -89,6 +89,9 @@ class ComandaService
             $pedido->update(['total' => round($total, 2)]);
             $conta->recalcularTotal();
 
+            // Enviou para a cozinha: baixa o estoque (volta se o pedido for cancelado)
+            app(EstoqueService::class)->baixarPedido($pedido);
+
             // Mesa passa a "Aguardando pedido" (se já estava, o relógio dela continua; o do pedido começa agora)
             $mesa->mudarStatus(Mesa::AGUARDANDO, $garcomId);
 
@@ -116,6 +119,8 @@ class ComandaService
 
             if ($status === ComandaPedido::CANCELADO) {
                 $pedido->comanda?->recalcularTotal();
+                // Cancelado: o estoque volta (se o item foi descartado, a loja lança a perda/avaria)
+                app(EstoqueService::class)->devolverPedido($pedido);
             }
 
             // A mesa acompanha os pedidos (o garçom não muda a situação à mão)

@@ -163,6 +163,15 @@
                     <label class="{{ $labelCls }}" for="filtro-busca">Buscar</label>
                     <input id="filtro-busca" type="search" placeholder="Nome, categoria ou produto do sistema" class="{{ $inputCls }}" oninput="desenharProdutos()">
                 </div>
+                <div class="w-48">
+                    <label class="{{ $labelCls }}" for="filtro-situacao">No iFood</label>
+                    <select id="filtro-situacao" class="{{ $inputCls }}" onchange="desenharProdutos()">
+                        <option value="">Todos</option>
+                        <option value="ativo">Ativos</option>
+                        <option value="pausado">Pausados</option>
+                        <option value="auto">Com pausa sem estoque</option>
+                    </select>
+                </div>
                 <div class="w-56">
                     <label class="{{ $labelCls }}" for="filtro-ligacao">Produto do sistema</label>
                     <select id="filtro-ligacao" class="{{ $inputCls }}" onchange="desenharProdutos()">
@@ -181,14 +190,19 @@
                 Ligue cada item do iFood a um produto do sistema: é ele que entra no pedido (e, no futuro, na emissão da venda).
                 O "Ligar automaticamente" usa o código de barras (EAN), o código externo do iFood (código interno, código de barras ou ID do produto) e o nome igual.
                 O preço no sistema começa igual ao do iFood; se mudar, use "Enviar ao iFood" para atualizar lá.
+                O estoque baixa quando o pedido do iFood é aceito (e volta se for cancelado). Clique no item para pausar no iFood
+                ou para ele pausar sozinho quando acabar o estoque.
                 @if ($cfg->cardapio_importado_em) Última importação: {{ $cfg->cardapio_importado_em->format('d/m/Y H:i') }}. @endif
             </p>
             <p id="mensagem-cardapio" class="hidden mb-3 rounded-xl px-4 py-3 text-sm"></p>
+            <div id="resumo-cardapio" class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4"></div>
             <div class="{{ $tabelaCaixaCls }} overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead class="{{ $theadCls }}">
                         <tr>
                             <th class="px-4 py-3 text-left">Item no iFood</th>
+                            <th class="px-4 py-3 text-left w-40">Situação</th>
+                            <th class="px-4 py-3 text-right w-28">Estoque</th>
                             <th class="px-4 py-3 text-right w-32">Preço iFood</th>
                             <th class="px-4 py-3 text-right w-44">Preço no sistema</th>
                             <th class="px-4 py-3 text-left w-80">Produto do sistema</th>
@@ -234,6 +248,76 @@
         </div>
     </div>
 
+    {{-- Item do iFood: disponibilidade e pausa automática --}}
+    <div id="modal-item" class="fixed inset-0 z-40 bg-black/50 hidden items-center justify-center p-4" onclick="if (event.target === this) ItemIfood.fechar()">
+        <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="px-6 pt-5 pb-4 border-b border-slate-100 flex items-start gap-4">
+                <img data-it="imagem" src="" alt="" class="hidden w-16 h-16 rounded-2xl object-cover ring-1 ring-slate-200 shrink-0">
+                <div data-it="sem-imagem" class="w-16 h-16 rounded-2xl bg-slate-100 shrink-0"></div>
+                <div class="min-w-0 flex-1">
+                    <p data-it="categoria" class="text-xs text-slate-400"></p>
+                    <h2 data-it="nome" class="font-bold text-slate-900 text-lg leading-snug"></h2>
+                    <div data-it="selo" class="mt-1"></div>
+                </div>
+                <button type="button" onclick="ItemIfood.fechar()" aria-label="Fechar" class="w-10 h-10 rounded-xl text-slate-400 hover:bg-slate-100 text-2xl leading-none">&times;</button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="rounded-2xl bg-slate-50 ring-1 ring-slate-200 px-4 py-3">
+                        <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Estoque</p>
+                        <p data-it="estoque" class="mt-0.5 text-lg font-bold"></p>
+                    </div>
+                    <div class="rounded-2xl bg-slate-50 ring-1 ring-slate-200 px-4 py-3">
+                        <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Preço iFood</p>
+                        <p data-it="preco-ifood" class="mt-0.5 text-lg font-bold text-slate-900"></p>
+                    </div>
+                    <div class="rounded-2xl bg-slate-50 ring-1 ring-slate-200 px-4 py-3">
+                        <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">No sistema</p>
+                        <p data-it="preco" class="mt-0.5 text-lg font-bold text-slate-900"></p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col divide-y divide-slate-100 rounded-2xl ring-1 ring-slate-200">
+                    <label class="flex items-start gap-4 px-4 py-4 cursor-pointer select-none has-disabled:cursor-not-allowed">
+                        <span class="min-w-0 flex-1">
+                            <span class="block text-sm font-semibold text-slate-800">Disponível no iFood</span>
+                            <span data-it="texto-disponivel" class="block text-xs text-slate-500 mt-0.5"></span>
+                        </span>
+                        <span class="relative inline-flex items-center mt-0.5 shrink-0">
+                            <input type="checkbox" data-it="disponivel" class="peer sr-only" onchange="ItemIfood.disponivel(this)">
+                            <span class="w-11 h-6 rounded-full bg-slate-300 transition peer-checked:bg-green-600 peer-focus-visible:ring-2 peer-focus-visible:ring-[#10284A]/30 peer-disabled:opacity-50"></span>
+                            <span class="absolute left-0.5 top-0.5 w-5 h-5 rounded-full bg-white shadow transition peer-checked:translate-x-5"></span>
+                        </span>
+                    </label>
+                    <label class="flex items-start gap-4 px-4 py-4 cursor-pointer select-none has-disabled:cursor-not-allowed">
+                        <span class="min-w-0 flex-1">
+                            <span class="block text-sm font-semibold text-slate-800">Pausar quando acabar o estoque</span>
+                            <span data-it="texto-auto" class="block text-xs text-slate-500 mt-0.5"></span>
+                        </span>
+                        <span class="relative inline-flex items-center mt-0.5 shrink-0">
+                            <input type="checkbox" data-it="auto" class="peer sr-only" onchange="ItemIfood.automatico(this)">
+                            <span class="w-11 h-6 rounded-full bg-slate-300 transition peer-checked:bg-[#10284A] peer-focus-visible:ring-2 peer-focus-visible:ring-[#10284A]/30 peer-disabled:opacity-50"></span>
+                            <span class="absolute left-0.5 top-0.5 w-5 h-5 rounded-full bg-white shadow transition peer-checked:translate-x-5"></span>
+                        </span>
+                    </label>
+                </div>
+
+                <div>
+                    <p class="{{ $labelCls }}">Produto do sistema</p>
+                    <div data-it="produto"></div>
+                </div>
+
+                <p data-it="erro" class="hidden rounded-xl bg-red-50 ring-1 ring-red-200 text-red-700 px-3 py-2 text-xs"></p>
+                <p data-it="mensagem" class="hidden rounded-xl px-3 py-2 text-sm"></p>
+            </div>
+
+            <div class="px-6 py-4 border-t border-slate-100 flex items-center gap-2">
+                <button type="button" onclick="ItemIfood.fechar()" class="ml-auto {{ $botaoCancelarCls }}">Fechar</button>
+            </div>
+        </div>
+    </div>
+
     {{-- Busca de produto do sistema para ligar --}}
     <div id="modal-produto" class="fixed inset-0 z-50 bg-black/50 hidden items-center justify-center p-4" onclick="if (event.target === this) fecharBusca()">
         <div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl max-h-[85vh] flex flex-col">
@@ -268,6 +352,7 @@
         buscar: @json(route('ifood.cardapio.buscar-produto')),
         item: @json(route('ifood.cardapio.atualizar', ['item' => '__ID__'])),
         enviarPreco: @json(route('ifood.cardapio.enviar-preco', ['item' => '__ID__'])),
+        disponibilidade: @json(route('ifood.cardapio.disponibilidade', ['item' => '__ID__'])),
     };
     const DISTRIBUIDO = @json($distribuido);
     let produtos = @json($produtos);
@@ -384,29 +469,38 @@
     function desenharProdutos() {
         const termo = document.getElementById('filtro-busca').value.trim().toLowerCase();
         const ligacao = document.getElementById('filtro-ligacao').value;
+        const situacaoFiltro = document.getElementById('filtro-situacao').value;
         const lista = produtos.filter(p =>
             (!termo || [p.nome, p.categoria, p.produto_nome, p.codigo_externo].some(v => (v || '').toLowerCase().includes(termo)))
-            && (!ligacao || (ligacao === 'sem' ? !p.produto_id : !!p.produto_id)));
+            && (!ligacao || (ligacao === 'sem' ? !p.produto_id : !!p.produto_id))
+            && (!situacaoFiltro || (situacaoFiltro === 'ativo' ? p.status === 'AVAILABLE' : situacaoFiltro === 'pausado' ? p.status !== 'AVAILABLE' : p.pausar_sem_estoque)));
 
         document.getElementById('contador-produtos').textContent = produtos.length;
+        desenharResumo();
         document.getElementById('lista-produtos').innerHTML = lista.map(p => {
             const diferente = Math.round(p.preco * 100) !== Math.round(p.preco_ifood * 100);
             return `
-            <tr class="align-top ${p.status !== 'AVAILABLE' ? 'opacity-60' : ''}">
+            <tr data-item="${p.id}" class="cursor-pointer transition hover:bg-slate-50 ${p.status !== 'AVAILABLE' ? 'bg-red-50/40' : ''}">
                 <td class="px-4 py-3">
-                    <div class="flex items-start gap-3">
-                        ${p.imagem_url ? `<img src="${escHtml(p.imagem_url)}" alt="" loading="lazy" class="w-12 h-12 rounded-lg object-cover ring-1 ring-slate-200 shrink-0">`
-                            : '<div class="w-12 h-12 rounded-lg bg-slate-100 shrink-0"></div>'}
+                    <div class="flex items-center gap-3">
+                        ${p.imagem_url ? `<img src="${escHtml(p.imagem_url)}" alt="" loading="lazy" class="w-12 h-12 rounded-xl object-cover ring-1 ring-slate-200 shrink-0 ${p.status !== 'AVAILABLE' ? 'grayscale' : ''}">`
+                            : '<div class="w-12 h-12 rounded-xl bg-slate-100 shrink-0"></div>'}
                         <div class="min-w-0">
                             <p class="font-semibold text-slate-900">${escHtml(p.nome)}</p>
-                            <p class="text-xs text-slate-500">${escHtml(p.categoria || 'Sem categoria')}${p.codigo_externo ? ' · Cód. externo ' + escHtml(p.codigo_externo) : ''}${p.status !== 'AVAILABLE' ? ' · <span class="text-red-600">Pausado no iFood</span>' : ''}</p>
+                            <p class="text-xs text-slate-500">${escHtml(p.categoria || 'Sem categoria')}${p.codigo_externo ? ' · Cód. externo ' + escHtml(p.codigo_externo) : ''}</p>
                         </div>
                     </div>
                 </td>
-                <td class="px-4 py-3 text-right text-slate-600">${escHtml(moeda(p.preco_ifood))}</td>
+                <td class="px-4 py-3">
+                    ${seloSituacao(p)}
+                    ${p.pausar_sem_estoque ? '<p class="mt-1 text-[11px] text-slate-500">Pausa sem estoque ligada</p>' : ''}
+                    ${p.disponibilidade_erro ? '<p class="mt-1 text-[11px] font-semibold text-red-600">Erro no iFood · ver detalhes</p>' : ''}
+                </td>
+                <td class="px-4 py-3 text-right tabular-nums">${textoEstoque(p)}</td>
+                <td class="px-4 py-3 text-right text-slate-600 tabular-nums">${escHtml(moeda(p.preco_ifood))}</td>
                 <td class="px-4 py-3 text-right">
                     ${PODE ? `<input type="text" inputmode="decimal" value="${p.preco.toFixed(2).replace('.', ',')}" data-preco="${p.id}"
-                                 class="w-28 text-right bg-slate-50 border ${diferente ? 'border-amber-300' : 'border-slate-200'} rounded-lg px-2 py-1.5 text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-[#10284A]/30 outline-none">`
+                                 class="w-28 text-right tabular-nums bg-slate-50 border ${diferente ? 'border-amber-300' : 'border-slate-200'} rounded-lg px-2 py-1.5 text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-[#10284A]/30 outline-none">`
                              : `<span class="font-semibold">${escHtml(moeda(p.preco))}</span>`}
                     ${diferente && PODE ? `<button type="button" onclick="enviarPreco(${p.id}, this)" class="block ml-auto mt-1 text-xs font-semibold text-[#10284A] hover:underline">Enviar ao iFood ↑</button>` : ''}
                 </td>
@@ -418,7 +512,7 @@
                                : '<span class="text-xs text-slate-400">Sem produto ligado</span>'}
                 </td>
             </tr>`;
-        }).join('') || `<tr><td colspan="4" class="px-4 py-12 text-center text-sm text-slate-400">${produtos.length
+        }).join('') || `<tr><td colspan="6" class="px-4 py-12 text-center text-sm text-slate-400">${produtos.length
             ? 'Nenhum item com esse filtro.' : 'Nenhum item importado. Clique em "Importar cardápio do iFood".'}</td></tr>`;
 
         document.querySelectorAll('[data-preco]').forEach(campo => campo.addEventListener('change', () => salvarPreco(parseInt(campo.dataset.preco, 10), campo)));
@@ -427,6 +521,7 @@
     function trocarProduto(p) {
         produtos = produtos.map(x => x.id === p.id ? p : x);
         desenharProdutos();
+        if (window.ItemIfood?.aberto()) ItemIfood.desenhar();
     }
 
     async function salvarPreco(id, campo) {
@@ -442,6 +537,144 @@
             catch (e) { mensagem('mensagem-cardapio', erroRede(e), true); }
         });
     }
+
+    const numero = (v) => Number(v || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+
+    function seloSituacao(p) {
+        if (p.status === 'AVAILABLE') {
+            return '<span class="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700 ring-1 ring-green-200"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Ativo</span>';
+        }
+        return `<span class="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 ring-1 ring-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>${p.pausado_automatico ? 'Pausado · sem estoque' : 'Pausado'}</span>`;
+    }
+
+    function textoEstoque(p) {
+        if (!p.produto_id) return '<span class="text-slate-300">—</span>';
+        return `<span class="font-semibold ${p.estoque <= 0 ? 'text-red-600' : 'text-slate-800'}">${escHtml(numero(p.estoque))}</span>`;
+    }
+
+    function desenharResumo() {
+        const cartao = (rotulo, valor, cor, filtro) => `
+            <button type="button" onclick="filtrarSituacao('${filtro}')" class="text-left rounded-2xl bg-white ring-1 ring-slate-200 px-4 py-3 transition hover:ring-[#10284A]/40">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">${rotulo}</p>
+                <p class="mt-0.5 text-2xl font-bold ${cor}">${valor}</p>
+            </button>`;
+        document.getElementById('resumo-cardapio').innerHTML =
+            cartao('Itens', produtos.length, 'text-slate-900', '')
+            + cartao('Ativos', produtos.filter(p => p.status === 'AVAILABLE').length, 'text-green-700', 'ativo')
+            + cartao('Pausados', produtos.filter(p => p.status !== 'AVAILABLE').length, 'text-red-600', 'pausado')
+            + cartao('Pausa sem estoque', produtos.filter(p => p.pausar_sem_estoque).length, 'text-[#10284A]', 'auto');
+    }
+
+    function filtrarSituacao(valor) {
+        document.getElementById('filtro-situacao').value = valor;
+        desenharProdutos();
+    }
+
+    // Clique na linha abre o item (menos nos campos e botões da linha)
+    document.getElementById('lista-produtos').addEventListener('click', (e) => {
+        if (e.target.closest('input, button, a, select')) return;
+        const linha = e.target.closest('tr[data-item]');
+        if (linha) ItemIfood.abrir(parseInt(linha.dataset.item, 10));
+    });
+
+    window.ItemIfood = (function () {
+        const janela = document.getElementById('modal-item');
+        const parte = (n) => janela.querySelector(`[data-it="${n}"]`);
+        let id = null;
+
+        const item = () => produtos.find(p => p.id === id);
+
+        function aviso(texto, erro = false) {
+            const m = parte('mensagem');
+            m.textContent = texto || '';
+            m.className = `rounded-xl px-3 py-2 text-sm ${erro ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-200' : 'bg-green-50 text-green-800 ring-1 ring-green-200'}`;
+            m.classList.toggle('hidden', !texto);
+        }
+
+        function desenhar() {
+            const p = item();
+            if (!p) return fechar();
+
+            parte('nome').textContent = p.nome;
+            parte('categoria').textContent = (p.categoria || 'Sem categoria') + (p.codigo_externo ? ' · Cód. externo ' + p.codigo_externo : '');
+            parte('selo').innerHTML = seloSituacao(p);
+            parte('imagem').classList.toggle('hidden', !p.imagem_url);
+            parte('sem-imagem').classList.toggle('hidden', !!p.imagem_url);
+            if (p.imagem_url) parte('imagem').src = p.imagem_url;
+
+            parte('estoque').innerHTML = p.produto_id ? textoEstoque(p) : '<span class="text-sm font-medium text-slate-400">Sem produto</span>';
+            parte('preco-ifood').textContent = moeda(p.preco_ifood);
+            parte('preco').textContent = moeda(p.preco);
+
+            const disponivel = parte('disponivel');
+            disponivel.checked = p.status === 'AVAILABLE';
+            disponivel.disabled = !PODE;
+            parte('texto-disponivel').textContent = p.status === 'AVAILABLE'
+                ? 'Os clientes podem pedir. Desligue para pausar o item no iFood.'
+                : p.pausado_automatico
+                    ? 'Pausado sozinho porque o estoque acabou. Volta quando o estoque for reposto.'
+                    : 'Pausado à mão: só volta quando você ligar de novo.';
+
+            const auto = parte('auto');
+            auto.checked = !!p.pausar_sem_estoque;
+            auto.disabled = !PODE || !p.produto_id;
+            parte('texto-auto').textContent = p.produto_id
+                ? 'Zerou o estoque do produto ligado, o item sai do iFood; repôs, volta. Confere a cada 30 s.'
+                : 'Ligue o item a um produto do sistema para usar o estoque.';
+
+            parte('produto').innerHTML = p.produto_id
+                ? `<button type="button" ${PODE ? `onclick="abrirBusca(${p.id})"` : 'disabled'} class="w-full text-left rounded-xl bg-green-50 ring-1 ring-green-200 px-3 py-2.5 text-sm text-green-800 hover:ring-green-400">
+                       <span class="font-semibold">✓ ${escHtml(p.produto_nome)}</span>${PODE ? '<span class="block text-xs text-green-700/70">Clique para trocar</span>' : ''}</button>`
+                : PODE ? `<button type="button" onclick="abrirBusca(${p.id})" class="w-full text-left rounded-xl bg-amber-50 ring-1 ring-amber-200 px-3 py-2.5 text-sm font-semibold text-amber-800 hover:ring-amber-400">+ Ligar a um produto</button>`
+                       : '<p class="text-sm text-slate-400">Sem produto ligado</p>';
+
+            parte('erro').textContent = p.disponibilidade_erro ? 'Último erro do iFood: ' + p.disponibilidade_erro : '';
+            parte('erro').classList.toggle('hidden', !p.disponibilidade_erro);
+        }
+
+        function abrir(novo) {
+            id = novo;
+            aviso('');
+            desenhar();
+            janela.classList.remove('hidden');
+            janela.classList.add('flex');
+        }
+
+        function fechar() {
+            janela.classList.add('hidden');
+            janela.classList.remove('flex');
+            id = null;
+        }
+
+        async function enviar(campo, fn) {
+            campo.disabled = true;
+            try {
+                const r = await fn();
+                trocarProduto(r.produto);
+                aviso(r.message, r.erro);
+            } catch (e) {
+                campo.checked = !campo.checked;
+                aviso(erroRede(e), true);
+            } finally {
+                if (id !== null) desenhar();
+            }
+        }
+
+        async function disponivel(campo) {
+            const p = item();
+            if (!campo.checked && !confirm(`Pausar "${p.nome}" no iFood? Os clientes não vão conseguir pedir até você ligar de novo.`)) {
+                campo.checked = true;
+                return;
+            }
+            await enviar(campo, () => pedir(URL.disponibilidade.replace('__ID__', id), 'POST', { disponivel: campo.checked }));
+        }
+
+        async function automatico(campo) {
+            await enviar(campo, () => pedir(URL.item.replace('__ID__', id), 'PATCH', { pausar_sem_estoque: campo.checked }));
+        }
+
+        return { abrir, fechar, desenhar, disponivel, automatico, aberto: () => id !== null };
+    })();
 
     async function importarCardapio(botao) {
         await comBotao(botao, async () => {
@@ -620,6 +853,7 @@
     document.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape') return;
         if (itemBusca) return fecharBusca();
+        if (ItemIfood.aberto()) return ItemIfood.fechar();
         if (Modelos.aberto()) Modelos.fechar();
     });
 

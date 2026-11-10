@@ -226,6 +226,10 @@ class IfoodService
                         'status'           => $item['status'] ?? 'AVAILABLE',
                         'importado_em'     => now(),
                     ];
+                    // Ativo no iFood: não há pausa do sistema para desfazer
+                    if ($dados['status'] === 'AVAILABLE') {
+                        $dados['pausado_automatico'] = false;
+                    }
 
                     if ($existente) {
                         // Preço do sistema acompanha o do iFood, a não ser que o operador tenha mudado
@@ -422,6 +426,67 @@ class IfoodService
         $item->update(['preco_ifood' => $item->preco]);
     }
 
+    /**
+     * Pausa (UNAVAILABLE) ou ativa (AVAILABLE) o item no iFood.
+     * $automatico: pausa feita pelo sistema por falta de estoque — só essa volta sozinha quando o estoque repõe.
+     */
+    public function alterarDisponibilidade(IfoodConfiguracao $cfg, IfoodProduto $item, bool $disponivel, bool $automatico = false): void
+    {
+        $this->exigirCredenciais($cfg);
+        $status = $disponivel ? 'AVAILABLE' : 'UNAVAILABLE';
+        $this->chamar($cfg, 'patch', "/catalog/v2.0/merchants/{$cfg->merchant_id}/items/status", [
+            'itemId' => $item->ifood_item_id,
+            'status' => $status,
+        ]);
+        $item->update([
+            'status'                  => $status,
+            'pausado_automatico'      => !$disponivel && $automatico,
+            'disponibilidade_erro'    => null,
+            'disponibilidade_erro_em' => null,
+        ]);
+    }
+
+    /**
+     * Itens com "pausar sem estoque": estoque do produto ligado zerou → pausa no iFood; repôs → ativa de novo
+     * (só os que o sistema pausou). Roda junto do polling (a cada 30 s), então pega qualquer mexida no estoque:
+     * pedido, venda do caixa, entrada de nota, ajuste. Item com erro espera 5 min para tentar de novo.
+     *
+     * @return array{pausados: int, ativados: int, erros: array<int, string>}
+     */
+    public function sincronizarDisponibilidade(IfoodConfiguracao $cfg, ?IfoodProduto $somente = null): array
+    {
+        $resultado = ['pausados' => 0, 'ativados' => 0, 'erros' => []];
+
+        $itens = IfoodProduto::with(['produto:id,estoque', 'variante:id,estoque'])
+            ->where('pausar_sem_estoque', true)->whereNotNull('produto_id')
+            ->when($somente, fn ($q) => $q->whereKey($somente->id))
+            ->when(!$somente, fn ($q) => $q->where(fn ($w) => $w->whereNull('disponibilidade_erro_em')->orWhere('disponibilidade_erro_em', '<', now()->subMinutes(5))))
+            ->get();
+
+        foreach ($itens as $item) {
+            if (!$item->produto) {
+                continue;
+            }
+            $estoque = (float) ($item->produto_variante_id ? ($item->variante?->estoque ?? 0) : $item->produto->estoque);
+            $pausar = $estoque <= 0 && $item->status === 'AVAILABLE';
+            $ativar = $estoque > 0 && $item->status !== 'AVAILABLE' && $item->pausado_automatico;
+            if (!$pausar && !$ativar) {
+                continue;
+            }
+
+            try {
+                $this->alterarDisponibilidade($cfg, $item, $ativar, true);
+                $resultado[$ativar ? 'ativados' : 'pausados']++;
+                Log::info('iFood: item ' . ($ativar ? 'ativado' : 'pausado') . " pelo estoque: {$item->nome} (estoque {$estoque})");
+            } catch (Throwable $e) {
+                $item->update(['disponibilidade_erro' => mb_substr($e->getMessage(), 0, 500), 'disponibilidade_erro_em' => now()]);
+                $resultado['erros'][] = "{$item->nome}: {$e->getMessage()}";
+            }
+        }
+
+        return $resultado;
+    }
+
     // =====================================================================
     // Pedidos: polling
     // =====================================================================
@@ -484,6 +549,14 @@ class IfoodService
             }
 
             $resultado['eventos'] = $eventos->count();
+
+            // Pausa/ativa no iFood os itens que acabaram/voltaram no estoque (falha aqui não atrapalha os pedidos)
+            try {
+                $this->sincronizarDisponibilidade($cfg);
+            } catch (Throwable $e) {
+                Log::warning('iFood: disponibilidade pelo estoque falhou: ' . $e->getMessage());
+            }
+
             $cfg->forceFill([
                 'ultimo_polling_em' => now(),
                 'ultimo_erro'       => $resultado['erros'] ? mb_substr(implode(' | ', $resultado['erros']), 0, 500) : null,
@@ -528,6 +601,10 @@ class IfoodService
             if (in_array($codigo, ['CONFIRMED', 'READY_TO_PICKUP', 'DISPATCHED'], true)) {
                 $novo = $this->importarPedido($cfg, $orderId);
                 IfoodPedido::where('ifood_order_id', $orderId)->update(['status' => $codigo]);
+                // Já chegou aceito (ex.: aceito no Gestor de Pedidos): baixa o estoque
+                if ($importado = IfoodPedido::with('pedido')->where('ifood_order_id', $orderId)->first()) {
+                    $this->estoqueDoPedido($importado, true);
+                }
 
                 return $novo;
             }
@@ -542,10 +619,12 @@ class IfoodService
         switch ($codigo) {
             case 'CONFIRMED':
                 $ifood->update(['status' => IfoodPedido::CONFIRMED, 'confirmado_em' => $ifood->confirmado_em ?? now()]);
+                $this->estoqueDoPedido($ifood, true);
                 break;
             case 'READY_TO_PICKUP':
             case 'DISPATCHED':
                 $ifood->update(['status' => $codigo]);
+                $this->estoqueDoPedido($ifood, true); // aceito fora daqui sem o CONFIRMED: baixa agora (uma vez só)
                 if ($pedido && $pedido->status === ComandaPedido::PREPARO) {
                     $pedido->mudarStatus(ComandaPedido::PRONTO, null);
                 }
@@ -553,6 +632,7 @@ class IfoodService
             case 'CONCLUDED':
                 $ifood->update(['status' => IfoodPedido::CONCLUDED, 'codigo_entrega_solicitado_em' => null, 'disputa' => null]);
                 if ($aberto) {
+                    $this->estoqueDoPedido($ifood, true);
                     $pedido->mudarStatus(ComandaPedido::CONCLUIDO, null);
                 }
                 break;
@@ -568,6 +648,8 @@ class IfoodService
                 ]);
                 if ($aberto) {
                     $pedido->mudarStatus(ComandaPedido::CANCELADO, null);
+                    // Cancelado: o estoque volta (se descartou, a loja lança a perda/avaria)
+                    $this->estoqueDoPedido($ifood, false);
                     if (!$porLoja) {
                         try {
                             $this->impressao->imprimirCancelamento($pedido->refresh(), $motivo);
@@ -764,6 +846,25 @@ class IfoodService
     {
         $this->chamar($cfg, 'post', "/order/v1.0/orders/{$ifood->ifood_order_id}/confirm");
         $ifood->update(['status' => IfoodPedido::CONFIRMED, 'confirmado_em' => now(), 'ultimo_erro' => null]);
+        $this->estoqueDoPedido($ifood, true);
+    }
+
+    /**
+     * Estoque do pedido do iFood: baixa no aceite, devolve no cancelamento (EstoqueService faz uma vez só).
+     * Uma falha no estoque não pode travar o pedido: fica no log.
+     */
+    private function estoqueDoPedido(IfoodPedido $ifood, bool $baixar): void
+    {
+        $pedido = $ifood->pedido;
+        if (!$pedido) {
+            return;
+        }
+
+        try {
+            $baixar ? app(EstoqueService::class)->baixarPedido($pedido) : app(EstoqueService::class)->devolverPedido($pedido);
+        } catch (Throwable $e) {
+            Log::warning('iFood: estoque do pedido ' . ($ifood->display_id ?? $ifood->id) . ' falhou: ' . $e->getMessage());
+        }
     }
 
     /** Pronto: retirada/no local → "pronto para retirar"; entrega → "despachado". */

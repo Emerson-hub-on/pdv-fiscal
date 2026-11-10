@@ -40,6 +40,8 @@ class MovimentacaoEstoque extends Model
         'entrada_compra'   => 'Entrada de nota',
         'entrada_estornada' => 'Entrada estornada',
         'transferencia'    => 'Transferência',
+        'pedido'           => 'Pedido (mesa/iFood)',
+        'pedido_cancelado' => 'Pedido cancelado',
     ];
 
     protected static function booted(): void
