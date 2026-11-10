@@ -159,6 +159,7 @@ window.RestaurantePdv = (() => {
         const data = el('data').value;
         const minha = ++carregando;
         mensagem('');
+        esconderProgresso();
         el('linhas').innerHTML = '<tr><td colspan="8" class="p-4 text-center text-slate-400">Carregando pedidos…</td></tr>';
 
         try {
@@ -294,6 +295,11 @@ window.RestaurantePdv = (() => {
         el('barra').value = total ? Math.round(feitos * 100 / total) : 0;
     }
 
+    function esconderProgresso() {
+        el('progresso').classList.add('hidden');
+        el('barra').value = 0;
+    }
+
     function pausar() {
         if (!emitindo) return;
         pausaPedida = true;
@@ -375,7 +381,8 @@ window.RestaurantePdv = (() => {
             progresso(feitos, fila.length, 'Parado');
             mensagem(`${parouPor} ${resumo}.`, 'erro');
         } else {
-            progresso(feitos, fila.length, 'Concluído');
+            // Terminou: a barra sai e fica só a mensagem com o resultado
+            esconderProgresso();
             mensagem(`Emissão concluída: ${resumo}.`, falhas ? 'aviso' : 'ok');
         }
     }

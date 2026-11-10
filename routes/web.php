@@ -342,6 +342,13 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
             Route::post('comandas/impressoras/{impressora}/testar', [\App\Http\Controllers\ImpressoraComandaController::class, 'testar'])
                 ->middleware('throttle:20,1')->name('comanda-impressoras.testar');
 
+            // Comandas → Relatórios → Pedidos (contas de mesa e pedidos do iFood)
+            Route::prefix('comandas/relatorios/pedidos')->name('comandas.relatorios.pedidos.')->group(function () {
+                Route::get('/', [\App\Http\Controllers\RelatorioPedidoComandaController::class, 'index'])->name('index');
+                Route::get('exportar-excel', [\App\Http\Controllers\RelatorioPedidoComandaController::class, 'exportarExcel'])->name('exportar-excel');
+                Route::get('exportar-pdf', [\App\Http\Controllers\RelatorioPedidoComandaController::class, 'exportarPdf'])->name('exportar-pdf');
+            });
+
             // Comandas → Mesas → Lista de Mesas (cadastro; a situação é mudada pelo garçom)
             Route::resource('comandas/mesas', \App\Http\Controllers\MesaController::class)
                 ->except(['show'])

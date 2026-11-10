@@ -11,6 +11,29 @@
 
 $historico = [
     [
+        'versao' => '1.30.2',
+        'data' => '2026-11-10',
+        'itens' => [
+            'PDV → Pedidos Restaurante: a barra de progresso some quando a emissão termina (fica só a mensagem com o resultado); na pausa ou parada ela continua mostrando onde parou.',
+        ],
+    ],
+    [
+        'versao' => '1.30.1',
+        'data' => '2026-11-10',
+        'itens' => [
+            'Comandas → Relatórios → Pedidos: a exportação (PDF/Excel) vem por padrão resumida (só os pedidos); a detalhada, com itens, continua no filtro.',
+        ],
+    ],
+    [
+        'versao' => '1.30.0',
+        'data' => '2026-11-10',
+        'itens' => [
+            'Novo relatório Comandas → Relatórios → Pedidos: contas de mesa e pedidos do iFood juntos (mês atual por padrão), com resumo do vendido, mesas, iFood e cancelados, situação da NFC-e e itens de cada pedido em janela.',
+            'Filtros no padrão dos outros relatórios: busca por nº da mesa/pedido iFood, cliente ou produto; origem, situação, meio de pagamento, NFC-e, período e ordenação.',
+            'Exportação em PDF e Excel de todos os pedidos do filtro, com itens (detalhada) ou só os pedidos (resumida).',
+        ],
+    ],
+    [
         'versao' => '1.29.3',
         'data' => '2026-11-10',
         'itens' => [
