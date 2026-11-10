@@ -11,6 +11,15 @@
 
 $historico = [
     [
+        'versao' => '1.30.3',
+        'data' => '2026-11-10',
+        'itens' => [
+            'iFood (homologação): todos os eventos recebidos no polling são confirmados (acknowledgment) logo em seguida. Antes, o evento que dava erro não era confirmado.',
+            'Cada evento é gravado na nova tabela ifood_eventos antes da confirmação. O que falhar é tentado de novo nos próximos pollings, com espera crescente (30 s, 1 min, 2 min… até 6 h, 15 tentativas). Os eventos seguintes do mesmo pedido esperam atrás dele para manter a ordem.',
+            'Evento que o iFood reenviar repetido não é processado duas vezes.',
+        ],
+    ],
+    [
         'versao' => '1.30.2',
         'data' => '2026-11-10',
         'itens' => [

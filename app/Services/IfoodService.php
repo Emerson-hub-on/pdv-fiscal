@@ -493,7 +493,8 @@ class IfoodService
 
     /**
      * Busca os eventos novos e processa (pedido novo, confirmado, pronto, concluído, cancelado).
-     * Só confirma o recebimento (acknowledgment) dos eventos processados sem erro: os outros voltam no próximo polling.
+     * Todos os eventos recebidos são gravados em ifood_eventos e confirmados (acknowledgment) logo em seguida, como o
+     * iFood exige; o processamento sai da tabela e o que falhar é tentado de novo nos próximos pollings.
      *
      * @return array{eventos: int, pedidos_novos: int, erros: array<int, string>}
      */
@@ -529,25 +530,26 @@ class IfoodService
             }
 
             $eventos = $resp->status() === 204 ? [] : ($this->json($resp, 'buscar os pedidos') ?? []);
-            $eventos = collect($eventos)->sortBy('createdAt')->values();
-            $confirmar = [];
+            $eventos = collect($eventos)->filter(fn ($e) => is_array($e) && !empty($e['id']))->values();
 
-            foreach ($eventos as $evento) {
+            // 1) Grava todos os eventos recebidos; 2) confirma TODOS no iFood (exigência da homologação);
+            // 3) processa a partir da tabela. Se a confirmação falhar, o iFood reenvia e o evento_id único evita duplicar.
+            $this->guardarEventos($eventos);
+
+            if ($eventos->isNotEmpty()) {
                 try {
-                    if ($this->processarEvento($cfg, $evento)) {
-                        $resultado['pedidos_novos']++;
+                    foreach ($eventos->chunk(1000) as $lote) {
+                        $this->chamar($cfg, 'post', '/order/v1.0/events/acknowledgment', $lote->map(fn ($e) => ['id' => $e['id']])->values()->all());
                     }
-                    $confirmar[] = ['id' => $evento['id']];
                 } catch (Throwable $e) {
-                    $resultado['erros'][] = 'Pedido ' . ($evento['orderId'] ?? '?') . ': ' . $e->getMessage();
-                    Log::warning('iFood: falha ao processar evento', ['evento' => $evento, 'erro' => $e->getMessage()]);
+                    $resultado['erros'][] = 'Confirmação dos eventos: ' . $e->getMessage();
+                    Log::warning('iFood: falha ao confirmar eventos (o iFood vai reenviar)', ['erro' => $e->getMessage()]);
                 }
             }
 
-            if ($confirmar) {
-                $this->chamar($cfg, 'post', '/order/v1.0/events/acknowledgment', $confirmar);
-            }
-
+            $processados = $this->processarFila($cfg);
+            $resultado['pedidos_novos'] = $processados['pedidos_novos'];
+            $resultado['erros'] = array_merge($resultado['erros'], $processados['erros']);
             $resultado['eventos'] = $eventos->count();
 
             // Pausa/ativa no iFood os itens que acabaram/voltaram no estoque (falha aqui não atrapalha os pedidos)
@@ -567,6 +569,119 @@ class IfoodService
             $resultado['erros'][] = $e->getMessage();
         } finally {
             $trava->release();
+        }
+
+        return $resultado;
+    }
+
+    /** Tentativas de um evento com erro antes de desistir (com espera crescente: ~2 dias no total). */
+    public const TENTATIVAS_EVENTO = 15;
+
+    /** Grava os eventos recebidos (o mesmo evento_id não entra duas vezes). */
+    private function guardarEventos(\Illuminate\Support\Collection $eventos): void
+    {
+        $agora = now();
+
+        foreach ($eventos->chunk(200) as $lote) {
+            DB::table('ifood_eventos')->insertOrIgnore($lote->map(fn (array $e) => [
+                'evento_id'       => mb_substr((string) $e['id'], 0, 64),
+                'order_id'        => isset($e['orderId']) ? mb_substr((string) $e['orderId'], 0, 64) : null,
+                'codigo'          => mb_substr((string) ($e['fullCode'] ?? $e['code'] ?? ''), 0, 40) ?: null,
+                'payload'         => json_encode($e, JSON_UNESCAPED_UNICODE),
+                'criado_ifood_em' => $this->dataIfood($e['createdAt'] ?? null),
+                'created_at'      => $agora,
+                'updated_at'      => $agora,
+            ])->values()->all());
+        }
+    }
+
+    private function dataIfood(?string $valor): ?string
+    {
+        if (!$valor) {
+            return null;
+        }
+
+        try {
+            return \Illuminate\Support\Carbon::parse($valor)->setTimezone(config('app.timezone'))->format('Y-m-d H:i:s.v');
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Processa os eventos guardados que ainda não foram processados, na ordem em que o iFood criou.
+     * Evento com erro fica para a próxima rodada (espera crescente); os eventos seguintes do MESMO pedido esperam
+     * atrás dele, para não aplicar um "cancelado" antes do "pedido novo", por exemplo.
+     *
+     * @return array{pedidos_novos: int, erros: array<int, string>}
+     */
+    public function processarFila(?IfoodConfiguracao $cfg = null): array
+    {
+        $cfg ??= IfoodConfiguracao::atual();
+        $resultado = ['pedidos_novos' => 0, 'erros' => []];
+        $travados = []; // pedidos com evento anterior ainda não processado
+
+        $fila = DB::table('ifood_eventos')
+            ->whereNull('processado_em')
+            ->whereNull('desistido_em')
+            ->orderByRaw('criado_ifood_em is null')
+            ->orderBy('criado_ifood_em')
+            ->orderBy('id')
+            ->limit(500)
+            ->get();
+
+        foreach ($fila as $linha) {
+            // Evento sem pedido não segura os outros
+            $pedido = $linha->order_id ?: 'evento-' . $linha->id;
+
+            if (isset($travados[$pedido])) {
+                continue; // espera o evento anterior deste pedido
+            }
+
+            if ($linha->proxima_tentativa_em && now()->lt($linha->proxima_tentativa_em)) {
+                $travados[$pedido] = true;
+                continue;
+            }
+
+            try {
+                if ($this->processarEvento($cfg, json_decode($linha->payload, true) ?? [])) {
+                    $resultado['pedidos_novos']++;
+                }
+
+                DB::table('ifood_eventos')->where('id', $linha->id)->update([
+                    'processado_em' => now(), 'ultimo_erro' => null, 'proxima_tentativa_em' => null,
+                    'tentativas' => $linha->tentativas + 1, 'updated_at' => now(),
+                ]);
+            } catch (Throwable $e) {
+                $tentativas = $linha->tentativas + 1;
+                $desistir = $tentativas >= self::TENTATIVAS_EVENTO;
+                // 30 s, 1 min, 2 min, 4 min... até no máximo 6 h entre uma tentativa e outra
+                $espera = min(30 * (2 ** ($tentativas - 1)), 6 * 3600);
+
+                DB::table('ifood_eventos')->where('id', $linha->id)->update([
+                    'tentativas'           => $tentativas,
+                    'ultimo_erro'          => mb_substr($e->getMessage(), 0, 500),
+                    'proxima_tentativa_em' => $desistir ? null : now()->addSeconds($espera),
+                    'desistido_em'         => $desistir ? now() : null,
+                    'updated_at'           => now(),
+                ]);
+
+                $resultado['erros'][] = 'Pedido ' . ($linha->order_id ?? '?') . ': ' . $e->getMessage()
+                    . ($desistir ? ' (desistiu depois de ' . $tentativas . ' tentativas)' : '');
+                Log::log($desistir ? 'error' : 'warning', 'iFood: falha ao processar evento', [
+                    'evento' => $linha->evento_id, 'pedido' => $linha->order_id, 'codigo' => $linha->codigo,
+                    'tentativa' => $tentativas, 'erro' => $e->getMessage(),
+                ]);
+
+                if (!$desistir) {
+                    $travados[$pedido] = true;
+                }
+            }
+        }
+
+        // Limpeza: eventos processados há mais de 30 dias
+        if (random_int(1, 50) === 1) {
+            DB::table('ifood_eventos')->whereNotNull('processado_em')->where('processado_em', '<', now()->subDays(30))->delete();
         }
 
         return $resultado;
