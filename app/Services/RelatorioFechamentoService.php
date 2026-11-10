@@ -97,6 +97,7 @@ class RelatorioFechamentoService
                 'troco' => (float) $v->troco,
                 'desconto' => (float) $v->desconto,
                 'forma_pagamento' => $v->forma_pagamento,
+                'restaurante_origem' => $v->comanda_id ? 'mesa' : ($v->comanda_pedido_id ? 'ifood' : null),
                 'status' => $v->status,
                 'status_fiscal' => $v->status,
                 'motivo_cancelamento' => $v->motivo_cancelamento,
@@ -167,6 +168,9 @@ class RelatorioFechamentoService
         $qtdValidas = 0;
         $qtdCanceladas = 0;
         $totalCancelado = 0.0;
+        // Vendas do restaurante (mesa/iFood) emitidas neste caixa: o dinheiro não passou por esta gaveta
+        $qtdRestaurante = 0;
+        $totalRestaurante = 0.0;
 
         foreach ($vendas as $v) {
             $cancelada = $this->cancelada($v);
@@ -176,7 +180,8 @@ class RelatorioFechamentoService
             $linhas[] = [
                 'numero' => $v->numero_nfce ? str_pad($v->numero_nfce, 6, '0', STR_PAD_LEFT) : 's/ NFC-e',
                 'hora' => Carbon::parse($v->vendida_em)->format('H:i'),
-                'pagamento' => $this->rotuloPagamentos($pagamentos, $v->forma_pagamento),
+                'pagamento' => (!empty($v->restaurante_origem) ? ($v->restaurante_origem === 'ifood' ? 'iFood · ' : 'Mesa · ') : '')
+                    . $this->rotuloPagamentos($pagamentos, $v->forma_pagamento),
                 'total' => (float) $v->total,
                 'situacao' => match (true) {
                     $cancelada => 'CANC',
@@ -189,6 +194,12 @@ class RelatorioFechamentoService
             if ($cancelada) {
                 $qtdCanceladas++;
                 $totalCancelado += (float) $v->total;
+                continue;
+            }
+
+            if (!empty($v->restaurante_origem)) {
+                $qtdRestaurante++;
+                $totalRestaurante += (float) $v->total;
                 continue;
             }
 
@@ -288,6 +299,8 @@ class RelatorioFechamentoService
             'qtd_validas' => $qtdValidas,
             'qtd_canceladas' => $qtdCanceladas,
             'total_cancelado' => round($totalCancelado, 2),
+            'qtd_restaurante' => $qtdRestaurante,
+            'total_restaurante' => round($totalRestaurante, 2),
             'total_bruto' => round($totalBruto, 2),
             'total_descontos' => round($totalDescontos, 2),
             'total_liquido' => round($totalLiquido, 2),

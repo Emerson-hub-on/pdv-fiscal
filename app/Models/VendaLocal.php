@@ -117,6 +117,11 @@ class VendaLocal extends Venda
             'ultimo_arquivo_xml' => $linha->ultimo_arquivo_xml,
             'motivo_rejeicao' => $linha->motivo_rejeicao,
             'emitida_em' => $linha->emitida_em,
+            // Venda do restaurante (mesa/iFood): presença e intermediador da NFC-e, sem baixa de estoque no caixa
+            'restaurante_origem' => $linha->restaurante_origem ?? null,
+            'ind_pres' => $linha->ind_pres ?? null,
+            'intermediador_cnpj' => $linha->intermediador_cnpj ?? null,
+            'intermediador_id' => $linha->intermediador_id ?? null,
         ];
     }
 

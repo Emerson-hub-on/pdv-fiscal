@@ -19,6 +19,9 @@ class IfoodPedido extends Model
     public const CONCLUDED       = 'CONCLUDED';
     public const CANCELLED       = 'CANCELLED';
 
+    /** iFood como intermediador na NFC-e (indIntermed 1): CNPJ da iFood.com Agência de Restaurantes Online S.A. */
+    public const CNPJ_INTERMEDIADOR = '14380200000121';
+
     public const TIPOS = [
         'DELIVERY' => 'Entrega',
         'TAKEOUT'  => 'Retirada',

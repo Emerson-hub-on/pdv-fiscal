@@ -164,7 +164,8 @@ class EmissorLocalService extends FiscalEmissorService
 
         foreach ($vendas as $v) {
             $db->transaction(function () use ($db, $v, $nProt) {
-                foreach (json_decode($v->itens, true) ?? [] as $item) {
+                // venda do restaurante não baixou o estoque do caixa: nada a devolver
+                foreach (empty($v->restaurante_origem) ? (json_decode($v->itens, true) ?? []) : [] as $item) {
                     if (!empty($item['produto_variante_id'])) {
                         $db->table('produto_variantes_cache')->where('id', $item['produto_variante_id'])
                             ->increment('estoque', $item['quantidade']);
@@ -190,7 +191,8 @@ class EmissorLocalService extends FiscalEmissorService
         $db = DB::connection('sqlite_local');
 
         $db->transaction(function () use ($db, $venda, $nProt, $justificativa) {
-            foreach ($venda->itens as $item) {
+            // venda do restaurante não baixou o estoque do caixa: nada a devolver
+            foreach ($venda->restaurante_origem ? [] : $venda->itens as $item) {
                 if ($item->produto_variante_id) {
                     $db->table('produto_variantes_cache')->where('id', $item->produto_variante_id)
                         ->increment('estoque', $item->quantidade);

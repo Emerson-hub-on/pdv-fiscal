@@ -114,6 +114,8 @@ class SyncService
                 $ajusteVariante = [];
 
                 $vendas = $local->table('vendas_pendentes')
+                    // venda do restaurante não mexe no estoque (saiu com o pedido, já no servidor)
+                    ->whereNull('restaurante_origem')
                     ->where(function ($q) {
                         // ainda não subiu e não foi cancelada: o servidor não baixou
                         $q->where(fn ($w) => $w->whereIn('status', ['pendente_sync', 'erro_sync'])
@@ -1290,6 +1292,9 @@ class SyncService
                             'operador_id' => $vendaLocal->operador_id_central,
                             'cliente_id' => $vendaLocal->cliente_id,
                             'pedido_venda_id' => $vendaLocal->pedido_venda_id ?? null,
+                            // Venda do restaurante: a conta da mesa ou o pedido do iFood de onde veio
+                            'comanda_id' => ($vendaLocal->restaurante_origem ?? null) === 'mesa' ? $vendaLocal->restaurante_ref_id : null,
+                            'comanda_pedido_id' => ($vendaLocal->restaurante_origem ?? null) === 'ifood' ? $vendaLocal->restaurante_ref_id : null,
                             'cpf_na_nota' => $vendaLocal->cpf_na_nota,
                             'total' => $vendaLocal->total,
                             'troco' => $vendaLocal->troco,
@@ -1301,7 +1306,8 @@ class SyncService
 
                         // [MOVIMENTAÇÃO] baixa do estoque central + histórico, pelo EstoqueService
                         // (idempotente pelo uuid). Venda que já chega cancelada nunca baixou estoque.
-                        if ($vendaLocal->status_fiscal !== 'cancelada') {
+                        // Venda do restaurante não baixa: o estoque saiu com o pedido (mesa/iFood).
+                        if ($vendaLocal->status_fiscal !== 'cancelada' && empty($vendaLocal->restaurante_origem)) {
                             app(EstoqueService::class)->baixarVenda($vendaLocal->uuid, $itens ?? [], [
                                 'user_id'          => $vendaLocal->operador_id_central,
                                 'data'             => $vendaLocal->vendida_em,
@@ -1350,6 +1356,11 @@ class SyncService
                         if ($valorConvenio > 0 && $vendaLocal->status_fiscal !== 'cancelada') {
                             app(\App\Services\ConvenioService::class)->lancarDaVenda($vendaId, (float) $valorConvenio, $vendaLocal->vendida_em);
                         }
+
+                        // Venda do restaurante que já chega cancelada: o pedido fica livre para emitir de novo
+                        if ($vendaLocal->status_fiscal === 'cancelada' && !empty($vendaLocal->restaurante_origem)) {
+                            \App\Services\VendaRestauranteService::liberar($vendaLocal->restaurante_origem, (int) $vendaLocal->restaurante_ref_id, $vendaLocal->uuid);
+                        }
                     });
                 } elseif ($vendaLocal->fiscal_sync_pendente) {
                     DB::transaction(function () use ($vendaLocal) {
@@ -1376,6 +1387,13 @@ class SyncService
                             app(\App\Services\CreditoLojaService::class)->estornarVenda($vendaLocal->uuid);
                             // Dívida do convênio da venda deixa de existir
                             app(\App\Services\ConvenioService::class)->estornarVenda($vendaLocal->uuid);
+
+                            // Venda do restaurante: o estoque continua com o pedido; o pedido fica livre para emitir de novo
+                            if (!empty($vendaLocal->restaurante_origem)) {
+                                \App\Services\VendaRestauranteService::liberar($vendaLocal->restaurante_origem, (int) $vendaLocal->restaurante_ref_id, $vendaLocal->uuid);
+
+                                return;
+                            }
 
                             // [MOVIMENTAÇÃO] devolução pelo EstoqueService (registra no histórico e não devolve duas vezes)
                             $vendaId = DB::table('vendas')->where('uuid', $vendaLocal->uuid)->value('id');

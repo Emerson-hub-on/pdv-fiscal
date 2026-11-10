@@ -41,6 +41,12 @@
                 <dt class="text-gray-600">Cancelamentos</dt>
                 <dd class="font-medium">{{ $r['qtd_canceladas'] }} ({{ $moeda($r['total_cancelado']) }})</dd>
             </div>
+            @if (($r['qtd_restaurante'] ?? 0) > 0)
+                <div class="flex justify-between px-3 py-2">
+                    <dt class="text-gray-600">Restaurante (mesa/iFood, fora da gaveta)</dt>
+                    <dd class="font-medium">{{ $r['qtd_restaurante'] }} ({{ $moeda($r['total_restaurante']) }})</dd>
+                </div>
+            @endif
             <div class="flex justify-between px-3 py-2">
                 <dt class="text-gray-600">Descontos</dt>
                 <dd class="font-medium">{{ $moeda($r['total_descontos']) }}</dd>

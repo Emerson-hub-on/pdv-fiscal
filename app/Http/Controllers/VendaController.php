@@ -285,25 +285,6 @@ class VendaController extends Controller
         return $pdv && !$pdv->ativo;
     }
 
-    // Emite a NFC-e da venda pelo emissor local. A contingência (tpEmis 9) também termina em exceção, mas o documento já é válido.
-    private function emitirNoCaixa(string $uuid): array
-    {
-        try {
-            $resultado = (new EmissorLocalService())->emitirLocal($uuid);
-
-            return ['sucesso' => true, 'contingencia' => false, 'chave' => $resultado['chave']];
-        } catch (\Throwable $e) {
-            $situacao = DB::connection('sqlite_local')->table('vendas_pendentes')
-                ->where('uuid', $uuid)->value('status_fiscal');
-
-            return [
-                'sucesso' => false,
-                'contingencia' => $situacao === 'contingencia',
-                'erro' => $e->getMessage(),
-            ];
-        }
-    }
- 
     /**
      * Pagamento com crédito em loja (troca/haver): confere no SQLite do caixa e abate o saldo
      * (dentro da transação da venda). O servidor registra o uso quando a venda sobe.
@@ -813,45 +794,8 @@ class VendaController extends Controller
             AutorizacaoSupervisor::consumir('desconto_item');
             AutorizacaoSupervisor::consumir('desconto_global');
 
-            $emissao = ['sucesso' => false, 'contingencia' => false, 'erro' => null];
-
-            if (EmissaoLocal::ativa((int) $caixa->pdv_id)) {
-                // O caixa emite a NFC-e sozinho, sem depender do servidor. A venda sobe pelo agendador
-                // (a cada minuto) ou pelo Atualizar Caixa: a tela não espera pela rede
-                $emissao = $this->emitirNoCaixa($uuid);
-            } elseif (CentralStatus::fora()) {
-                // PDV ainda emitindo pelo servidor e ele está fora: a venda fica no caixa
-                $emissao['erro'] = 'Servidor indisponível: a venda foi salva no caixa e será enviada quando a conexão voltar.';
-            } else {
-                try {
-                    (new SyncService())->enviarVendasPendentes();
-
-                    if (CentralStatus::fora()) {
-                        $emissao['erro'] = 'Servidor indisponível: a venda foi salva no caixa e será enviada quando a conexão voltar.';
-                    } else {
-                        $vendaCentral = \App\Models\Venda::where('uuid', $uuid)->first();
-
-                        if ($vendaCentral) {
-                            try {
-                                $resultado = (new \App\Services\FiscalEmissorService())->emitir($vendaCentral);
-                                $emissao = ['sucesso' => true, 'contingencia' => false, 'chave' => $resultado['chave']];
-                            } catch (\Exception $e) {
-                                $vendaCentral->refresh();
-                                $emissao = [
-                                    'sucesso' => false,
-                                    'contingencia' => $vendaCentral->status === 'contingencia',
-                                    'erro' => $e->getMessage(),
-                                ];
-                            }
-                        }
-                    }
-                } catch (\Throwable $e) {
-                    if (CentralStatus::erroDeConexao($e)) {
-                        CentralStatus::marcarFora();
-                        $emissao['erro'] = 'Servidor indisponível: a venda foi salva no caixa e será enviada quando a conexão voltar.';
-                    }
-                }
-            }
+            // Caixa emite sozinho; em emergência, o servidor emite (ver EmissaoCaixaService)
+            $emissao = (new \App\Services\EmissaoCaixaService())->emitir($uuid, $caixa);
 
             return response()->json([
                 'sucesso' => true,

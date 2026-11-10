@@ -62,6 +62,9 @@ class Caixa extends Model
 
     public function totalVendido(): float
     {
-        return $this->vendas()->where('status', 'emitida')->sum('total');
+        // vendas do restaurante (mesa/iFood) foram pagas fora da gaveta do caixa
+        return $this->vendas()->where('status', 'emitida')
+            ->whereNull('comanda_id')->whereNull('comanda_pedido_id')
+            ->sum('total');
     }
 }

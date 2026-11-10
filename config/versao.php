@@ -11,6 +11,17 @@
 
 $historico = [
     [
+        'versao' => '1.29.0',
+        'data' => '2026-11-10',
+        'itens' => [
+            'PDV: "Puxar Pedido" (F6) virou um menu com "Pedidos de Venda" (como antes) e "Pedidos Restaurante" (mesas e iFood).',
+            'Pedidos Restaurante: lista as contas de mesa pagas e os pedidos do iFood concluídos de um dia e emite as NFC-e de uma vez, uma por pedido, com barra de progresso. "Pausar" termina a nota em andamento e para; "Emitir" continua de onde parou.',
+            'Cada pedido só é emitido uma vez, mesmo com mais de um caixa. Pedido com item sem produto ligado ou forma de pagamento sem cadastro aparece "Com pendência" e mostra o que falta.',
+            'A NFC-e do iFood sai com o iFood como intermediador e, na entrega, como entrega em domicílio. Leva só os itens: a taxa de entrega e os descontos do iFood não entram. Os pagamentos do iFood viram a forma do caixa de mesmo meio (crédito, débito, PIX, dinheiro, vale...).',
+            'Essas vendas não baixam o estoque de novo (já saiu com o pedido) e, no fechamento do caixa, aparecem à parte, sem entrar no dinheiro esperado da gaveta. NFC-e cancelada libera o pedido para emitir de novo.',
+        ],
+    ],
+    [
         'versao' => '1.28.1',
         'data' => '2026-11-09',
         'itens' => [

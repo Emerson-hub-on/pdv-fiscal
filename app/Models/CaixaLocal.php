@@ -47,6 +47,8 @@ class CaixaLocal extends Model
             ->where('status', '!=', 'cancelada')
             // NFC-e cancelada no caixa fica com status "sincronizada" e status_fiscal "cancelada"
             ->where('status_fiscal', '!=', 'cancelada')
+            // vendas do restaurante (mesa/iFood) foram pagas fora desta gaveta
+            ->whereNull('restaurante_origem')
             ->sum('total');
     }
 }

@@ -155,6 +155,11 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
 
         // Pedidos de venda no caixa (lidos do espelho SQLite local)
         Route::get('pedidos-caixa', [PedidoCaixaController::class, 'listar'])->name('pedidos-caixa.listar');
+        // Pedidos do restaurante (contas de mesa pagas e pedidos do iFood concluídos) emitidos em NFC-e pelo caixa
+        Route::get('pdv/restaurante', [\App\Http\Controllers\PedidoRestauranteController::class, 'listar'])
+            ->middleware('throttle:60,1')->name('pdv.restaurante.listar');
+        Route::post('pdv/restaurante/emitir', [\App\Http\Controllers\PedidoRestauranteController::class, 'emitir'])
+            ->middleware('throttle:120,1')->name('pdv.restaurante.emitir');
         Route::get('pedidos-caixa/{id}/itens', [PedidoCaixaController::class, 'itens'])
             ->whereNumber('id')
             ->name('pedidos-caixa.itens');

@@ -37,7 +37,7 @@
             // um menu por vez: fecha os do cabeçalho (Cancelamento, Impressão, Opções)
             if (abrir) {
                 if (typeof fecharDropdownCancelamento === 'function') fecharDropdownCancelamento();
-                if (typeof fecharDropdownImpressao === 'function') { fecharDropdownImpressao(); fecharDropdownOpcoes(); }
+                if (typeof fecharDropdownImpressao === 'function') { fecharDropdownImpressao(); fecharDropdownOpcoes(); fecharDropdownPedidos(); }
             }
             menu.classList.toggle('hidden', !abrir);
             document.getElementById('perfil-operador-botao').setAttribute('aria-expanded', abrir);

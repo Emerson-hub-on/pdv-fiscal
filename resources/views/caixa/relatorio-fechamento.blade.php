@@ -99,6 +99,9 @@
         <div class="flex justify-between"><span>(-) Descontos</span><span>{{ $n($r['total_descontos']) }}</span></div>
         <div class="flex justify-between font-bold"><span>TOTAL VENDIDO</span><span>{{ $n($r['total_liquido']) }}</span></div>
         <div class="flex justify-between"><span>Canceladas ({{ $r['qtd_canceladas'] }})</span><span>{{ $n($r['total_cancelado']) }}</span></div>
+        @if (($r['qtd_restaurante'] ?? 0) > 0)
+            <div class="flex justify-between"><span>Restaurante ({{ $r['qtd_restaurante'] }}) - fora da gaveta</span><span>{{ $n($r['total_restaurante']) }}</span></div>
+        @endif
     </div>
 
     <div class="border-t border-dashed border-black my-2"></div>

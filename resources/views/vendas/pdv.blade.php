@@ -100,6 +100,8 @@
     </div>
 </div>
 
+@include('caixa.partials.modal-restaurante')
+
 <!-- Modal de busca de produto -->
 <div id="modal-busca-produto" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto">
@@ -710,7 +712,7 @@ function toggleDropdownCancelamento() {
     
     if (!dropdown.classList.contains('hidden')) {
         indiceDropdownCancelamento = -1; // Reseta ao abrir
-        if (typeof fecharDropdownImpressao === 'function') { fecharDropdownImpressao(); fecharDropdownOpcoes(); }
+        if (typeof fecharDropdownImpressao === 'function') { fecharDropdownImpressao(); fecharDropdownOpcoes(); fecharDropdownPedidos(); }
     }
 }
 
@@ -727,7 +729,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'F2') { e.preventDefault(); abrirModalInutilizacao(); }
     if (e.key === 'F3') { e.preventDefault(); toggleDropdownCancelamento(); }
     if (e.key === 'F4') { e.preventDefault(); abrirModalDescontoItem(); }
-    if (e.key === 'F6') { e.preventDefault(); abrirModalPedidos(); }
+    if (e.key === 'F6') { e.preventDefault(); toggleDropdownPedidos(); }
     if (e.key === 'F7') { e.preventDefault(); toggleDropdownImpressao(); }
     if (e.key === 'F8') { e.preventDefault(); toggleDropdownOpcoes(); }
     if (e.key === 'F9') { e.preventDefault(); abrirModalConvenios(); }
@@ -913,6 +915,9 @@ function fecharTodosModais() {
         'modal-convenios',
     ];
 
+    // Pedidos Restaurante: não fecha no meio de uma emissão (o próprio modal avisa)
+    if (window.RestaurantePdv?.aberto()) RestaurantePdv.fechar();
+
     idsModais.forEach(id => {
         const modal = document.getElementById(id);
         if (modal) {
@@ -927,7 +932,7 @@ function fecharTodosModais() {
     }
 
     fecharDropdownCancelamento();
-    if (typeof fecharDropdownImpressao === 'function') { fecharDropdownImpressao(); fecharDropdownOpcoes(); }
+    if (typeof fecharDropdownImpressao === 'function') { fecharDropdownImpressao(); fecharDropdownOpcoes(); fecharDropdownPedidos(); }
     tipoDescontoPendente = null;
 }
 

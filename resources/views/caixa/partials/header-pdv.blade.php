@@ -54,10 +54,23 @@
                 class="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white cursor-pointer text-xs font-semibold px-3 py-2 rounded-lg transition">
             Desconto Item <span class="text-[10px] font-semibold text-amber-50/80 bg-white/10 rounded px-1.5 py-0.5">F4</span>
         </button>
-        <button onclick="abrirModalPedidos()"
-                class="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white cursor-pointer text-xs font-semibold px-3 py-2 rounded-lg transition">
-            Puxar Pedido <span class="text-[10px] font-semibold text-amber-50/80 bg-white/10 rounded px-1.5 py-0.5">F6</span>
-        </button>
+        <div class="relative">
+            <button type="button" onclick="toggleDropdownPedidos()"
+                    class="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white cursor-pointer text-xs font-semibold px-3 py-2 rounded-lg transition">
+                Puxar Pedido <span class="text-[10px] font-semibold text-amber-50/80 bg-white/10 rounded px-1.5 py-0.5">F6</span> ▾
+            </button>
+            <div id="dropdown-pedidos" class="absolute hidden bg-white rounded-xl shadow-xl ring-1 ring-slate-200 mt-2 w-60 overflow-hidden z-50">
+                <button type="button" onclick="fecharDropdownPedidos(); abrirModalPedidos();"
+                        class="opcao-menu-caixa w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-[#10284A] hover:text-amber-50 transition">
+                    Pedidos de Venda
+                </button>
+                <button type="button" onclick="fecharDropdownPedidos(); abrirModalRestaurante();"
+                        class="opcao-menu-caixa w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-[#10284A] hover:text-amber-50 transition border-t border-slate-100">
+                    Pedidos Restaurante
+                    <span class="block text-[11px] opacity-70">Mesas e iFood</span>
+                </button>
+            </div>
+        </div>
         <button onclick="abrirModalConvenios()"
                 class="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white cursor-pointer text-xs font-semibold px-3 py-2 rounded-lg transition">
             Convênios <span class="text-[10px] font-semibold text-amber-50/80 bg-white/10 rounded px-1.5 py-0.5">F9</span>
@@ -123,7 +136,7 @@
 
     // Menus do cabeçalho: "Impressão" (F7) e "Opções" (F8). Mesmo comportamento do menu de Cancelamento:
     // abre com a 1ª opção marcada, ↑ ↓ trocam, Enter escolhe, Esc ou clique fora fecha. Só um menu aberto por vez.
-    const MENUS_CAIXA = ['dropdown-impressao', 'dropdown-opcoes'];
+    const MENUS_CAIXA = ['dropdown-pedidos', 'dropdown-impressao', 'dropdown-opcoes'];
     const indiceMenuCaixa = {};
 
     function menuCaixaAberto() {
@@ -161,6 +174,8 @@
     // nomes usados pela tela do PDV (atalhos F7/F8 e "fechar tudo")
     function toggleDropdownImpressao() { alternarMenuCaixa('dropdown-impressao'); }
     function fecharDropdownImpressao() { fecharMenuCaixa('dropdown-impressao'); }
+    function toggleDropdownPedidos() { alternarMenuCaixa('dropdown-pedidos'); }
+    function fecharDropdownPedidos() { fecharMenuCaixa('dropdown-pedidos'); }
     function toggleDropdownOpcoes() { alternarMenuCaixa('dropdown-opcoes'); }
     function fecharDropdownOpcoes() { fecharMenuCaixa('dropdown-opcoes'); }
 

@@ -31,10 +31,15 @@ class FiscalEmissorService
     /** Impostos de cada item exatamente como foram para o XML (índice = posição do item). */
     protected array $impostosItens = [];
 
+    /** Presença do comprador (indPres) e intermediador (iFood) da venda que está sendo emitida. */
+    protected int $indPres = 1;
+    protected ?array $intermediador = null;
+
 public function emitir(Venda $venda): array
     {
         $venda->load('itens.produto.ncm', 'itens.produto.tributacao', 'itens.variante', 'caixa.pdv', 'cliente');
         $pdv = $venda->caixa->pdv;
+        $this->prepararPresenca($venda);
         $this->garantirEmissaoPermitida($pdv);
 
         [$numero, $serie] = $this->reservarNumero($venda, $pdv);
@@ -89,6 +94,7 @@ public function emitir(Venda $venda): array
             $this->montarTotais($nfe, $venda);
             $this->montarTransporte($nfe);
             $this->montarPagamento($nfe, $venda);
+            $this->montarIntermediador($nfe);
             $this->montarResponsavelTecnico($nfe);
 
             $xmlBruto = $nfe->getXML();
@@ -275,6 +281,7 @@ public function emitir(Venda $venda): array
                 $this->montarTotais($nfe, $venda);
                 $this->montarTransporte($nfe);
                 $this->montarPagamento($nfe, $venda);
+                $this->montarIntermediador($nfe);
                 $this->montarResponsavelTecnico($nfe);
     
                 $xmlBruto = $nfe->getXML();
@@ -448,7 +455,10 @@ public function emitir(Venda $venda): array
         $std->tpAmb = (int) $empresa->ambiente;
         $std->finNFe = 1;
         $std->indFinal = 1;
-        $std->indPres = 1;
+        $std->indPres = $this->indPres;
+        if ($this->intermediador) {
+            $std->indIntermed = 1; // venda feita em plataforma de terceiro (iFood)
+        }
         $std->procEmi = 0;
         $std->verProc = '1.0.0';
 
@@ -991,6 +1001,25 @@ protected function montarTotais(Make $nfe, Venda $venda): void
             }
 
             $nfe->tagDetPag($det);
+        }
+    }
+
+    /** Venda do restaurante: 4 = entrega em domicílio (pedido do iFood para entrega), e o iFood como intermediador. */
+    protected function prepararPresenca(Venda $venda): void
+    {
+        $indPres = (int) ($venda->ind_pres ?? 1);
+        $this->indPres = in_array($indPres, [1, 4], true) ? $indPres : 1;
+        $cnpj = preg_replace('/\D/', '', (string) ($venda->intermediador_cnpj ?? ''));
+
+        $this->intermediador = strlen($cnpj) === 14
+            ? ['CNPJ' => $cnpj, 'idCadIntTran' => mb_substr((string) ($venda->intermediador_id ?: $cnpj), 0, 60)]
+            : null;
+    }
+
+    protected function montarIntermediador(Make $nfe): void
+    {
+        if ($this->intermediador) {
+            $nfe->tagIntermed((object) $this->intermediador);
         }
     }
 
