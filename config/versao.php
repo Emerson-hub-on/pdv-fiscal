@@ -11,6 +11,13 @@
 
 $historico = [
     [
+        'versao' => '1.29.1',
+        'data' => '2026-11-10',
+        'itens' => [
+            'PDV → Pedidos Restaurante: o pedido que não pode ser emitido mostra só o botão "Pendência"; o relato do que falta abre (e fecha) ao clicar nele.',
+        ],
+    ],
+    [
         'versao' => '1.29.0',
         'data' => '2026-11-10',
         'itens' => [

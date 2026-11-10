@@ -92,6 +92,7 @@ window.RestaurantePdv = (() => {
     let pedidos = [];
     let dataLista = null;
     let marcados = new Set();
+    let pendenciasAbertas = new Set(); // pedidos com o relato da pendência aberto
     let emitindo = false;
     let pausaPedida = false;
     let carregando = 0;
@@ -140,6 +141,7 @@ window.RestaurantePdv = (() => {
             pedidos = json.pedidos || [];
             dataLista = json.data;
             marcados = new Set(aEmitir().map(chave));
+            pendenciasAbertas = new Set();
             desenhar();
         } catch (e) {
             if (minha !== carregando) return;
@@ -157,8 +159,17 @@ window.RestaurantePdv = (() => {
             rotulo += ' nº ' + String(p.numero_nfce).padStart(6, '0');
         }
         let extra = '';
-        if (p.situacao === 'bloqueado' && p.problemas?.length) {
-            extra = `<ul class="mt-1 text-xs text-amber-700 list-disc pl-4">${p.problemas.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`;
+        if (p.situacao === 'bloqueado') {
+            // Só o botão "Pendência"; o relato aparece quando o operador clica nele
+            const k = chave(p);
+            const aberto = pendenciasAbertas.has(k);
+            const relato = aberto && p.problemas?.length
+                ? `<ul class="mt-1.5 text-xs text-amber-800 bg-amber-50 ring-1 ring-amber-200 rounded-lg list-disc pl-6 pr-2 py-1.5 space-y-0.5">${p.problemas.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`
+                : '';
+            return `<button type="button" data-pendencia="${esc(k)}" aria-expanded="${aberto}"
+                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100 cursor-pointer transition">
+                        Pendência <span class="text-[10px]">${aberto ? '▴' : '▾'}</span>
+                    </button>${relato}`;
         } else if (['nao_emitida', 'erro'].includes(p.situacao) && p.motivo) {
             extra = `<p class="mt-1 text-xs text-red-600">${esc(p.motivo)}</p>`
                 + (p.situacao === 'nao_emitida' ? '<p class="text-[11px] text-slate-500">Reenvie em Contingências (F1).</p>' : '');
@@ -352,6 +363,15 @@ window.RestaurantePdv = (() => {
         if (e.target.checked) marcados.add(k); else marcados.delete(k);
         desenharResumo();
         desenharBotoes();
+    });
+
+    // Botão "Pendência": abre e fecha o relato do pedido
+    document.addEventListener('click', (e) => {
+        const botao = e.target.closest?.('#modal-restaurante [data-pendencia]');
+        if (!botao) return;
+        const k = botao.dataset.pendencia;
+        if (pendenciasAbertas.has(k)) pendenciasAbertas.delete(k); else pendenciasAbertas.add(k);
+        desenhar();
     });
 
     // Não fecha a página no meio de uma emissão
