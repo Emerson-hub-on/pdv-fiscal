@@ -11,6 +11,16 @@
 
 $historico = [
     [
+        'versao' => '1.31.0',
+        'data' => '2026-11-10',
+        'itens' => [
+            'Lista de Pedidos: novo botão "Loja iFood" mostra se a loja está aberta, fechada ou pausada no iFood (atualiza a cada minuto).',
+            'A janela da loja mostra o motivo informado pelo iFood quando a loja está fechada, o horário de hoje e um aviso quando a integração parou de consultar o iFood (o que faz o iFood fechar a loja).',
+            'Pausar a loja no iFood por 15 min, 30 min, 1 h, 2 h ou até um horário, com motivo; ver as pausas ativas e agendadas e reabrir/remover.',
+            'Horário de funcionamento do iFood: ver e alterar os turnos de cada dia (mais de um turno por dia, passando da meia-noite, copiar segunda para os outros dias). Exige permissão de alteração no módulo iFood.',
+        ],
+    ],
+    [
         'versao' => '1.30.3',
         'data' => '2026-11-10',
         'itens' => [

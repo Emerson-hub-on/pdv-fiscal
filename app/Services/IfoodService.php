@@ -175,6 +175,220 @@ class IfoodService
     }
 
     // =====================================================================
+    // Loja: situação, pausas e horário de funcionamento (Merchant API)
+    // =====================================================================
+
+    public const DIAS_SEMANA = [
+        'MONDAY' => 'Segunda', 'TUESDAY' => 'Terça', 'WEDNESDAY' => 'Quarta', 'THURSDAY' => 'Quinta',
+        'FRIDAY' => 'Sexta', 'SATURDAY' => 'Sábado', 'SUNDAY' => 'Domingo',
+    ];
+
+    /** Pausa mais longa que o iFood aceita. */
+    public const PAUSA_MAXIMA_MINUTOS = 7 * 24 * 60;
+
+    /**
+     * Situação da loja no iFood (aberta/fechada e por quê) e as pausas ativas ou agendadas.
+     * Guarda 20 s em cache: a Lista de Pedidos consulta a cada minuto, e várias telas abertas não multiplicam as chamadas.
+     */
+    public function situacaoLoja(IfoodConfiguracao $cfg, bool $renovar = false): array
+    {
+        $this->exigirCredenciais($cfg);
+
+        if ($renovar) {
+            Cache::forget('ifood-loja-situacao');
+        }
+
+        return Cache::remember('ifood-loja-situacao', 20, function () use ($cfg) {
+            $m = $cfg->merchant_id;
+            $status = collect($this->chamar($cfg, 'get', "/merchant/v1.0/merchants/{$m}/status") ?? []);
+            $status = array_is_list($status->all()) ? $status : collect([$status->all()]);
+
+            $pausas = collect($this->chamar($cfg, 'get', "/merchant/v1.0/merchants/{$m}/interruptions") ?? [])
+                ->filter(fn ($p) => is_array($p) && !empty($p['id']))
+                ->map(function (array $p) {
+                    $inicio = $this->horaLocalIfood($p['start'] ?? null);
+                    $fim = $this->horaLocalIfood($p['end'] ?? null);
+
+                    return [
+                        'id'        => (string) $p['id'],
+                        'descricao' => (string) ($p['description'] ?? ''),
+                        'inicio'    => $inicio?->toIso8601String(),
+                        'fim'       => $fim?->toIso8601String(),
+                        'ativa'     => $inicio && $fim ? now()->between($inicio, $fim) : false,
+                    ];
+                })
+                ->filter(fn ($p) => !$p['fim'] || now()->lt($p['fim'])) // já terminou: não mostra
+                ->sortBy('inicio')->values()->all();
+
+            $operacoes = $status->filter(fn ($s) => is_array($s))->map(fn (array $s) => [
+                'operacao'   => (string) ($s['operation'] ?? ''),
+                'disponivel' => (bool) ($s['available'] ?? false),
+                'estado'     => strtoupper((string) ($s['state'] ?? '')),
+                'titulo'     => trim((string) data_get($s, 'message.title', '')),
+                'subtitulo'  => trim((string) data_get($s, 'message.subtitle', '')),
+                'descricao'  => trim((string) data_get($s, 'message.description', '')),
+                // O que impede a loja de abrir (as validações OK não interessam ao operador)
+                'problemas'  => collect($s['validations'] ?? [])
+                    ->filter(fn ($v) => is_array($v) && strtoupper((string) ($v['state'] ?? '')) !== 'OK')
+                    ->sortBy(fn ($v) => data_get($v, 'message.priority', 99))
+                    ->map(fn ($v) => [
+                        'codigo'    => (string) ($v['code'] ?? $v['id'] ?? ''),
+                        'estado'    => strtoupper((string) ($v['state'] ?? '')),
+                        'titulo'    => trim((string) data_get($v, 'message.title', '')),
+                        'subtitulo' => trim((string) data_get($v, 'message.subtitle', '')),
+                    ])->values()->all(),
+                'horario'    => trim((string) data_get(collect($s['validations'] ?? [])->firstWhere('id', 'opening-hours'), 'message.subtitle', '')),
+            ])->values();
+
+            return [
+                'aberta'        => $operacoes->contains('disponivel', true),
+                'operacoes'     => $operacoes->all(),
+                'pausas'        => $pausas,
+                'pausada'       => collect($pausas)->contains('ativa', true),
+                'consultado_em' => now()->toIso8601String(),
+            ];
+        });
+    }
+
+    /** Pausa a loja no iFood agora, por alguns minutos (no máximo 7 dias). */
+    public function pausarLoja(IfoodConfiguracao $cfg, int $minutos, string $descricao): array
+    {
+        $this->exigirCredenciais($cfg);
+
+        if ($minutos < 1 || $minutos > self::PAUSA_MAXIMA_MINUTOS) {
+            throw new RuntimeException('A pausa precisa ter de 1 minuto a 7 dias.');
+        }
+
+        $inicio = now();
+        $pausa = [
+            'id'          => (string) Str::uuid(),
+            'description' => mb_substr(trim($descricao) ?: 'Pausa pelo sistema', 0, 200),
+            // Hora de Brasília SEM fuso: com fuso o iFood converte para UTC e a pausa fica 3 h deslocada
+            'start'       => $inicio->format('Y-m-d\TH:i:s'),
+            'end'         => $inicio->copy()->addMinutes($minutos)->format('Y-m-d\TH:i:s'),
+        ];
+
+        $this->chamar($cfg, 'post', "/merchant/v1.0/merchants/{$cfg->merchant_id}/interruptions", $pausa);
+        Cache::forget('ifood-loja-situacao');
+
+        return $pausa;
+    }
+
+    /** Remove uma pausa (a loja volta a abrir, se estiver no horário). */
+    public function removerPausa(IfoodConfiguracao $cfg, string $id): void
+    {
+        $this->exigirCredenciais($cfg);
+
+        if (!preg_match('/^[A-Za-z0-9-]{1,64}$/', $id)) {
+            throw new RuntimeException('Pausa inválida.');
+        }
+
+        try {
+            $this->chamar($cfg, 'delete', "/merchant/v1.0/merchants/{$cfg->merchant_id}/interruptions/{$id}");
+        } catch (RuntimeException $e) {
+            // Pausa recém-criada às vezes ainda não pode ser removida
+            if (str_contains($e->getMessage(), 'HTTP 409')) {
+                throw new RuntimeException('O iFood ainda está registrando esta pausa. Tente remover de novo em alguns segundos.');
+            }
+            throw $e;
+        } finally {
+            Cache::forget('ifood-loja-situacao');
+        }
+    }
+
+    /** Horário de funcionamento por dia: [{dia, rotulo, turnos: [{inicio: "HH:MM", fim: "HH:MM"}]}]. */
+    public function horariosLoja(IfoodConfiguracao $cfg): array
+    {
+        $this->exigirCredenciais($cfg);
+        $r = $this->chamar($cfg, 'get', "/merchant/v1.0/merchants/{$cfg->merchant_id}/opening-hours") ?? [];
+        $turnos = collect($r['shifts'] ?? (array_is_list($r) ? $r : []))->filter(fn ($t) => is_array($t));
+
+        return collect(self::DIAS_SEMANA)->map(fn ($rotulo, $dia) => [
+            'dia'    => $dia,
+            'rotulo' => $rotulo,
+            'turnos' => $turnos->where('dayOfWeek', $dia)
+                ->map(function ($t) {
+                    $inicio = substr((string) ($t['start'] ?? '00:00:00'), 0, 5);
+                    [$h, $min] = array_map('intval', explode(':', $inicio) + [0, 0]);
+                    $fim = ($h * 60 + $min + (int) ($t['duration'] ?? 0)) % 1440;
+
+                    return ['inicio' => $inicio, 'fim' => sprintf('%02d:%02d', intdiv($fim, 60), $fim % 60)];
+                })
+                ->sortBy('inicio')->values()->all(),
+        ])->values()->all();
+    }
+
+    /**
+     * Grava o horário da semana inteira no iFood (o PUT substitui tudo: dia sem turno fica fechado).
+     * $dias: [{dia, turnos: [{inicio: "HH:MM", fim: "HH:MM"}]}]. Fim menor ou igual ao início = passa da meia-noite.
+     */
+    public function salvarHorariosLoja(IfoodConfiguracao $cfg, array $dias): void
+    {
+        $this->exigirCredenciais($cfg);
+        $turnos = [];
+
+        foreach ($dias as $d) {
+            $dia = strtoupper((string) ($d['dia'] ?? ''));
+            if (!isset(self::DIAS_SEMANA[$dia])) {
+                throw new RuntimeException('Dia da semana inválido.');
+            }
+
+            $doDia = [];
+            foreach ((array) ($d['turnos'] ?? []) as $t) {
+                $inicio = $this->minutosDoDia($t['inicio'] ?? null);
+                $fim = $this->minutosDoDia($t['fim'] ?? null);
+                if ($inicio === null || $fim === null) {
+                    throw new RuntimeException(self::DIAS_SEMANA[$dia] . ': informe a hora de início e de fim de cada turno.');
+                }
+
+                // 23:59 = até o fim do dia (o iFood usa 1439 minutos para o dia inteiro)
+                $duracao = $fim > $inicio ? $fim - $inicio : 1440 - $inicio + $fim;
+                $duracao = min($duracao, 1439);
+                $doDia[] = [$inicio, $inicio + $duracao];
+                $turnos[] = ['dayOfWeek' => $dia, 'start' => sprintf('%02d:%02d:00', intdiv($inicio, 60), $inicio % 60), 'duration' => $duracao];
+            }
+
+            usort($doDia, fn ($a, $b) => $a[0] <=> $b[0]);
+            for ($i = 1; $i < count($doDia); $i++) {
+                if ($doDia[$i][0] < $doDia[$i - 1][1]) {
+                    throw new RuntimeException(self::DIAS_SEMANA[$dia] . ': os turnos estão sobrepostos.');
+                }
+            }
+        }
+
+        $this->chamar($cfg, 'put', "/merchant/v1.0/merchants/{$cfg->merchant_id}/opening-hours", [
+            'storeId' => $cfg->merchant_id,
+            'shifts'  => $turnos,
+        ]);
+        Cache::forget('ifood-loja-situacao');
+    }
+
+    private function minutosDoDia(mixed $hora): ?int
+    {
+        if (!is_string($hora) || !preg_match('/^([01]\d|2[0-3]):([0-5]\d)$/', $hora, $m)) {
+            return null;
+        }
+
+        return (int) $m[1] * 60 + (int) $m[2];
+    }
+
+    /** Horário do iFood sem fuso (hora de Brasília) ou com fuso → hora local do sistema. */
+    private function horaLocalIfood(?string $valor): ?\Illuminate\Support\Carbon
+    {
+        if (!$valor) {
+            return null;
+        }
+
+        try {
+            return preg_match('/(Z|[+-]\d{2}:?\d{2})$/', $valor)
+                ? \Illuminate\Support\Carbon::parse($valor)->setTimezone(config('app.timezone'))
+                : \Illuminate\Support\Carbon::parse($valor, config('app.timezone'));
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    // =====================================================================
     // Cardápio
     // =====================================================================
 
@@ -1081,6 +1295,7 @@ class IfoodService
                 'post'  => $dados ? $req->post($caminho, $dados) : $req->withBody('', 'application/json')->post($caminho),
                 'patch' => $req->patch($caminho, $dados),
                 'put'   => $req->put($caminho, $dados),
+                'delete' => $req->delete($caminho, $dados),
                 default => throw new RuntimeException("Método {$metodo} não suportado."),
             };
         };

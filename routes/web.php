@@ -288,6 +288,14 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
             Route::post('cardapio/{item}/disponibilidade', 'disponibilidade')->middleware('throttle:30,1')->name('cardapio.disponibilidade');
         });
 
+        // iFood: horário de funcionamento da loja (cadastro; aberto pela janela "Loja no iFood" da Lista de Pedidos)
+        Route::middleware('permissao:ifood')->group(function () {
+            Route::get('ifood/loja/horarios', [\App\Http\Controllers\IfoodLojaController::class, 'horarios'])
+                ->middleware('throttle:30,1')->name('ifood.loja.horarios');
+            Route::put('ifood/loja/horarios', [\App\Http\Controllers\IfoodLojaController::class, 'salvarHorarios'])
+                ->middleware('throttle:10,1')->name('ifood.loja.horarios.salvar');
+        });
+
         // ---------------- EMPRESA ----------------
         Route::middleware('permissao:empresa')->group(function () {
             Route::get('empresa', [EmpresaController::class, 'editar'])->name('empresa.editar');
@@ -341,6 +349,14 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
             Route::delete('comandas/impressoras/{impressora}', [\App\Http\Controllers\ImpressoraComandaController::class, 'excluir'])->name('comanda-impressoras.destroy');
             Route::post('comandas/impressoras/{impressora}/testar', [\App\Http\Controllers\ImpressoraComandaController::class, 'testar'])
                 ->middleware('throttle:20,1')->name('comanda-impressoras.testar');
+
+            // Loja no iFood: aberta/fechada e pausas (botão na Lista de Pedidos)
+            Route::get('comandas/ifood/loja', [\App\Http\Controllers\IfoodLojaController::class, 'situacao'])
+                ->middleware('throttle:60,1')->name('ifood.loja.situacao');
+            Route::post('comandas/ifood/loja/pausas', [\App\Http\Controllers\IfoodLojaController::class, 'pausar'])
+                ->middleware('throttle:20,1')->name('ifood.loja.pausar');
+            Route::delete('comandas/ifood/loja/pausas/{pausa}', [\App\Http\Controllers\IfoodLojaController::class, 'removerPausa'])
+                ->middleware('throttle:20,1')->name('ifood.loja.pausa.remover');
 
             // Comandas → Relatórios → Pedidos (contas de mesa e pedidos do iFood)
             Route::prefix('comandas/relatorios/pedidos')->name('comandas.relatorios.pedidos.')->group(function () {

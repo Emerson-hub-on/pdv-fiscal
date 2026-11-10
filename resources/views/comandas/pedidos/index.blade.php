@@ -34,6 +34,12 @@
                 <span class="rounded bg-[#EA1D2C] px-1.5 py-0.5 text-[10px] font-bold text-white">iFood</span>
                 <span id="rotulo-aceite-ifood">Aceite {{ $ifoodCfg->aceite_automatico ? 'automático' : 'manual' }}</span>
             </button>
+            {{-- Loja no iFood: aberta/fechada/pausada; abre a janela com o motivo, as pausas e o horário --}}
+            <button type="button" id="btn-loja-ifood" onclick="LojaIfood.abrir()"
+                    class="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-amber-50 ring-1 ring-amber-50/25 hover:bg-amber-50/10">
+                <span data-li-ponto class="w-2 h-2 rounded-full bg-slate-400"></span>
+                <span data-li-rotulo>Loja iFood</span>
+            </button>
         @endif
         <button type="button" onclick="Impressoras.abrir()" title="Impressoras" aria-label="Impressoras"
                 class="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-amber-50 ring-1 ring-amber-50/25 hover:bg-amber-50/10">
@@ -148,6 +154,9 @@
     </div>
 
     @include('comandas.pedidos._impressoras', ['podeAlterar' => $podeAlterar])
+    @if ($ifoodCfg?->ativo)
+        @include('comandas.pedidos._loja-ifood')
+    @endif
     @include('comandas.mesas._relogio')
     @include('comandas._fechar-conta', ['formas' => $formas])
 
