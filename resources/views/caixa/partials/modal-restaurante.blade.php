@@ -71,6 +71,31 @@
     </div>
 </div>
 
+{{-- Pendência de um pedido: abre por cima da lista, pelo botão "Pendência" --}}
+<div id="modal-pendencia-restaurante" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[60] p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" role="dialog" aria-modal="true">
+        <div class="flex justify-between items-start gap-3 px-6 py-4 bg-amber-50 border-b border-amber-200">
+            <div>
+                <p class="text-xs font-semibold text-amber-700 uppercase tracking-wider">Pendência para emitir</p>
+                <h3 data-pend="titulo" class="text-lg font-bold text-slate-800"></h3>
+                <p data-pend="detalhe" class="text-xs text-slate-500"></p>
+            </div>
+            <button type="button" onclick="RestaurantePdv.fecharPendencia()"
+                    class="text-slate-400 hover:text-slate-700 text-2xl leading-none transition">&times;</button>
+        </div>
+        <div class="px-6 py-4">
+            <ul data-pend="lista" class="list-disc pl-5 space-y-2 text-sm text-slate-700"></ul>
+            <p class="mt-4 text-xs text-slate-500">Resolva o que está acima e clique em "Atualizar lista" para o pedido ficar liberado para emitir.</p>
+        </div>
+        <div class="flex justify-end px-6 py-3 bg-slate-50 border-t border-slate-200">
+            <button type="button" data-pend="ok" onclick="RestaurantePdv.fecharPendencia()"
+                    class="bg-[#10284A] hover:bg-[#1a3a66] text-amber-50 text-sm font-semibold px-5 py-2 rounded-xl transition">
+                Entendi
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 window.RestaurantePdv = (() => {
     const URL_LISTAR = @json(route('pdv.restaurante.listar'));
@@ -92,7 +117,6 @@ window.RestaurantePdv = (() => {
     let pedidos = [];
     let dataLista = null;
     let marcados = new Set();
-    let pendenciasAbertas = new Set(); // pedidos com o relato da pendência aberto
     let emitindo = false;
     let pausaPedida = false;
     let carregando = 0;
@@ -111,6 +135,11 @@ window.RestaurantePdv = (() => {
     }
 
     function fechar() {
+        // Esc com a pendência aberta fecha só ela
+        if (pendenciaAberta()) {
+            fecharPendencia();
+            return false;
+        }
         if (emitindo) {
             mensagem('Aguarde: pause a emissão e espere a nota em andamento terminar para fechar.', 'aviso');
             return false;
@@ -141,7 +170,6 @@ window.RestaurantePdv = (() => {
             pedidos = json.pedidos || [];
             dataLista = json.data;
             marcados = new Set(aEmitir().map(chave));
-            pendenciasAbertas = new Set();
             desenhar();
         } catch (e) {
             if (minha !== carregando) return;
@@ -160,16 +188,11 @@ window.RestaurantePdv = (() => {
         }
         let extra = '';
         if (p.situacao === 'bloqueado') {
-            // Só o botão "Pendência"; o relato aparece quando o operador clica nele
-            const k = chave(p);
-            const aberto = pendenciasAbertas.has(k);
-            const relato = aberto && p.problemas?.length
-                ? `<ul class="mt-1.5 text-xs text-amber-800 bg-amber-50 ring-1 ring-amber-200 rounded-lg list-disc pl-6 pr-2 py-1.5 space-y-0.5">${p.problemas.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`
-                : '';
-            return `<button type="button" data-pendencia="${esc(k)}" aria-expanded="${aberto}"
-                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100 cursor-pointer transition">
-                        Pendência <span class="text-[10px]">${aberto ? '▴' : '▾'}</span>
-                    </button>${relato}`;
+            // Só o botão "Pendência"; o relato abre num modal ao clicar
+            return `<button type="button" data-pendencia="${esc(chave(p))}" title="Ver o que falta para emitir"
+                        class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100 cursor-pointer transition">
+                        ⚠ Pendência
+                    </button>`;
         } else if (['nao_emitida', 'erro'].includes(p.situacao) && p.motivo) {
             extra = `<p class="mt-1 text-xs text-red-600">${esc(p.motivo)}</p>`
                 + (p.situacao === 'nao_emitida' ? '<p class="text-[11px] text-slate-500">Reenvie em Contingências (F1).</p>' : '');
@@ -365,13 +388,36 @@ window.RestaurantePdv = (() => {
         desenharBotoes();
     });
 
-    // Botão "Pendência": abre e fecha o relato do pedido
+    // Modal da pendência: o que falta para emitir o pedido
+    const modalPendencia = () => document.getElementById('modal-pendencia-restaurante');
+    const pend = (n) => modalPendencia().querySelector(`[data-pend="${n}"]`);
+
+    function abrirPendencia(k) {
+        const p = pedidos.find(x => chave(x) === k);
+        if (!p) return;
+        pend('titulo').textContent = p.rotulo;
+        pend('detalhe').textContent = [p.tipo === 'ifood' ? 'iFood' : 'Mesa', p.hora, moeda(p.total)].filter(Boolean).join(' · ');
+        const problemas = p.problemas?.length ? p.problemas : ['O pedido não pode ser emitido.'];
+        pend('lista').innerHTML = problemas.map(x => `<li>${esc(x)}</li>`).join('');
+        modalPendencia().classList.remove('hidden');
+        modalPendencia().classList.add('flex');
+        pend('ok').focus();
+    }
+
+    function fecharPendencia() {
+        modalPendencia().classList.add('hidden');
+        modalPendencia().classList.remove('flex');
+    }
+
+    const pendenciaAberta = () => !modalPendencia().classList.contains('hidden');
+
     document.addEventListener('click', (e) => {
         const botao = e.target.closest?.('#modal-restaurante [data-pendencia]');
-        if (!botao) return;
-        const k = botao.dataset.pendencia;
-        if (pendenciasAbertas.has(k)) pendenciasAbertas.delete(k); else pendenciasAbertas.add(k);
-        desenhar();
+        if (botao) {
+            abrirPendencia(botao.dataset.pendencia);
+        } else if (e.target === modalPendencia()) {
+            fecharPendencia(); // clique fora da caixa
+        }
     });
 
     // Não fecha a página no meio de uma emissão
@@ -379,7 +425,7 @@ window.RestaurantePdv = (() => {
         if (emitindo) { e.preventDefault(); e.returnValue = ''; }
     });
 
-    return { abrir, fechar, aberto, carregar, emitir, pausar, marcarTodos, emitindo: () => emitindo };
+    return { abrir, fechar, aberto, carregar, emitir, pausar, marcarTodos, fecharPendencia, emitindo: () => emitindo };
 })();
 
 function abrirModalRestaurante() { RestaurantePdv.abrir(); }
