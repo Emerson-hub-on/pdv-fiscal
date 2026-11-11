@@ -25,6 +25,7 @@ class Comanda extends Model
         'troco'      => 'decimal:2',
         'aberta_em'  => 'datetime',
         'fechada_em' => 'datetime',
+        'dados_nfce' => 'array', // CPF/nome do cliente para a NFC-e (Pedidos Restaurante)
     ];
 
     public function mesa(): BelongsTo

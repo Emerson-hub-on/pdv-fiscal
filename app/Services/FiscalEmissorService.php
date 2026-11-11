@@ -1032,6 +1032,14 @@ protected function montarTotais(Make $nfe, Venda $venda): void
             ->every(fn ($campo) => trim((string) ($dest[$campo] ?? '')) !== '');
         $this->destinatarioEntrega = $this->indPres === 4 && $completo && !$venda->cliente ? $dest : null;
 
+        // Pedidos Restaurante: acima do limite a NFC-e exige o CPF (a tela já pede como pendência; isto é a última barreira)
+        $limiteCpf = (float) config('fiscal.cpf_obrigatorio_acima', 500);
+        if (($venda->restaurante_origem ?? null) && $limiteCpf > 0 && (float) $venda->total > $limiteCpf
+            && !$venda->cpf_na_nota && !$venda->cliente && !$this->destinatarioEntrega && $this->indPres !== 4) {
+            throw new \Exception('CPF obrigatório para a emissão: NFC-e acima de R$ ' . number_format($limiteCpf, 2, ',', '.')
+                . ' exige o CPF do cliente. Informe o CPF na pendência do pedido em Pedidos Restaurante.');
+        }
+
         if ($this->indPres === 4 && !$this->destinatarioEntrega && !$venda->cliente) {
             throw new \Exception('NFC-e de entrega a domicílio sem o CPF e o endereço do cliente (a SEFAZ rejeita). '
                 . 'Informe os dados na pendência do pedido em Pedidos Restaurante.');

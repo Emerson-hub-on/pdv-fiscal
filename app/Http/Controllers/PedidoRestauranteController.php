@@ -89,6 +89,35 @@ class PedidoRestauranteController extends Controller
         return response()->json(['ok' => $faltando === [], 'faltando' => $faltando]);
     }
 
+    /** CPF do cliente de uma conta de mesa ou pedido do iFood acima do limite que exige CPF na NFC-e. */
+    public function cpf(Request $request): JsonResponse
+    {
+        $v = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'tipo' => 'required|in:mesa,ifood',
+            'id'   => 'required|integer|min:1',
+            'cpf'  => 'required|string|max:20',
+            'nome' => 'nullable|string|max:60',
+        ], ['cpf.required' => 'Informe o CPF do cliente.']);
+
+        if ($v->fails()) {
+            return response()->json(['message' => $v->errors()->first(), 'errors' => $v->errors()], 422);
+        }
+
+        if (CentralStatus::fora()) {
+            return response()->json(['message' => 'Servidor indisponível: os pedidos do restaurante ficam no servidor.'], 503);
+        }
+
+        try {
+            $this->restaurante->salvarCpf($request->input('tipo'), (int) $request->input('id'), (string) $request->input('cpf'), (string) $request->input('nome', ''));
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            return $this->falha($e, 'Não foi possível gravar o CPF.');
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
     /** Emite a NFC-e de um pedido (a tela chama um por vez, na ordem, até acabar ou o operador pausar). */
     public function emitir(Request $request): JsonResponse
     {

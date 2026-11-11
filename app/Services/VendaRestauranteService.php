@@ -184,21 +184,81 @@ class VendaRestauranteService
             $problemas[] = 'Os pagamentos da conta não batem com o total dos itens (R$ ' . number_format($total, 2, ',', '.') . ').';
         }
 
-        return [
+        $form = ['cpf' => (string) data_get($conta->dados_nfce, 'cpf', ''), 'nome' => (string) data_get($conta->dados_nfce, 'nome', '')];
+
+        return $this->comCpfObrigatorio([
             'rotulo'     => mb_substr($rotulo, 0, 60),
             'momento'    => $conta->fechada_em,
             'itens'      => $itens,
             'total'      => $total,
             'pagamentos' => $pagamentos,
             'troco'      => $troco,
-            'cpf'        => null,
+            'cpf'        => Condutor::cpfValido($form['cpf']) ? $form['cpf'] : null,
             'ind_pres'   => 1,
             'destinatario' => null,
             'intermediador_cnpj' => null,
             'intermediador_id'   => null,
             'resumo_pagamento'   => $conta->pagamentos->pluck('descricao')->unique()->implode(', '),
             'problemas'  => array_values(array_unique($problemas)),
-        ];
+        ], $form, max($total, (float) $conta->total));
+    }
+
+    /** Valor acima do qual a NFC-e exige o CPF do consumidor (0 = sem a regra). */
+    public static function limiteCpf(): float
+    {
+        return (float) config('fiscal.cpf_obrigatorio_acima', 500);
+    }
+
+    /**
+     * NFC-e acima do limite precisa do CPF do cliente: sem ele, vira a pendência "CPF obrigatório para a emissão"
+     * com o campo para informar (a entrega do iFood já pede o CPF junto com o endereço).
+     */
+    private function comCpfObrigatorio(array $venda, array $form, float $valor): array
+    {
+        // Valor do pedido (não só dos itens já ligados a produto: com item pendente o total dos itens fica menor)
+        $limite = self::limiteCpf();
+        $venda['pede_cpf'] = false;
+        $venda['form_cpf'] = null;
+
+        if ($limite > 0 && $valor > $limite && !$venda['cpf'] && empty($venda['destinatario']) && empty($venda['pede_destinatario'])) {
+            $venda['pede_cpf'] = true;
+            $venda['form_cpf'] = ['cpf' => $form['cpf'] ?? '', 'nome' => $form['nome'] ?? ''];
+            $venda['problemas'][] = 'CPF obrigatório para a emissão: NFC-e acima de R$ ' . number_format($limite, 2, ',', '.')
+                . ' exige o CPF do cliente.';
+        }
+
+        return $venda;
+    }
+
+    /** Operador informa o CPF (e o nome) do cliente de uma conta de mesa ou de um pedido do iFood. */
+    public function salvarCpf(string $tipo, int $id, string $cpf, string $nome): void
+    {
+        $cpf = preg_replace('/\D/', '', $cpf);
+        if (!Condutor::cpfValido($cpf)) {
+            throw new DomainException('CPF inválido.');
+        }
+        $nome = mb_substr(trim($nome), 0, 60);
+
+        if ($tipo === self::MESA) {
+            $conta = $this->conta($id);
+            if ($conta->venda_uuid) {
+                throw new DomainException('Esta conta já foi emitida: o CPF não pode mais ser alterado.');
+            }
+            $conta->forceFill(['dados_nfce' => array_filter(['cpf' => $cpf, 'nome' => $nome])])->save();
+
+            return;
+        }
+
+        $pedido = $this->pedidoIfood($id);
+        $ifood = $pedido->ifood ?? throw new DomainException('Pedido do iFood não encontrado.');
+        if ($pedido->venda_uuid) {
+            throw new DomainException('Este pedido já foi emitido: o CPF não pode mais ser alterado.');
+        }
+        $ifood->forceFill(['dados_nfce' => array_merge((array) ($ifood->dados_nfce ?? []), array_filter(['cpf' => $cpf, 'nome' => $nome]))])->save();
+
+        if ($ifood->ifood_cliente_id) {
+            \App\Models\IfoodCliente::whereKey($ifood->ifood_cliente_id)->update(['cpf' => $cpf]);
+        }
     }
 
     private function vendaDoIfood(ComandaPedido $pedido): array
@@ -260,7 +320,7 @@ class VendaRestauranteService
             }
         }
 
-        return [
+        return $this->comCpfObrigatorio([
             'rotulo'     => mb_substr($rotulo, 0, 60),
             'momento'    => $pedido->enviado_em,
             'itens'      => $itens,
@@ -277,7 +337,7 @@ class VendaRestauranteService
             'intermediador_id'   => $ifood?->merchant_id ? mb_substr($ifood->merchant_id, 0, 60) : null,
             'resumo_pagamento'   => $ifood ? collect($ifood->paraTela()['pagamentos'])->pluck('descricao')->implode(', ') : '',
             'problemas'  => array_values(array_unique($problemas)),
-        ];
+        ], $form, max($total, (float) $pedido->total));
     }
 
     public const CAMPOS_DESTINATARIO = ['cpf', 'nome', 'logradouro', 'numero', 'complemento', 'bairro', 'cep', 'cidade', 'uf'];
@@ -375,6 +435,11 @@ class VendaRestauranteService
         }
 
         $ifood->forceFill(['dados_nfce' => $limpo->all()])->save();
+
+        // O CPF informado também vai para o cadastro do cliente do iFood
+        if ($limpo['cpf'] !== '' && $ifood->ifood_cliente_id) {
+            \App\Models\IfoodCliente::whereKey($ifood->ifood_cliente_id)->update(['cpf' => $limpo['cpf']]);
+        }
 
         return $this->destinatario($this->formDestinatario($ifood->refresh()))[1];
     }
@@ -490,6 +555,9 @@ class VendaRestauranteService
             // Entrega do iFood sem CPF/endereço: a janela da pendência abre o formulário com estes dados
             'pede_destinatario' => (bool) ($venda['pede_destinatario'] ?? false),
             'destinatario'      => ($venda['pede_destinatario'] ?? false) ? $venda['form_destinatario'] : null,
+            // Acima do limite sem CPF: a janela da pendência pede só o CPF (e o nome)
+            'pede_cpf'          => (bool) ($venda['pede_cpf'] ?? false),
+            'cpf_form'          => $venda['form_cpf'] ?? null,
         ];
     }
 

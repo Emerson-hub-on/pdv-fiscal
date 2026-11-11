@@ -162,6 +162,8 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
             ->middleware('throttle:120,1')->name('pdv.restaurante.emitir');
         Route::post('pdv/restaurante/destinatario', [\App\Http\Controllers\PedidoRestauranteController::class, 'destinatario'])
             ->middleware('throttle:60,1')->name('pdv.restaurante.destinatario');
+        Route::post('pdv/restaurante/cpf', [\App\Http\Controllers\PedidoRestauranteController::class, 'cpf'])
+            ->middleware('throttle:60,1')->name('pdv.restaurante.cpf');
         Route::get('pedidos-caixa/{id}/itens', [PedidoCaixaController::class, 'itens'])
             ->whereNumber('id')
             ->name('pedidos-caixa.itens');
@@ -365,6 +367,13 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
                 ->middleware('throttle:20,1')->name('ifood.loja.pausar');
             Route::delete('comandas/ifood/loja/pausas/{pausa}', [\App\Http\Controllers\IfoodLojaController::class, 'removerPausa'])
                 ->middleware('throttle:20,1')->name('ifood.loja.pausa.remover');
+
+            // Comandas → Clientes → Clientes iFood (cadastro, números e histórico)
+            Route::get('comandas/clientes-ifood', [\App\Http\Controllers\ClienteIfoodController::class, 'index'])->name('clientes-ifood.index');
+            Route::get('comandas/clientes-ifood/{cliente}', [\App\Http\Controllers\ClienteIfoodController::class, 'show'])
+                ->whereNumber('cliente')->name('clientes-ifood.show');
+            Route::patch('comandas/clientes-ifood/{cliente}/observacao', [\App\Http\Controllers\ClienteIfoodController::class, 'salvarObservacao'])
+                ->whereNumber('cliente')->name('clientes-ifood.observacao');
 
             // Comandas → Relatórios → Pedidos (contas de mesa e pedidos do iFood)
             Route::prefix('comandas/relatorios/pedidos')->name('comandas.relatorios.pedidos.')->group(function () {

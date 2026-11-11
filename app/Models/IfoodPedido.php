@@ -37,7 +37,7 @@ class IfoodPedido extends Model
     protected $table = 'ifood_pedidos';
 
     protected $fillable = [
-        'ifood_order_id', 'display_id', 'comanda_pedido_id', 'merchant_id', 'tipo', 'momento', 'status',
+        'ifood_order_id', 'display_id', 'comanda_pedido_id', 'ifood_cliente_id', 'merchant_id', 'tipo', 'momento', 'status',
         'entregue_por', 'cliente_nome', 'cliente_telefone', 'localizador', 'endereco', 'codigo_retirada',
         'subtotal', 'taxa_entrega', 'descontos', 'taxas_adicionais', 'total', 'pago_online', 'cobrar_na_entrega',
         'pagamentos', 'observacoes', 'agendado_para', 'criado_ifood_em', 'confirmado_em', 'ultimo_erro', 'payload',
@@ -66,6 +66,11 @@ class IfoodPedido extends Model
     public function pedido(): BelongsTo
     {
         return $this->belongsTo(ComandaPedido::class, 'comanda_pedido_id');
+    }
+
+    public function cliente(): BelongsTo
+    {
+        return $this->belongsTo(IfoodCliente::class, 'ifood_cliente_id');
     }
 
     public function aguardandoAceite(): bool
@@ -116,6 +121,15 @@ class IfoodPedido extends Model
                 'troco_para' => isset($p['troco_para']) ? (float) $p['troco_para'] : null,
             ])->values(),
             'observacoes'       => $this->observacoes,
+            // Cliente do iFood (só quando carregado com a contagem): "Cliente novo" ou "Nº pedido"
+            'cliente_cadastro'  => $this->relationLoaded('cliente') && $this->cliente ? [
+                'id'           => $this->cliente->id,
+                'pedidos'      => (int) ($this->cliente->pedidos_validos ?? 0),
+                'pedidos_loja' => $this->cliente->pedidos_na_loja_ifood,
+                'desde'        => $this->cliente->primeiro_pedido_em?->toIso8601String(),
+                'observacao'   => $this->cliente->observacao,
+                'url'          => route('clientes-ifood.show', $this->cliente->id),
+            ] : null,
             'agendado_para'     => $this->agendado_para?->toIso8601String(),
             'erro'              => $this->ultimo_erro,
             'entrega_propria'   => $this->entregaPropria(),

@@ -225,6 +225,8 @@ class PedidoComandaController extends Controller
     {
         // A conta (comanda) vem com quantos pedidos válidos tem: o pagamento é da conta inteira, não de cada pedido
         $com = ['mesa', 'garcom:id,name', 'itens', 'ifood',
+            // Cliente do iFood com quantos pedidos (não cancelados) já fez: "3º pedido" no cartão
+            'ifood.cliente' => fn ($q) => $q->withCount(['pedidos as pedidos_validos' => fn ($p) => $p->where('status', '!=', \App\Models\IfoodPedido::CANCELLED)]),
             'comanda' => fn ($q) => $q->withCount([
                 'pedidos as pedidos_na_conta' => fn ($p) => $p->where('status', '!=', ComandaPedido::CANCELADO),
                 'pedidos as pedidos_em_preparo' => fn ($p) => $p->where('status', ComandaPedido::PREPARO),

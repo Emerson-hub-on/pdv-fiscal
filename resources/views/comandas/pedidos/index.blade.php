@@ -180,6 +180,14 @@
     const hora = (iso) => iso ? new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
     const buscarPedido = (id) => Object.values(dados.colunas).flat().find(p => p.id === id);
 
+    // Cliente do iFood no cartão: novo ou quantos pedidos já fez (e se tem anotação da loja)
+    function seloCliente(c) {
+        if (!c) return '';
+        const texto = c.pedidos <= 1 ? 'Cliente novo' : `Cliente com ${c.pedidos} pedidos`;
+        const cor = c.pedidos <= 1 ? 'bg-sky-50 text-sky-700' : 'bg-emerald-50 text-emerald-700';
+        return `<span class="inline-flex mt-1 rounded-lg ${cor} px-2 py-0.5 text-xs font-semibold">${escHtml(texto)}${c.observacao ? ' · 📝' : ''}</span>`;
+    }
+
     // ===== Desenho =====
     function cartao(p) {
         const finalizado = ['concluido', 'cancelado'].includes(p.status);
@@ -262,6 +270,7 @@
                 </div>
                 <p class="mt-2 text-lg font-bold text-green-600">${escHtml(moeda(p.ifood ? p.ifood.total : p.total))}</p>
                 ${p.ifood ? `<p class="text-xs font-semibold text-slate-600">${escHtml(p.ifood.tipo_rotulo || '')}${p.ifood.agendado_para ? ' · agendado ' + escHtml(dataHora(p.ifood.agendado_para)) : ''}</p>` : ''}
+                ${seloCliente(p.ifood?.cliente_cadastro)}
                 ${aguardandoAceite ? '<span class="inline-flex items-center gap-1 mt-2 rounded-lg bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-bold animate-pulse">Aguardando aceite</span>' : ''}
                 ${disputa ? `<p class="mt-2 rounded-lg bg-red-100 text-red-800 px-2 py-1 text-xs font-bold animate-pulse">Cliente pede: ${escHtml(disputa.acao_rotulo)}${disputa.expira_em ? ' · responder até ' + escHtml(hora(disputa.expira_em)) : ''}</p>` : ''}
                 ${cancelamentoPedido ? '<span class="inline-flex items-center gap-1 mt-2 rounded-lg bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-bold">Cancelamento pedido · aguardando o iFood</span>' : ''}
@@ -327,6 +336,13 @@
                 ${f.codigo_entrega_solicitado && !finalizado ? '<p class="font-semibold text-indigo-700">O iFood pede o código de entrega: peça ao cliente na entrega.</p>' : ''}
                 ${p.status === 'cancelado' && f.cancelado_por ? `<p class="font-semibold text-red-700">Cancelado ${f.cancelado_por === 'ifood' ? 'pelo iFood/cliente' : 'pela loja'}.</p>` : ''}
                 ${linha('Cliente', p.cliente)}
+                ${f.cliente_cadastro ? `
+                <div class="flex justify-between gap-3"><span class="text-slate-500">Histórico</span>
+                    <a href="${escHtml(f.cliente_cadastro.url)}" target="_blank" class="font-medium text-blue-700 hover:underline text-right">
+                        ${f.cliente_cadastro.pedidos <= 1 ? 'Cliente novo (1º pedido)' : escHtml(f.cliente_cadastro.pedidos + ' pedidos aqui')}${f.cliente_cadastro.desde ? ' · desde ' + escHtml(new Date(f.cliente_cadastro.desde).toLocaleDateString('pt-BR')) : ''} · ver
+                    </a>
+                </div>
+                ${f.cliente_cadastro.observacao ? `<p class="rounded-lg bg-amber-50 text-amber-800 px-2 py-1 text-xs">Anotação: ${escHtml(f.cliente_cadastro.observacao)}</p>` : ''}` : ''}
                 ${linha('Telefone', f.telefone ? f.telefone + (f.localizador ? ' · localizador ' + f.localizador : '') : '')}
                 ${linha('Endereço', f.endereco)}
                 ${linha('Código de retirada', f.codigo_retirada)}

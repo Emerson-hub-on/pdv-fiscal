@@ -88,7 +88,7 @@
 
             {{-- Entrega do iFood sem CPF/endereço: o operador informa aqui (NFC-e de entrega a domicílio, indPres 4) --}}
             <form data-pend="form" class="hidden mt-4 grid grid-cols-6 gap-3" onsubmit="event.preventDefault(); RestaurantePdv.salvarDestinatario()">
-                <p class="col-span-6 text-xs text-slate-500">Dados do cliente para a NFC-e de entrega. Peça o CPF ao cliente; o endereço veio do iFood e pode ser corrigido.</p>
+                <p data-pend="form-texto" class="col-span-6 text-xs text-slate-500"></p>
                 <label class="col-span-3 text-xs font-semibold text-slate-600">CPF do cliente
                     <input name="cpf" inputmode="numeric" maxlength="14" required placeholder="000.000.000-00"
                            class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-normal outline-none focus:ring-2 focus:ring-[#10284A]/30">
@@ -97,31 +97,31 @@
                     <input name="nome" maxlength="60"
                            class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-normal outline-none focus:ring-2 focus:ring-[#10284A]/30">
                 </label>
-                <label class="col-span-4 text-xs font-semibold text-slate-600">Rua
+                <label data-endereco class="col-span-4 text-xs font-semibold text-slate-600">Rua
                     <input name="logradouro" maxlength="60" required
                            class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-normal outline-none focus:ring-2 focus:ring-[#10284A]/30">
                 </label>
-                <label class="col-span-2 text-xs font-semibold text-slate-600">Número
+                <label data-endereco class="col-span-2 text-xs font-semibold text-slate-600">Número
                     <input name="numero" maxlength="60"
                            class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-normal outline-none focus:ring-2 focus:ring-[#10284A]/30">
                 </label>
-                <label class="col-span-3 text-xs font-semibold text-slate-600">Complemento
+                <label data-endereco class="col-span-3 text-xs font-semibold text-slate-600">Complemento
                     <input name="complemento" maxlength="60"
                            class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-normal outline-none focus:ring-2 focus:ring-[#10284A]/30">
                 </label>
-                <label class="col-span-3 text-xs font-semibold text-slate-600">Bairro
+                <label data-endereco class="col-span-3 text-xs font-semibold text-slate-600">Bairro
                     <input name="bairro" maxlength="60" required
                            class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-normal outline-none focus:ring-2 focus:ring-[#10284A]/30">
                 </label>
-                <label class="col-span-2 text-xs font-semibold text-slate-600">CEP
+                <label data-endereco class="col-span-2 text-xs font-semibold text-slate-600">CEP
                     <input name="cep" inputmode="numeric" maxlength="9" required
                            class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-normal outline-none focus:ring-2 focus:ring-[#10284A]/30">
                 </label>
-                <label class="col-span-3 text-xs font-semibold text-slate-600">Cidade
+                <label data-endereco class="col-span-3 text-xs font-semibold text-slate-600">Cidade
                     <input name="cidade" maxlength="60" required
                            class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-normal outline-none focus:ring-2 focus:ring-[#10284A]/30">
                 </label>
-                <label class="col-span-1 text-xs font-semibold text-slate-600">UF
+                <label data-endereco class="col-span-1 text-xs font-semibold text-slate-600">UF
                     <input name="uf" maxlength="2" required
                            class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-normal uppercase outline-none focus:ring-2 focus:ring-[#10284A]/30">
                 </label>
@@ -148,6 +148,8 @@ window.RestaurantePdv = (() => {
     const URL_LISTAR = @json(route('pdv.restaurante.listar'));
     const URL_EMITIR = @json(route('pdv.restaurante.emitir'));
     const URL_DESTINATARIO = @json(route('pdv.restaurante.destinatario'));
+    const URL_CPF = @json(route('pdv.restaurante.cpf'));
+    const LIMITE_CPF = @json(\App\Services\VendaRestauranteService::limiteCpf());
     const CSRF = @json(csrf_token());
 
     const SITUACOES = {
@@ -240,7 +242,7 @@ window.RestaurantePdv = (() => {
             // Só o botão "Pendência"; o relato abre num modal ao clicar
             return `<button type="button" data-pendencia="${esc(chave(p))}" title="Ver o que falta para emitir"
                         class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100 cursor-pointer transition">
-                        ⚠ Pendência
+                        ⚠ ${p.pede_cpf && p.problemas?.length === 1 ? 'CPF obrigatório' : 'Pendência'}
                     </button>`;
         } else if (['nao_emitida', 'erro'].includes(p.situacao) && p.motivo) {
             extra = `<p class="mt-1 text-xs text-red-600">${esc(p.motivo)}</p>`
@@ -455,28 +457,41 @@ window.RestaurantePdv = (() => {
         const problemas = p.problemas?.length ? p.problemas : ['O pedido não pode ser emitido.'];
         pend('lista').innerHTML = problemas.map(x => `<li>${esc(x)}</li>`).join('');
 
-        // Entrega do iFood sem CPF/endereço: formulário com os dados que vieram do iFood
-        const comForm = !!(p.pede_destinatario && p.destinatario);
+        // Formulário: entrega do iFood sem CPF/endereço (dados que vieram do iFood) ou só o CPF (acima do limite)
+        modoForm = p.pede_destinatario && p.destinatario ? 'destinatario' : (p.pede_cpf && p.cpf_form ? 'cpf' : null);
+        const comForm = modoForm !== null;
         pendenciaAtual = comForm ? p : null;
-        pend('form').classList.toggle('hidden', !comForm);
+        const form = pend('form');
+        form.classList.toggle('hidden', !comForm);
         pend('salvar').classList.toggle('hidden', !comForm);
+        pend('salvar').textContent = modoForm === 'cpf' ? 'Salvar CPF' : 'Salvar dados do cliente';
         pend('dica').classList.toggle('hidden', comForm && p.problemas.length === 1);
         pend('ok').textContent = comForm ? 'Fechar' : 'Entendi';
+        pend('form-texto').textContent = modoForm === 'cpf'
+            ? `CPF obrigatório para a emissão: NFC-e acima de ${moeda(LIMITE_CPF)} exige o CPF do cliente. Peça o CPF ao cliente.`
+            : 'Dados do cliente para a NFC-e de entrega. Peça o CPF ao cliente; o endereço veio do iFood e pode ser corrigido.';
+        // Só o CPF: os campos de endereço somem e ficam desligados (não contam na validação)
+        form.querySelectorAll('[data-endereco]').forEach(l => {
+            l.classList.toggle('hidden', modoForm === 'cpf');
+            l.querySelector('input').disabled = modoForm === 'cpf';
+        });
         erroPendencia('');
         if (comForm) {
-            Object.entries(p.destinatario).forEach(([campo, valor]) => {
-                const input = pend('form').elements[campo];
+            form.reset();
+            Object.entries(modoForm === 'cpf' ? p.cpf_form : p.destinatario).forEach(([campo, valor]) => {
+                const input = form.elements[campo];
                 if (input) input.value = valor ?? '';
             });
         }
 
         modalPendencia().classList.remove('hidden');
         modalPendencia().classList.add('flex');
-        if (comForm) (pend('form').elements.cpf.value ? pend('form').elements.logradouro : pend('form').elements.cpf).focus();
+        if (comForm) (form.elements.cpf.value && modoForm === 'destinatario' ? form.elements.logradouro : form.elements.cpf).focus();
         else pend('ok').focus();
     }
 
     let pendenciaAtual = null;
+    let modoForm = null;
 
     function erroPendencia(texto) {
         pend('erro').textContent = texto || '';
@@ -490,12 +505,14 @@ window.RestaurantePdv = (() => {
         if (!form.reportValidity()) return;
 
         const corpo = { id: p.id };
-        ['cpf', 'nome', 'logradouro', 'numero', 'complemento', 'bairro', 'cep', 'cidade', 'uf'].forEach(c => { corpo[c] = form.elements[c].value.trim(); });
+        const campos = modoForm === 'cpf' ? ['cpf', 'nome'] : ['cpf', 'nome', 'logradouro', 'numero', 'complemento', 'bairro', 'cep', 'cidade', 'uf'];
+        campos.forEach(c => { corpo[c] = form.elements[c].value.trim(); });
+        if (modoForm === 'cpf') corpo.tipo = p.tipo;
         const botao = pend('salvar');
         botao.disabled = true;
         erroPendencia('');
         try {
-            const resp = await fetch(URL_DESTINATARIO, {
+            const resp = await fetch(modoForm === 'cpf' ? URL_CPF : URL_DESTINATARIO, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF },
                 body: JSON.stringify(corpo),
@@ -508,7 +525,9 @@ window.RestaurantePdv = (() => {
             }
             fecharPendencia();
             await carregar(); // limpa a mensagem: a de sucesso vem depois
-            mensagem(`Dados do cliente de ${p.rotulo} gravados. O pedido está liberado para emitir.`, 'ok');
+            const liberado = pedidos.find(x => chave(x) === chave(p))?.situacao === 'pendente';
+            mensagem(`${modoForm === 'cpf' ? 'CPF' : 'Dados do cliente'} de ${p.rotulo} gravado${modoForm === 'cpf' ? '' : 's'}.`
+                + (liberado ? ' O pedido está liberado para emitir.' : ' Veja se ainda há outra pendência no pedido.'), liberado ? 'ok' : 'aviso');
         } catch (e) {
             erroPendencia(e.message === 'Failed to fetch' ? 'Sem conexão com o caixa.' : e.message);
         } finally {

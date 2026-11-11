@@ -17,6 +17,13 @@ return [
     */
     'emitir_ibscbs' => env('FISCAL_EMITIR_IBSCBS', true),
 
+    /*
+    | NFC-e de valor ACIMA deste limite exige o CPF do consumidor (regra da SEFAZ; o valor muda por estado).
+    | Em Pedidos Restaurante (mesas e iFood), pedido acima do limite sem CPF vira a pendência
+    | "CPF obrigatório para a emissão", com o campo para informar o CPF. 0 desliga a regra.
+    */
+    'cpf_obrigatorio_acima' => (float) env('FISCAL_CPF_OBRIGATORIO_ACIMA', 500),
+
     'aliquotas_ibscbs_transicao' => [
         'ibs_uf'  => 0.10,
         'ibs_mun' => 0.00,

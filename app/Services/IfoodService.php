@@ -1119,6 +1119,13 @@ class IfoodService
             ]);
         });
 
+        // Clientes do iFood: cadastro/histórico (falha aqui não impede o pedido)
+        try {
+            \App\Models\IfoodCliente::registrar($ifood);
+        } catch (Throwable $e) {
+            Log::warning('iFood: cadastro do cliente falhou: ' . $e->getMessage(), ['pedido' => $orderId]);
+        }
+
         // Impressão nas impressoras dos setores (como os pedidos do garçom)
         try {
             $this->impressao->imprimirPedido($ifood->pedido);

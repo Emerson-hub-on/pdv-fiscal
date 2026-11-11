@@ -11,6 +11,26 @@
 
 $historico = [
     [
+        'versao' => '1.33.1',
+        'data' => '2026-11-11',
+        'itens' => [
+            'Pedidos Restaurante (PDV): conta de mesa ou pedido do iFood acima de R$ 500,00 sem CPF vira a pendência "CPF obrigatório para a emissão". Na janela da pendência há o campo para o CPF (e o nome), e ao salvar o pedido fica liberado.',
+            'O limite fica em config/fiscal.php (FISCAL_CPF_OBRIGATORIO_ACIMA no .env; 0 desliga), porque o valor muda por estado. A venda normal do PDV não muda.',
+            'O CPF informado no pedido do iFood também vai para o cadastro do cliente. O emissor recusa a NFC-e do restaurante acima do limite sem CPF antes de reservar o número.',
+        ],
+    ],
+    [
+        'versao' => '1.33.0',
+        'data' => '2026-11-11',
+        'itens' => [
+            'Nova tela Comandas → Clientes → Clientes iFood: o cadastro é criado sozinho a cada pedido do iFood (pelo identificador do cliente no iFood). Os pedidos que já estavam no sistema foram cadastrados.',
+            'Lista de clientes com pedidos feitos aqui, pedidos na loja informados pelo iFood, total gasto, ticket médio, último pedido e bairro. Busca por nome, CPF ou nº do pedido; filtro por novos ou recorrentes; ordenação; resumo com clientes, novos no mês, recorrentes e ticket médio.',
+            'Ficha do cliente: cadastro, números (pedidos, cancelados à parte, gasto, ticket, frequência), produtos mais pedidos, histórico de pedidos e anotação da loja.',
+            'Lista de Pedidos: o cartão do iFood mostra "Cliente novo" ou "Cliente com N pedidos", e o detalhe mostra o histórico com link e a anotação.',
+            'O CPF informado na pendência da NFC-e de entrega vai para o cadastro do cliente. Novo comando ifood:clientes refaz o cadastro a partir dos pedidos.',
+        ],
+    ],
+    [
         'versao' => '1.32.2',
         'data' => '2026-11-11',
         'itens' => [
