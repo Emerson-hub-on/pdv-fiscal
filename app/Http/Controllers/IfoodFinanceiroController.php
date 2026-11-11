@@ -67,10 +67,12 @@ class IfoodFinanceiroController extends Controller
             $r = $this->financeiro->sincronizar();
             Log::info('iFood: conciliação sincronizada', ['usuario' => $request->user()->id] + $r);
 
-            return response()->json(['ok' => true] + $r + [
-                'message' => "Sincronizado: {$r['eventos']} lançamento(s) e {$r['repasses']} repasse(s) do iFood"
-                    . ($r['contas'] ? ", {$r['contas']} em Contas a Receber." : '.'),
-            ]);
+            $mensagem = "Sincronizado com o iFood: {$r['eventos']} lançamento(s) e {$r['repasses']} repasse(s)"
+                . ($r['contas'] ? ", {$r['contas']} em Contas a Receber." : '.');
+            // A tela recarrega e mostra o aviso flutuante padrão do sistema (session 'sucesso')
+            session()->flash('sucesso', $mensagem);
+
+            return response()->json(['ok' => true] + $r + ['message' => $mensagem]);
         } catch (Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

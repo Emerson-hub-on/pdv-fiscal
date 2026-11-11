@@ -51,8 +51,6 @@
         </a>
     </div>
 
-    <p id="aviso-sincronizar" class="hidden mb-4 rounded-lg px-4 py-3 text-sm"></p>
-
     {{-- Filtros --}}
     <form method="GET" action="{{ route('ifood.financeiro.index') }}" class="flex flex-wrap items-end gap-3 mb-4 bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3">
         <input type="hidden" name="aba" value="{{ $aba }}">
@@ -339,8 +337,34 @@
             if (e.key === 'Escape' && !modalLancamentos.classList.contains('hidden')) fecharLancamentos();
         });
 
+        // Erro: aviso flutuante no mesmo padrão do layout (some em 8 s, pausa com o mouse em cima, fecha no X)
+        function toastErro(texto) {
+            document.getElementById('toast-erro-sincronizar')?.remove();
+            const toast = document.createElement('div');
+            toast.id = 'toast-erro-sincronizar';
+            toast.setAttribute('role', 'alert');
+            toast.className = 'fixed top-16 right-4 z-50 flex items-start gap-3 w-full max-w-md bg-white border border-red-200 border-l-4 border-l-red-500 shadow-lg rounded-lg px-4 py-3 text-sm text-gray-800 transition-all duration-300';
+            toast.innerHTML = `
+                <svg class="w-5 h-5 text-red-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                <div class="flex-1 min-w-0"><p class="font-semibold text-red-700">Não foi possível sincronizar</p><p data-texto class="mt-0.5 text-gray-700"></p></div>
+                <button type="button" aria-label="Fechar" class="text-gray-400 hover:text-gray-600 text-lg leading-none cursor-pointer">&times;</button>`;
+            toast.querySelector('[data-texto]').textContent = texto;
+            document.body.appendChild(toast);
+
+            let timer;
+            const fechar = () => {
+                if (!toast.isConnected) return;
+                toast.classList.add('opacity-0', 'translate-x-4');
+                setTimeout(() => toast.remove(), 300);
+            };
+            const agendar = () => { clearTimeout(timer); timer = setTimeout(fechar, 8000); };
+            agendar();
+            toast.addEventListener('mouseenter', () => clearTimeout(timer));
+            toast.addEventListener('mouseleave', agendar);
+            toast.querySelector('button').addEventListener('click', fechar);
+        }
+
         async function sincronizarIfood(botao) {
-            const aviso = document.getElementById('aviso-sincronizar');
             botao.disabled = true;
             botao.textContent = 'Sincronizando…';
             try {
@@ -350,12 +374,10 @@
                 });
                 const r = await resp.json().catch(() => ({}));
                 if (!resp.ok) throw new Error(r.message || 'Não foi possível sincronizar.');
-                aviso.className = 'mb-4 rounded-lg px-4 py-3 text-sm bg-green-50 text-green-700';
-                aviso.textContent = r.message + ' Atualizando…';
-                setTimeout(() => location.reload(), 1200);
+                // O servidor guardou a mensagem: ao recarregar, aparece o aviso flutuante padrão do sistema
+                location.reload();
             } catch (e) {
-                aviso.className = 'mb-4 rounded-lg px-4 py-3 text-sm bg-red-50 text-red-700';
-                aviso.textContent = e.message === 'Failed to fetch' ? 'Sem conexão com o servidor.' : e.message;
+                toastErro(e.message === 'Failed to fetch' ? 'Sem conexão com o servidor.' : e.message);
                 botao.disabled = false;
                 botao.textContent = 'Sincronizar com o iFood';
             }

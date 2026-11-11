@@ -11,6 +11,13 @@
 
 $historico = [
     [
+        'versao' => '1.32.1',
+        'data' => '2026-11-11',
+        'itens' => [
+            'Conciliação iFood: a mensagem do "Sincronizar com o iFood" aparece no aviso flutuante padrão do sistema (canto superior direito, some sozinha). O erro aparece no aviso vermelho, no mesmo padrão.',
+        ],
+    ],
+    [
         'versao' => '1.32.0',
         'data' => '2026-11-11',
         'itens' => [
