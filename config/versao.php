@@ -11,6 +11,15 @@
 
 $historico = [
     [
+        'versao' => '1.33.3',
+        'data' => '2026-11-11',
+        'itens' => [
+            'Fechar conta (garçom e Lista de Pedidos): no pagamento, o valor vem primeiro e a forma de pagamento é escolhida no menu ao lado. Depois é só tocar em "Adicionar pagamento". O valor já sugere o que falta pagar, e a mesma forma adicionada de novo soma ao valor anterior.',
+            'Conta acima de R$ 500,00: aparece só o aviso "CPF obrigatório para emissão de vendas acima de 500 reais" com "→ Clique aqui para adicionar.". O nome e o CPF são informados numa janela própria, com máscara e conferência do CPF.',
+            'Se finalizar sem CPF e cancelar a confirmação, a janela do CPF abre na hora.',
+        ],
+    ],
+    [
         'versao' => '1.33.2',
         'data' => '2026-11-11',
         'itens' => [

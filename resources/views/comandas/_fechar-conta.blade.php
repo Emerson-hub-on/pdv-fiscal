@@ -34,15 +34,26 @@
                     <span class="text-2xl font-bold" data-fc="total-pagar"></span>
                 </div>
 
-                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mt-4 mb-2">Forma de pagamento <span class="font-normal normal-case tracking-normal text-slate-400">(pode usar mais de uma)</span></p>
-                <div class="flex flex-wrap gap-2" data-fc="formas">
-                    @foreach ($formas as $forma)
-                        <button type="button" onclick="FecharConta.adicionarForma('{{ $forma->codigo }}')"
-                                class="rounded-xl px-3.5 py-2.5 text-sm font-semibold ring-1 ring-slate-200 bg-white text-slate-700 active:bg-slate-100 hover:ring-[#10284A]/40">
-                            + {{ $forma->descricao }}
-                        </button>
-                    @endforeach
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mt-4 mb-2">Pagamento <span class="font-normal normal-case tracking-normal text-slate-400">(pode usar mais de uma forma)</span></p>
+                {{-- Valor primeiro, forma ao lado → "Adicionar pagamento" --}}
+                <div class="flex items-stretch gap-2">
+                    <label class="w-36 shrink-0 flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 focus-within:bg-white focus-within:border-[#10284A]/40 focus-within:ring-2 focus-within:ring-[#10284A]/30">
+                        <span class="text-slate-400 text-sm">R$</span>
+                        <input type="text" inputmode="decimal" data-fc="valor" placeholder="0,00" autocomplete="off" aria-label="Valor"
+                               class="w-full min-w-0 bg-transparent py-3 text-base text-right font-semibold outline-none">
+                    </label>
+                    <select data-fc="forma" aria-label="Forma de pagamento"
+                            class="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 text-base text-slate-800 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none">
+                        <option value="">Forma de pagamento</option>
+                        @foreach ($formas as $forma)
+                            <option value="{{ $forma->codigo }}">{{ $forma->descricao }}</option>
+                        @endforeach
+                    </select>
                 </div>
+                <button type="button" onclick="FecharConta.adicionarPagamento()" data-fc="adicionar"
+                        class="mt-2 w-full rounded-xl px-4 py-3 text-sm font-bold ring-1 ring-[#10284A]/30 bg-white text-[#10284A] active:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed">
+                    + Adicionar pagamento
+                </button>
                 <div data-fc="pagamentos" class="mt-3 flex flex-col gap-2"></div>
 
                 <div class="mt-3 rounded-2xl bg-slate-50 ring-1 ring-slate-200 px-4 py-3 text-sm flex flex-col gap-1">
@@ -51,16 +62,22 @@
                     <div class="flex justify-between" data-fc="linha-troco"><span class="text-slate-500">Troco</span><span class="font-bold text-green-700" data-fc="troco"></span></div>
                 </div>
 
-                {{-- Conta acima do limite: nome e CPF do cliente para a NFC-e (pode finalizar sem, com confirmação) --}}
+                {{-- Conta acima do limite: aviso; o nome e o CPF são informados numa janelinha (pode finalizar sem, com confirmação) --}}
                 <div data-fc="area-cliente" class="hidden mt-3 rounded-2xl bg-amber-50 ring-1 ring-amber-200 px-4 py-3">
                     <p class="text-sm font-semibold text-amber-900">Dados do cliente para a nota fiscal</p>
-                    <p class="text-xs text-amber-800 mb-2" data-fc="aviso-cliente"></p>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <input type="text" data-fc="cliente-nome" maxlength="60" placeholder="Nome do cliente" autocomplete="off"
-                               class="bg-white border border-amber-200 rounded-xl px-3 py-2.5 text-base focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none">
-                        <input type="text" data-fc="cliente-cpf" inputmode="numeric" maxlength="14" placeholder="CPF" autocomplete="off"
-                               class="bg-white border border-amber-200 rounded-xl px-3 py-2.5 text-base focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none">
+                    <div data-fc="cliente-vazio">
+                        <p class="text-xs text-amber-800" data-fc="aviso-cliente"></p>
+                        <button type="button" onclick="FecharConta.abrirCliente()" data-fc="abrir-cliente"
+                                class="mt-1 text-sm font-bold text-[#10284A] underline underline-offset-2 active:opacity-70">→ Clique aqui para adicionar.</button>
                     </div>
+                    <div data-fc="cliente-preenchido" class="hidden"><div class="flex items-center justify-between gap-3 mt-1">
+                        <p class="min-w-0 text-sm text-slate-800">
+                            <span class="block font-semibold truncate" data-fc="cliente-resumo-nome"></span>
+                            <span class="block text-xs text-slate-600" data-fc="cliente-resumo-cpf"></span>
+                        </p>
+                        <button type="button" onclick="FecharConta.abrirCliente()"
+                                class="shrink-0 rounded-xl px-3 py-2 text-sm font-semibold ring-1 ring-amber-300 bg-white text-amber-900 active:bg-amber-100">Alterar</button>
+                    </div></div>
                 </div>
             </div>
         </div>
@@ -79,6 +96,30 @@
                     Finalizar conta
                 </button>
             </div></div>
+        </div>
+    </div>
+
+    {{-- Janelinha: nome e CPF do cliente para a NFC-e --}}
+    <div data-fc="modal-cliente" class="fixed inset-0 z-[60] bg-black/50 hidden items-center justify-center p-4"
+         onclick="if (event.target === this) FecharConta.fecharCliente()">
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-5">
+            <h3 class="font-bold text-slate-900 text-lg">Dados do cliente</h3>
+            <p class="text-xs text-amber-800 mt-0.5" data-fc="aviso-modal-cliente"></p>
+            <label class="block mt-4 text-xs font-semibold text-slate-500">Nome
+                <input type="text" data-fc="cliente-nome" maxlength="60" placeholder="Nome do cliente" autocomplete="off"
+                       class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 text-base font-normal text-slate-900 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none">
+            </label>
+            <label class="block mt-3 text-xs font-semibold text-slate-500">CPF
+                <input type="text" data-fc="cliente-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" autocomplete="off"
+                       class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 text-base font-normal text-slate-900 focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none">
+            </label>
+            <p data-fc="erro-cliente" class="hidden mt-3 rounded-xl bg-red-50 text-red-600 px-3 py-2 text-sm"></p>
+            <div class="mt-5 flex items-center gap-2">
+                <button type="button" onclick="FecharConta.fecharCliente()"
+                        class="rounded-2xl px-4 py-3.5 text-base font-semibold text-slate-600 ring-1 ring-slate-200 active:bg-slate-100">Cancelar</button>
+                <button type="button" onclick="FecharConta.salvarCliente()" data-fc="salvar-cliente"
+                        class="flex-1 rounded-2xl bg-[#10284A] text-amber-50 px-4 py-3.5 text-base font-bold active:opacity-90">Salvar</button>
+            </div>
         </div>
     </div>
 </div>
@@ -118,10 +159,15 @@
             return digito(9) === Number(c[9]) && digito(10) === Number(c[10]);
         }
 
-        let estado = null; // { conta, etapa: 'resumo'|'pagamento', pagamentos: [{ forma, valor }], urlFechar, aoFechar }
+        const formatarCpf = (v) => {
+            const c = soDigitos(v).slice(0, 11);
+            return c.replace(/^(\d{3})(\d)/, '$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d{1,2})$/, '.$1-$2');
+        };
+
+        let estado = null; // { conta, etapa: 'resumo'|'pagamento', pagamentos: [{ forma, valor }], cliente: { nome, cpf }, urlFechar, aoFechar }
 
         function abrirModal() { modal.classList.remove('hidden'); modal.classList.add('flex'); }
-        function fechar() { modal.classList.add('hidden'); modal.classList.remove('flex'); estado = null; }
+        function fechar() { fecharCliente(); modal.classList.add('hidden'); modal.classList.remove('flex'); estado = null; }
 
         function erro(texto) {
             el('erro').textContent = texto || '';
@@ -129,15 +175,16 @@
         }
 
         async function abrir({ urlConta, urlFechar, aoFechar }) {
-            estado = { conta: null, etapa: 'resumo', pagamentos: [], urlFechar, aoFechar };
+            estado = { conta: null, etapa: 'resumo', pagamentos: [], cliente: { nome: '', cpf: '' }, urlFechar, aoFechar };
             el('titulo').textContent = 'Carregando...';
             el('resumo').innerHTML = '';
             el('total').textContent = '';
             el('pagamentos').innerHTML = '';
+            el('valor').value = '';
+            el('forma').value = '';
             el('area-paga').classList.add('hidden');
             el('area-cliente').classList.add('hidden');
-            el('cliente-nome').value = '';
-            el('cliente-cpf').value = '';
+            fecharCliente();
             erro('');
             mostrarEtapa();
             el('avancar').disabled = true;
@@ -215,14 +262,59 @@
             mostrarEtapa();
             desenharPagamentos();
 
-            const pedeCliente = acimaDoLimite();
-            el('area-cliente').classList.toggle('hidden', !pedeCliente);
-            if (pedeCliente) {
-                el('aviso-cliente').textContent = `CPF obrigatório para emissão de vendas acima de ${limiteTexto()}.`;
-                // Primeiro nome dos pedidos da mesa já vem preenchido (o garçom confirma)
-                if (!el('cliente-nome').value && estado.conta.clientes?.length) el('cliente-nome').value = estado.conta.clientes[0];
-            }
+            el('area-cliente').classList.toggle('hidden', !acimaDoLimite());
+            el('aviso-cliente').textContent = `CPF obrigatório para emissão de vendas acima de ${limiteTexto()}.`;
+            desenharCliente();
         }
+
+        // ---- Nome e CPF do cliente (conta acima do limite) ----
+        function desenharCliente() {
+            const { nome, cpf } = estado.cliente;
+            el('cliente-vazio').classList.toggle('hidden', !!cpf);
+            el('cliente-preenchido').classList.toggle('hidden', !cpf);
+            el('cliente-resumo-nome').textContent = nome || 'Cliente sem nome';
+            el('cliente-resumo-cpf').textContent = cpf ? 'CPF ' + formatarCpf(cpf) : '';
+        }
+
+        function erroCliente(texto) {
+            el('erro-cliente').textContent = texto || '';
+            el('erro-cliente').classList.toggle('hidden', !texto);
+        }
+
+        function abrirCliente() {
+            if (!estado?.conta || estado.etapa !== 'pagamento') return;
+            // O primeiro nome dos pedidos da mesa já vem preenchido (o garçom confirma)
+            el('cliente-nome').value = estado.cliente.nome || estado.conta.clientes?.[0] || '';
+            el('cliente-cpf').value = formatarCpf(estado.cliente.cpf);
+            el('aviso-modal-cliente').textContent = `CPF obrigatório para emissão de vendas acima de ${limiteTexto()}.`;
+            erroCliente('');
+            el('modal-cliente').classList.remove('hidden');
+            el('modal-cliente').classList.add('flex');
+            el(estado.cliente.nome || !el('cliente-nome').value ? 'cliente-cpf' : 'cliente-nome').focus();
+        }
+
+        function fecharCliente() {
+            el('modal-cliente').classList.add('hidden');
+            el('modal-cliente').classList.remove('flex');
+        }
+
+        const clienteAberto = () => !el('modal-cliente').classList.contains('hidden');
+
+        function salvarCliente() {
+            if (!estado) return;
+            const nome = el('cliente-nome').value.trim();
+            const cpf = soDigitos(el('cliente-cpf').value);
+            if (!cpf) { erroCliente('Informe o CPF do cliente.'); el('cliente-cpf').focus(); return; }
+            if (!cpfValido(cpf)) { erroCliente('CPF inválido. Confira os números.'); el('cliente-cpf').focus(); return; }
+            estado.cliente = { nome, cpf };
+            fecharCliente();
+            desenharCliente();
+        }
+
+        el('cliente-cpf').addEventListener('input', (e) => { e.target.value = formatarCpf(e.target.value); });
+        ['cliente-nome', 'cliente-cpf'].forEach(nome => el(nome).addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); salvarCliente(); }
+        }));
 
         function voltarResumo() {
             if (!estado) return;
@@ -231,25 +323,23 @@
             mostrarEtapa();
         }
 
+        const centavosPagos = () => estado.pagamentos.reduce((t, p) => t + centavos(p.valor), 0);
+        const centavosFaltando = () => Math.max(0, centavos(estado.conta.total) - centavosPagos());
+
         function desenharPagamentos() {
             el('pagamentos').innerHTML = estado.pagamentos.map((p, i) => `
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 rounded-xl bg-slate-50 ring-1 ring-slate-200 pl-4 pr-1 py-1">
                     <span class="flex-1 min-w-0 font-semibold text-slate-800 truncate">${escHtml(FORMAS[p.forma].descricao)}</span>
-                    <span class="text-slate-400 text-sm">R$</span>
-                    <input type="text" inputmode="decimal" value="${formatarCampo(p.valor)}" data-indice="${i}"
-                           class="w-32 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-base text-right font-semibold focus:bg-white focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none">
+                    <span class="shrink-0 font-bold text-slate-900">${escHtml(moeda(p.valor))}</span>
                     <button type="button" onclick="FecharConta.removerForma(${i})" aria-label="Remover"
                             class="w-10 h-10 rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-600 text-xl leading-none">&times;</button>
                 </div>`).join('')
-                || '<p class="text-sm text-slate-400">Toque em uma forma de pagamento acima.</p>';
+                || '<p class="text-sm text-slate-400">Informe o valor, escolha a forma e toque em "Adicionar pagamento".</p>';
 
-            el('pagamentos').querySelectorAll('input').forEach(input => {
-                input.addEventListener('input', () => {
-                    estado.pagamentos[input.dataset.indice].valor = lerValor(input.value);
-                    resumir();
-                });
-                input.addEventListener('blur', () => { input.value = formatarCampo(estado.pagamentos[input.dataset.indice].valor); });
-            });
+            // O campo de valor já sugere o que falta pagar
+            const falta = centavosFaltando();
+            el('valor').value = falta > 0 ? formatarCampo(falta / 100) : '';
+            el('forma').value = '';
             resumir();
         }
 
@@ -271,21 +361,36 @@
             const pronto = estado.pagamentos.length > 0 && restante === 0 && !problema
                 && estado.pagamentos.every(p => p.valor > 0);
             el('finalizar').disabled = !pronto;
+            el('adicionar').disabled = restante === 0;
             erro(problema);
         }
 
-        function adicionarForma(codigo) {
+        // Valor digitado + forma escolhida → entra na lista (a mesma forma de novo soma no valor dela)
+        function adicionarPagamento() {
             if (!estado?.conta || estado.etapa !== 'pagamento') return;
-            const existente = estado.pagamentos.findIndex(p => p.forma === codigo);
-            if (existente >= 0) {
-                el('pagamentos').querySelector(`[data-indice="${existente}"]`)?.focus();
-                return;
+            const valor = lerValor(el('valor').value);
+            const codigo = el('forma').value;
+            const falta = centavosFaltando();
+
+            if (falta === 0) return erro('A conta já está toda paga.');
+            if (!valor) { erro('Informe o valor do pagamento.'); return el('valor').focus(); }
+            if (!FORMAS[codigo]) { erro('Escolha a forma de pagamento.'); return el('forma').focus(); }
+            if (centavos(valor) > falta && !FORMAS[codigo].permite_troco) {
+                erro(`O valor passou do que falta (${moeda(falta / 100)}). Só ${dinheiroTexto()} dá troco.`);
+                return el('valor').focus();
             }
-            const total = centavos(estado.conta.total);
-            const pago = estado.pagamentos.reduce((t, p) => t + centavos(p.valor), 0);
-            estado.pagamentos.push({ forma: codigo, valor: Math.max(0, total - pago) / 100 });
+
+            const existente = estado.pagamentos.find(p => p.forma === codigo);
+            if (existente) existente.valor = (centavos(existente.valor) + centavos(valor)) / 100;
+            else estado.pagamentos.push({ forma: codigo, valor });
+            erro('');
             desenharPagamentos();
         }
+
+        const dinheiroTexto = () => Object.values(FORMAS).filter(f => f.permite_troco).map(f => f.descricao.toLowerCase()).join(' ou ') || 'dinheiro';
+
+        el('valor').addEventListener('blur', (e) => { e.target.value = formatarCampo(lerValor(e.target.value)); });
+        el('valor').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); adicionarPagamento(); } });
 
         function removerForma(indice) {
             estado.pagamentos.splice(indice, 1);
@@ -295,21 +400,12 @@
         async function finalizar() {
             if (!estado?.conta || estado.etapa !== 'pagamento' || el('finalizar').disabled) return;
 
-            // Acima do limite: pede nome e CPF; sem o CPF só finaliza depois de confirmar
-            const cliente = { nome: el('cliente-nome').value.trim(), cpf: soDigitos(el('cliente-cpf').value) };
-            if (acimaDoLimite()) {
-                if (cliente.cpf && !cpfValido(cliente.cpf)) {
-                    erro('CPF do cliente inválido. Confira os números ou deixe em branco.');
-                    el('cliente-cpf').focus();
-                    return;
-                }
-                if (!cliente.cpf && !confirm(`CPF obrigatório para emissão de vendas acima de ${limiteTexto()}, tem certeza que deseja finalizar sem informar o nome e CPF ?`)) {
-                    el('cliente-cpf').focus();
-                    return;
-                }
-            } else {
-                cliente.nome = '';
-                cliente.cpf = '';
+            // Acima do limite: sem o CPF só finaliza depois de confirmar (ao cancelar, abre a janelinha do CPF)
+            const cliente = acimaDoLimite() ? { ...estado.cliente } : { nome: '', cpf: '' };
+            if (acimaDoLimite() && !cliente.cpf
+                && !confirm(`CPF obrigatório para emissão de vendas acima de ${limiteTexto()}, tem certeza que deseja finalizar sem informar o nome e CPF ?`)) {
+                abrirCliente();
+                return;
             }
 
             const botao = el('finalizar');
@@ -340,8 +436,12 @@
             }
         }
 
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && estado) fechar(); });
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape' || !estado) return;
+            clienteAberto() ? fecharCliente() : fechar();
+        });
 
-        return { abrir, fechar, irParaPagamento, voltarResumo, adicionarForma, removerForma, finalizar };
+        return { abrir, fechar, irParaPagamento, voltarResumo, adicionarPagamento, removerForma, finalizar,
+                 abrirCliente, fecharCliente, salvarCliente };
     })();
 </script>
