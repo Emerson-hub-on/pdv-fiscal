@@ -30,6 +30,11 @@ class IfoodPolling extends Command
                     $r = $ifood->polling($cfg, true);
                     $this->line(now()->format('H:i:s') . " {$r['eventos']} evento(s), {$r['pedidos_novos']} pedido(s) novo(s)"
                         . ($r['erros'] ? ' · ERRO: ' . implode(' | ', $r['erros']) : ''));
+
+                    // Conciliação financeira: eventos e repasses do iFood, no máximo a cada 6 h
+                    if ($this->option('sempre')) {
+                        app(\App\Services\IfoodFinanceiroService::class)->sincronizarSePreciso();
+                    }
                 }
             } catch (Throwable $e) {
                 $this->error(now()->format('H:i:s') . ' ' . $e->getMessage());

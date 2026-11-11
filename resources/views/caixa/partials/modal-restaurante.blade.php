@@ -83,14 +83,61 @@
             <button type="button" onclick="RestaurantePdv.fecharPendencia()"
                     class="text-slate-400 hover:text-slate-700 text-2xl leading-none transition">&times;</button>
         </div>
-        <div class="px-6 py-4">
+        <div class="px-6 py-4 max-h-[70vh] overflow-y-auto">
             <ul data-pend="lista" class="list-disc pl-5 space-y-2 text-sm text-slate-700"></ul>
-            <p class="mt-4 text-xs text-slate-500">Resolva o que está acima e clique em "Atualizar lista" para o pedido ficar liberado para emitir.</p>
+
+            {{-- Entrega do iFood sem CPF/endereço: o operador informa aqui (NFC-e de entrega a domicílio, indPres 4) --}}
+            <form data-pend="form" class="hidden mt-4 grid grid-cols-6 gap-3" onsubmit="event.preventDefault(); RestaurantePdv.salvarDestinatario()">
+                <p class="col-span-6 text-xs text-slate-500">Dados do cliente para a NFC-e de entrega. Peça o CPF ao cliente; o endereço veio do iFood e pode ser corrigido.</p>
+                <label class="col-span-3 text-xs font-semibold text-slate-600">CPF do cliente
+                    <input name="cpf" inputmode="numeric" maxlength="14" required placeholder="000.000.000-00"
+                           class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-normal outline-none focus:ring-2 focus:ring-[#10284A]/30">
+                </label>
+                <label class="col-span-3 text-xs font-semibold text-slate-600">Nome
+                    <input name="nome" maxlength="60"
+                           class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-normal outline-none focus:ring-2 focus:ring-[#10284A]/30">
+                </label>
+                <label class="col-span-4 text-xs font-semibold text-slate-600">Rua
+                    <input name="logradouro" maxlength="60" required
+                           class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-normal outline-none focus:ring-2 focus:ring-[#10284A]/30">
+                </label>
+                <label class="col-span-2 text-xs font-semibold text-slate-600">Número
+                    <input name="numero" maxlength="60"
+                           class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-normal outline-none focus:ring-2 focus:ring-[#10284A]/30">
+                </label>
+                <label class="col-span-3 text-xs font-semibold text-slate-600">Complemento
+                    <input name="complemento" maxlength="60"
+                           class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-normal outline-none focus:ring-2 focus:ring-[#10284A]/30">
+                </label>
+                <label class="col-span-3 text-xs font-semibold text-slate-600">Bairro
+                    <input name="bairro" maxlength="60" required
+                           class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-normal outline-none focus:ring-2 focus:ring-[#10284A]/30">
+                </label>
+                <label class="col-span-2 text-xs font-semibold text-slate-600">CEP
+                    <input name="cep" inputmode="numeric" maxlength="9" required
+                           class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-normal outline-none focus:ring-2 focus:ring-[#10284A]/30">
+                </label>
+                <label class="col-span-3 text-xs font-semibold text-slate-600">Cidade
+                    <input name="cidade" maxlength="60" required
+                           class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-normal outline-none focus:ring-2 focus:ring-[#10284A]/30">
+                </label>
+                <label class="col-span-1 text-xs font-semibold text-slate-600">UF
+                    <input name="uf" maxlength="2" required
+                           class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-normal uppercase outline-none focus:ring-2 focus:ring-[#10284A]/30">
+                </label>
+                <p data-pend="erro" class="hidden col-span-6 rounded-lg bg-red-50 text-red-700 px-3 py-2 text-sm"></p>
+            </form>
+
+            <p data-pend="dica" class="mt-4 text-xs text-slate-500">Resolva o que está acima e clique em "Atualizar lista" para o pedido ficar liberado para emitir.</p>
         </div>
-        <div class="flex justify-end px-6 py-3 bg-slate-50 border-t border-slate-200">
+        <div class="flex justify-end gap-2 px-6 py-3 bg-slate-50 border-t border-slate-200">
             <button type="button" data-pend="ok" onclick="RestaurantePdv.fecharPendencia()"
                     class="bg-[#10284A] hover:bg-[#1a3a66] text-amber-50 text-sm font-semibold px-5 py-2 rounded-xl transition">
                 Entendi
+            </button>
+            <button type="button" data-pend="salvar" onclick="RestaurantePdv.salvarDestinatario()"
+                    class="hidden bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-5 py-2 rounded-xl transition disabled:opacity-50">
+                Salvar dados do cliente
             </button>
         </div>
     </div>
@@ -100,6 +147,7 @@
 window.RestaurantePdv = (() => {
     const URL_LISTAR = @json(route('pdv.restaurante.listar'));
     const URL_EMITIR = @json(route('pdv.restaurante.emitir'));
+    const URL_DESTINATARIO = @json(route('pdv.restaurante.destinatario'));
     const CSRF = @json(csrf_token());
 
     const SITUACOES = {
@@ -406,9 +454,66 @@ window.RestaurantePdv = (() => {
         pend('detalhe').textContent = [p.tipo === 'ifood' ? 'iFood' : 'Mesa', p.hora, moeda(p.total)].filter(Boolean).join(' · ');
         const problemas = p.problemas?.length ? p.problemas : ['O pedido não pode ser emitido.'];
         pend('lista').innerHTML = problemas.map(x => `<li>${esc(x)}</li>`).join('');
+
+        // Entrega do iFood sem CPF/endereço: formulário com os dados que vieram do iFood
+        const comForm = !!(p.pede_destinatario && p.destinatario);
+        pendenciaAtual = comForm ? p : null;
+        pend('form').classList.toggle('hidden', !comForm);
+        pend('salvar').classList.toggle('hidden', !comForm);
+        pend('dica').classList.toggle('hidden', comForm && p.problemas.length === 1);
+        pend('ok').textContent = comForm ? 'Fechar' : 'Entendi';
+        erroPendencia('');
+        if (comForm) {
+            Object.entries(p.destinatario).forEach(([campo, valor]) => {
+                const input = pend('form').elements[campo];
+                if (input) input.value = valor ?? '';
+            });
+        }
+
         modalPendencia().classList.remove('hidden');
         modalPendencia().classList.add('flex');
-        pend('ok').focus();
+        if (comForm) (pend('form').elements.cpf.value ? pend('form').elements.logradouro : pend('form').elements.cpf).focus();
+        else pend('ok').focus();
+    }
+
+    let pendenciaAtual = null;
+
+    function erroPendencia(texto) {
+        pend('erro').textContent = texto || '';
+        pend('erro').classList.toggle('hidden', !texto);
+    }
+
+    async function salvarDestinatario() {
+        const p = pendenciaAtual;
+        if (!p) return;
+        const form = pend('form');
+        if (!form.reportValidity()) return;
+
+        const corpo = { id: p.id };
+        ['cpf', 'nome', 'logradouro', 'numero', 'complemento', 'bairro', 'cep', 'cidade', 'uf'].forEach(c => { corpo[c] = form.elements[c].value.trim(); });
+        const botao = pend('salvar');
+        botao.disabled = true;
+        erroPendencia('');
+        try {
+            const resp = await fetch(URL_DESTINATARIO, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF },
+                body: JSON.stringify(corpo),
+            });
+            const json = await resp.json().catch(() => ({}));
+            if (!resp.ok) throw new Error(json.message || `Erro ${resp.status}.`);
+            if (json.faltando?.length) {
+                erroPendencia(json.faltando.join(' '));
+                return;
+            }
+            fecharPendencia();
+            await carregar(); // limpa a mensagem: a de sucesso vem depois
+            mensagem(`Dados do cliente de ${p.rotulo} gravados. O pedido está liberado para emitir.`, 'ok');
+        } catch (e) {
+            erroPendencia(e.message === 'Failed to fetch' ? 'Sem conexão com o caixa.' : e.message);
+        } finally {
+            botao.disabled = false;
+        }
     }
 
     function fecharPendencia() {
@@ -432,7 +537,7 @@ window.RestaurantePdv = (() => {
         if (emitindo) { e.preventDefault(); e.returnValue = ''; }
     });
 
-    return { abrir, fechar, aberto, carregar, emitir, pausar, marcarTodos, fecharPendencia, emitindo: () => emitindo };
+    return { abrir, fechar, aberto, carregar, emitir, pausar, marcarTodos, fecharPendencia, salvarDestinatario, emitindo: () => emitindo };
 })();
 
 function abrirModalRestaurante() { RestaurantePdv.abrir(); }

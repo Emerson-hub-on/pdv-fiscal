@@ -160,6 +160,8 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
             ->middleware('throttle:60,1')->name('pdv.restaurante.listar');
         Route::post('pdv/restaurante/emitir', [\App\Http\Controllers\PedidoRestauranteController::class, 'emitir'])
             ->middleware('throttle:120,1')->name('pdv.restaurante.emitir');
+        Route::post('pdv/restaurante/destinatario', [\App\Http\Controllers\PedidoRestauranteController::class, 'destinatario'])
+            ->middleware('throttle:60,1')->name('pdv.restaurante.destinatario');
         Route::get('pedidos-caixa/{id}/itens', [PedidoCaixaController::class, 'itens'])
             ->whereNumber('id')
             ->name('pedidos-caixa.itens');
@@ -289,7 +291,13 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
         });
 
         // iFood: horário de funcionamento da loja (cadastro; aberto pela janela "Loja no iFood" da Lista de Pedidos)
+        // e Comandas → Relatórios → Conciliação iFood (valores financeiros: módulo iFood)
         Route::middleware('permissao:ifood')->group(function () {
+            Route::get('ifood/financeiro', [\App\Http\Controllers\IfoodFinanceiroController::class, 'index'])->name('ifood.financeiro.index');
+            Route::post('ifood/financeiro/sincronizar', [\App\Http\Controllers\IfoodFinanceiroController::class, 'sincronizar'])
+                ->middleware('throttle:6,1')->name('ifood.financeiro.sincronizar');
+            Route::get('ifood/financeiro/exportar-excel', [\App\Http\Controllers\IfoodFinanceiroController::class, 'exportarExcel'])
+                ->name('ifood.financeiro.exportar-excel');
             Route::get('ifood/loja/horarios', [\App\Http\Controllers\IfoodLojaController::class, 'horarios'])
                 ->middleware('throttle:30,1')->name('ifood.loja.horarios');
             Route::put('ifood/loja/horarios', [\App\Http\Controllers\IfoodLojaController::class, 'salvarHorarios'])

@@ -46,6 +46,49 @@ class PedidoRestauranteController extends Controller
         }
     }
 
+    /** CPF e endereço do cliente de um pedido de entrega do iFood, informados na janela da pendência. */
+    public function destinatario(Request $request): JsonResponse
+    {
+        $v = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'id'          => 'required|integer|min:1',
+            'cpf'         => 'required|string|max:20',
+            'nome'        => 'nullable|string|max:60',
+            'logradouro'  => 'required|string|max:60',
+            'numero'      => 'nullable|string|max:60',
+            'complemento' => 'nullable|string|max:60',
+            'bairro'      => 'required|string|max:60',
+            'cep'         => 'required|string|max:10',
+            'cidade'      => 'required|string|max:60',
+            'uf'          => 'required|string|size:2',
+        ], [
+            'cpf.required'        => 'Informe o CPF do cliente.',
+            'logradouro.required' => 'Informe a rua.',
+            'bairro.required'     => 'Informe o bairro.',
+            'cep.required'        => 'Informe o CEP.',
+            'cidade.required'     => 'Informe a cidade.',
+            'uf.*'                => 'Informe a UF (2 letras).',
+        ]);
+
+        // JSON também no erro de validação (fora de api/* o padrão do sistema redireciona)
+        if ($v->fails()) {
+            return response()->json(['message' => $v->errors()->first(), 'errors' => $v->errors()], 422);
+        }
+
+        if (CentralStatus::fora()) {
+            return response()->json(['message' => 'Servidor indisponível: os pedidos do restaurante ficam no servidor.'], 503);
+        }
+
+        try {
+            $faltando = $this->restaurante->salvarDestinatario((int) $request->input('id'), $v->validated());
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            return $this->falha($e, 'Não foi possível gravar os dados do cliente.');
+        }
+
+        return response()->json(['ok' => $faltando === [], 'faltando' => $faltando]);
+    }
+
     /** Emite a NFC-e de um pedido (a tela chama um por vez, na ordem, até acabar ou o operador pausar). */
     public function emitir(Request $request): JsonResponse
     {

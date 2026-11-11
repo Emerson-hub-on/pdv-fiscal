@@ -11,6 +11,27 @@
 
 $historico = [
     [
+        'versao' => '1.32.0',
+        'data' => '2026-11-11',
+        'itens' => [
+            'Nova tela Comandas → Relatórios → Conciliação iFood (Financial API v3): para cada pedido, a venda, a comissão, as taxas e os demais lançamentos do iFood, o líquido do repasse, o valor recebido direto e a previsão de pagamento.',
+            'A conciliação compara com os pedidos do sistema e aponta pedidos divergentes, pedidos sem lançamento do iFood há mais de 2 dias e lançamentos de pedidos fora do sistema. Tem filtros, a lista dos lançamentos de cada pedido e exportação para Excel.',
+            'Aba Repasses: repasses pagos e previstos, boletos (saldo devedor), retidos e renegociados.',
+            'Cada repasse vira uma conta a receber "Repasse iFood", baixada sozinha quando o iFood informa o pagamento.',
+            'Sincronização pelo botão "Sincronizar com o iFood" e automática a cada 6 h com o ifood:polling --sempre. Os dados bancários e o documento da loja não são gravados.',
+        ],
+    ],
+    [
+        'versao' => '1.31.1',
+        'data' => '2026-11-11',
+        'itens' => [
+            'NFC-e do iFood (orientação contábil): pedido de entrega sai sempre como entrega a domicílio (indPres 4), com o iFood como intermediador. Não sai mais como presencial quando falta o CPF.',
+            'Entrega sem CPF ou com endereço inválido vira pendência em Pedidos Restaurante. Na janela da pendência o operador informa o CPF e corrige o endereço, e o pedido fica liberado.',
+            'Retirada e consumo no local pelo iFood saem como presencial (indPres 1), com o iFood como intermediador (venda pela plataforma).',
+            'O emissor recusa a NFC-e de entrega sem destinatário antes de reservar o número (antes trocava para presencial).',
+        ],
+    ],
+    [
         'versao' => '1.31.0',
         'data' => '2026-11-10',
         'itens' => [

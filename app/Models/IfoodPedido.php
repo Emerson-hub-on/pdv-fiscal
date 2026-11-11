@@ -41,7 +41,7 @@ class IfoodPedido extends Model
         'entregue_por', 'cliente_nome', 'cliente_telefone', 'localizador', 'endereco', 'codigo_retirada',
         'subtotal', 'taxa_entrega', 'descontos', 'taxas_adicionais', 'total', 'pago_online', 'cobrar_na_entrega',
         'pagamentos', 'observacoes', 'agendado_para', 'criado_ifood_em', 'confirmado_em', 'ultimo_erro', 'payload',
-        'codigo_entrega_solicitado_em', 'cancelamento_solicitado_em', 'cancelado_por', 'disputa',
+        'codigo_entrega_solicitado_em', 'cancelamento_solicitado_em', 'cancelado_por', 'disputa', 'dados_nfce',
     ];
 
     protected $casts = [
@@ -60,6 +60,7 @@ class IfoodPedido extends Model
         'codigo_entrega_solicitado_em' => 'datetime',
         'cancelamento_solicitado_em'   => 'datetime',
         'disputa'          => 'array',
+        'dados_nfce'       => 'array', // CPF e endereço informados pelo operador para a NFC-e de entrega
     ];
 
     public function pedido(): BelongsTo

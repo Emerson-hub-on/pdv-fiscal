@@ -1285,6 +1285,14 @@ class IfoodService
     }
 
     /** Chamada autenticada; renova o token uma vez se o iFood responder 401. */
+    /** Consulta (GET) na API do iFood com o token da loja, para os outros serviços (ex.: financeiro). */
+    public function consultar(IfoodConfiguracao $cfg, string $caminho, array $query = []): mixed
+    {
+        $this->exigirCredenciais($cfg);
+
+        return $this->chamar($cfg, 'get', $caminho, $query);
+    }
+
     private function chamar(IfoodConfiguracao $cfg, string $metodo, string $caminho, array $dados = []): mixed
     {
         $enviar = function (string $token) use ($metodo, $caminho, $dados) {

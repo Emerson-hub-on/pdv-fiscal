@@ -1025,15 +1025,16 @@ protected function montarTotais(Make $nfe, Venda $venda): void
         $indPres = (int) ($venda->ind_pres ?? 1);
         $this->indPres = in_array($indPres, [1, 4], true) ? $indPres : 1;
 
-        // Entrega (4) só com o destinatário completo; sem ele a SEFAZ rejeita (787/788) - inclusive no reenvio
-        // de uma venda gravada antes dessa regra -, então sai como presencial (1).
+        // Entrega em domicílio (4) é a operação real do pedido de entrega do iFood e não pode virar presencial.
+        // Sem o destinatário completo a SEFAZ rejeita (787/788): para ANTES de reservar o número da NFC-e.
         $dest = is_array($venda->destinatario ?? null) ? $venda->destinatario : null;
         $completo = $dest && collect(['cpf', 'nome', 'xLgr', 'nro', 'xBairro', 'cMun', 'xMun', 'UF', 'CEP'])
             ->every(fn ($campo) => trim((string) ($dest[$campo] ?? '')) !== '');
         $this->destinatarioEntrega = $this->indPres === 4 && $completo && !$venda->cliente ? $dest : null;
 
         if ($this->indPres === 4 && !$this->destinatarioEntrega && !$venda->cliente) {
-            $this->indPres = 1;
+            throw new \Exception('NFC-e de entrega a domicílio sem o CPF e o endereço do cliente (a SEFAZ rejeita). '
+                . 'Informe os dados na pendência do pedido em Pedidos Restaurante.');
         }
         $cnpj = preg_replace('/\D/', '', (string) ($venda->intermediador_cnpj ?? ''));
 
