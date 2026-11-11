@@ -30,8 +30,8 @@
 @endphp
 
 @section('conteudo')
-    <div class="flex flex-wrap justify-end items-center gap-2 mb-4">
-        <p class="mr-auto text-xs text-gray-500">
+    <div class="flex items-center gap-4 mb-4">
+        <p class="flex-1 min-w-0 text-xs text-gray-500">
             @if ($sincronizadoEm)
                 Última sincronização com o iFood: {{ \Carbon\Carbon::parse($sincronizadoEm)->format('d/m/Y H:i') }}
             @else
@@ -39,16 +39,19 @@
             @endif
             <span class="text-gray-400">· O iFood lança os valores alguns dias depois do pedido; o repasse é semanal.</span>
         </p>
-        @if ($podeSincronizar)
-            <button type="button" id="btn-sincronizar" onclick="sincronizarIfood(this)"
-                    class="bg-[#10284A] hover:bg-[#1a3a66] text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition disabled:opacity-50">
-                Sincronizar com o iFood
-            </button>
-        @endif
-        <a href="{{ route('ifood.financeiro.exportar-excel', request()->query()) }}"
-           class="bg-green-600 hover:bg-green-500 text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition">
-            Exportar Excel
-        </a>
+        {{-- Botões sempre lado a lado --}}
+        <div class="flex shrink-0 items-center gap-2">
+            @if ($podeSincronizar)
+                <button type="button" id="btn-sincronizar" onclick="sincronizarIfood(this)"
+                        class="whitespace-nowrap bg-[#10284A] hover:bg-[#1a3a66] text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition disabled:opacity-50">
+                    Sincronizar com o iFood
+                </button>
+            @endif
+            <a href="{{ route('ifood.financeiro.exportar-excel', request()->query()) }}"
+               class="whitespace-nowrap bg-green-600 hover:bg-green-500 text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition">
+                Exportar Excel
+            </a>
+        </div>
     </div>
 
     {{-- Filtros --}}

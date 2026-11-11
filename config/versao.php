@@ -11,6 +11,13 @@
 
 $historico = [
     [
+        'versao' => '1.32.2',
+        'data' => '2026-11-11',
+        'itens' => [
+            'Conciliação iFood: os botões "Sincronizar com o iFood" e "Exportar Excel" ficam lado a lado.',
+        ],
+    ],
+    [
         'versao' => '1.32.1',
         'data' => '2026-11-11',
         'itens' => [
