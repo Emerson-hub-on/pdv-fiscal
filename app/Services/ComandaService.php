@@ -142,10 +142,18 @@ class ComandaService
      *
      * @param array  $pagamentos [['forma' => codigo, 'valor' => float], ...]
      * @param string $onde       garcom | painel
+     * @param array  $cliente    ['cpf' => ..., 'nome' => ...] para a NFC-e (opcional; acima do limite a tela pede)
      */
-    public function fecharConta(Comanda $conta, array $pagamentos, ?int $userId, string $onde): Comanda
+    public function fecharConta(Comanda $conta, array $pagamentos, ?int $userId, string $onde, array $cliente = []): Comanda
     {
-        return DB::transaction(function () use ($conta, $pagamentos, $userId, $onde) {
+        // CPF/nome do cliente para a NFC-e: CPF, se vier, precisa ser válido
+        $cpf = preg_replace('/\D/', '', (string) ($cliente['cpf'] ?? ''));
+        $nome = mb_substr(trim((string) ($cliente['nome'] ?? '')), 0, 60);
+        if ($cpf !== '' && !\App\Models\Condutor::cpfValido($cpf)) {
+            throw new DomainException('CPF do cliente inválido. Confira os números ou deixe em branco.');
+        }
+
+        return DB::transaction(function () use ($conta, $pagamentos, $userId, $onde, $cpf, $nome) {
             $conta = Comanda::whereKey($conta->id)->lockForUpdate()->firstOrFail();
 
             if ($conta->status !== Comanda::ABERTA) {
@@ -216,6 +224,8 @@ class ComandaService
                 'fechada_em'   => now(),
                 'fechada_por'  => $userId,
                 'fechada_onde' => $onde,
+                // Vai para a NFC-e em Pedidos Restaurante (sem CPF acima do limite, lá vira pendência)
+                'dados_nfce'   => ($cpf !== '' || $nome !== '') ? array_filter(['cpf' => $cpf, 'nome' => $nome]) : $conta->dados_nfce,
             ])->save();
 
             $conta->pedidos()->abertos()->get()

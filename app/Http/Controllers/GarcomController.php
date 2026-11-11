@@ -138,7 +138,7 @@ class GarcomController extends Controller
         }
 
         try {
-            $conta = $this->comandas->fecharConta($conta, (array) $request->input('pagamentos', []), Auth::guard('garcom')->id(), 'garcom');
+            $conta = $this->comandas->fecharConta($conta, (array) $request->input('pagamentos', []), Auth::guard('garcom')->id(), 'garcom', (array) $request->input('cliente', []));
         } catch (DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

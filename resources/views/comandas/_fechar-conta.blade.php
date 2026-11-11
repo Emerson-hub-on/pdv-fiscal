@@ -50,6 +50,18 @@
                     <div class="flex justify-between" data-fc="linha-restante"><span class="text-slate-500">Falta</span><span class="font-bold text-red-600" data-fc="restante"></span></div>
                     <div class="flex justify-between" data-fc="linha-troco"><span class="text-slate-500">Troco</span><span class="font-bold text-green-700" data-fc="troco"></span></div>
                 </div>
+
+                {{-- Conta acima do limite: nome e CPF do cliente para a NFC-e (pode finalizar sem, com confirmação) --}}
+                <div data-fc="area-cliente" class="hidden mt-3 rounded-2xl bg-amber-50 ring-1 ring-amber-200 px-4 py-3">
+                    <p class="text-sm font-semibold text-amber-900">Dados do cliente para a nota fiscal</p>
+                    <p class="text-xs text-amber-800 mb-2" data-fc="aviso-cliente"></p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input type="text" data-fc="cliente-nome" maxlength="60" placeholder="Nome do cliente" autocomplete="off"
+                               class="bg-white border border-amber-200 rounded-xl px-3 py-2.5 text-base focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none">
+                        <input type="text" data-fc="cliente-cpf" inputmode="numeric" maxlength="14" placeholder="CPF" autocomplete="off"
+                               class="bg-white border border-amber-200 rounded-xl px-3 py-2.5 text-base focus:border-[#10284A]/40 focus:ring-2 focus:ring-[#10284A]/30 outline-none">
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -89,6 +101,23 @@
         };
         const formatarCampo = (v) => v ? Number(v).toFixed(2).replace('.', ',') : '';
 
+        // NFC-e acima deste valor exige o CPF do cliente (config fiscal.cpf_obrigatorio_acima; 0 = sem a regra)
+        const LIMITE_CPF = @json((float) config('fiscal.cpf_obrigatorio_acima', 500));
+        const limiteTexto = () => (Number.isInteger(LIMITE_CPF) ? String(LIMITE_CPF) : formatarCampo(LIMITE_CPF)) + ' reais';
+        const acimaDoLimite = () => LIMITE_CPF > 0 && centavos(estado?.conta?.total ?? 0) > centavos(LIMITE_CPF);
+        const soDigitos = (v) => String(v ?? '').replace(/\D/g, '');
+        function cpfValido(valor) {
+            const c = soDigitos(valor);
+            if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false;
+            const digito = (n) => {
+                let soma = 0;
+                for (let i = 0; i < n; i++) soma += Number(c[i]) * (n + 1 - i);
+                const resto = (soma * 10) % 11;
+                return resto === 10 ? 0 : resto;
+            };
+            return digito(9) === Number(c[9]) && digito(10) === Number(c[10]);
+        }
+
         let estado = null; // { conta, etapa: 'resumo'|'pagamento', pagamentos: [{ forma, valor }], urlFechar, aoFechar }
 
         function abrirModal() { modal.classList.remove('hidden'); modal.classList.add('flex'); }
@@ -106,6 +135,9 @@
             el('total').textContent = '';
             el('pagamentos').innerHTML = '';
             el('area-paga').classList.add('hidden');
+            el('area-cliente').classList.add('hidden');
+            el('cliente-nome').value = '';
+            el('cliente-cpf').value = '';
             erro('');
             mostrarEtapa();
             el('avancar').disabled = true;
@@ -182,6 +214,14 @@
             erro('');
             mostrarEtapa();
             desenharPagamentos();
+
+            const pedeCliente = acimaDoLimite();
+            el('area-cliente').classList.toggle('hidden', !pedeCliente);
+            if (pedeCliente) {
+                el('aviso-cliente').textContent = `CPF obrigatório para emissão de vendas acima de ${limiteTexto()}.`;
+                // Primeiro nome dos pedidos da mesa já vem preenchido (o garçom confirma)
+                if (!el('cliente-nome').value && estado.conta.clientes?.length) el('cliente-nome').value = estado.conta.clientes[0];
+            }
         }
 
         function voltarResumo() {
@@ -254,6 +294,24 @@
 
         async function finalizar() {
             if (!estado?.conta || estado.etapa !== 'pagamento' || el('finalizar').disabled) return;
+
+            // Acima do limite: pede nome e CPF; sem o CPF só finaliza depois de confirmar
+            const cliente = { nome: el('cliente-nome').value.trim(), cpf: soDigitos(el('cliente-cpf').value) };
+            if (acimaDoLimite()) {
+                if (cliente.cpf && !cpfValido(cliente.cpf)) {
+                    erro('CPF do cliente inválido. Confira os números ou deixe em branco.');
+                    el('cliente-cpf').focus();
+                    return;
+                }
+                if (!cliente.cpf && !confirm(`CPF obrigatório para emissão de vendas acima de ${limiteTexto()}, tem certeza que deseja finalizar sem informar o nome e CPF ?`)) {
+                    el('cliente-cpf').focus();
+                    return;
+                }
+            } else {
+                cliente.nome = '';
+                cliente.cpf = '';
+            }
+
             const botao = el('finalizar');
             botao.disabled = true;
             el('voltar').disabled = true;
@@ -264,7 +322,7 @@
                 const resp = await fetch(estado.urlFechar, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': CSRF },
-                    body: JSON.stringify({ conta_id: estado.conta.id, pagamentos: estado.pagamentos }),
+                    body: JSON.stringify({ conta_id: estado.conta.id, pagamentos: estado.pagamentos, cliente }),
                 });
                 if (resp.redirected) return location.reload();
                 const dados = await resp.json().catch(() => ({}));

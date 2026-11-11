@@ -169,7 +169,7 @@ class PedidoComandaController extends Controller
     public function fecharConta(Request $request, Comanda $comanda): JsonResponse
     {
         try {
-            $conta = $this->comandas->fecharConta($comanda, (array) $request->input('pagamentos', []), $request->user()->id, 'painel');
+            $conta = $this->comandas->fecharConta($comanda, (array) $request->input('pagamentos', []), $request->user()->id, 'painel', (array) $request->input('cliente', []));
         } catch (DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

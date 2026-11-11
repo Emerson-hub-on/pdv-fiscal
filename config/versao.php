@@ -11,6 +11,15 @@
 
 $historico = [
     [
+        'versao' => '1.33.2',
+        'data' => '2026-11-11',
+        'itens' => [
+            'Fechar conta (garçom e Lista de Pedidos): conta acima de R$ 500,00 pede o nome e o CPF do cliente para a nota fiscal. O nome do pedido já vem preenchido e o CPF é conferido.',
+            'Dá para finalizar sem o CPF depois de confirmar o aviso "CPF obrigatório para emissão de vendas acima de 500 reais, tem certeza que deseja finalizar sem informar o nome e CPF ?".',
+            'O CPF informado vai direto para a NFC-e em Pedidos Restaurante. Conta fechada sem CPF continua aparecendo lá como "CPF obrigatório".',
+        ],
+    ],
+    [
         'versao' => '1.33.1',
         'data' => '2026-11-11',
         'itens' => [
