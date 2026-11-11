@@ -11,6 +11,16 @@
 
 $historico = [
     [
+        'versao' => '1.34.0',
+        'data' => '2026-11-11',
+        'itens' => [
+            'Comandas → Relatórios → Indicadores iFood: pedidos, faturamento, ticket médio e taxa de cancelamento, comparando com o período anterior do mesmo tamanho.',
+            'Tempos de aceite, preparo, entrega e total (média, metade dos pedidos e o mais demorado), pelo horário de cada etapa informado pelo iFood.',
+            'Horários de pico: pedidos por dia, por hora e mapa dia da semana × hora. Também mostra entrega × retirada, cancelamentos por motivo e os 10 mais vendidos, com exportação para Excel.',
+            'Os pedidos do iFood passam a guardar o horário de pronto, despachado, concluído e cancelado, além do motivo do cancelamento. Os pedidos antigos foram preenchidos com o que havia.',
+        ],
+    ],
+    [
         'versao' => '1.33.3',
         'data' => '2026-11-11',
         'itens' => [

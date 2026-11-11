@@ -42,6 +42,7 @@ class IfoodPedido extends Model
         'subtotal', 'taxa_entrega', 'descontos', 'taxas_adicionais', 'total', 'pago_online', 'cobrar_na_entrega',
         'pagamentos', 'observacoes', 'agendado_para', 'criado_ifood_em', 'confirmado_em', 'ultimo_erro', 'payload',
         'codigo_entrega_solicitado_em', 'cancelamento_solicitado_em', 'cancelado_por', 'disputa', 'dados_nfce',
+        'pronto_em', 'despachado_em', 'concluido_em', 'cancelado_em', 'motivo_cancelamento',
     ];
 
     protected $casts = [
@@ -57,6 +58,10 @@ class IfoodPedido extends Model
         'agendado_para'    => 'datetime',
         'criado_ifood_em'  => 'datetime',
         'confirmado_em'    => 'datetime',
+        'pronto_em'        => 'datetime', // etapas pelo horário do evento no iFood (indicadores)
+        'despachado_em'    => 'datetime',
+        'concluido_em'     => 'datetime',
+        'cancelado_em'     => 'datetime',
         'codigo_entrega_solicitado_em' => 'datetime',
         'cancelamento_solicitado_em'   => 'datetime',
         'disputa'          => 'array',

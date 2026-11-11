@@ -295,6 +295,9 @@ Route::post('licenca', [LicencaController::class, 'registrar'])
         // iFood: horário de funcionamento da loja (cadastro; aberto pela janela "Loja no iFood" da Lista de Pedidos)
         // e Comandas → Relatórios → Conciliação iFood (valores financeiros: módulo iFood)
         Route::middleware('permissao:ifood')->group(function () {
+            Route::get('ifood/indicadores', [\App\Http\Controllers\IfoodIndicadoresController::class, 'index'])->name('ifood.indicadores.index');
+            Route::get('ifood/indicadores/exportar-excel', [\App\Http\Controllers\IfoodIndicadoresController::class, 'exportarExcel'])
+                ->name('ifood.indicadores.exportar-excel');
             Route::get('ifood/financeiro', [\App\Http\Controllers\IfoodFinanceiroController::class, 'index'])->name('ifood.financeiro.index');
             Route::post('ifood/financeiro/sincronizar', [\App\Http\Controllers\IfoodFinanceiroController::class, 'sincronizar'])
                 ->middleware('throttle:6,1')->name('ifood.financeiro.sincronizar');

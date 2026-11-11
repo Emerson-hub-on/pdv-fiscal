@@ -586,6 +586,10 @@
                                    class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
                                     Conciliação iFood
                                 </a>
+                                <a href="{{ route('ifood.indicadores.index') }}"
+                                   class="block px-3 py-2 text-sm text-slate-300 hover:bg-amber-50/10 hover:text-amber-50 transition">
+                                    Indicadores iFood
+                                </a>
                             @endif
                         </div>
                     </div>

@@ -942,6 +942,8 @@ class IfoodService
         }
 
         $pedido = $ifood->pedido;
+        // Horário do evento no iFood (para os indicadores); sem ele, agora
+        $quando = $this->dataIfood($evento['createdAt'] ?? null) ?? now()->format('Y-m-d H:i:s');
         $aberto = $pedido && !in_array($pedido->status, [ComandaPedido::CONCLUIDO, ComandaPedido::CANCELADO], true);
         $texto = fn (...$chaves) => collect($chaves)->map(fn ($c) => $meta[$c] ?? null)->first(fn ($v) => is_string($v) && trim($v) !== '');
 
@@ -952,14 +954,18 @@ class IfoodService
                 break;
             case 'READY_TO_PICKUP':
             case 'DISPATCHED':
-                $ifood->update(['status' => $codigo]);
+                $etapa = $codigo === 'DISPATCHED' ? 'despachado_em' : 'pronto_em';
+                $ifood->update(['status' => $codigo, $etapa => $ifood->{$etapa} ?? $quando]);
                 $this->estoqueDoPedido($ifood, true); // aceito fora daqui sem o CONFIRMED: baixa agora (uma vez só)
                 if ($pedido && $pedido->status === ComandaPedido::PREPARO) {
                     $pedido->mudarStatus(ComandaPedido::PRONTO, null);
                 }
                 break;
             case 'CONCLUDED':
-                $ifood->update(['status' => IfoodPedido::CONCLUDED, 'codigo_entrega_solicitado_em' => null, 'disputa' => null]);
+                $ifood->update([
+                    'status' => IfoodPedido::CONCLUDED, 'codigo_entrega_solicitado_em' => null, 'disputa' => null,
+                    'concluido_em' => $ifood->concluido_em ?? $quando,
+                ]);
                 if ($aberto) {
                     $this->estoqueDoPedido($ifood, true);
                     $pedido->mudarStatus(ComandaPedido::CONCLUIDO, null);
@@ -974,6 +980,8 @@ class IfoodService
                     'cancelado_por' => $porLoja ? 'loja' : 'ifood',
                     'disputa'       => null,
                     'ultimo_erro'   => $porLoja ? null : mb_substr('Cancelado pelo iFood/cliente' . ($motivo ? ": {$motivo}" : '.'), 0, 500),
+                    'cancelado_em'  => $ifood->cancelado_em ?? $quando,
+                    'motivo_cancelamento' => $motivo ? mb_substr($motivo, 0, 255) : $ifood->motivo_cancelamento,
                 ]);
                 if ($aberto) {
                     $pedido->mudarStatus(ComandaPedido::CANCELADO, null);
@@ -994,6 +1002,7 @@ class IfoodService
                 $ifood->update([
                     'cancelamento_solicitado_em' => null,
                     'cancelado_por'              => null,
+                    'motivo_cancelamento'        => null,
                     'ultimo_erro'                => mb_substr('O iFood não aceitou o cancelamento' . ($motivo ? ": {$motivo}" : '. O pedido continua valendo.'), 0, 500),
                 ]);
                 break;
@@ -1212,7 +1221,11 @@ class IfoodService
 
         $acao = $ifood->tipo === 'DELIVERY' ? 'dispatch' : 'readyToPickup';
         $this->chamar($cfg, 'post', "/order/v1.0/orders/{$ifood->ifood_order_id}/{$acao}");
-        $ifood->update(['status' => $acao === 'dispatch' ? IfoodPedido::DISPATCHED : IfoodPedido::READY_TO_PICKUP, 'ultimo_erro' => null]);
+        $etapa = $acao === 'dispatch' ? 'despachado_em' : 'pronto_em';
+        $ifood->update([
+            'status' => $acao === 'dispatch' ? IfoodPedido::DISPATCHED : IfoodPedido::READY_TO_PICKUP, 'ultimo_erro' => null,
+            $etapa => $ifood->{$etapa} ?? now(),
+        ]);
     }
 
     /** Motivos de cancelamento que o iFood aceita para este pedido. */
@@ -1237,7 +1250,10 @@ class IfoodService
             'reason'           => mb_substr($motivo, 0, 250),
             'cancellationCode' => $codigo,
         ]);
-        $ifood->update(['cancelamento_solicitado_em' => now(), 'cancelado_por' => 'loja', 'ultimo_erro' => null]);
+        $ifood->update([
+            'cancelamento_solicitado_em' => now(), 'cancelado_por' => 'loja', 'ultimo_erro' => null,
+            'motivo_cancelamento' => mb_substr(trim($motivo), 0, 255) ?: null,
+        ]);
     }
 
     /** Entrega própria: confirma a entrega com o código que o cliente informa ao entregador. O iFood conclui o pedido. */
