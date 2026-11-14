@@ -14,6 +14,9 @@ return [
     */
     'prazo_cancelamento_minutos' => env('PRAZO_CANCELAMENTO_MINUTOS', 30),
 
+    // Onde o servidor roda: "local" (na loja, padrão) ou "web" (na nuvem). Ver App\Support\ModoSistema.
+    'modo' => env('APP_MODO', 'local'),
+
 
 
     'name' => env('APP_NAME', 'Laravel'),

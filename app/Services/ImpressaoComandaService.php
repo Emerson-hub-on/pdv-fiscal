@@ -6,6 +6,7 @@ use App\Models\CardapioItem;
 use App\Models\ComandaImpressora;
 use App\Models\ComandaPedido;
 use App\Models\ComandaPedidoItem;
+use App\Support\ModoSistema;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -318,6 +319,11 @@ class ImpressaoComandaService
     /** Manda os bytes para a impressora (rede ou USB). */
     private function enviar(ComandaImpressora $impressora, string $dados): void
     {
+        // Na nuvem o servidor não alcança a rede nem o USB da loja
+        if (ModoSistema::web()) {
+            throw new RuntimeException('impressão direta indisponível com o servidor na nuvem (APP_MODO=web)');
+        }
+
         if ($impressora->conexao === ComandaImpressora::REDE) {
             $erroNumero = 0;
             $erroTexto = '';

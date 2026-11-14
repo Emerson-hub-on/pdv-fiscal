@@ -11,6 +11,14 @@
 
 $historico = [
     [
+        'versao' => '1.35.0',
+        'data' => '2026-11-14',
+        'itens' => [
+            'Preparação para a versão web: nova opção APP_MODO no .env, "local" (servidor na loja, padrão) ou "web" (servidor na nuvem). Instalações atuais não mudam nada.',
+            'Com o servidor na nuvem, a impressão direta das comandas avisa que não está disponível, em vez de tentar a impressora da loja e esperar a conexão falhar.',
+        ],
+    ],
+    [
         'versao' => '1.34.0',
         'data' => '2026-11-11',
         'itens' => [
